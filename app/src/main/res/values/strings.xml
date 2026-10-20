@@ -277,6 +277,7 @@
     <string name="save_to_list_title">Save to</string>
     <string name="cd_save_to_list">Save to a list</string>
     <string name="cd_in_a_list">Saved to a list</string>
+    <string name="save_to_list_new_list_note">%1$s goes into the new list.</string>
 
     <!-- List detail -->
     <string name="rename_list_title">Rename list</string>

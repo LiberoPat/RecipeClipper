@@ -455,6 +455,16 @@ title, times, one servings-and-units row, and ingredients.
 **Times are plain labeled numbers, not chips.** Chips imply tappable; these
 aren't.
 
+*Revised (#286, the owner's pick "Inset photo, one-line times").* The times sit
+on one line, "Prep 35m · Cook 40m · Total 1h 15m": labels muted (the title-case
+`label_prep`/`label_cook`/`label_total`, no longer uppercased), values bold, a
+muted " · " between, only the entries the recipe has. It's one text, so it wraps
+in a long language or at large type, but only between entries: an entry's
+spaces and the one before its "·" are non-breaking, so "1h 15m" and "Prep 35m"
+never split and a line never starts with "·". A value longer than 20
+characters (a phrase as written) keeps its spaces, so it wraps at a word rather
+than mid-word. The photo and top bar are unchanged, and so is the share text.
+
 **Servings and units are one always-visible row, adjusted in place.**
 `Serves − 6 +` on the left, the unit choice (`Metric ▾`) on the right. Servings
 is per-recipe: one tap on − or +, nothing to open. Units are a **global
@@ -612,7 +622,13 @@ Spotify's add-to-playlist model. Built; `ui/savetolist/`.
 - Toggling writes/deletes a `RecipeListCrossRef` immediately. No Save/Cancel;
   the sheet is dismissed, not submitted.
 - "+ New list" expands inline to a text field — no dialog stacked on a sheet.
-- Creating a list from the sheet auto-ticks the current recipe into it.
+- Creating a list from the sheet auto-ticks the current recipe into it. Since
+  #286 (the owner's pick "New list, inline") the open field says so: one muted
+  line under it, "<recipe> goes into the new list." (`save_to_list_new_list_note`),
+  shown only while the field is open. The title reaches the sheet through
+  `SaveToListViewModel.setRecipe(id, title)`, again on an edit. The mockup's
+  Create beside the field and counts on the right weren't part of the pick:
+  Cancel and Create stay under the field, each count under its list's name.
 - Built-ins sort first, then user lists by `sortOrder`.
 - Reachable from the recipe screen's bookmark icon (filled = in ≥1 list).
 

@@ -31,6 +31,18 @@ final class CookModeUITests: RecipeUITestCase {
         require(text("STEP \(n)"), "step \(n)'s card", file: file, line: line)
     }
 
+    // MARK: Before cooking
+
+    /// #286: the reading view's times on one line, labels muted and values bold (which the
+    /// label can't show); each entry's spaces are non-breaking, so a wrap never splits one.
+    func testTheReadingViewShowsTheTimesOnOneLine() {
+        launch(.cook)
+        openRecipe("Weeknight Chili")
+
+        let times = require(app.staticTexts["recipe.times"], "the times")
+        XCTAssertEqual(times.label.replacingOccurrences(of: "\u{00A0}", with: " "), "Prep 10m · Cook 20m · Total 30m")
+    }
+
     // MARK: Step states
 
     func testCookingStartsOnTheFirstStepWithTheRestUpcoming() {

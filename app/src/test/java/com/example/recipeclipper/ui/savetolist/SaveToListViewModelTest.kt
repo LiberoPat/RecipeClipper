@@ -47,7 +47,7 @@ class SaveToListViewModelTest {
         val repository = repositoryWithBuiltIns()
         val viewModel = SaveToListViewModel(repository)
         collectEagerly(viewModel.uiState)
-        viewModel.setRecipe(7L)
+        viewModel.setRecipe(7L, "Pancakes")
         advanceUntilIdle()
 
         assertEquals(listOf("Favorites", "Lunch", "Dinner"), viewModel.uiState.value.lists.map { it.name })
@@ -55,13 +55,30 @@ class SaveToListViewModelTest {
         assertFalse(viewModel.uiState.value.isSaved)
     }
 
+    /** #286: the sheet names the recipe under "+ New list"; an edited title follows. */
+    @Test
+    fun `the state carries the recipe's title, and an edited one replaces it`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val viewModel = SaveToListViewModel(repositoryWithBuiltIns())
+            collectEagerly(viewModel.uiState)
+            viewModel.setRecipe(7L, "Pancakes")
+            advanceUntilIdle()
+            assertEquals("Pancakes", viewModel.uiState.value.recipeTitle)
+
+            viewModel.setRecipe(7L, "Fluffy pancakes")
+            advanceUntilIdle()
+
+            assertEquals("Fluffy pancakes", viewModel.uiState.value.recipeTitle)
+            assertEquals(3, viewModel.uiState.value.lists.size)
+        }
+
     @Test
     fun `ticking a list writes it through and the tick comes back`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = repositoryWithBuiltIns()
             val viewModel = SaveToListViewModel(repository)
             collectEagerly(viewModel.uiState)
-            viewModel.setRecipe(7L)
+            viewModel.setRecipe(7L, "Pancakes")
             advanceUntilIdle()
 
             viewModel.onListToggled(listId = 2L, inList = true)
@@ -80,7 +97,7 @@ class SaveToListViewModelTest {
         repository.membership.value = setOf(7L to 2L)
         val viewModel = SaveToListViewModel(repository)
         collectEagerly(viewModel.uiState)
-        viewModel.setRecipe(7L)
+        viewModel.setRecipe(7L, "Pancakes")
         advanceUntilIdle()
 
         viewModel.onListToggled(listId = 2L, inList = false)
@@ -96,7 +113,7 @@ class SaveToListViewModelTest {
             val repository = repositoryWithBuiltIns()
             val viewModel = SaveToListViewModel(repository)
             collectEagerly(viewModel.uiState)
-            viewModel.setRecipe(7L)
+            viewModel.setRecipe(7L, "Pancakes")
             advanceUntilIdle()
             assertFalse(viewModel.uiState.value.isSaved)
 
@@ -116,7 +133,7 @@ class SaveToListViewModelTest {
             repository.membership.value = setOf(99L to 2L)
             val viewModel = SaveToListViewModel(repository)
             collectEagerly(viewModel.uiState)
-            viewModel.setRecipe(7L)
+            viewModel.setRecipe(7L, "Pancakes")
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isSaved)
@@ -144,7 +161,7 @@ class SaveToListViewModelTest {
             val repository = repositoryWithBuiltIns()
             val viewModel = SaveToListViewModel(repository)
             collectEagerly(viewModel.uiState)
-            viewModel.setRecipe(7L)
+            viewModel.setRecipe(7L, "Pancakes")
             advanceUntilIdle()
 
             viewModel.onStartCreating()
@@ -164,7 +181,7 @@ class SaveToListViewModelTest {
             val repository = repositoryWithBuiltIns()
             val viewModel = SaveToListViewModel(repository)
             collectEagerly(viewModel.uiState)
-            viewModel.setRecipe(7L)
+            viewModel.setRecipe(7L, "Pancakes")
             viewModel.onStartCreating()
             viewModel.onNewListNameChange("Weeknights")
             advanceUntilIdle()
@@ -182,7 +199,7 @@ class SaveToListViewModelTest {
         val repository = repositoryWithBuiltIns()
         val viewModel = SaveToListViewModel(repository)
         collectEagerly(viewModel.uiState)
-        viewModel.setRecipe(7L)
+        viewModel.setRecipe(7L, "Pancakes")
         viewModel.onStartCreating()
         viewModel.onNewListNameChange("   ")
         viewModel.onCreateList()
@@ -198,7 +215,7 @@ class SaveToListViewModelTest {
         val repository = repositoryWithBuiltIns()
         val viewModel = SaveToListViewModel(repository)
         collectEagerly(viewModel.uiState)
-        viewModel.setRecipe(7L)
+        viewModel.setRecipe(7L, "Pancakes")
         viewModel.onStartCreating()
         viewModel.onNewListNameChange("  Weeknights  ")
         viewModel.onCreateList()

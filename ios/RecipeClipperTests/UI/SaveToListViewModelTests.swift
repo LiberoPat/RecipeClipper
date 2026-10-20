@@ -29,7 +29,7 @@ final class SaveToListViewModelTests: XCTestCase {
 
     func testSettingTheRecipeShowsEveryListNoneTicked() async {
         let vm = SaveToListViewModel(repository: repositoryWithBuiltIns())
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         await settleMain()
 
         XCTAssertEqual(vm.uiState.lists.map(\.name), ["Favorites", "Lunch", "Dinner"])
@@ -37,10 +37,24 @@ final class SaveToListViewModelTests: XCTestCase {
         XCTAssertFalse(vm.uiState.isSaved)
     }
 
+    /// #286: the sheet names the recipe under "+ New list"; an edited title follows.
+    func testTheStateCarriesTheRecipesTitleAndAnEditedOneReplacesIt() async {
+        let vm = SaveToListViewModel(repository: repositoryWithBuiltIns())
+        vm.setRecipe(7, title: "Pancakes")
+        await settleMain()
+        XCTAssertEqual(vm.uiState.recipeTitle, "Pancakes")
+
+        vm.setRecipe(7, title: "Fluffy pancakes")
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.recipeTitle, "Fluffy pancakes")
+        XCTAssertEqual(vm.uiState.lists.count, 3)
+    }
+
     func testTickingAListWritesItThroughAndTheTickComesBack() async {
         let repository = repositoryWithBuiltIns()
         let vm = SaveToListViewModel(repository: repository)
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         await settleMain()
 
         vm.onListToggled(listId: 2, inList: true)
@@ -57,7 +71,7 @@ final class SaveToListViewModelTests: XCTestCase {
         let repository = repositoryWithBuiltIns()
         repository.stageMembership([(7, 2)])
         let vm = SaveToListViewModel(repository: repository)
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         await settleMain()
 
         vm.onListToggled(listId: 2, inList: false)
@@ -69,7 +83,7 @@ final class SaveToListViewModelTests: XCTestCase {
 
     func testSavedIsTrueWhileTheRecipeIsInAnyListAtAll() async {
         let vm = SaveToListViewModel(repository: repositoryWithBuiltIns())
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         await settleMain()
         XCTAssertFalse(vm.uiState.isSaved)
 
@@ -86,7 +100,7 @@ final class SaveToListViewModelTests: XCTestCase {
         let repository = repositoryWithBuiltIns()
         repository.stageMembership([(99, 2)])
         let vm = SaveToListViewModel(repository: repository)
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         await settleMain()
 
         XCTAssertFalse(vm.uiState.isSaved)
@@ -98,11 +112,11 @@ final class SaveToListViewModelTests: XCTestCase {
         let repository = repositoryWithBuiltIns()
         repository.stageMembership([(8, 2)])
         let vm = SaveToListViewModel(repository: repository)
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         await settleMain()
         XCTAssertFalse(vm.uiState.isSaved)
 
-        vm.setRecipe(8)
+        vm.setRecipe(8, title: "Waffles")
         await settleMain()
 
         XCTAssertTrue(vm.uiState.isSaved)
@@ -122,7 +136,7 @@ final class SaveToListViewModelTests: XCTestCase {
     func testCreatingAListFromTheSheetPutsTheCurrentRecipeInIt() async {
         let repository = repositoryWithBuiltIns()
         let vm = SaveToListViewModel(repository: repository)
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         await settleMain()
 
         vm.onStartCreating()
@@ -138,7 +152,7 @@ final class SaveToListViewModelTests: XCTestCase {
 
     func testCreatingClosesTheFieldAndClearsWhatWasTyped() async {
         let vm = SaveToListViewModel(repository: repositoryWithBuiltIns())
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         vm.onStartCreating()
         vm.onNewListNameChange("Weeknights")
         XCTAssertTrue(vm.uiState.creatingList)
@@ -153,7 +167,7 @@ final class SaveToListViewModelTests: XCTestCase {
     func testABlankNameCreatesNothing() async {
         let repository = repositoryWithBuiltIns()
         let vm = SaveToListViewModel(repository: repository)
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         vm.onStartCreating()
         vm.onNewListNameChange("   ")
         vm.onCreateList()
@@ -167,7 +181,7 @@ final class SaveToListViewModelTests: XCTestCase {
     func testTheCreatedNameIsTrimmed() async {
         let repository = repositoryWithBuiltIns()
         let vm = SaveToListViewModel(repository: repository)
-        vm.setRecipe(7)
+        vm.setRecipe(7, title: "Pancakes")
         vm.onStartCreating()
         vm.onNewListNameChange("  Weeknights  ")
         vm.onCreateList()

@@ -18,12 +18,14 @@ import javax.inject.Inject
 
 /**
  * [creatingList] is the "+ New list" field being expanded inline — a text field in the sheet,
- * never a dialog stacked on top of it.
+ * never a dialog stacked on top of it. [recipeTitle] names the recipe under that field, as the
+ * one that goes into the new list (#286).
  */
 data class SaveToListUiState(
     val lists: List<RecipeList> = emptyList(),
     val creatingList: Boolean = false,
-    val newListName: String = ""
+    val newListName: String = "",
+    val recipeTitle: String = ""
 ) {
     /** What the bookmark icon renders from: filled once the recipe is in at least one list. */
     val isSaved: Boolean get() = lists.any { it.containsRecipe }
@@ -45,6 +47,7 @@ class SaveToListViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val recipeId = MutableStateFlow<Long?>(null)
+    private val recipeTitle = MutableStateFlow("")
     private val creatingList = MutableStateFlow(false)
     private val newListName = MutableStateFlow("")
 
@@ -53,14 +56,19 @@ class SaveToListViewModel @Inject constructor(
             if (id == null) flowOf(emptyList()) else repository.observeListsFor(id)
         },
         creatingList,
-        newListName
-    ) { lists, creating, name ->
-        SaveToListUiState(lists = lists, creatingList = creating, newListName = name)
+        newListName,
+        recipeTitle
+    ) { lists, creating, name, title ->
+        SaveToListUiState(lists = lists, creatingList = creating, newListName = name, recipeTitle = title)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SaveToListUiState())
 
-    /** Called once the recipe screen knows which recipe it is showing. */
-    fun setRecipe(id: Long) {
+    /**
+     * Called once the recipe screen knows which recipe it is showing, and again when its title
+     * changes (an edit); the same id doesn't re-read the lists.
+     */
+    fun setRecipe(id: Long, title: String) {
         recipeId.value = id
+        recipeTitle.value = title
     }
 
     /**

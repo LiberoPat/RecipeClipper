@@ -146,6 +146,20 @@ final class SaveToListUITests: RecipeUITestCase {
         XCTAssertTrue(text("Save to").exists, "still the same sheet")
     }
 
+    /// #286: one muted line under the open field says the recipe goes into the new list.
+    func testTheOpenFieldSaysTheRecipeGoesIntoTheNewList() {
+        launch()
+        openSheet(for: "Miso Soup")
+        let note = app.staticTexts["saveToList.newListNote"]
+        assertAbsent(note, "the note before the field opens")
+
+        app.buttons["+ New list"].tap()
+        XCTAssertEqual(require(note, "the new-list note").label, "Miso Soup goes into the new list.")
+
+        app.buttons["Cancel"].tap()
+        requireGone(note, "the note to close with the field")
+    }
+
     func testCreateIsRefusedUntilSomethingIsTyped() {
         launch()
         openSheet(for: "Miso Soup")

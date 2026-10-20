@@ -260,7 +260,12 @@ private struct SourceCredit: View {
     }
 }
 
-/// Plain labeled numbers. Deliberately not chips: chips imply tappable, these aren't.
+/// Plain labeled numbers on one line (#286), "Prep 35m · Cook 40m · Total 1h 15m": labels
+/// muted, values bold. Deliberately not chips: chips imply tappable, these aren't.
+///
+/// One text, so it wraps at the accessibility sizes or in a long language (German's
+/// "Vorbereitung"), but only between entries: each entry's spaces are non-breaking, and so is
+/// the one before its "·", which stays at the end of a line rather than starting the next.
 private struct Times: View {
     let prep: String?
     let cook: String?
@@ -273,33 +278,32 @@ private struct Times: View {
             total.map { TimeEntry(label: Strings.labelTotal, value: $0) }
         ].compactMap { $0 }
         if !entries.isEmpty {
-            // In a row while the three fit; stacked once they don't (the accessibility sizes,
-            // or a long "1 hr 15 mins"), rather than wrapping each value mid-number.
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 28) {
-                    ForEach(entries, id: \.label) { TimeCell(entry: $0).fixedSize() }
-                }
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(entries, id: \.label) { TimeCell(entry: $0) }
-                }
-            }
+            Text(Self.line(entries))
+                .textStyle(Typography.bodyMedium)
+                .foregroundStyle(Palette.muted)
+                .accessibilityIdentifier("recipe.times")
         }
     }
-}
 
-private struct TimeCell: View {
-    let entry: TimeEntry
+    private static let nbsp = "\u{00A0}"
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(entry.label.uppercased())
-                .textStyle(Typography.labelSmall)
-                .foregroundStyle(Palette.muted)
-            Text(entry.value)
-                .textStyle(Typography.bodyLargeBold)
-                .foregroundStyle(Palette.onBackground)
+    private static func line(_ entries: [TimeEntry]) -> AttributedString {
+        var out = AttributedString()
+        for (i, entry) in entries.enumerated() {
+            if i > 0 { out += AttributedString(nbsp + "· ") }
+            out += AttributedString(glued(entry.label) + nbsp)
+            var value = AttributedString(glued(entry.value))
+            value.inlinePresentationIntent = .stronglyEmphasized
+            value.foregroundColor = Palette.onBackground
+            out += value
         }
-        .accessibilityElement(children: .combine)
+        return out
+    }
+
+    /// "1h 15m" kept whole. A long phrase as written ("Overnight, plus 2 hours to rest") keeps
+    /// its spaces: unbroken, it would be cut mid-word once it outgrew the line.
+    private static func glued(_ text: String) -> String {
+        text.count <= 20 ? text.replacingOccurrences(of: " ", with: nbsp) : text
     }
 }
 

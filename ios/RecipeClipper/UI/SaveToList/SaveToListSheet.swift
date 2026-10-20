@@ -18,6 +18,7 @@ struct SaveToListSheet: View {
                 NewListControl(
                     creating: state.creatingList,
                     name: state.newListName,
+                    note: state.recipeTitle.isEmpty ? nil : Strings.newListNote(state.recipeTitle),
                     onStart: vm.onStartCreating,
                     onNameChange: vm.onNewListNameChange,
                     onCancel: vm.onCancelCreating,

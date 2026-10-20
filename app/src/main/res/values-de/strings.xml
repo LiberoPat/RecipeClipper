@@ -177,6 +177,7 @@
     <string name="save_to_list_title">Speichern in</string>
     <string name="cd_save_to_list">In einer Liste speichern</string>
     <string name="cd_in_a_list">In einer Liste gespeichert</string>
+    <string name="save_to_list_new_list_note">%1$s kommt in die neue Liste.</string>
     <string name="rename_list_title">Liste umbenennen</string>
     <string name="delete_list_title">„%1$s“ löschen?</string>
     <string name="delete_list_body">Die Liste wird entfernt. Die Rezepte darin bleiben in deinem Verlauf.</string>

@@ -94,8 +94,12 @@ fun RecipeScreen(
     // The id isn't known until the parse finishes on the import route, so the list ViewModel
     // is told which recipe it is looking at here rather than from a navigation argument.
     val recipeId = (content as? RecipeContent.Success)?.recipe?.id?.takeIf { !state.notKept }
+    // The sheet names the recipe under "+ New list" (#286), so an edited title follows too.
+    val recipeTitle = (content as? RecipeContent.Success)?.recipe?.name.orEmpty()
+    LaunchedEffect(recipeId, recipeTitle) {
+        if (recipeId != null) saveViewModel.setRecipe(recipeId, recipeTitle)
+    }
     LaunchedEffect(recipeId) {
-        if (recipeId != null) saveViewModel.setRecipe(recipeId)
         if (recipeId != null) photosViewModel?.setRecipe(recipeId)
     }
     // While this recipe is on screen its timers beep here instead of posting a notification.

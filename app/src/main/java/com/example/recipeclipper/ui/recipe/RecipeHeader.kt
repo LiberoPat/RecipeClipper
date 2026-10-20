@@ -1,8 +1,6 @@
 package com.example.recipeclipper.ui.recipe
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,8 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.ContentOrigin
@@ -124,7 +125,14 @@ internal fun SourceCredit(domain: String, clipped: Boolean, onOpen: () -> Unit) 
     }
 }
 
-/** Plain labeled numbers. Deliberately not chips: chips imply tappable, these aren't. */
+/**
+ * Plain labeled numbers on one line (#286), "Prep 35m · Cook 40m · Total 1h 15m": labels muted,
+ * values bold. Deliberately not chips: chips imply tappable, these aren't.
+ *
+ * One text, so it wraps in a long language (German's "Vorbereitung"), but only between
+ * entries: each entry's spaces are non-breaking, and so is the one before its "·", which
+ * stays at the end of a line rather than starting the next.
+ */
 @Composable
 internal fun Times(prep: String?, cook: String?, total: String?) {
     val entries = listOfNotNull(
@@ -133,19 +141,23 @@ internal fun Times(prep: String?, cook: String?, total: String?) {
         total?.let { stringResource(R.string.label_total) to it }
     )
     if (entries.isEmpty()) return
-    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-        entries.forEach { (label, value) ->
-            Column {
-                Text(
-                    label.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    value,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                )
-            }
+    val muted = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val value = SpanStyle(fontWeight = FontWeight.Bold)
+    val line = buildAnnotatedString {
+        entries.forEachIndexed { i, (label, time) ->
+            if (i > 0) withStyle(muted) { append("$NBSP· ") }
+            withStyle(muted) { append(label.glued()) }
+            append(NBSP)
+            withStyle(value) { append(time.glued()) }
         }
     }
+    Text(line, style = MaterialTheme.typography.bodyMedium)
 }
+
+private const val NBSP = ' '
+
+/**
+ * "1h 15m" kept whole. A long phrase as written ("Overnight, plus 2 hours to rest") keeps its
+ * spaces: unbroken, it would be cut mid-word once it outgrew the line.
+ */
+private fun String.glued(): String = if (length <= 20) replace(' ', NBSP) else this
