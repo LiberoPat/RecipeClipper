@@ -42,6 +42,32 @@ struct ListDao {
         )
     }
 
+    /// The most photos a list's cover shows: a 2×2 mosaic.
+    static let coverPhotos = 4
+
+    /// The Lists screen's covers (#286): up to `coverPhotos` photos per list, from the recipes
+    /// in it that have one, most recently added first, grouped by list. A list with no photo
+    /// has no rows. A correlated `LIMIT` rather than `ROW_NUMBER()`, as on Android, whose
+    /// oldest SQLite has no window functions.
+    func coverPhotos() throws -> [ListCoverPhotoRecord] {
+        try db.query(
+            """
+            SELECT c.listId, r.imageUrl
+            FROM recipe_list_cross_ref c
+            JOIN recipes r ON r.id = c.recipeId
+            WHERE r.imageUrl IS NOT NULL AND r.imageUrl != ''
+              AND r.id IN (
+                  SELECT c2.recipeId FROM recipe_list_cross_ref c2
+                  JOIN recipes r2 ON r2.id = c2.recipeId
+                  WHERE c2.listId = c.listId AND r2.imageUrl IS NOT NULL AND r2.imageUrl != ''
+                  ORDER BY c2.addedAt DESC, r2.id DESC
+                  LIMIT ?)
+            ORDER BY c.listId, c.addedAt DESC, r.id DESC
+            """,
+            Int64(Self.coverPhotos), map: ListCoverPhotoRecord.init(row:)
+        )
+    }
+
     /// IGNORE, never REPLACE: re-adding a recipe already in the list must not rewrite
     /// `addedAt`, which is what orders the list. (A missing recipe or list still fails: OR
     /// IGNORE does not cover foreign-key violations.)

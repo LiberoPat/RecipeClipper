@@ -154,7 +154,7 @@ final class ListDetailUITests: RecipeUITestCase {
         app.buttons["Delete list"].tap()
         require(app.alerts.firstMatch).buttons["Delete"].tap()
 
-        require(app.buttons["+ New list"], "popped back to the Lists screen")
+        require(app.buttons["lists.newList"], "popped back to the Lists screen")
         requireGone(row("Weeknights"))
         back()
         openRecipes()

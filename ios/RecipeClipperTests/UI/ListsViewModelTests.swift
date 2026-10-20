@@ -31,6 +31,16 @@ final class ListsViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.lists.first { $0.id == 2 }?.recipeCount, 2)
     }
 
+    func testEachListsCoverPhotosArriveWithItFourAtMost() async {
+        let repository = repositoryWithBuiltIns()
+        repository.coverPhotos.send([2: (1...5).map { "https://img/\($0).jpg" }])
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.coverPhotos[2], (1...4).map { "https://img/\($0).jpg" })
+        XCTAssertNil(vm.uiState.coverPhotos[1], "no photo: a plain tile")
+    }
+
     func testNothingHereIsTickedSinceNoRecipeIsInHand() async {
         let repository = repositoryWithBuiltIns()
         repository.stageMembership([(7, 2)])

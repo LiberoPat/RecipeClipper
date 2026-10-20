@@ -364,6 +364,25 @@ things, and the three list ViewModels need nothing from the recipe side, so
   list is managed from one place — the same shape as deleting a recipe from
   the recipe screen. Removing a recipe *from* a list is deliberately not
   offered on the detail screen: membership is edited in the sheet only.
+- **Covers (#286, the owner's pick V2; both platforms).** Lists is a two-column
+  grid of square covers, in the same order as before (Favorites and the seeded
+  lists first), each with the name and count ("Empty" at zero) under it, and
+  "New list" (a dashed tile with a plus) last. The tile opens today's inline
+  field, full width under the grid, in the tile's place until Create or Cancel.
+  A cover is a mosaic of up to four photos from the list's recipes, most
+  recently added first: four make a 2×2, one fills the square, two sit side by
+  side, three put the newest on the left half and the next two stacked on the
+  right, so no cover has empty cells. A list with no photo (or no recipe) gets
+  a plain hairline tile with an outlined bookmark, not a stock image. The photos
+  come from a new query (`ListDao.observeCoverPhotos`, iOS
+  `ListDao.coverPhotos`), not a column: no migration. It caps each list with a
+  correlated `LIMIT` because API 26's SQLite predates window functions; a
+  recipe with no photo is skipped rather than counted. Photos go through Coil /
+  `CachedAsyncImage`, so covers show offline. iOS lays the grid out as rows in
+  a plain VStack rather than a `LazyVGrid`, so every cover is in the
+  accessibility tree, and puts one cover to a row at the accessibility text
+  sizes, where half the width would break a name mid-word. A list's own screen
+  is unchanged.
 - `ListDetailViewModel` collects the list into its own `MutableStateFlow` in
   `init` rather than reading it back off `uiState`. `uiState` is
   `stateIn(WhileSubscribed(...))`, so its `value` is the initial state

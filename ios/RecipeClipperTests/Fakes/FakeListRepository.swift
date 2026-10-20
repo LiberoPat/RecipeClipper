@@ -18,6 +18,8 @@ final class FakeListRepository: ListRepository {
     let membership = CurrentValueSubject<Set<Membership>, Never>([])
     /// What `observeRecipesIn` emits, regardless of the list asked for.
     let recipesIn = CurrentValueSubject<[RecipeSummary], Never>([])
+    /// What `observeCoverPhotos` emits: list id to its cover photos, as the SQL groups them.
+    let coverPhotos = CurrentValueSubject<[Int64: [String]], Never>([:])
 
     private(set) var createCalls: [(name: String, recipeId: Int64?)] = []
     private(set) var renameCalls: [(listId: Int64, name: String)] = []
@@ -45,6 +47,10 @@ final class FakeListRepository: ListRepository {
     func observeRecipesIn(listId: Int64) -> AnyPublisher<[RecipeSummary], Never> {
         recipesInQueries.append(listId)
         return recipesIn.eraseToAnyPublisher()
+    }
+
+    func observeCoverPhotos() -> AnyPublisher<[Int64: [String]], Never> {
+        coverPhotos.eraseToAnyPublisher()
     }
 
     @MainActor func setMembership(recipeId: Int64, listId: Int64, inList: Bool) async {

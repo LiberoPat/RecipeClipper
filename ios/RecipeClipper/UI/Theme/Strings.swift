@@ -412,6 +412,8 @@ enum Strings {
     static var navLists: String { String(localized: "nav_lists") }
     static var listsTitle: String { String(localized: "lists_title") }
     static var newList: String { String(localized: "action_new_list") }
+    /// The last tile on the Lists screen (#286); the plus is drawn above it.
+    static var newListTile: String { String(localized: "lists_new_list_tile") }
     static var create: String { String(localized: "action_create") }
     static var rename: String { String(localized: "action_rename") }
     static var save: String { String(localized: "action_save") }

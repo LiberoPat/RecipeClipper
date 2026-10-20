@@ -89,7 +89,7 @@ class RecipeUITestCase: XCTestCase {
 
     func openLists() {
         require(app.buttons["home.nav.lists"]).tap()
-        require(app.buttons["+ New list"], "the Lists screen")
+        require(app.buttons["lists.newList"], "the Lists screen")
     }
 
     func openSettings() {

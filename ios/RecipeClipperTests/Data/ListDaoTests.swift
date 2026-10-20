@@ -175,6 +175,82 @@ final class ListDaoTests: XCTestCase {
         XCTAssertTrue(rows.isEmpty)
     }
 
+    // MARK: - Cover photos (#286)
+
+    private func addRecipe(_ url: String, image: String?) async throws -> Int64 {
+        try await db.upsert(RecipeRecord(
+            sourceUrl: url, title: "Recipe \(url)", imageUrl: image,
+            ingredients: ["1 cup flour"], instructions: ["Mix."],
+            prepTime: nil, cookTime: nil, totalTime: nil, servings: "4",
+            sourceType: "BLOG", lastViewedAt: 1
+        ), limit: 50)
+    }
+
+    private func covers() async throws -> [Int64: [String]] {
+        try await db.read { try ListDao(db: $0).coverPhotos() }
+            .reduce(into: [Int64: [String]]()) { $0[$1.listId, default: []].append($1.imageUrl) }
+    }
+
+    func testCoversAreTheFourMostRecentlyAddedPhotos() async throws {
+        let favorites = try await db.favoritesId()
+        for n in 1...6 {
+            let id = try await addRecipe("https://example.com/\(n)", image: "https://img/\(n).jpg")
+            try await add(id, to: favorites, at: Int64(n * 10))
+        }
+
+        let expected = [6, 5, 4, 3].map { "https://img/\($0).jpg" }
+        let actual = try await covers()
+        XCTAssertEqual(actual, [favorites: expected])
+    }
+
+    /// A recipe with no photo is skipped, not counted: the next one with a photo takes its place.
+    func testCoversSkipRecipesWithNoPhoto() async throws {
+        let favorites = try await db.favoritesId()
+        let a = try await addRecipe("https://example.com/a", image: "https://img/a.jpg")
+        let b = try await addRecipe("https://example.com/b", image: nil)
+        let c = try await addRecipe("https://example.com/c", image: "")
+        try await add(a, to: favorites, at: 10)
+        try await add(b, to: favorites, at: 20)
+        try await add(c, to: favorites, at: 30)
+
+        let actual = try await covers()
+        XCTAssertEqual(actual, [favorites: ["https://img/a.jpg"]])
+    }
+
+    /// Each list gets its own four; a list with no photo (or no recipe) has no entry.
+    func testCoversArePerListAndPhotolessListsAreAbsent() async throws {
+        let favorites = try await db.favoritesId()
+        let all = try await db.allLists()
+        let dinner = try XCTUnwrap(all.first { $0.name == "Dinner" }).id
+        let lunch = try XCTUnwrap(all.first { $0.name == "Lunch" }).id
+        let a = try await addRecipe("https://example.com/a", image: "https://img/a.jpg")
+        let b = try await addRecipe("https://example.com/b", image: "https://img/b.jpg")
+        let plain = try await addRecipe("https://example.com/plain", image: nil)
+        try await add(a, to: favorites, at: 10)
+        try await add(b, to: dinner, at: 10)
+        try await add(a, to: dinner, at: 20)
+        try await add(plain, to: lunch, at: 10)
+
+        let actual = try await covers()
+        XCTAssertEqual(actual, [
+            favorites: ["https://img/a.jpg"],
+            dinner: ["https://img/a.jpg", "https://img/b.jpg"],
+        ])
+    }
+
+    /// Leaving a list takes the photo off its cover; the recipe itself stays.
+    func testCoversFollowMembership() async throws {
+        let favorites = try await db.favoritesId()
+        let a = try await addRecipe("https://example.com/a", image: "https://img/a.jpg")
+        try await add(a, to: favorites, at: 10)
+        try await db.write { try ListDao(db: $0).removeFromList(recipeId: a, listId: favorites) }
+
+        let actual = try await covers()
+        XCTAssertTrue(actual.isEmpty)
+        let row = try await db.get(a)
+        XCTAssertNotNil(row)
+    }
+
     // MARK: - Creating
 
     func testCreatingWithARecipePutsThatRecipeStraightIn() async throws {
