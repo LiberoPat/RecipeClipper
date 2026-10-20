@@ -62,18 +62,20 @@ private struct ScanSourcesModifier: ViewModifier {
     }
 }
 
-/// Home's "Scan a recipe" (#226), beside "+ New recipe": a menu of the camera or the library.
-struct ScanRecipeButton: View {
+/// Home's "Scan a recipe" (#226; a tile since #286): a menu of the camera or the library, drawn
+/// as `label`.
+struct ScanRecipeButton<Label: View>: View {
     let onScan: ([Data]) -> Void
+    @ViewBuilder let label: () -> Label
     @State private var source: ScanSource?
 
     var body: some View {
         Menu {
             ScanChoices(source: $source)
         } label: {
-            Text(Strings.scanRecipe)
+            label()
         }
-        .buttonStyle(TextActionStyle())
+        .buttonStyle(.plain)
         .accessibilityIdentifier("home.scanRecipe")
         .scanSources($source, onScan: onScan)
     }

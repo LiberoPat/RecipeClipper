@@ -19,10 +19,7 @@ final class PhotoTextUITests: RecipeUITestCase {
         app.launchEnvironment["RC_UITEST_PHOTO_LINES"] = lines
         app.launch()
         self.app = app
-        let field = require(app.textFields["Recipe URL"], "Home")
-        field.tap()
-        field.typeText(postLink)
-        app.scrollViews.firstMatch.buttons["Go"].tap()
+        pasteLink(postLink)
         require(textContaining("No recipe text found"), "the post's no-transcription note")
         require(app.buttons["Try again"], "Try again")
         require(app.buttons["recipe.readPhoto"], "Read the photo").tap()
@@ -43,7 +40,7 @@ final class PhotoTextUITests: RecipeUITestCase {
 
         // The editor and the error screen are gone: Back is Home.
         back()
-        require(app.textFields["Recipe URL"], "Home, straight back")
+        require(homePasteLink, "Home, straight back")
     }
 
     /// Vision's "34 tsp salt" for ¾ (#249): read plainly, just too much, so it has its own reason

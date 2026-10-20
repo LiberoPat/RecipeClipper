@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
@@ -49,7 +48,7 @@ internal fun RecentlyViewed(recipes: List<RecipeSummary>, onOpenRecipe: (Long) -
                     RecipeThumbnail(recipe.imageUrl, size = 84.dp)
                     Text(
                         recipe.title,
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.labelMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 6.dp)

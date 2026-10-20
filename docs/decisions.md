@@ -2547,6 +2547,38 @@ app with HTML entities undecoded (750g's "l&rsquo;oignon", tudogostoso's "&oacut
 array in one string (einfachbacken), which no word table can read; and Japanese stays a no-op
 (it has tables, but no spaces between words to find a mention by).
 
+## Home: the resume card and three ways in (#286)
+
+The owner's pick (2026-10-19): 01 V2 "Resume first" with 02 V1 "Three equal doors". It
+bends the settled link field: an always-visible field became a tile that opens it.
+
+- **The resume card** is Continue cooking's recipe (the most recent, as before). The ViewModel
+  follows that recipe through `observeRecipe(id)` (a repository flow that counts no view) and
+  derives a `CookResume`: the recipe is being cooked when cook mode was left on or a step timer
+  still runs. Then it shows the step stopped on ("Step 2 of 4", the existing `cook_position`)
+  and the running timer that ends first ("18:42 left"), counted down from its saved deadline
+  every 250 ms as cook mode does, never written; "Resume cooking" opens
+  `recipe/{id}?cook=true`. Otherwise it shows only the name and **"Open recipe"** (decided
+  here: the plain wording). The photo and name also open the recipe, as the Continue cooking
+  row did. A recipe with no photo gets a short band in the paprika wash, never a stock image.
+  A newer recipe never shows the last one's place, even for a moment.
+- **Add a recipe:** Paste a link opens the Recipes screen's dialog (Android `PasteLinkDialog`,
+  iOS the same alert), whose Go is enabled only for what `UrlInput` reads as a link, so
+  Home's `urlInput`/`urlError` state and "That doesn't look like a link." went. Scan a
+  recipe is the same `ScanRecipeButton` (#226) drawn as a tile; with `photoText` off there
+  are two tiles. Type a recipe is the #29 editor. The muted line under the tiles ("Or share a
+  link to Recipe Clipper from any app.") replaces the subtitle under the title. On iOS the
+  tiles stack at the accessibility sizes.
+- **Recently viewed** is a row of photos with their names, the five before Continue cooking,
+  keyed `recent-<id>` as Home's sections always are.
+- **Counts:** Recipes is what the Recipes screen lists (`observeHistory("")`, so the tour's
+  sample counts, as in its "N recipes" line); Lists is every list.
+- **The tour:** `HOME_LINK` is anchored to the Paste a link tile, and now reads "…or tap here
+  to paste one."
+- Unchanged: the empty-library hint and "Restore from a backup file", the one-time backup
+  card, the sample-only state and the gear. The mockup's step text ("· simmer covered") was
+  left out: the card names the step by number only.
+
 ## The Recipes screen (#102)
 
 - **Owner's decision:** a Paprika-style Recipes screen *replaces* History
@@ -2558,7 +2590,7 @@ array in one string (einfachbacken), which no word table can read; and Japanese 
   Home is unchanged, "+ New recipe" included.
 - **The + opens a two-item menu,** not a screen: "Type a recipe" is the #29
   editor as it already was; "Paste a link" is a small dialog whose Go is
-  enabled only for what Home's link field would accept (`UrlInput`), then the
+  enabled only for what `UrlInput` reads as a link (since #286, Home's tile opens it too), then the
   usual import route. No clipboard is read unasked: Android shows a toast and
   iOS a permission prompt on every read.
 - **A typed-in recipe is never culled,** like a listed one, and doesn't count
@@ -3480,7 +3512,8 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
 - **The tooltips** (`Tooltips` in `data/model` / `Data/Model`, pure, with the same ids on both
   platforms; `shared/tooltips.json` lists them, and `TooltipsTest` / `TooltipsTests` fail if
   either enum differs from it). In this order per screen; a flagged one shows only with its flag:
-  - **Home:** the link field ("Share a recipe link to this app, or paste one here").
+  - **Home:** the Paste a link tile ("Share a recipe link to this app, or tap here to paste
+    one."; the link field until #286).
   - **Recipe (reading view):** the units dropdown, explaining "As written" (every amount as
     the recipe gives it; tap for Metric or Ounces; what can't convert exactly stays as written);
     "Start cooking"; "I made this"
@@ -4230,8 +4263,8 @@ shares into the app. Behind the existing `photoText` flag, on both platforms.
 
 - **Entries.** "Scan a recipe" in the Recipes **+** menu (after Type a recipe and Paste a link),
   whose row turns the menu into its two choices (Android; iOS: a submenu): **Take a photo** or
-  **Choose from library**. Home has no + menu, so "Scan a recipe" sits beside "+ New recipe"
-  (under it at iOS's accessibility sizes) and opens the same two choices. Both are #116's
+  **Choose from library**. Home has no + menu, so "Scan a recipe" is one of its Add a recipe
+  tiles (#286; beside "+ New recipe" before that) and opens the same two choices. Both are #116's
   plumbing: the camera app through `ACTION_IMAGE_CAPTURE` (no CAMERA permission) or
   `UIImagePickerController` (asks for the camera the first time; a simulator says it has none),
   and the system photo picker (no library permission). The library takes up to **six pages**

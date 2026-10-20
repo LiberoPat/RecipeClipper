@@ -264,6 +264,10 @@ protocol RecipeRepository: AnyObject {
     /// The `limit` most recently viewed. Re-emits on change.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never>
 
+    /// One recipe as it changes, without counting as a view (#286: Home's resume card follows
+    /// the cook's saved place and timers); nil once it is gone.
+    func observeRecipe(id: Int64) -> AnyPublisher<Recipe?, Never>
+
     /// How many recipes are saved, of every kind but the tour's sample (#107: the Recipes
     /// screen's count; #151).
     func observeCount() -> AnyPublisher<Int, Never>
@@ -294,6 +298,9 @@ extension RecipeRepository {
     func observeCount() -> AnyPublisher<Int, Never> {
         observeHistory(query: "").map(\.count).removeDuplicates().eraseToAnyPublisher()
     }
+
+    /// Test doubles that have nothing to do with Home's resume card (#286) needn't implement it.
+    func observeRecipe(id: Int64) -> AnyPublisher<Recipe?, Never> { Just(nil).eraseToAnyPublisher() }
 
     // Test doubles that have nothing to do with the tour (#151) needn't implement these.
     func sampleId() async -> Int64? { nil }

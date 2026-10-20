@@ -31,11 +31,14 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.StepTimers
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 
 /**
  * Continue cooking (#286): the most recent recipe's photo, or a plain themed band when it has
  * none, its name, and only what is true of it now: the step stopped on and a running timer while
  * it is being cooked ([resume]), then "Resume cooking" into cook mode, or else "Open recipe".
+ * The photo and name open the recipe, as the Continue cooking row did.
  */
 @Composable
 internal fun ResumeCard(recipe: RecipeSummary, resume: CookResume?, onResume: () -> Unit, onOpen: () -> Unit) {
@@ -43,18 +46,18 @@ internal fun ResumeCard(recipe: RecipeSummary, resume: CookResume?, onResume: ()
     Column(
         Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(colors.surfaceContainer)
     ) {
-        if (recipe.imageUrl != null) {
-            AsyncImage(
-                model = recipe.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().height(136.dp)
-            )
-        } else {
-            Box(Modifier.fillMaxWidth().height(56.dp).background(colors.tertiary.copy(alpha = 0.12f)))
-        }
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Column {
+        Column(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen)) {
+            if (recipe.imageUrl != null) {
+                AsyncImage(
+                    model = recipe.imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth().height(136.dp)
+                )
+            } else {
+                Box(Modifier.fillMaxWidth().height(56.dp).background(colors.tertiary.copy(alpha = 0.12f)))
+            }
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
                 Text(
                     stringResource(R.string.section_continue_cooking).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
@@ -68,6 +71,11 @@ internal fun ResumeCard(recipe: RecipeSummary, resume: CookResume?, onResume: ()
                     overflow = TextOverflow.Ellipsis
                 )
             }
+        }
+        Column(
+            Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             if (resume != null) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     resume.timerSecondsLeft?.let { TimerTag(it) }

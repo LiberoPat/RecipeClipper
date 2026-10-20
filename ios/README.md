@@ -146,7 +146,7 @@ tests (in-memory SQLite in the simulator), not device tests.
   (Large) size nothing moved: when this landed, screenshots of every screen matched the
   earlier ones pixel for pixel. Layouts that can't fit at the
   accessibility sizes stack instead, using `ViewThatFits` or `isAccessibilitySize`. Examples:
-  the times row, the Home link field, and the cook-mode top bar and timer controls. The one
+  the times row, Home's Add a recipe tiles, and the cook-mode top bar and timer controls. The one
   cap is the Recipes search field's magnifier and clear icons (`...xxxLarge`); reading
   content is never capped.
 - **Photos offline.** `AsyncImage` keeps photos only in a small cache that follows each

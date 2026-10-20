@@ -486,6 +486,10 @@ final class DefaultRecipeRepository: RecipeRepository {
         db.observe { conn in try RecipeDao(db: conn).recent(limit: limit).map { $0.toDomain() } }
     }
 
+    func observeRecipe(id: Int64) -> AnyPublisher<Recipe?, Never> {
+        db.observe { conn in try RecipeDao(db: conn).get(id)?.toDomain() }
+    }
+
     /// Every recipe but the tour's sample (#151), which never takes a free-tier place.
     func observeCount() -> AnyPublisher<Int, Never> {
         db.observe { conn in try RecipeDao(db: conn).count() }

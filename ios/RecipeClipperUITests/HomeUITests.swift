@@ -5,19 +5,28 @@ import XCTest
 /// Home unusable while every ViewModel test stayed green.
 final class HomeUITests: RecipeUITestCase {
 
-    /// The screen's Go button, not the keyboard's Go key (the field submits with .go).
-    private var goButton: XCUIElement { app.scrollViews.firstMatch.buttons["Go"] }
-
+    /// Continue cooking (#286) is the card at the top, its photo and name a button that opens
+    /// the recipe; Recently viewed is a row of photos under the Add a recipe tiles.
     func testTheNewestRecipeIsContinueCookingAndTheRestAreRecentlyViewed() {
         launch(.standard)
 
-        require(text("Continue cooking"))
         require(text("Recently viewed"))
         let newest = require(row("Chicken Adobo"))
         let older = require(row("Spaghetti Carbonara"))
-        XCTAssertLessThan(text("Continue cooking").frame.minY, newest.frame.minY)
-        XCTAssertLessThan(newest.frame.minY, text("Recently viewed").frame.minY)
+        let open = require(app.buttons["home.resume"], "the card's button")
+        XCTAssertEqual(open.label, "Open recipe", "nothing is being cooked")
+        XCTAssertLessThan(newest.frame.minY, homePasteLink.frame.minY)
+        XCTAssertLessThan(homePasteLink.frame.minY, text("Recently viewed").frame.minY)
         XCTAssertLessThan(text("Recently viewed").frame.minY, older.frame.minY)
+    }
+
+    func testOpenRecipeOpensTheLatestRecipe() {
+        launch(.standard)
+
+        require(app.buttons["home.resume"]).tap()
+
+        require(bookmark, "the recipe screen")
+        require(text("Chicken Adobo"))
     }
 
     /// The regression guard for the bug that prompted Android's UI tests: Home rendering a
@@ -93,7 +102,7 @@ final class HomeUITests: RecipeUITestCase {
         launch(.empty)
 
         require(text("Recipes you open will show up here."))
-        assertAbsent(text("Continue cooking"))
+        assertAbsent(app.buttons["home.resume"]) // no Continue cooking card
         assertAbsent(text("Recently viewed"))
     }
 
@@ -104,17 +113,31 @@ final class HomeUITests: RecipeUITestCase {
         assertAbsent(text("Recipes you open will show up here."))
     }
 
-    func testSomethingThatIsNotALinkIsRejectedRatherThanOpened() {
+    // "Add a recipe" (#286): three equal tiles in place of the link field.
+
+    func testSomethingThatIsNotALinkCannotBeOpened() {
         launch(.standard)
 
-        let field = app.textFields["Recipe URL"]
-        field.tap()
+        require(homePasteLink).tap()
+        let field = require(app.alerts.textFields.firstMatch, "the Paste a link alert")
         field.typeText("not a link")
-        goButton.tap()
 
-        require(text("That doesn't look like a link."))
+        XCTAssertFalse(app.alerts.buttons["Go"].isEnabled)
         XCTAssertFalse(bookmark.exists, "no recipe screen should have opened")
-        XCTAssertTrue(app.textFields["Recipe URL"].exists)
+    }
+
+    func testTypeARecipeOpensTheEditor() {
+        launch(.standard)
+
+        require(app.buttons["home.typeRecipe"]).tap()
+
+        require(app.textFields["Name"], "the editor")
+    }
+
+    func testALinkCanBeSharedFromAnyApp() {
+        launch(.empty)
+
+        require(text("Or share a link to Recipe Clipper from any app."))
     }
 
     /// Go opens the import route; the stub source resolves it offline, and the recipe it
@@ -122,10 +145,7 @@ final class HomeUITests: RecipeUITestCase {
     func testALinkIsOpenedAndLandsInContinueCooking() {
         launch(.standard)
 
-        let field = app.textFields["Recipe URL"]
-        field.tap()
-        field.typeText("example.com/chicken")
-        goButton.tap()
+        pasteLink("example.com/chicken")
 
         require(bookmark, "the recipe screen")
         require(text("Stub Chicken Soup"))

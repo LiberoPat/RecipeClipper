@@ -171,13 +171,10 @@ extension WalkthroughUITests {
         app.launchEnvironment["RC_UITEST_REDDIT_LISTING"] = try String(contentsOf: fixture, encoding: .utf8)
         app.launch()
         self.app = app
-        let field = require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
         mark("START")
         pause()
-        field.tap()
-        field.typeText("https://www.reddit.com/r/recipes/comments/1f3k9xq/sticky_honey_garlic_chicken_thighs/")
-        pause()
-        app.scrollViews.firstMatch.buttons["Go"].tap()
+        pasteLink("https://www.reddit.com/r/recipes/comments/1f3k9xq/sticky_honey_garlic_chicken_thighs/") { pause() }
         require(bookmark, "the recipe screen")
         pause(3)
         app.swipeUp()
@@ -205,16 +202,12 @@ extension WalkthroughUITests {
             "1f7a2bc=\(try photo("card-front")) \(try photo("card-back"))\n1f7a3cd=\(try photo("card-blurred"))"
         app.launch()
         self.app = app
-        require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
         mark("START")
         pause()
 
         func readPhoto(of link: String) {
-            let field = require(app.textFields["Recipe URL"], "Home")
-            field.tap()
-            field.typeText(link)
-            pause(0.8)
-            app.scrollViews.firstMatch.buttons["Go"].tap()
+            pasteLink(link) { pause(0.8) }
             require(textContaining("No recipe text found"), "the post's no-transcription note")
             pause(2.5)
             require(app.buttons["recipe.readPhoto"], "Read the photo").tap()
@@ -287,15 +280,12 @@ extension WalkthroughUITests {
         app.launchEnvironment["RC_UITEST_PHOTO_IMAGES"] = "1f8c5fr=\(card.absoluteString)"
         app.launch()
         self.app = app
-        let field = require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
         mark("START")
         pause()
 
         // The German post, its headings read in German, a serving more, then Metric.
-        field.tap()
-        field.typeText("https://www.reddit.com/r/Kochen/comments/1f8b4de/omas_pfannkuchen/")
-        pause(0.8)
-        app.scrollViews.firstMatch.buttons["Go"].tap()
+        pasteLink("https://www.reddit.com/r/Kochen/comments/1f8b4de/omas_pfannkuchen/") { pause(0.8) }
         require(bookmark, "the recipe screen")
         pause(2.5)
         // Doubled, 4 to 8: whole amounts, where 5 would show "312 1/2 g Mehl".
@@ -311,11 +301,7 @@ extension WalkthroughUITests {
 
         // The French card, read from the photo.
         back()
-        let link = require(app.textFields["Recipe URL"], "Home")
-        link.tap()
-        link.typeText("https://www.reddit.com/r/cuisine/comments/1f8c5fr/la_fiche_de_crepes_de_ma_grandmere/")
-        pause(0.8)
-        app.scrollViews.firstMatch.buttons["Go"].tap()
+        pasteLink("https://www.reddit.com/r/cuisine/comments/1f8c5fr/la_fiche_de_crepes_de_ma_grandmere/") { pause(0.8) }
         require(textContaining("No recipe text found"), "the post's no-transcription note")
         pause(2)
         require(app.buttons["recipe.readPhoto"], "Read the photo").tap()
@@ -364,7 +350,7 @@ extension WalkthroughUITests {
         app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
         app.launch()
         self.app = app
-        require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
         mark("START")
         pause()
         openRecipes()
@@ -425,7 +411,7 @@ extension WalkthroughUITests {
         app.swipeUp()
         pause(2.5)
 
-        // Home has its own "Scan a recipe", beside "+ New recipe".
+        // Home has its own "Scan a recipe" tile (#286).
         let homeScan = app.buttons["home.scanRecipe"]
         for _ in 0..<3 where !homeScan.exists {
             back()
@@ -452,7 +438,7 @@ extension WalkthroughUITests {
         app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
         app.launch()
         self.app = app
-        require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
         mark("START")
         pause()
         openRecipes()
@@ -588,7 +574,7 @@ extension WalkthroughUITests {
         app.launchEnvironment["RC_UITEST_CLIP_SCRIPT"] = Self.clipSpots
         app.launch()
         self.app = app
-        require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
         mark("START")
         pause()
 
@@ -669,13 +655,10 @@ extension WalkthroughUITests {
         app.launchEnvironment["RC_UITEST_LIVE_PAGE"] = link
         app.launch()
         self.app = app
-        let field = require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
         mark("START")
         pause()
-        field.tap()
-        field.typeText(link)
-        pause(0.8)
-        app.scrollViews.firstMatch.buttons["Go"].tap()
+        pasteLink(link) { pause(0.8) }
         require(app.buttons["Clip it yourself"], "Clip it yourself", within: 60)
         pause(3)
         app.buttons["Clip it yourself"].tap()
@@ -754,11 +737,7 @@ extension WalkthroughUITests {
     /// Types `link` into Home's field; Reddit refuses the read, and the post opens in the clip
     /// view with the note (after Reddit's own check in the page). Returns the page.
     private func openBlockedPost(_ link: String) -> XCUIElement {
-        let field = require(app.textFields["Recipe URL"], "Home")
-        field.tap()
-        field.typeText(link)
-        pause(0.8)
-        app.scrollViews.firstMatch.buttons["Go"].tap()
+        pasteLink(link) { pause(0.8) }
         require(text("Reddit didn't let the app read this post, so it's open here: select the recipe."), "the note", within: 60)
         XCTAssertFalse(app.buttons["Try again"].exists, "no Try again")
         let page = app.webViews["clip.page"]

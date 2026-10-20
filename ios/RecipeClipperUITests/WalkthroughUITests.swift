@@ -49,7 +49,7 @@ final class WalkthroughUITests: RecipeUITestCase {
         app.launchArguments = ["-uiTestSeed", Scenario.empty.rawValue, "-uiTestTooltips", "-uiTestFlags", flags.joined(separator: ",")]
         app.launch()
         self.app = app
-        require(app.textFields["Recipe URL"], "Home")
+        require(homePasteLink, "Home")
         mark("START")
         pause()
     }

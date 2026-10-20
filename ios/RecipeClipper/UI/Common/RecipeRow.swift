@@ -49,12 +49,14 @@ struct RecipeRow: View {
     }
 }
 
-/// A row's photo, or a plain tile when it has none. Shared with the Recipes library (#286).
+/// A row's photo, or a plain tile when it has none. Shared with the Recipes library and Home's
+/// Recently viewed (#286), which asks for a larger `base`.
 struct RecipeThumbnail: View {
     let url: String?
-    /// Grows a little with the text, capped: it is decoration, the title is the content.
-    @ScaledMetric(relativeTo: .body) private var scaledSize: CGFloat = 64
-    private var size: CGFloat { min(scaledSize, 96) }
+    var base: CGFloat = 64
+    /// Grows a little with the text, capped at half again: it is decoration, the title is the content.
+    @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
+    private var size: CGFloat { min(base * scale, base * 1.5) }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 10)

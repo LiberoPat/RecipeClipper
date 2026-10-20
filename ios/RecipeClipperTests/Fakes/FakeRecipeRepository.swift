@@ -131,6 +131,13 @@ final class FakeRecipeRepository: RecipeRepository {
         recent.map { Array($0.prefix(limit)) }.eraseToAnyPublisher()
     }
 
+    /// What `observeRecipe` emits, by id (#286); an id not here emits nil.
+    let recipes = CurrentValueSubject<[Int64: Recipe], Never>([:])
+
+    func observeRecipe(id: Int64) -> AnyPublisher<Recipe?, Never> {
+        recipes.map { $0[id] }.eraseToAnyPublisher()
+    }
+
     /// The tour's sample (#151): its id while it is "in the library", else nil.
     var sample: Int64?
     /// Every sample `addSample` was given; a nil `addSampleResult` fails the save.

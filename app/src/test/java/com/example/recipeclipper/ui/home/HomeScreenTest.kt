@@ -271,6 +271,19 @@ class HomeScreenTest {
         assertEquals(1L, taps.recipe)
     }
 
+    /** The card's photo and name open the recipe, as the Continue cooking row did. */
+    @Test
+    fun theCardsNameOpensTheRecipeEvenWhileCooking() {
+        repository.recent.value = listOf(summary(1, "Adobo"))
+        repository.recipes.value = mapOf(1L to recipe(1, CookProgress(active = true)))
+        val taps = show()
+
+        compose.onNodeWithText("Adobo").performClick()
+
+        assertEquals(1L, taps.recipe)
+        assertNull(taps.resumed)
+    }
+
     @Test
     fun theRecipesAndListsRowsCarryCounts() {
         repository.history.value = (1L..3L).map { summary(it, "Recipe $it") }
