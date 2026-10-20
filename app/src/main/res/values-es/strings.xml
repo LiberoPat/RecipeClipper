@@ -188,6 +188,7 @@
     <string name="save_to_list_title">Guardar en</string>
     <string name="cd_save_to_list">Guardar en una lista</string>
     <string name="cd_in_a_list">Guardada en una lista</string>
+    <string name="save_to_list_new_list_note">%1$s se añade a la nueva lista.</string>
     <string name="rename_list_title">Cambiar nombre de la lista</string>
     <string name="delete_list_title">¿Eliminar «%1$s»?</string>
     <string name="delete_list_body">Se eliminará la lista. Sus recetas seguirán en tu historial.</string>

@@ -414,6 +414,8 @@ enum Strings {
     static var saveToListTitle: String { String(localized: "save_to_list_title") }
     static var saveToList: String { String(localized: "cd_save_to_list") }
     static var inAList: String { String(localized: "cd_in_a_list") }
+    /// Under the open "+ New list" field (#286): the recipe goes into the list it creates.
+    static func newListNote(_ recipe: String) -> String { String(localized: "save_to_list_new_list_note \(recipe)") }
 
     // List detail
     static var renameListTitle: String { String(localized: "rename_list_title") }

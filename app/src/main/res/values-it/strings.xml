@@ -188,6 +188,7 @@
     <string name="save_to_list_title">Salva in</string>
     <string name="cd_save_to_list">Salva in una lista</string>
     <string name="cd_in_a_list">Salvata in una lista</string>
+    <string name="save_to_list_new_list_note">%1$s va nella nuova lista.</string>
     <string name="rename_list_title">Rinomina la lista</string>
     <string name="delete_list_title">Eliminare «%1$s»?</string>
     <string name="delete_list_body">La lista verrà rimossa. Le sue ricette resteranno nella cronologia.</string>

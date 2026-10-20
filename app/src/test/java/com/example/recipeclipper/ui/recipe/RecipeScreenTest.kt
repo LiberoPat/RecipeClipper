@@ -43,10 +43,7 @@ class RecipeScreenTest {
         show()
 
         compose.onNodeWithText("Test Stew").assertIsDisplayed()
-        compose.onNodeWithText("PREP").assertIsDisplayed()
-        compose.onNodeWithText("10m").assertIsDisplayed()
-        compose.onNodeWithText("TOTAL").assertIsDisplayed()
-        compose.onNodeWithText("30m").assertIsDisplayed()
+        compose.onNodeWithText(timesLine("Prep 10m", "Cook 20m", "Total 30m")).assertIsDisplayed()
         compose.onNodeWithText("Serves").assertIsDisplayed()
         compose.onNodeWithText("As written").assertIsDisplayed()
         compose.onNodeWithText("2 cups flour").assertIsDisplayed()
@@ -59,11 +56,26 @@ class RecipeScreenTest {
     fun theSampleRecipeShowsItsTimesLikeAParsedRecipe() {
         RecipeScreenFixture(SampleRecipe.forLanguage("en").copy(id = RecipeScreenFixture.RECIPE_ID)).show(compose)
 
-        compose.onNodeWithText("PREP").assertIsDisplayed()
-        compose.onNodeWithText("10m").assertIsDisplayed()
-        compose.onNodeWithText("25m").assertIsDisplayed()
-        compose.onNodeWithText("35m").assertIsDisplayed()
+        compose.onNodeWithText(timesLine("Prep 10m", "Cook 25m", "Total 35m")).assertIsDisplayed()
     }
+
+    /**
+     * #286: the times on one line, only those the recipe has; an entry never splits, so its
+     * spaces (and the one before its "·") are non-breaking, and "1h 15m" stays whole.
+     */
+    @Test
+    fun theTimesAreOneLineOfTheEntriesTheRecipeHas() {
+        RecipeScreenFixture(
+            RecipeScreenFixture.testRecipe().copy(prepTime = null, cookTime = "1h 15m", totalTime = "Overnight")
+        ).show(compose)
+
+        compose.onNodeWithText("Cook\u00A01h\u00A015m\u00A0· Total\u00A0Overnight").assertIsDisplayed()
+        compose.onNodeWithText("Prep", substring = true).assertDoesNotExist()
+    }
+
+    /** The line as drawn: spaces inside an entry non-breaking, entries joined by " · ". */
+    private fun timesLine(vararg entries: String) =
+        entries.joinToString("\u00A0· ") { it.replace(' ', '\u00A0') }
 
     @Test
     fun changingServingsScalesTheIngredientsInPlace() {

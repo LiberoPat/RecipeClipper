@@ -188,6 +188,7 @@
     <string name="save_to_list_title">Enregistrer dans</string>
     <string name="cd_save_to_list">Enregistrer dans une liste</string>
     <string name="cd_in_a_list">Enregistrée dans une liste</string>
+    <string name="save_to_list_new_list_note">%1$s va dans la nouvelle liste.</string>
     <string name="rename_list_title">Renommer la liste</string>
     <string name="delete_list_title">Supprimer « %1$s » ?</string>
     <string name="delete_list_body">La liste sera supprimée. Ses recettes resteront dans votre historique.</string>
