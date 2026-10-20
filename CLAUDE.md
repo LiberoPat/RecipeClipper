@@ -188,9 +188,10 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Reached from the gear beside the Home title;
   another entry point is the owner's call.
-- **Home:** link field, "Continue cooking" (the most recent), "Recently
-  viewed" (the five before it), Recipes and Lists rows (always shown), the
-  Settings gear. Empty sections hide. **No "Saved" section**: it duplicated
+- **Home:** link field, with "+ New recipe" (#29) and "Scan a recipe"
+  (#226) under it, "Continue cooking" (the most recent), "Recently viewed"
+  (the five before it), Recipes and Lists rows (always shown), the Settings
+  gear. Empty sections hide. **No "Saved" section**: it duplicated
   Recently viewed. Search is on Recipes only.
 - **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry; Settings is not
   a tab. Each keeps its own back stack; the bar hides on the reading view and
