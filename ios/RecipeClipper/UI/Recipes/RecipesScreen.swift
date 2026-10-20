@@ -11,7 +11,6 @@ struct RecipesScreen: View {
     /// "Scan a recipe" (#226): the pictures taken or picked, in order; nil hides it (flag off).
     var onScan: (([Data]) -> Void)? = nil
 
-    @State private var now = currentMillis()
     @State private var scanSource: ScanSource?
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
     @State private var sideInset = ReadableWidth.gutter
@@ -22,17 +21,15 @@ struct RecipesScreen: View {
             Group {
                 VStack(alignment: .leading, spacing: 12) {
                     ScreenTitle(Strings.recipesTitle, style: Typography.headlineSmall)
-                    // Quietly, on the free tier only (#107).
-                    if let count = vm.count {
-                        Text(Strings.recipesCount(count.saved, of: count.max))
-                            .textStyle(Typography.bodySmall)
-                            .foregroundStyle(Palette.muted)
-                            .accessibilityIdentifier("recipes.count")
-                    }
                     SearchField(query: state.query, onQueryChange: vm.onQueryChange)
                 }
-                .padding(.bottom, 12)
+                .padding(.bottom, vm.showsSortLine ? 0 : 12)
                 .listRowSeparator(.hidden)
+
+                if vm.showsSortLine {
+                    sortLine(state)
+                        .listRowSeparator(.hidden)
+                }
 
                 if let recipes = state.recipes, recipes.isEmpty {
                     Text(state.query.trimmingCharacters(in: .whitespaces).isEmpty
@@ -49,7 +46,7 @@ struct RecipesScreen: View {
                     // next row's top and no line showed at all.
                     VStack(spacing: 0) {
                         Hairline()
-                        RecipeRow(recipe: recipe, now: now) { onOpenRecipe(recipe.id) }
+                        LibraryRow(recipe: recipe) { onOpenRecipe(recipe.id) }
                     }
                         .listRowSeparator(.hidden)
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -91,18 +88,6 @@ struct RecipesScreen: View {
                 }
                 .accessibilityLabel(Strings.addRecipe)
                 .accessibilityIdentifier("recipes.add")
-                // An exclusive choice, so radio glyphs rather than a bare checkmark.
-                Menu {
-                    sortButton(.recentlyViewed, Strings.sortRecentlyViewed, current: state.sort)
-                    sortButton(.name, Strings.sortName, current: state.sort)
-                    sortButton(.dateAdded, Strings.sortDateAdded, current: state.sort)
-                    if vm.showsCookedSort {
-                        sortButton(.recentlyCooked, Strings.sortRecentlyCooked, current: state.sort)
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-                .accessibilityLabel(Strings.moreOptions)
             }
         }
         .alert(Strings.pasteLink, isPresented: Binding(
@@ -132,8 +117,59 @@ struct RecipesScreen: View {
         .task(id: state.deleteBatch) {
             await SnackbarTimeout.run(pending: state.pendingDeletes, onTimeout: vm.onSnackbarDismissed)
         }
-        .onAppear { now = currentMillis() }
         .scanSources($scanSource) { onScan?($0) }
+    }
+
+    /// The quiet line under search (#286): how many recipes on the left ("20 recipes", or on the
+    /// free tier "12 of 20 recipes", #107), and the order they're in on the right, which opens
+    /// the sort menu. The sort was the only item of a ⋯ menu in the toolbar before.
+    private func sortLine(_ state: RecipesUiState) -> some View {
+        HStack(spacing: 8) {
+            Group {
+                if let count = vm.count {
+                    Text(Strings.recipesCount(count.saved, of: count.max))
+                        .accessibilityIdentifier("recipes.count")
+                } else {
+                    Text(Strings.recipesListed(state.listed ?? 0))
+                }
+            }
+            .textStyle(Typography.bodySmall)
+            .foregroundStyle(Palette.muted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // An exclusive choice, so radio glyphs rather than a bare checkmark.
+            Menu {
+                sortButton(.recentlyViewed, Strings.sortRecentlyViewed, current: state.sort)
+                sortButton(.name, Strings.sortName, current: state.sort)
+                sortButton(.dateAdded, Strings.sortDateAdded, current: state.sort)
+                if vm.showsCookedSort {
+                    sortButton(.recentlyCooked, Strings.sortRecentlyCooked, current: state.sort)
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .foregroundStyle(Palette.muted)
+                        .imageScale(.small)
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    Text(sortName(state.sort))
+                        .textStyle(Typography.labelMedium)
+                        .foregroundStyle(Palette.onBackground)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .accessibilityLabel(Strings.sort)
+            .accessibilityValue(sortName(state.sort))
+            .accessibilityIdentifier("recipes.sort")
+        }
+    }
+
+    private func sortName(_ sort: RecipeSort) -> String {
+        switch sort {
+        case .recentlyViewed: Strings.sortRecentlyViewed
+        case .name: Strings.sortName
+        case .dateAdded: Strings.sortDateAdded
+        case .recentlyCooked: Strings.sortRecentlyCooked
+        }
     }
 
     private func sortButton(_ sort: RecipeSort, _ title: String, current: RecipeSort) -> some View {

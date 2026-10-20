@@ -238,7 +238,7 @@ private struct SourceCredit: View {
     }
 
     private var domainText: some View {
-        Text(clipped ? Strings.clippedByYou(on: domain) : domain)
+        Text(Strings.sourceCredit(domain, clipped: clipped) ?? domain)
             .textStyle(Typography.bodyMedium)
             .foregroundStyle(Palette.muted)
             .accessibilityIdentifier("recipe.sourceDomain")

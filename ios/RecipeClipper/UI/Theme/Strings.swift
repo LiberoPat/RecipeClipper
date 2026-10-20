@@ -106,6 +106,13 @@ enum Strings {
     static var updateFromSourceClipBody: String { String(localized: "update_from_source_clip_body") }
     static var clippedByYou: String { String(localized: "clipped_by_you") }
     static func clippedByYou(on domain: String) -> String { String(localized: "clipped_by_you_on \(domain)") }
+    /// The site credited under a title: the domain, or "Clipped by you · domain" for a clip (#37),
+    /// nil for a recipe with no site (typed or scanned in). The reading view and the Recipes rows
+    /// (#286) both say it this way.
+    static func sourceCredit(_ domain: String?, clipped: Bool) -> String? {
+        guard let domain else { return clipped ? clippedByYou : nil }
+        return clipped ? clippedByYou(on: domain) : domain
+    }
     static var extractedFromPage: String { String(localized: "extracted_from_page") }
 
     // Errors

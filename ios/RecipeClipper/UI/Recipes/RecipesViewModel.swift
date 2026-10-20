@@ -21,6 +21,9 @@ struct RecipesUiState: Equatable {
 
     /// The alert's Go is enabled only for what Home's link field would open.
     var canOpenLink: Bool { UrlInput.normalize(linkInput) != nil }
+
+    /// How many rows are listed (the matches, while searching); nil until the database answers.
+    var listed: Int? { recipes?.count }
 }
 
 @MainActor
@@ -82,6 +85,10 @@ final class RecipesViewModel {
         guard case .free(let max) = library?.limit, let saved = uiState.savedCount else { return nil }
         return (saved, max)
     }
+
+    /// The line under search, with the count and the sort (#286): shown once there is a row to
+    /// order, or on the free tier, whose count shows even for an empty library.
+    var showsSortLine: Bool { count != nil || !(uiState.recipes?.isEmpty ?? true) }
 
     func onQueryChange(_ text: String) {
         uiState.query = text

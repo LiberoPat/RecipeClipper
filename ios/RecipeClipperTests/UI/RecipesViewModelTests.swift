@@ -76,6 +76,38 @@ final class RecipesViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.recipes, [])
     }
 
+    /// #286: the line under search counts what is listed, and hides with nothing to order.
+    func testTheLineUnderSearchCountsWhatIsListed() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send([testSummary(1), testSummary(2)])
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
+        XCTAssertNil(vm.uiState.listed) // still loading
+        XCTAssertFalse(vm.showsSortLine)
+
+        await settleMain()
+        XCTAssertEqual(vm.uiState.listed, 2)
+        XCTAssertTrue(vm.showsSortLine)
+
+        repository.history.send([]) // a search that matches nothing
+        await settleMain()
+        XCTAssertEqual(vm.uiState.listed, 0)
+        XCTAssertFalse(vm.showsSortLine)
+    }
+
+    /// #286: a summary credits its link's site, as the reading view does; a typed one none.
+    func testASummaryCreditsItsSiteAndATypedOneNone() {
+        var summary = testSummary(1)
+        summary.sourceUrl = "https://www.sundaysupper.blog/adobo/"
+        XCTAssertEqual(summary.sourceDomain, "sundaysupper.blog")
+        summary.sourceUrl = ManualRecipe.newSourceUrl("6f1c0d2e-1b7a-4f4e-9a55-0d3c1a2b3c4d")
+        XCTAssertNil(summary.sourceDomain)
+        summary.sourceUrl = "manual://not-a-site"
+        XCTAssertNil(summary.sourceDomain)
+        XCTAssertEqual(Strings.sourceCredit("cucinafacile.net", clipped: true), "Clipped by you · cucinafacile.net")
+        XCTAssertEqual(Strings.sourceCredit(nil, clipped: true), "Clipped by you")
+        XCTAssertNil(Strings.sourceCredit(nil, clipped: false))
+    }
+
     func testDeletingARecipeCapturesItAndSetsPendingDeletes() async {
         let repository = FakeRecipeRepository()
         repository.deleteResults[1] = deleted(1, "Chicken Adobo")

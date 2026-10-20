@@ -30,12 +30,40 @@ final class RecipesUITests: RecipeUITestCase {
         XCTAssertEqual(ys, ys.sorted(), "history should be newest first")
     }
 
-    func testASavedRecipeCarriesTheSavedTag() {
+    /// #286: a filled bookmark, not the word "Saved", and only on a recipe in a list.
+    func testASavedRecipeCarriesAFilledBookmark() {
         launch()
         openRecipes()
 
-        requireState(row("Chicken Adobo"), "label CONTAINS 'Saved'")
+        requireState(row("Chicken Adobo"), "label CONTAINS 'Saved to a list'")
         requireState(row("Banana Bread"), "NOT (label CONTAINS 'Saved')")
+        assertAbsent(text("Saved"))
+    }
+
+    /// #286: the site under the name, as the reading view credits it; no "ago" any more.
+    func testARowCreditsItsSite() {
+        launch()
+        openRecipes()
+
+        requireState(row("Banana Bread"), "label CONTAINS 'example.com'")
+        requireState(row("Banana Bread"), "NOT (label CONTAINS 'ago')")
+    }
+
+    /// #286: the count on the left of the line under search, the sort on the right, which
+    /// names the order and changes it. The toolbar's ⋯ menu, which held only the sort, is gone.
+    func testTheLineUnderSearchCountsAndSorts() {
+        launch()
+        openRecipes()
+
+        require(text("4 recipes"))
+        let sort = require(app.buttons["recipes.sort"], "the sort")
+        XCTAssertEqual(sort.value as? String, "Recently viewed")
+        assertAbsent(app.buttons["More options"])
+        sort.tap()
+        require(app.buttons["Name"], "Sort by name").tap()
+
+        requireState(app.buttons["recipes.sort"], "value == 'Name'")
+        XCTAssertLessThan(row("Banana Bread").frame.minY, row("Chicken Adobo").frame.minY)
     }
 
     func testSearchMatchesTitles() {
@@ -127,7 +155,7 @@ final class RecipesUITests: RecipeUITestCase {
         require(text("Deleted \"Chicken Adobo\""))
         app.buttons["Undo"].tap()
 
-        requireState(row("Chicken Adobo"), "label CONTAINS 'Saved'", "Adobo back with its Saved tag")
+        requireState(row("Chicken Adobo"), "label CONTAINS 'Saved to a list'", "Adobo back with its bookmark")
         back()
         openLists()
         requireState(row("Weeknights"), "label CONTAINS '2 recipes'")
