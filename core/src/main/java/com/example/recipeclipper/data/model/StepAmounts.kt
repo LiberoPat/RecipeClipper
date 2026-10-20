@@ -114,7 +114,21 @@ object StepAmounts {
         if (words == null || !words.spaced) return steps.map { listOf(Part(it)) }
         val w = words(words)
         val sources = lines.map { source(it, words, w) }
-        return steps.map { annotate(it, sources, words, w) }
+        return steps.map { read(it, sources, words, w).parts }
+    }
+
+    /**
+     * The ingredient lines [step] names (#286), as indexes into [lines], in order: every line a
+     * mention in it names by the rules above, whether the mention lends an amount, becomes a
+     * link, or stays as written (the step already says how much, a longer name, a dusting
+     * sentence). A step's title before a spaced dash names none. Empty where [annotate] leaves
+     * every step as written (no words, or no spaces). Cook mode's ingredients bar lists them
+     * first, whether "Amounts in steps" is on or off.
+     */
+    fun named(step: String, lines: List<String>, words: LanguageWords?): List<Int> {
+        if (words == null || !words.spaced) return emptyList()
+        val w = words(words)
+        return read(step, lines.map { source(it, words, w) }, words, w).named.sorted()
     }
 
     /** [parts] as one string, each amount in ⟦ ⟧: how the differential corpus pins them. */
@@ -306,7 +320,10 @@ object StepAmounts {
         val preposition: String? = null,
     )
 
-    private fun annotate(step: String, sources: List<Source>, words: LanguageWords, w: Words): List<Part> {
+    // A step read against the lines: its [parts], and every line its mentions [named].
+    private class Reading(val parts: List<Part>, val named: Set<Int>)
+
+    private fun read(step: String, sources: List<Source>, words: LanguageWords, w: Words): Reading {
         val tokens = tokens(step, w)
         val seen = mutableSetOf<Int>()
         val insertions = mutableListOf<Insertion>()
@@ -364,7 +381,7 @@ object StepAmounts {
                 insertions += Insertion(from, to, step.substring(from, to), false, to, (named + nameless).sorted())
             }
         }
-        return parts(step, insertions)
+        return Reading(parts(step, insertions), seen)
     }
 
     // The words of the sentence holding word [h].

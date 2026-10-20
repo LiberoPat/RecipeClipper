@@ -105,6 +105,88 @@ class RecipeStepAmountsTest {
         assertEquals("Stir in ⟦240 g⟧ flour and ⟦4⟧ carrots.", vm.step())
     }
 
+    // --- Cook mode's ingredients for this step (#286) ---
+
+    private val stew = recipe.copy(
+        ingredients = listOf("2 carrots, grated", "1 cup all-purpose flour", "1 onion, chopped"),
+        instructions = listOf("Stir in the flour and the carrots.", "Add the onion.", "Serve.")
+    )
+
+    private fun RecipeViewModel.groups() = uiState.value.stepIngredients
+
+    @Test fun `the current step's lines come first, with the switch off and the steps as written`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel(FakeAppPreferences(), stew)
+        advanceUntilIdle()
+        assertNull("Only in cook mode", vm.groups())
+
+        vm.onCookStart()
+        assertEquals(StepIngredients(now = listOf(0, 1), later = listOf(2)), vm.groups())
+        assertNull("The steps stay as written", vm.step())
+
+        vm.onStepDone()
+        assertEquals(StepIngredients(now = listOf(2), later = listOf(0, 1)), vm.groups())
+
+        // A step that names no line: the bar lists every line, as before.
+        vm.onStepSelected(2)
+        assertNull(vm.groups())
+
+        vm.onCookExit()
+        assertNull(vm.groups())
+    }
+
+    @Test fun `the grouping is the same with the switch on, and follows the servings and units`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel(FakeAppPreferences(amountsInSteps = true), stew)
+        advanceUntilIdle()
+        vm.onCookStart()
+        assertEquals(StepIngredients(now = listOf(0, 1), later = listOf(2)), vm.groups())
+        assertEquals("Stir in ⟦1 cup⟧ flour and ⟦2⟧ carrots.", vm.step())
+
+        vm.onServingsChange(8)
+        vm.onUnitSystemChange(UnitSystem.METRIC)
+        assertEquals(StepIngredients(now = listOf(0, 1), later = listOf(2)), vm.groups())
+    }
+
+    @Test fun `a tick in either group is the line's own`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel(FakeAppPreferences(), stew)
+        advanceUntilIdle()
+        vm.onCookStart()
+
+        vm.onIngredientChecked(1, true)
+        vm.onIngredientChecked(2, true)
+        assertEquals(setOf(1, 2), vm.uiState.value.checkedIngredients)
+        assertEquals(StepIngredients(now = listOf(0, 1), later = listOf(2)), vm.groups())
+    }
+
+    @Test fun `a link's lines are in this step`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel(FakeAppPreferences(amountsInSteps = true), twoButters)
+        advanceUntilIdle()
+        vm.onCookStart()
+        vm.onIngredientLink(0, listOf(0, 1))
+        assertEquals(StepIngredients(now = listOf(0, 1), later = listOf(2)), vm.groups())
+        assertTrue(vm.uiState.value.cook.ingredientsExpanded)
+    }
+
+    // Group headings: one moves with its lines only when every line under it is in the step.
+    private val cake = listOf(
+        "For the cake:", "2 cups flour", "1 cup sugar", "2 eggs",
+        "For the frosting:", "100g butter", "200g icing sugar"
+    )
+
+    @Test fun `a heading moves to this step only with all its lines, after the step's other lines`() {
+        assertEquals(StepIngredients(listOf(1, 2), listOf(0, 3, 4, 5, 6)), StepIngredients.group(cake, listOf(1, 2)))
+        assertEquals(StepIngredients(listOf(4, 5, 6), listOf(0, 1, 2, 3)), StepIngredients.group(cake, listOf(5, 6)))
+        assertEquals(StepIngredients(listOf(3, 4, 5, 6), listOf(0, 1, 2)), StepIngredients.group(cake, listOf(5, 3, 6)))
+        assertEquals(StepIngredients(listOf(0, 1, 2, 3, 4, 5, 6), emptyList()), StepIngredients.group(cake, listOf(1, 2, 3, 5, 6)))
+        // A heading with no lines under it stays where it is.
+        assertEquals(StepIngredients(listOf(0, 1), listOf(2)), StepIngredients.group(listOf("For the cake:", "flour", "To decorate:"), listOf(1)))
+    }
+
+    @Test fun `no named line, or only a heading, lists every line as before`() {
+        assertNull(StepIngredients.group(cake, emptyList()))
+        assertNull(StepIngredients.group(cake, listOf(0, 4)))
+        assertNull(StepIngredients.group(cake, listOf(9)))
+    }
+
     @Test fun `off by default, and the switch applies to an open recipe`() = runTest(mainDispatcherRule.dispatcher) {
         val preferences = FakeAppPreferences()
         val vm = viewModel(preferences)

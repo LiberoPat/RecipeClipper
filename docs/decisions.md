@@ -509,6 +509,26 @@ Open within cook mode: tapping a step sets it current (forgiving — you can
 jump back without losing progress) and only the "Done — next step" button
 advances. Leaning that way; confirm when cooking with it.
 
+**Ingredients for this step (#286, the owner's pick, 2026-10-19).** Opening the ingredients bar
+lists the lines the current step names first, washed in paprika, under "In this step", then the
+rest under "Later"; the bar's label, Start timer and "Done — next step" are as before. Which
+lines: `StepAmounts.named`, the amounts-in-steps matching (#101, #254): every line a mention
+names, whether it lends an amount, is a link, or stays as written (the step already says how
+much, "the flour mixture", a dusting sentence); a step's title before a spaced dash names none.
+It runs whether "Amounts in steps" is on or off (the renderer annotates steps only while the
+switch is on; the grouping only reads the matching and never changes what the steps show), on
+the step as shown (Chef mode's short version unless as written), against the lines as rendered.
+A step that names no line, or a language without words or spaces (Japanese), shows the full
+list as before, with no labels. The grouping, `StepIngredients`, is derived in `RecipeUiState`
+whenever the ViewModel writes it (Android on each copy; iOS by observers on `content`, `cook`
+and `asWrittenSteps`). **Headings:** one moves to "In this step" only when every line under it
+does, with its lines under it, after the step's other lines; otherwise it stays in "Later" over
+the lines still to come, and the step's lines from its group show without it, so no line ever
+sits under another group's heading. Ticks stay keyed by line index. A #254 link's lines are
+always the step's own, so the link opens the bar on them in "In this step", their highlight a
+stronger wash over the group's. Known limit, the matching's: "the chicken" doesn't name "2 lb
+chicken thighs" (only describing words may be dropped), so that line sits under "Later".
+
 **Design language:** Fraunces (display) over Karla (body); warm off-white
 ground `#FBF9F6`, ink `#1C1917`, muted `#6B6259`, hairline `#E7E1D9`,
 paprika accent `#BF4A2B`. System dark mode inverts to `#1C1917`, using the

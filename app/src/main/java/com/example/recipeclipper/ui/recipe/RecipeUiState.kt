@@ -109,7 +109,15 @@ data class RecipeUiState(
     val cookFinished: FinishedCook? = null,
     /** A step's ingredient link was tapped (#254): the lines it names, until the cook goes back. */
     val ingredientJump: IngredientJump? = null
-)
+) {
+    /**
+     * Cook mode's opened ingredients bar for the current step (#286): its lines first, then the
+     * rest; null lists every line as written. Derived from [content], [cook] and
+     * [asWrittenSteps] each time the ViewModel writes the state, so it never goes stale and the
+     * view only draws it.
+     */
+    val stepIngredients: StepIngredients? = StepIngredients.of(this)
+}
 
 /**
  * The cook tapped an ingredient link in step [step] (#254): a mention naming several ingredient

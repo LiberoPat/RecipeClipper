@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -39,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -194,23 +197,22 @@ private fun IngredientsBar(
                 firstLine.bringIntoView()
                 actions.onIngredientJumpScrolled()
             }
+            // The current step's lines first, then the rest (#286); every line as written when it names none.
+            val groups = state.stepIngredients
             Column(
                 Modifier
                     .heightIn(max = 260.dp)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = 20.dp - LINE_INSET)
             ) {
-                content.ingredients.forEachIndexed { index, ingredient ->
-                    if (content.isHeading(index)) {
-                        IngredientHeadingRow(ingredient)
-                    } else {
-                        IngredientRow(
-                            text = ingredient,
-                            checked = index in state.checkedIngredients,
-                            onCheckedChange = { actions.onIngredientChecked(index, it) },
-                            highlighted = jump != null && jump.highlighted && index in jump.lines,
-                            modifier = if (index == jump?.lines?.minOrNull()) Modifier.bringIntoViewRequester(firstLine) else Modifier
-                        )
+                if (groups == null) {
+                    BarLines(content.ingredients.indices.toList(), washed = false, content, state, actions, firstLine)
+                } else {
+                    GroupLabel(stringResource(R.string.cook_in_this_step), Modifier.padding(top = 4.dp))
+                    BarLines(groups.now, washed = true, content, state, actions, firstLine)
+                    if (groups.later.isNotEmpty()) {
+                        GroupLabel(stringResource(R.string.cook_later), Modifier.padding(top = 12.dp))
+                        BarLines(groups.later, washed = false, content, state, actions, firstLine)
                     }
                 }
             }
@@ -224,6 +226,63 @@ private fun IngredientsBar(
         }
         Hairline()
     }
+}
+
+// Room between a line's wash and its checkbox; the bar's edge moves out by as much, so the
+// lines sit where they always did.
+private val LINE_INSET = 8.dp
+
+/**
+ * The bar's ingredient [lines], by index: a heading as a subheading, any other line a row to
+ * tick, [washed] in paprika for "In this step" (#286). Keyed by index, so each line keeps its
+ * own row as the groups change.
+ */
+@Composable
+private fun BarLines(
+    lines: List<Int>,
+    washed: Boolean,
+    content: RecipeContent.Success,
+    state: RecipeUiState,
+    actions: RecipeActions,
+    firstLine: BringIntoViewRequester
+) {
+    val jump = state.ingredientJump
+    lines.forEach { index ->
+        key(index) {
+            val text = content.ingredients[index]
+            if (content.isHeading(index)) {
+                IngredientHeadingRow(text, Modifier.padding(horizontal = LINE_INSET))
+            } else {
+                IngredientRow(
+                    text = text,
+                    checked = index in state.checkedIngredients,
+                    onCheckedChange = { actions.onIngredientChecked(index, it) },
+                    highlighted = jump != null && jump.highlighted && index in jump.lines,
+                    washed = washed,
+                    inset = LINE_INSET,
+                    // Washed rows keep a hairline apart, so each reads as its own line.
+                    modifier = (if (washed) Modifier.padding(vertical = 1.dp) else Modifier).then(
+                        // A step's ingredient link (#254) scrolls its first line into view.
+                        if (index == jump?.lines?.minOrNull()) Modifier.bringIntoViewRequester(firstLine) else Modifier
+                    )
+                )
+            }
+        }
+    }
+}
+
+/** "In this step" or "Later" over the bar's groups (#286): small capitals, a heading for accessibility. */
+@Composable
+private fun GroupLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = LINE_INSET, end = LINE_INSET, bottom = 4.dp)
+            .semantics { heading() }
+    )
 }
 
 @Composable

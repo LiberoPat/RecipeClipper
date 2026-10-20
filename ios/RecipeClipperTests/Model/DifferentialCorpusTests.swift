@@ -52,6 +52,8 @@ import XCTest
 // `Short("Bake for 20 minutes.", "Bake 20 min."),` or `Short("…", "…", lines: ["2 eggs"]),`.
 // Step rows (#101): a step, the ingredient lines, then StepAmounts.annotate marked with ⟦ ⟧, against
 // the lines as given and against them doubled in Metric. Write only `Step("Add the eggs.", ["2 eggs"]),`.
+// Step-lines rows (#286): a step, the ingredient lines, then StepAmounts.named (the lines the
+// step names, as indexes). Write only `Named("Add the eggs.", ["2 eggs"]),`.
 // Page-pick rows (#103): a kind, a page's text, what the model picked, then PageRecipeCheck.find
 // (the page's own text for it, or nil). Write only `Pick(.ingredient, "1 cup flour", "1 cup flour"),`.
 // Rendering rows (#169): a recipe's yield, chosen servings, lines and steps, optionally the model's
@@ -175,6 +177,13 @@ final class DifferentialCorpusTests: XCTestCase {
         init(_ step: String, _ lines: [String], lang: String = "en", _ asGiven: String, _ metric: String) {
             self.step = step; self.lines = lines; self.words = LanguageWords.forTag(lang)!
             self.asGiven = asGiven; self.metric = metric
+        }
+    }
+
+    private struct Named {
+        let step: String; let lines: [String]; let words: LanguageWords; let named: [Int]
+        init(_ step: String, _ lines: [String], lang: String = "en", _ named: [Int]) {
+            self.step = step; self.lines = lines; self.words = LanguageWords.forTag(lang)!; self.named = named
         }
     }
 
@@ -1690,6 +1699,22 @@ final class DifferentialCorpusTests: XCTestCase {
         Step("Esquentar óleo: esquente o óleo até estar bem quente.", ["240 ml de óleo vegetal neutro (canola, girassol, milho, etc) (1 xícara)"], lang: "pt", "Esquentar ⟦240 ml de⟧ óleo: esquente o óleo até estar bem quente.", "Esquentar ⟦480 ml de⟧ óleo: esquente o óleo até estar bem quente."),
     ]
 
+    private static let nameds: [Named] = [
+        Named("Add the carrots and cook 5 minutes.", ["2 carrots, peeled and diced", "1 onion, chopped"], [0]),
+        Named("Melt the butter.", ["200g butter", "100g butter", "1 cup flour"], [0, 1]),
+        Named("Add 2 tablespoons butter and half the sugar.", ["4 tbsp butter", "1 cup sugar", "2 eggs"], [0, 1]),
+        Named("Fold the flour mixture into the eggs.", ["2 cups flour", "3 eggs", "1 cup milk"], [0, 1]),
+        Named("Season with salt.", ["1 tsp salt", "salt and pepper", "1 lemon"], [0, 1]),
+        Named("Add the sugar.", ["1 cup sugar", "For the frosting:", "1/2 cup sugar"], [0, 2]),
+        Named("Sauté onion and mushrooms - Turn the heat down and stir in the garlic.", ["1 onion", "8 oz mushrooms", "2 cloves garlic"], [2]),
+        Named("Preheat the oven to 350°F.", ["2 cups flour"], []),
+        Named("Stir in the cheese.", ["1 cup mozzarella cheese"], []),
+        Named("Put the chicken, soy sauce, vinegar, garlic, bay leaves and peppercorns in a pot and marinate for 30 minutes.", ["2 lb chicken thighs", "1/2 cup soy sauce", "1/3 cup white vinegar", "6 cloves garlic, crushed", "3 bay leaves", "1 tsp black peppercorns", "1 onion, sliced"], [1, 2, 3, 4, 5]),
+        Named("Unte a forma com manteiga.", ["5 colheres de manteiga", "2 ovos"], lang: "pt", [0]),
+        Named("Faites fondre le beurre.", ["50 g de beurre", "2 œufs"], lang: "fr", [0]),
+        Named("バターを溶かす。", ["バター 20g"], lang: "ja", []),
+    ]
+
     private static let ics: [Ics] = [
         Ics("Dinner · Chicken Adobo", "SUMMARY:Dinner · Chicken Adobo"),
         Ics("Lunch · Leftovers, reheated; with rice\\beans", "SUMMARY:Lunch · Leftovers\\, reheated\\; with rice\\\\beans"),
@@ -2264,6 +2289,12 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(StepAmounts.marked(StepAmounts.annotate([row.step], lines: row.lines, words: row.words)[0]), row.asGiven, row.step)
             let doubled = IngredientRendering.render(row.lines, factor: 2.0, system: .metric, convertLiquids: false, words: row.words)
             XCTAssertEqual(StepAmounts.marked(StepAmounts.annotate([row.step], lines: doubled, words: row.words)[0]), row.metric, row.step)
+        }
+    }
+
+    func testStepNamedLinesMatchKotlin() {
+        for row in Self.nameds {
+            XCTAssertEqual(StepAmounts.named(row.step, lines: row.lines, words: row.words), row.named, row.step)
         }
     }
 
