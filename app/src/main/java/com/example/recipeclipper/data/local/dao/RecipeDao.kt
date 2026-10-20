@@ -46,6 +46,10 @@ abstract class RecipeDao {
     @Query("SELECT * FROM recipes WHERE sourceUrl = :url")
     abstract suspend fun findByUrl(url: String): RecipeEntity?
 
+    /** One recipe, re-emitted on every change to it (#286: Home's resume card); null once gone. */
+    @Query("SELECT * FROM recipes WHERE id = :id")
+    abstract fun observe(id: Long): Flow<RecipeEntity?>
+
     @Insert
     protected abstract suspend fun insert(recipe: RecipeEntity): Long
 

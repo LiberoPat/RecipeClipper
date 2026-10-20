@@ -2,64 +2,50 @@ package com.example.recipeclipper.ui.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.model.RecipeSummary
-import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.TooltipScreen
-import com.example.recipeclipper.ui.common.RecipeRow
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.flags.Flag
-import com.example.recipeclipper.ui.edit.ScanRecipeButton
 import com.example.recipeclipper.ui.recipe.Hairline
-import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.settings.BackupStatus
 import com.example.recipeclipper.ui.settings.BackupStatusText
 import com.example.recipeclipper.ui.settings.IMPORT_MIME_TYPES
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TooltipHost
-import com.example.recipeclipper.ui.tour.tooltipAnchor
+import com.example.recipeclipper.ui.recipes.PasteLinkDialog
+import androidx.compose.ui.platform.testTag
 
 /**
- * Home: the link field (kept so the app can be tried without the share sheet), then
- * whatever there is to pick up again. Sections with nothing in them don't appear, but the
- * Recipes / Lists block at the bottom always does. Settings is the gear beside the title.
+ * Home (#286): Continue cooking as a photo card with where the cook stopped, then the three
+ * ways in (Paste a link, Scan a recipe, Type a recipe), Recently viewed as a row of photos, and
+ * the Recipes / Lists rows with their counts. Sections with nothing in them don't appear, but
+ * the Recipes / Lists block always does. Settings is the gear beside the title.
  */
 @Composable
 fun HomeScreen(
@@ -70,11 +56,12 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onNewRecipe: () -> Unit = {},
     onScan: (List<String>) -> Unit = {},
+    /** "Resume cooking" (#286): the recipe, opened in cook mode. */
+    onResumeCooking: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val now = remember { System.currentTimeMillis() }
     // Restore from a backup file (#150): the same file picker as Settings' Import.
     val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.onRestorePicked(it.toString()) }
@@ -83,22 +70,28 @@ fun HomeScreen(
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         viewModel.onBackupFolderPicked(uri?.toString())
     }
-    // Computed here, not inside the LazyColumn content lambda: that lambda isn't itself a
-    // composable context (only the item {} blocks nested in it are), so stringResource can't
-    // be called directly from it.
-    val recentlyViewedTitle = stringResource(R.string.section_recently_viewed)
 
     RecipeClipperTheme {
+        // Inside the theme, like every dialog (#186). The Recipes screen's "Paste a link".
+        state.linkInput?.let { link ->
+            PasteLinkDialog(
+                value = link,
+                canOpen = state.canOpenLink,
+                onValueChange = viewModel::onLinkChange,
+                onOpen = { viewModel.onOpenLink()?.let(onOpenUrl) },
+                onDismiss = viewModel::onLinkDismiss
+            )
+        }
         TooltipHost(TooltipScreen.HOME) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 LazyColumn(
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 32.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().testTag("home")
                         // Edge-to-edge: the background fills behind the bars, the rows stay clear
                         // of them, the display cutout and the keyboard.
                         .safeDrawingPadding()
                 ) {
-                    item {
+                    item(key = "title") {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 stringResource(R.string.home_title),
@@ -120,59 +113,32 @@ fun HomeScreen(
                                 )
                             }
                         }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            stringResource(R.string.home_subtitle),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(20.dp))
-                        Row(verticalAlignment = Alignment.Top) {
-                            OutlinedTextField(
-                                value = state.urlInput,
-                                onValueChange = viewModel::onUrlChange,
-                                label = { Text(stringResource(R.string.label_recipe_url)) },
-                                singleLine = true,
-                                isError = state.urlError,
-                                supportingText = if (state.urlError) {
-                                    { Text(stringResource(R.string.error_invalid_url)) }
-                                } else null,
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.weight(1f).tooltipAnchor(Tooltip.HOME_LINK)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Button(
-                                onClick = { viewModel.onGo()?.let(onOpenUrl) },
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.padding(top = 6.dp)
-                            ) { Text(stringResource(R.string.action_go)) }
-                        }
-                        // Typing a recipe in by hand (#29): a small way in, not a section. Beside
-                        // it, scanning one from photos (#226, the photoText flag).
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(
-                                onClick = onNewRecipe,
-                                modifier = Modifier.offset(x = (-12).dp)
-                            ) {
-                                Text(
-                                    stringResource(R.string.action_new_recipe),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-                            }
-                            if (scanEnabled) ScanRecipeButton(onScan, Modifier.offset(x = (-12).dp))
-                        }
                     }
 
+                    // Continue cooking (#286): a photo card with where the cook stopped.
                     state.continueCooking?.let { latest ->
-                        item {
-                            Spacer(Modifier.height(24.dp))
-                            SectionHeading(stringResource(R.string.section_continue_cooking))
-                            RecipeRow(latest, now, onClick = { onOpenRecipe(latest.id) })
+                        item(key = "resume") {
+                            ResumeCard(
+                                latest, state.resume,
+                                onResume = { onResumeCooking(latest.id) },
+                                onOpen = { onOpenRecipe(latest.id) }
+                            )
                         }
                     }
 
-                    section("recent", recentlyViewedTitle, state.recent, now, onOpenRecipe)
+                    // The three ways in (#286): Paste a link, Scan a recipe (the photoText
+                    // flag, #226) and Type a recipe (#29), as equal tiles.
+                    item(key = "add") {
+                        AddRecipeBlock(
+                            onPasteLink = viewModel::onPasteLink,
+                            onScan = onScan.takeIf { scanEnabled },
+                            onTypeRecipe = onNewRecipe
+                        )
+                    }
+
+                    if (state.recent.isNotEmpty()) {
+                        item(key = "recent") { RecentlyViewed(state.recent, onOpenRecipe) }
+                    }
 
                     if (state.loaded && state.continueCooking == null) {
                         item {
@@ -221,11 +187,11 @@ fun HomeScreen(
                     // collects AppPreferences.settings, so a recipe left underneath Settings
                     // follows a change as it is made (#24). Whether the recipe screen offers it
                     // is a product call, not a technical constraint.
-                    item {
+                    item(key = "nav") {
                         Spacer(Modifier.height(20.dp))
                         Hairline()
-                        NavRow(stringResource(R.string.recipes_title), onOpenRecipes)
-                        NavRow(stringResource(R.string.nav_lists), onOpenLists)
+                        NavRow(stringResource(R.string.recipes_title), state.recipeCount, onOpenRecipes)
+                        NavRow(stringResource(R.string.nav_lists), state.listCount, onOpenLists)
                     }
                 }
             }
@@ -268,52 +234,3 @@ private fun BackupFolderCard(onChoose: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
-/** One row of the nav block at the bottom of Home: a label, a chevron, and a hairline under it. */
-@Composable
-private fun NavRow(label: String, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(vertical = 16.dp)
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Box(Modifier.weight(1f))
-        Text(
-            "›",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-    Hairline()
-}
-
-/**
- * One titled run of recipe rows.
- *
- * [sectionKey] prefixes the item keys, and is not optional even though there is only one
- * section today. A LazyColumn's keys must be unique across the *whole list*, not within a
- * section, so two sections that can hold the same recipe crash with
- * `IllegalArgumentException: Key "3" was already used` if they key on the recipe id alone.
- * That is exactly what "Recently viewed" and "Saved" did — saving a recipe usually means you
- * just opened it. Saved has since been removed (see [HomeUiState]), so keep the prefix: it is
- * what stops the next section from bringing the crash back.
- */
-private fun androidx.compose.foundation.lazy.LazyListScope.section(
-    sectionKey: String,
-    title: String,
-    recipes: List<RecipeSummary>,
-    now: Long,
-    onOpenRecipe: (Long) -> Unit
-) {
-    if (recipes.isEmpty()) return
-    item {
-        Spacer(Modifier.height(24.dp))
-        SectionHeading(title)
-    }
-    items(recipes.size, key = { "$sectionKey-${recipes[it].id}" }) { index ->
-        val recipe = recipes[index]
-        RecipeRow(recipe, now, onClick = { onOpenRecipe(recipe.id) })
-    }
-}

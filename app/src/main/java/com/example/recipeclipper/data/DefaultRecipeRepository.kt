@@ -386,6 +386,11 @@ class DefaultRecipeRepository @Inject constructor(
     override fun observeRecent(limit: Int): Flow<List<RecipeSummary>> =
         recipeDao.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }.orEmptyOnError(log, "observeRecent")
 
+    override fun observeRecipe(id: Long): Flow<Recipe?> = recipeDao.observe(id).map { it?.toDomain() }.catch { e ->
+        log.error("observeRecipe failed", e)
+        emit(null)
+    }
+
     override fun observeCount(): Flow<Int> = recipeDao.observeCount().catch { e ->
         log.error("observeCount failed", e)
         emit(0)

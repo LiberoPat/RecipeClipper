@@ -19,7 +19,7 @@ struct RecipesUiState: Equatable {
     /// Every recipe saved, whatever the query (#107: the free tier's count).
     var savedCount: Int?
 
-    /// The alert's Go is enabled only for what Home's link field would open.
+    /// The alert's Go is enabled only for what reads as a link (`UrlInput`).
     var canOpenLink: Bool { UrlInput.normalize(linkInput) != nil }
 
     /// How many rows are listed (the matches, while searching); nil until the database answers.

@@ -83,7 +83,7 @@ class TooltipsScreenTest {
 
         compose.mainClock.advanceTimeBy(Tooltips.SETTLE_MILLIS)
         compose.mainClock.autoAdvance = true
-        compose.onNodeWithText("Share a recipe link to this app, or paste one here.").assertExists()
+        compose.onNodeWithText("Share a recipe link to this app, or tap here to paste one.").assertExists()
         // One button for TalkBack, announced as it appears; "Got it" is its visible label.
         compose.onNodeWithTag("tooltip-home_link")
             .assert(SemanticsMatcher("one labelled button") { it.config.getOrNull(SemanticsActions.OnClick)?.label == "Dismiss tip" })

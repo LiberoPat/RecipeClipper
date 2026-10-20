@@ -19,6 +19,7 @@ internal class InMemoryRecipeDao : RecipeDao() {
 
     override suspend fun get(id: Long) = rows[id]
     override suspend fun findByUrl(url: String) = rows.values.firstOrNull { it.sourceUrl == url }
+    override fun observe(id: Long): Flow<RecipeEntity?> = emptyFlow()
     override suspend fun insert(recipe: RecipeEntity): Long {
         writes++
         val id = if (recipe.id != 0L) recipe.id else nextId++

@@ -37,7 +37,6 @@
     <string name="error_save_failed">Não foi possível salvar a receita.</string>
     <string name="error_not_saved">Essa receita não está mais salva.</string>
     <string name="error_nothing_to_show">Não há receita para mostrar.</string>
-    <string name="error_invalid_url">Isso não parece um link.</string>
     <string name="label_serves">Porções</string>
     <string name="label_makes">Rende</string>
     <string name="cd_decrease_servings">Diminuir porções</string>
@@ -79,11 +78,18 @@
     </plurals>
     <string name="timer_start">⏱  Timer de %1$s</string>
     <string name="timers_up">O tempo acabou</string>
-    <string name="home_subtitle">Compartilhe o link de uma receita com este app pelo navegador ou cole aqui.</string>
     <string name="label_recipe_url">URL da receita</string>
     <string name="section_continue_cooking">Continuar cozinhando</string>
     <string name="section_recently_viewed">Vistas recentemente</string>
     <string name="home_empty_hint">As receitas que você abrir vão aparecer aqui.</string>
+    <!-- Home (#286): the resume card and the Add a recipe tiles -->
+    <string name="home_paste_link_hint">De qualquer site ou do Reddit</string>
+    <string name="home_scan_hint">Um cartão ou a página de um livro</string>
+    <string name="home_type_hint">Digite você mesmo</string>
+    <string name="home_share_hint">Ou compartilhe um link com o Recipe Clipper de qualquer app.</string>
+    <string name="home_resume_cooking">Retomar a receita</string>
+    <string name="home_open_recipe">Abrir a receita</string>
+    <string name="home_timer_left">Faltam %1$s</string>
     <string name="recipes_title">Receitas</string>
     <string name="recipes_empty">Nada por aqui ainda. As receitas que você abrir ficam guardadas aqui, e com + você adiciona uma à mão ou por um link.</string>
     <string name="recipes_no_results">Nenhuma receita corresponde a “%1$s”.</string>
@@ -223,7 +229,6 @@
     <string name="action_edit">Editar</string>
     <string name="action_update_from_source">Atualizar da fonte</string>
     <string name="action_update">Atualizar</string>
-    <string name="action_new_recipe">+ Nova receita</string>
     <string name="update_from_source_title">Substituir sua versão?</string>
     <string name="update_from_source_body">A receita será buscada de novo no site e substituirá sua versão. Suas alterações serão perdidas; sua nota e suas listas continuam.</string>
     <string name="update_from_source_failed">Não foi possível atualizar da fonte. %1$s</string>
@@ -586,7 +591,7 @@
 
     <!-- The tooltips (#190): one small bubble at a time, pointing at a control -->
     <string name="tooltip_got_it">Entendi</string>
-    <string name="tooltip_home_link">Compartilhe o link de uma receita com este app, ou cole-o aqui.</string>
+    <string name="tooltip_home_link">Compartilhe o link de uma receita com este app, ou toque aqui para colá-lo.</string>
     <string name="tooltip_recipe_units">Como na receita mostra cada quantidade exatamente como a receita dá. Toque para ver todas as receitas em Métrico ou Onças; o que não puder ser convertido com exatidão fica como na receita.</string>
     <string name="tooltip_recipe_start_cooking">Modo cozinhar: um passo de cada vez, com timers, e a tela fica ligada.</string>
     <string name="tooltip_recipe_made_this">Fez a receita? Adicione uma foto e uma nota, ou Marcar como feita.</string>

@@ -58,7 +58,7 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 /**
  * Every recipe on the phone (#102, the library that replaced History): newest viewed first by
  * default, searchable, sortable, swipe to delete. The + adds one: typed in (the editor), or
- * from a pasted link (the import flow Home's link field uses), or scanned (#226).
+ * from a pasted link (the usual import flow), or scanned (#226).
  */
 @Composable
 fun RecipesScreen(

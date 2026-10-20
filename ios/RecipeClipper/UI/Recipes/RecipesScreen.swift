@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Every recipe on the phone (#102, the library that replaced History): newest viewed first by
 /// default, searchable, sortable, swipe to delete. The + adds one: typed in (the editor), from a
-/// pasted link (the import flow Home's link field uses), or scanned (#226).
+/// pasted link (the usual import flow), or scanned (#226).
 struct RecipesScreen: View {
     let vm: RecipesViewModel
     let onOpenRecipe: (Int64) -> Void

@@ -108,7 +108,7 @@ abstract class WalkthroughBase {
         flags.forEach { flagStore.setOverride(it, true) }
         if (!firstRun) Tooltip.entries.forEach { tour.setTooltipSeen(it, true) }
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        waitFor(hasText("Recipe URL"))
+        waitFor(hasText("Paste a link"))
         // Two-thirds size: the script scales every clip to 1280 high anyway, and a smaller frame
         // keeps the emulator's encoder up with the screen on a busy machine (at full size it fell
         // behind and lost the ends of clips).

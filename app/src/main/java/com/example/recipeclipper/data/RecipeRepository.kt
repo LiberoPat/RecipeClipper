@@ -151,6 +151,12 @@ interface RecipeRepository {
 
     fun observeRecent(limit: Int): Flow<List<RecipeSummary>>
 
+    /**
+     * One recipe as it changes, without counting as a view (#286: Home's resume card follows
+     * the cook's saved place and timers); null once it is gone.
+     */
+    fun observeRecipe(id: Long): Flow<Recipe?>
+
     /** How many recipes are saved, of every kind but the tour's sample (#107: the Recipes screen's count; #151). */
     fun observeCount(): Flow<Int>
 }

@@ -46,15 +46,15 @@ class MainActivitySmokeTest {
         context.getSharedPreferences("unit_preferences", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
-    /** The launcher opens Home, where the link field's tooltip shows, in its own window, until Got it (#190). */
+    /** The launcher opens Home, where the Paste a link tile's tooltip shows, in its own window, until Got it (#190). */
     @Test
     fun theLauncherOpensHomeWithItsFirstTooltip() {
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        compose.waitUntilAtLeastOneExists(hasText(context.getString(R.string.home_subtitle)), 10_000)
+        compose.waitUntilAtLeastOneExists(hasText(context.getString(R.string.home_share_hint)), 10_000)
         compose.waitUntilAtLeastOneExists(hasText(context.getString(R.string.tooltip_home_link)), 10_000)
         compose.onNodeWithText(context.getString(R.string.tooltip_got_it)).performClick()
         compose.waitUntilDoesNotExist(hasText(context.getString(R.string.tooltip_home_link)), 5_000)
-        compose.onNodeWithText(context.getString(R.string.home_subtitle)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.home_share_hint)).assertIsDisplayed()
     }
 
     /**
