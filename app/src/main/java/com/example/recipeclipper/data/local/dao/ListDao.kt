@@ -25,6 +25,12 @@ data class ListRow(
     val containsRecipe: Boolean
 )
 
+/** One photo on a list's cover (#286): a recipe in [listId] that has an [imageUrl]. */
+data class ListCoverPhotoRow(
+    val listId: Long,
+    val imageUrl: String
+)
+
 @Dao
 abstract class ListDao {
 
@@ -65,6 +71,31 @@ abstract class ListDao {
         """
     )
     abstract fun observeRecipesIn(listId: Long): Flow<List<RecipeSummaryRow>>
+
+    /**
+     * The Lists screen's covers (#286): up to [COVER_PHOTOS] photos per list, from the recipes
+     * in it that have one, most recently added first (the order its own screen shows), grouped
+     * by list. A list with no photo has no rows.
+     *
+     * The cap is a correlated `LIMIT` rather than `ROW_NUMBER()`: window functions arrived in
+     * SQLite 3.25, and API 26 ships 3.18.
+     */
+    @Query(
+        """
+        SELECT c.listId, r.imageUrl
+        FROM recipe_list_cross_ref c
+        JOIN recipes r ON r.id = c.recipeId
+        WHERE r.imageUrl IS NOT NULL AND r.imageUrl != ''
+          AND r.id IN (
+              SELECT c2.recipeId FROM recipe_list_cross_ref c2
+              JOIN recipes r2 ON r2.id = c2.recipeId
+              WHERE c2.listId = c.listId AND r2.imageUrl IS NOT NULL AND r2.imageUrl != ''
+              ORDER BY c2.addedAt DESC, r2.id DESC
+              LIMIT $COVER_PHOTOS)
+        ORDER BY c.listId, c.addedAt DESC, r.id DESC
+        """
+    )
+    abstract fun observeCoverPhotos(): Flow<List<ListCoverPhotoRow>>
 
     /**
      * Ticking a list in the sheet. IGNORE rather than REPLACE: re-adding a recipe already in
@@ -129,5 +160,8 @@ abstract class ListDao {
     companion object {
         /** Passed as `recipeId` by callers that aren't asking about a recipe. No row has it. */
         const val NO_RECIPE = -1L
+
+        /** The most photos a list's cover shows: a 2×2 mosaic. */
+        const val COVER_PHOTOS = 4
     }
 }

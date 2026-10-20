@@ -200,6 +200,77 @@ class ListDaoTest {
         assertTrue(lists.observeRecipesIn(favoritesId()).first().isEmpty())
     }
 
+    // --- Cover photos (#286) ---
+
+    private suspend fun addRecipe(url: String, image: String?) =
+        recipes.upsert(recipe(url).copy(imageUrl = image), historyLimit = 50)
+
+    private suspend fun covers() =
+        lists.observeCoverPhotos().first().groupBy({ it.listId }, { it.imageUrl })
+
+    @Test
+    fun coversAreTheFourMostRecentlyAddedPhotos() = runBlocking {
+        val favorites = favoritesId()
+        (1..6).forEach { n ->
+            val id = addRecipe("https://example.com/$n", image = "https://img/$n.jpg")
+            lists.addToList(RecipeListCrossRef(id, favorites, addedAt = n * 10L))
+        }
+
+        assertEquals(
+            mapOf(favorites to listOf(6, 5, 4, 3).map { "https://img/$it.jpg" }),
+            covers()
+        )
+    }
+
+    /** A recipe with no photo is skipped, not counted: the next one with a photo takes its place. */
+    @Test
+    fun coversSkipRecipesWithNoPhoto() = runBlocking {
+        val favorites = favoritesId()
+        val a = addRecipe("https://example.com/a", image = "https://img/a.jpg")
+        val b = addRecipe("https://example.com/b", image = null)
+        val c = addRecipe("https://example.com/c", image = "")
+        lists.addToList(RecipeListCrossRef(a, favorites, addedAt = 10))
+        lists.addToList(RecipeListCrossRef(b, favorites, addedAt = 20))
+        lists.addToList(RecipeListCrossRef(c, favorites, addedAt = 30))
+
+        assertEquals(mapOf(favorites to listOf("https://img/a.jpg")), covers())
+    }
+
+    /** Each list gets its own four; a list with no photo (or no recipe) has no entry. */
+    @Test
+    fun coversArePerListAndPhotolessListsAreAbsent() = runBlocking {
+        val favorites = favoritesId()
+        val dinner = allLists().single { it.name == "Dinner" }.id
+        val lunch = allLists().single { it.name == "Lunch" }.id
+        val a = addRecipe("https://example.com/a", image = "https://img/a.jpg")
+        val b = addRecipe("https://example.com/b", image = "https://img/b.jpg")
+        val plain = addRecipe("https://example.com/plain", image = null)
+        lists.addToList(RecipeListCrossRef(a, favorites, addedAt = 10))
+        lists.addToList(RecipeListCrossRef(b, dinner, addedAt = 10))
+        lists.addToList(RecipeListCrossRef(a, dinner, addedAt = 20))
+        lists.addToList(RecipeListCrossRef(plain, lunch, addedAt = 10))
+
+        assertEquals(
+            mapOf(
+                favorites to listOf("https://img/a.jpg"),
+                dinner to listOf("https://img/a.jpg", "https://img/b.jpg")
+            ),
+            covers()
+        )
+    }
+
+    /** Leaving a list takes the photo off its cover; the recipe itself stays. */
+    @Test
+    fun coversFollowMembership() = runBlocking {
+        val favorites = favoritesId()
+        val a = addRecipe("https://example.com/a", image = "https://img/a.jpg")
+        lists.addToList(RecipeListCrossRef(a, favorites, addedAt = 10))
+        lists.removeFromList(a, favorites)
+
+        assertTrue(covers().isEmpty())
+        assertNotNull(recipes.get(a))
+    }
+
     // --- Creating ---
 
     @Test

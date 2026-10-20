@@ -29,6 +29,12 @@ interface ListRepository {
     fun observeRecipesIn(listId: Long): Flow<List<RecipeSummary>>
 
     /**
+     * The Lists screen's covers (#286): list id to up to four photo URLs from the recipes in
+     * it, most recently added first. A list with no photo is absent.
+     */
+    fun observeCoverPhotos(): Flow<Map<Long, List<String>>>
+
+    /**
      * Ticks or unticks one list for one recipe. Writes immediately — the sheet is dismissed,
      * never submitted, so there is no later moment at which to save.
      */

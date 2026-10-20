@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.lists
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.ListRepository
+import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.model.RecipeList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,16 +17,20 @@ import javax.inject.Inject
 /**
  * [loaded] is false until the database has answered once, matching `HomeUiState`: the four
  * built-in lists always exist, so a momentary empty list would be a lie rather than a state.
+ *
+ * [coverPhotos] is each list's cover (#286): up to four photo URLs, most recently added first.
+ * A list with none is absent and gets a plain tile.
  */
 data class ListsUiState(
     val loaded: Boolean = false,
     val lists: List<RecipeList> = emptyList(),
+    val coverPhotos: Map<Long, List<String>> = emptyMap(),
     val creatingList: Boolean = false,
     val newListName: String = ""
 )
 
 /**
- * The Lists screen: every list with its count, and creating a new one. Renaming and deleting
+ * The Lists screen: every list as a cover with its count, and creating a new one. Renaming and deleting
  * live on the list's own screen rather than here, so there is one place a list is managed
  * from — the same reason the recipe screen owns deleting a recipe.
  */
@@ -39,10 +44,17 @@ class ListsViewModel @Inject constructor(
 
     val uiState: StateFlow<ListsUiState> = combine(
         repository.observeLists(),
+        repository.observeCoverPhotos(),
         creatingList,
         newListName
-    ) { lists, creating, name ->
-        ListsUiState(loaded = true, lists = lists, creatingList = creating, newListName = name)
+    ) { lists, photos, creating, name ->
+        ListsUiState(
+            loaded = true,
+            lists = lists,
+            coverPhotos = photos.mapValues { it.value.take(ListDao.COVER_PHOTOS) },
+            creatingList = creating,
+            newListName = name
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListsUiState())
 
     fun onStartCreating() {

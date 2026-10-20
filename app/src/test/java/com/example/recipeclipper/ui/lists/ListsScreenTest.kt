@@ -3,8 +3,12 @@ package com.example.recipeclipper.ui.lists
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -35,6 +39,7 @@ class ListsScreenTest {
             RecipeList(3, "Weeknights", isBuiltIn = false, isFavorites = false, recipeCount = 0)
         )
         membership.value = setOf(7L to 1L, 7L to 3L, 8L to 3L)
+        coverPhotos.value = mapOf(3L to listOf("https://img/8.jpg", "https://img/7.jpg"))
     }
 
     private var opened: Long? = null
@@ -67,14 +72,59 @@ class ListsScreenTest {
         assertEquals(3L, opened)
     }
 
+    // --- Covers (#286) ---
+
+    private fun photosOn(listId: Long) = compose.onAllNodes(
+        hasTestTag("lists.coverPhoto") and hasAnyAncestor(hasTestTag("lists.cover.$listId")),
+        useUnmergedTree = true
+    ).fetchSemanticsNodes().size
+
+    private fun plainTile(listId: Long) = compose.onAllNodes(
+        hasTestTag("lists.coverPlain") and hasAnyAncestor(hasTestTag("lists.cover.$listId")),
+        useUnmergedTree = true
+    ).fetchSemanticsNodes().size
+
+    @Test
+    fun aCoverShowsItsListsPhotos() {
+        repository.coverPhotos.value = mapOf(
+            1L to (1..4).map { "https://img/$it.jpg" },
+            3L to listOf("https://img/8.jpg", "https://img/7.jpg")
+        )
+        show()
+
+        assertEquals(4, photosOn(1))
+        assertEquals(2, photosOn(3))
+        assertEquals(0, plainTile(3))
+    }
+
+    /** Dinner is empty and Favorites has a recipe with no photo: both get the plain tile. */
+    @Test
+    fun aListWithNoPhotoGetsAPlainTile() {
+        show()
+
+        assertEquals(0, photosOn(1))
+        assertEquals(1, plainTile(1))
+        assertEquals(1, plainTile(2))
+    }
+
+    /** Three lists fill a row and a half; "New list" takes the place beside the last. */
+    @Test
+    fun newListIsTheLastTile() {
+        show()
+
+        val last = compose.onNodeWithTag("lists.cover.3").getBoundsInRoot()
+        val tile = compose.onNodeWithText("New list").getBoundsInRoot()
+        assertEquals(last.top, tile.top)
+        assertTrue(tile.left > last.left)
+    }
+
     // --- Creating a list ---
 
-    /** Written "+  New list" in strings.xml; unquoted resources render one space. */
     @Test
     fun newListOpensANameFieldWithCreateDisabledUntilThereIsAName() {
         show()
 
-        compose.onNodeWithText("+ New list").performClick()
+        compose.onNodeWithText("New list").performClick()
 
         compose.onNodeWithText("List name").assertIsDisplayed()
         compose.onNodeWithText("Create").assertIsNotEnabled()
@@ -86,7 +136,7 @@ class ListsScreenTest {
     fun creatingAListAddsItEmptyAndClosesTheField() {
         show()
 
-        compose.onNodeWithText("+ New list").performClick()
+        compose.onNodeWithText("New list").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Soups")
         compose.onNodeWithText("Create").performClick()
 
@@ -95,14 +145,14 @@ class ListsScreenTest {
         assertEquals(listOf("Soups" to null), repository.createCalls)
         compose.onNodeWithText("Soups").assertIsDisplayed()
         compose.onNodeWithText("List name").assertDoesNotExist()
-        compose.onNodeWithText("+ New list").assertIsDisplayed()
+        compose.onNodeWithText("New list").assertIsDisplayed()
     }
 
     @Test
     fun cancelClosesTheFieldWithoutCreating() {
         show()
 
-        compose.onNodeWithText("+ New list").performClick()
+        compose.onNodeWithText("New list").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Soups")
         compose.onNodeWithText("Cancel").performClick()
 

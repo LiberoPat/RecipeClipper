@@ -34,6 +34,10 @@ class DefaultListRepository @Inject constructor(
         listDao.observeRecipesIn(listId).map { rows -> rows.map { it.toDomain() } }
             .orEmptyOnError(log, "observeRecipesIn")
 
+    override fun observeCoverPhotos(): Flow<Map<Long, List<String>>> =
+        listDao.observeCoverPhotos().orEmptyOnError(log, "observeCoverPhotos")
+            .map { rows -> rows.groupBy({ it.listId }, { it.imageUrl }) }
+
     override suspend fun setMembership(recipeId: Long, listId: Long, inList: Boolean) =
         log.guard("setMembership", Unit) {
             if (inList) {
