@@ -102,6 +102,7 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Read the photo / Check the recipe (#198) | Leer la foto / Revisa la receta | Lire la photo / Vérifiez la recette | Foto lesen / Rezept prüfen | Leggi la foto / Controlla la ricetta | Ler a foto / Confira a receita |
 | Scan a recipe / Page 1 of 2 (#226) | Escanear una receta / Página 1 de 2 | Scanner une recette / Page 1 sur 2 | Rezept scannen / Seite 1 von 2 | Scansiona una ricetta / Pagina 1 di 2 | Escanear uma receita / Página 1 de 2 |
 | Check these lines: the photo was hard to read there (#198) | Revisa estas líneas: ahí la foto se leía mal | Vérifiez ces lignes : la photo y était difficile à lire | Prüfe diese Zeilen: Dort war das Foto schwer zu lesen | Controlla queste righe: lì la foto era difficile da leggere | Confira estas linhas: ali a foto estava difícil de ler |
+| In this step / Later (cook mode's ingredients bar, #286) | En este paso / Después | Pour cette étape / Plus tard | In diesem Schritt / Später | In questo passaggio / Più tardi | Neste passo / Depois |
 
 Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and Italian
 (Annulla), as the platforms themselves have it; "Delete" is *Excluir* in Portuguese

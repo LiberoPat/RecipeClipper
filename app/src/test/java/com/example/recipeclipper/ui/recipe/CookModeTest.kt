@@ -3,7 +3,12 @@ package com.example.recipeclipper.ui.recipe
 import android.Manifest
 import android.app.Application
 import android.os.Build
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -11,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -153,6 +159,45 @@ class CookModeTest {
 
         compose.onNodeWithContentDescription("Share recipe").assertDoesNotExist()
         compose.onNodeWithContentDescription("Save to a list").assertDoesNotExist()
+    }
+
+    // --- Ingredients for this step (#286) ---
+
+    private fun openIngredients() = compose.onNodeWithText("Ingredients").performClick()
+
+    /** "Preheat the oven to 350°F." names no line: every line, as written, with no groups. */
+    @Test
+    fun aStepThatNamesNoIngredientListsThemAllAsBefore() {
+        startCooking()
+        openIngredients()
+
+        compose.onNodeWithText("2 cups flour").assertIsDisplayed()
+        compose.onNodeWithText("1 cup milk").assertIsDisplayed()
+        compose.onNodeWithText("IN THIS STEP").assertDoesNotExist()
+        compose.onNodeWithText("LATER").assertDoesNotExist()
+    }
+
+    /** "Stir in the milk." names the milk: it comes first, the flour under "Later". */
+    @Test
+    fun theStepsOwnIngredientsComeFirstAndTheRestLater() {
+        startCooking()
+        compose.onNodeWithText("Stir in the milk.").performClick()
+        openIngredients()
+
+        val labels = listOf("IN THIS STEP", "1 cup milk", "LATER", "2 cups flour").map { text ->
+            compose.onNodeWithText(text).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+        }
+        assertEquals(labels.sorted(), labels)
+        compose.onNodeWithText("IN THIS STEP").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+
+        // A tick in either group is the line's own, and stays when the step moves on.
+        compose.onNodeWithText("2 cups flour").performClick().assertIsOn()
+        compose.onNodeWithText("1 cup milk").assertIsOff()
+        openIngredients()
+        doneNext()
+        openIngredients()
+        compose.onNodeWithText("2 cups flour").assertIsOn()
+        compose.onNodeWithText("IN THIS STEP").assertDoesNotExist()
     }
 
     // --- Timers ---

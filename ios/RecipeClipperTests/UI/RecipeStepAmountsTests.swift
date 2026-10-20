@@ -101,6 +101,87 @@ final class RecipeStepAmountsTests: XCTestCase {
         XCTAssertEqual(vm.uiState.content.success?.instructions, recipe.instructions)
     }
 
+    // MARK: Cook mode's ingredients for this step (#286)
+
+    private var stew: Recipe {
+        var r = recipe
+        r.ingredients = ["2 carrots, grated", "1 cup all-purpose flour", "1 onion, chopped"]
+        r.instructions = ["Stir in the flour and the carrots.", "Add the onion.", "Serve."]
+        return r
+    }
+
+    func testTheCurrentStepsLinesComeFirstWithTheSwitchOffAndTheStepsAsWritten() async {
+        let vm = await viewModel(FakeAppPreferences(), stew)
+        XCTAssertNil(vm.uiState.stepIngredients, "Only in cook mode")
+
+        vm.onCookStart()
+        XCTAssertEqual(vm.uiState.stepIngredients, StepIngredients(now: [0, 1], later: [2]))
+        XCTAssertNil(step(vm), "The steps stay as written")
+
+        vm.onStepDone()
+        XCTAssertEqual(vm.uiState.stepIngredients, StepIngredients(now: [2], later: [0, 1]))
+
+        // A step that names no line: the bar lists every line, as before.
+        vm.onStepSelected(2)
+        XCTAssertNil(vm.uiState.stepIngredients)
+
+        vm.onCookExit()
+        XCTAssertNil(vm.uiState.stepIngredients)
+    }
+
+    func testTheGroupingIsTheSameWithTheSwitchOnAndFollowsTheServingsAndUnits() async {
+        let vm = await viewModel(FakeAppPreferences(amountsInSteps: true), stew)
+        vm.onCookStart()
+        XCTAssertEqual(vm.uiState.stepIngredients, StepIngredients(now: [0, 1], later: [2]))
+        XCTAssertEqual(step(vm), "Stir in ⟦1 cup⟧ flour and ⟦2⟧ carrots.")
+
+        vm.onServingsChange(8)
+        vm.onUnitSystemChange(.metric)
+        XCTAssertEqual(vm.uiState.stepIngredients, StepIngredients(now: [0, 1], later: [2]))
+    }
+
+    func testATickInEitherGroupIsTheLinesOwn() async {
+        let vm = await viewModel(FakeAppPreferences(), stew)
+        vm.onCookStart()
+
+        vm.onIngredientChecked(1, true)
+        vm.onIngredientChecked(2, true)
+        XCTAssertEqual(vm.uiState.checkedIngredients, [1, 2])
+        XCTAssertEqual(vm.uiState.stepIngredients, StepIngredients(now: [0, 1], later: [2]))
+    }
+
+    func testALinksLinesAreInThisStep() async {
+        let vm = await viewModel(FakeAppPreferences(amountsInSteps: true), twoButters)
+        vm.onCookStart()
+        vm.onIngredientLink(0, [0, 1])
+        XCTAssertEqual(vm.uiState.stepIngredients, StepIngredients(now: [0, 1], later: [2]))
+        XCTAssertTrue(vm.uiState.cook.ingredientsExpanded)
+    }
+
+    // Group headings: one moves with its lines only when every line under it is in the step.
+    private let cake = [
+        "For the cake:", "2 cups flour", "1 cup sugar", "2 eggs",
+        "For the frosting:", "100g butter", "200g icing sugar",
+    ]
+
+    func testAHeadingMovesToThisStepOnlyWithAllItsLinesAfterTheStepsOtherLines() {
+        XCTAssertEqual(StepIngredients.group(cake, named: [1, 2]), StepIngredients(now: [1, 2], later: [0, 3, 4, 5, 6]))
+        XCTAssertEqual(StepIngredients.group(cake, named: [5, 6]), StepIngredients(now: [4, 5, 6], later: [0, 1, 2, 3]))
+        XCTAssertEqual(StepIngredients.group(cake, named: [5, 3, 6]), StepIngredients(now: [3, 4, 5, 6], later: [0, 1, 2]))
+        XCTAssertEqual(StepIngredients.group(cake, named: [1, 2, 3, 5, 6]), StepIngredients(now: [0, 1, 2, 3, 4, 5, 6], later: []))
+        // A heading with no lines under it stays where it is.
+        XCTAssertEqual(
+            StepIngredients.group(["For the cake:", "flour", "To decorate:"], named: [1]),
+            StepIngredients(now: [0, 1], later: [2])
+        )
+    }
+
+    func testNoNamedLineOrOnlyAHeadingListsEveryLineAsBefore() {
+        XCTAssertNil(StepIngredients.group(cake, named: []))
+        XCTAssertNil(StepIngredients.group(cake, named: [0, 4]))
+        XCTAssertNil(StepIngredients.group(cake, named: [9]))
+    }
+
     func testTheSettingsSwitchWrites() {
         let preferences = FakeAppPreferences()
         let vm = SettingsViewModel(preferences: preferences, backups: FakeBackupRepository(), files: FakeBackupFiles())

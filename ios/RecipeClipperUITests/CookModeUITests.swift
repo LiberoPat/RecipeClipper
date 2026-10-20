@@ -105,6 +105,40 @@ final class CookModeUITests: RecipeUITestCase {
         requireStep(2)
     }
 
+    // MARK: Ingredients for this step (#286)
+
+    private func openIngredients() {
+        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Ingredients")).firstMatch, "the ingredients bar").tap()
+    }
+
+    /// "Brown the beef in a large pot." names the beef: it comes first, under "In this step", and
+    /// the flour and milk under "Later". A tick in either group is the line's own.
+    func testTheStepsOwnIngredientsComeFirstAndTheRestLater() {
+        startCooking()
+        openIngredients()
+
+        let order = [text("In this step"), app.buttons["1 lb beef"], text("Later"), app.buttons["2 cups flour"], app.buttons["1 cup milk"]]
+        let tops = order.map { require($0).frame.minY }
+        XCTAssertEqual(tops, tops.sorted(), "In this step, the beef, Later, then the rest")
+
+        app.buttons["2 cups flour"].tap()
+        requireState(app.buttons["2 cups flour"], "isSelected == true", "the flour ticked under Later")
+        XCTAssertFalse(app.buttons["1 lb beef"].isSelected)
+    }
+
+    /// "Simmer for 20 minutes." names no line: every line, as before, with no groups.
+    func testAStepThatNamesNoIngredientListsThemAllAsBefore() {
+        startCooking()
+        done()
+        requireStep(2)
+        openIngredients()
+
+        require(app.buttons["2 cups flour"])
+        require(app.buttons["1 lb beef"])
+        assertAbsent(text("In this step"))
+        assertAbsent(text("Later"))
+    }
+
     // MARK: Timers
 
     func testOnlyAStepThatStatesATimeOffersATimer() {

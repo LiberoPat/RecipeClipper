@@ -260,8 +260,11 @@ private fun BarLines(
                     highlighted = jump != null && jump.highlighted && index in jump.lines,
                     washed = washed,
                     inset = LINE_INSET,
-                    // A step's ingredient link (#254) scrolls its first line into view.
-                    modifier = if (index == jump?.lines?.minOrNull()) Modifier.bringIntoViewRequester(firstLine) else Modifier
+                    // Washed rows keep a hairline apart, so each reads as its own line.
+                    modifier = (if (washed) Modifier.padding(vertical = 1.dp) else Modifier).then(
+                        // A step's ingredient link (#254) scrolls its first line into view.
+                        if (index == jump?.lines?.minOrNull()) Modifier.bringIntoViewRequester(firstLine) else Modifier
+                    )
                 )
             }
         }

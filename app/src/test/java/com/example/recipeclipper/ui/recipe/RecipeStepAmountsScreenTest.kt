@@ -66,6 +66,8 @@ class RecipeStepAmountsScreenTest {
 
         tapLink("butter, 2 matching ingredients, show")
         compose.onNodeWithText("100g butter").assertIsDisplayed()
+        // The step names both butters, so they open under "In this step" (#286).
+        compose.onNodeWithText("IN THIS STEP").assertIsDisplayed()
         compose.onNodeWithText("Back to step 1").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("100g butter").assertDoesNotExist()

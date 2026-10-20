@@ -251,6 +251,8 @@ private struct IngredientsBar: View {
                     highlighted: jump?.highlighted == true && jump?.lines.contains(index) == true,
                     washed: washed
                 )
+                // Washed rows keep a hairline apart, so each reads as its own line.
+                .padding(.vertical, washed ? 1 : 0)
                 .id("line-\(index)")
             }
         }
