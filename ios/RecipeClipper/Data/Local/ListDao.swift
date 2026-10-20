@@ -43,9 +43,9 @@ struct ListDao {
     }
 
     /// The most photos a list's cover shows: a 2×2 mosaic.
-    static let coverPhotos = 4
+    static let coverPhotoLimit = 4
 
-    /// The Lists screen's covers (#286): up to `coverPhotos` photos per list, from the recipes
+    /// The Lists screen's covers (#286): up to `coverPhotoLimit` photos per list, from the recipes
     /// in it that have one, most recently added first, grouped by list. A list with no photo
     /// has no rows. A correlated `LIMIT` rather than `ROW_NUMBER()`, as on Android, whose
     /// oldest SQLite has no window functions.
@@ -64,7 +64,7 @@ struct ListDao {
                   LIMIT ?)
             ORDER BY c.listId, c.addedAt DESC, r.id DESC
             """,
-            Int64(Self.coverPhotos), map: ListCoverPhotoRecord.init(row:)
+            Int64(Self.coverPhotoLimit), map: ListCoverPhotoRecord.init(row:)
         )
     }
 

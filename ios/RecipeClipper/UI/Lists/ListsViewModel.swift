@@ -36,7 +36,7 @@ final class ListsViewModel {
         repository.observeCoverPhotos()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] photos in
-                self?.uiState.coverPhotos = photos.mapValues { Array($0.prefix(ListDao.coverPhotos)) }
+                self?.uiState.coverPhotos = photos.mapValues { Array($0.prefix(ListDao.coverPhotoLimit)) }
             }
             .store(in: &cancellables)
     }
