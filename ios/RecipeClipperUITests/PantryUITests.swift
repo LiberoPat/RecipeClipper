@@ -213,7 +213,21 @@ final class PantryUITests: RecipeUITestCase {
                 .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)))
             _ = element.waitForExistence(timeout: 0.6)
         }
+        // Likewise the selection bar, which lies over the top of the list while selecting
+        // (#258): a tap on a row under it lands on the bar (its ✕ ended the selection once the
+        // counts, #286, moved the rows).
+        for _ in 0..<4 where element.exists && element.frame.minY < selectionBarBottom {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)))
+            _ = element.waitForExistence(timeout: 0.6)
+        }
         return require(element, what)
+    }
+
+    /// The bottom of the selection bar, or the top of the screen when not selecting.
+    private var selectionBarBottom: CGFloat {
+        let buttons = [app.buttons["exitSelection"], app.buttons["removeSelected"]].filter(\.exists)
+        return buttons.map(\.frame.maxY).max().map { $0 + 8 } ?? 0
     }
 
     /// Each named row sits under its heading (the nearest one above it), and no gap in the list
