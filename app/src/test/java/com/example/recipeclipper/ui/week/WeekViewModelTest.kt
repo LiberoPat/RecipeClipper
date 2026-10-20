@@ -168,6 +168,74 @@ class WeekViewModelTest {
         assertEquals(thursday + 1, state.weekStart)
     }
 
+    // --- The day strip (#286)
+
+    @Test
+    fun `the strip is the seven days the header names, today and the planned days marked`() = runTest(mainDispatcherRule.dispatcher) {
+        calendar.today = thursday
+        plan.addNote("Soup", thursday + 2, DINNER)
+        plan.addNote("Pie", thursday + 9, LUNCH)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val strip = vm.uiState.value.strip
+        assertEquals((thursday..thursday + 6).toList(), strip.map { it.day })
+        assertEquals(listOf(thursday), strip.filter { it.isToday }.map { it.day })
+        assertEquals(listOf(thursday + 2), strip.filter { it.hasMeals }.map { it.day })
+
+        // › moves it with the header: the next block, without today.
+        vm.onNextWeek()
+        vm.onScrollHandled(vm.uiState.value.scrollTo!!.id, null)
+        val next = vm.uiState.value.strip
+        assertEquals((thursday + 7..thursday + 13).toList(), next.map { it.day })
+        assertTrue(next.none { it.isToday })
+        assertEquals(listOf(thursday + 9), next.filter { it.hasMeals }.map { it.day })
+
+        // So does free scrolling back into this week.
+        vm.onTopDayChanged(thursday + 4)
+        assertEquals(thursday, vm.uiState.value.strip.first().day)
+    }
+
+    @Test
+    fun `a day in the strip scrolls to it and leaves the header and the strip where they are`() = runTest(mainDispatcherRule.dispatcher) {
+        calendar.today = thursday
+        val vm = viewModel()
+        advanceUntilIdle()
+        val strip = vm.uiState.value.strip
+
+        vm.onStripDaySelected(thursday + 5)
+        val target = vm.uiState.value.scrollTo!!
+        assertEquals(thursday + 5, target.day)
+        assertTrue(target.animate)
+        // The days the scroll passes don't move anything, and it lands on the same block.
+        vm.onTopDayChanged(thursday + 2)
+        assertEquals(strip, vm.uiState.value.strip)
+        vm.onScrollHandled(target.id, null)
+        assertEquals(thursday + 5, vm.uiState.value.topDay)
+        assertEquals(thursday, vm.uiState.value.weekStart)
+        assertEquals(strip, vm.uiState.value.strip)
+        assertTrue(vm.uiState.value.isThisWeek)
+
+        // In another block, a tap stays in that block.
+        vm.onNextWeek()
+        vm.onScrollHandled(vm.uiState.value.scrollTo!!.id, null)
+        vm.onStripDaySelected(thursday + 13)
+        assertEquals(thursday + 7, vm.uiState.value.weekStart)
+    }
+
+    @Test
+    fun `nothing planned is said only of a loaded day with no meals`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addNote("Leftovers", today, LUNCH)
+        val vm = viewModel()
+        advanceUntilIdle()
+        val state = vm.uiState.value
+
+        assertFalse(state.isNothingPlanned(today))
+        assertTrue(state.isNothingPlanned(today + 1))
+        // Beyond the window of meals held, nothing is known yet.
+        assertFalse(state.isNothingPlanned(today + 400))
+    }
+
     @Test
     fun `only a window of meals around the top is held, however far the list scrolls`() = runTest(mainDispatcherRule.dispatcher) {
         calendar.today = thursday

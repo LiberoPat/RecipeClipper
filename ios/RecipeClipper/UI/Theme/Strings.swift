@@ -521,6 +521,8 @@ enum Strings {
     static var moveUp: String { String(localized: "action_move_up") }
     static var moveDown: String { String(localized: "action_move_down") }
     static var mealTypeName: String { String(localized: "label_meal_type_name") }
+    // Week: day strip (#286)
+    static var nothingPlanned: String { String(localized: "week_nothing_planned") }
     // Weekly menus (#52)
     static var saveWeekAsMenu: String { String(localized: "action_save_week_as_menu") }
     static var applyMenu: String { String(localized: "action_apply_menu") }

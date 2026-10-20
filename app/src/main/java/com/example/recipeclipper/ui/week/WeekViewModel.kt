@@ -82,6 +82,12 @@ data class MenusUiState(
     val message: MenuMessage? = null
 )
 
+/**
+ * One button of the day strip (#286): [isToday] fills it in paprika, [hasMeals] puts a dot under
+ * it.
+ */
+data class StripDay(val day: Long, val isToday: Boolean, val hasMeals: Boolean)
+
 /** One cell of the month grid: [inMonth] is false for the days that fill the first and last rows. */
 data class MonthDay(val day: Long, val inMonth: Boolean, val mealCount: Int)
 
@@ -151,6 +157,16 @@ data class WeekUiState(
 
     /** Whether the week shown has anything to put in a calendar file or a menu. */
     val hasMeals: Boolean get() = days.any { it.meals.isNotEmpty() }
+
+    /**
+     * The day strip under the header (#286): the seven days of the block the header names, so it
+     * moves with ‹ ›, "Today" and free scrolling alike. A day's dot waits for its meals to load.
+     */
+    val strip: List<StripDay>
+        get() = PlanDays.weekDays(weekStart).map { StripDay(it, isToday = it == today, hasMeals = mealsOn(it).isNotEmpty()) }
+
+    /** "Nothing planned" under [day] (#286): only once its meals have loaded and there are none. */
+    fun isNothingPlanned(day: Long): Boolean = isLoaded(day) && mealsOn(day).isEmpty()
 }
 
 /**
@@ -256,6 +272,13 @@ class WeekViewModel @Inject constructor(
 
     /** ‹ : the first day of the block before the one at the top. */
     fun onPreviousWeek() = stepBlocks(-1)
+
+    /**
+     * A day in the strip (#286): that day to the top, animated, through the month's scroll-to. Its
+     * block is the one the header names, so the header and the strip stay where they are, and the
+     * strip only ever asks for a scroll: following the list is the header's job.
+     */
+    fun onStripDaySelected(day: Long) = jumpTo(day, animate = true)
 
     /** "Today": back to today at the top, which may have changed since the screen opened. */
     fun onToday() {

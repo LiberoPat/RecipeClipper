@@ -281,6 +281,8 @@
     <string name="action_move_up">Subir</string>
     <string name="action_move_down">Bajar</string>
     <string name="label_meal_type_name">Nombre del tipo de comida</string>
+    <!-- Week: day strip (#286) -->
+    <string name="week_nothing_planned">Nada planificado</string>
 
     <!-- Clip it yourself (#37) -->
     <string name="clip_offer">Abre la página, toca Nombre, Ingredientes y Pasos y elige cada uno en la página.</string>

@@ -281,6 +281,8 @@
     <string name="action_move_up">Monter</string>
     <string name="action_move_down">Descendre</string>
     <string name="label_meal_type_name">Nom du type de repas</string>
+    <!-- Week: day strip (#286) -->
+    <string name="week_nothing_planned">Rien de prévu</string>
 
     <!-- Clip it yourself (#37) -->
     <string name="clip_offer">Ouvrez la page, puis touchez Nom, Ingrédients et Étapes et choisissez chacun sur la page.</string>

@@ -143,6 +143,71 @@ final class WeekViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.weekStart, thursday + 1)
     }
 
+    // MARK: The day strip (#286)
+
+    func testTheStripIsTheSevenDaysTheHeaderNamesTodayAndThePlannedDaysMarked() async {
+        calendar.todayValue = thursday
+        await plan.addNote("Soup", day: thursday + 2, mealTypeId: FakeMealPlanRepository.dinner)
+        await plan.addNote("Pie", day: thursday + 9, mealTypeId: FakeMealPlanRepository.lunch)
+        let vm = viewModel()
+        await settleMain()
+
+        let strip = vm.uiState.strip
+        XCTAssertEqual(strip.map(\.day), Array(thursday...(thursday + 6)))
+        XCTAssertEqual(strip.filter(\.isToday).map(\.day), [thursday])
+        XCTAssertEqual(strip.filter(\.hasMeals).map(\.day), [thursday + 2])
+
+        // › moves it with the header: the next block, without today.
+        vm.onNextWeek()
+        vm.onScrollHandled(vm.uiState.scrollTo!.id, topDay: nil)
+        let next = vm.uiState.strip
+        XCTAssertEqual(next.map(\.day), Array((thursday + 7)...(thursday + 13)))
+        XCTAssertFalse(next.contains(where: \.isToday))
+        XCTAssertEqual(next.filter(\.hasMeals).map(\.day), [thursday + 9])
+
+        // So does free scrolling back into this week.
+        vm.onTopDayChanged(thursday + 4)
+        XCTAssertEqual(vm.uiState.strip.first?.day, thursday)
+    }
+
+    func testADayInTheStripScrollsToItAndLeavesTheHeaderAndTheStripWhereTheyAre() async {
+        calendar.todayValue = thursday
+        let vm = viewModel()
+        await settleMain()
+        let strip = vm.uiState.strip
+
+        vm.onStripDaySelected(thursday + 5)
+        let target = vm.uiState.scrollTo!
+        XCTAssertEqual(target.day, thursday + 5)
+        XCTAssertTrue(target.animate)
+        // The days the scroll passes don't move anything, and it lands on the same block.
+        vm.onTopDayChanged(thursday + 2)
+        XCTAssertEqual(vm.uiState.strip, strip)
+        vm.onScrollHandled(target.id, topDay: nil)
+        XCTAssertEqual(vm.uiState.topDay, thursday + 5)
+        XCTAssertEqual(vm.uiState.weekStart, thursday)
+        XCTAssertEqual(vm.uiState.strip, strip)
+        XCTAssertTrue(vm.uiState.isThisWeek)
+
+        // In another block, a tap stays in that block.
+        vm.onNextWeek()
+        vm.onScrollHandled(vm.uiState.scrollTo!.id, topDay: nil)
+        vm.onStripDaySelected(thursday + 13)
+        XCTAssertEqual(vm.uiState.weekStart, thursday + 7)
+    }
+
+    func testNothingPlannedIsSaidOnlyOfALoadedDayWithNoMeals() async {
+        await plan.addNote("Leftovers", day: today, mealTypeId: FakeMealPlanRepository.lunch)
+        let vm = viewModel()
+        await settleMain()
+        let state = vm.uiState
+
+        XCTAssertFalse(state.isNothingPlanned(today))
+        XCTAssertTrue(state.isNothingPlanned(today + 1))
+        // Beyond the window of meals held, nothing is known yet.
+        XCTAssertFalse(state.isNothingPlanned(today + 400))
+    }
+
     func testOnlyAWindowOfMealsAroundTheTopIsHeldHoweverFarTheListScrolls() async {
         calendar.todayValue = thursday
         await plan.addNote("Today", day: thursday, mealTypeId: FakeMealPlanRepository.dinner)

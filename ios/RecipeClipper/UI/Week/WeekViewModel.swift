@@ -46,6 +46,15 @@ struct ScrollTarget: Equatable {
     let id: Int
 }
 
+/// One button of the day strip (#286): `isToday` fills it in paprika, `hasMeals` puts a dot under
+/// it.
+struct StripDay: Equatable, Identifiable {
+    let day: Int64
+    let isToday: Bool
+    let hasMeals: Bool
+    var id: Int64 { day }
+}
+
 /// One cell of the month grid: `inMonth` is false for the days that fill the first and last rows.
 struct MonthDay: Equatable, Identifiable {
     let day: Int64
@@ -133,6 +142,15 @@ struct WeekUiState: Equatable {
 
     /// Whether the week shown has anything to put in a calendar file or a menu.
     var hasMeals: Bool { days.contains { !$0.meals.isEmpty } }
+
+    /// The day strip under the header (#286): the seven days of the block the header names, so it
+    /// moves with ‹ ›, "Today" and free scrolling alike. A day's dot waits for its meals to load.
+    var strip: [StripDay] {
+        PlanDays.weekDays(weekStart).map { StripDay(day: $0, isToday: $0 == today, hasMeals: !mealsOn($0).isEmpty) }
+    }
+
+    /// "Nothing planned" under `day` (#286): only once its meals have loaded and there are none.
+    func isNothingPlanned(_ day: Int64) -> Bool { isLoaded(day) && mealsOn(day).isEmpty }
 }
 
 /// The Week tab (#49; Android's WeekViewModel): one scroll of days, opening on today; ‹ › snap
@@ -207,6 +225,11 @@ final class WeekViewModel {
 
     /// ‹ : the first day of the block before the one at the top.
     func onPreviousWeek() { stepBlocks(-1) }
+
+    /// A day in the strip (#286): that day to the top, animated, through the month's scroll-to. Its
+    /// block is the one the header names, so the header and the strip stay where they are, and the
+    /// strip only ever asks for a scroll: following the list is the header's job.
+    func onStripDaySelected(_ day: Int64) { jumpTo(day, animate: true) }
 
     /// "Today": back to today at the top, which may have changed since the screen opened.
     func onToday() {

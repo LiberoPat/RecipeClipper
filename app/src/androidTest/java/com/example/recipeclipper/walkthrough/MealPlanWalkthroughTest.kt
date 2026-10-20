@@ -60,6 +60,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
         tapDescription("Next week")
         tapDescription("Next week")
         tapTag("todayButton", 2000)
+        tapTag("stripDay-${today + 3}", 2000) // the day strip scrolls to the day tapped (#286)
         tapTag("toggleMonth")
         pause(1000)
         tapTag("monthDay-${today + 6}")

@@ -24,6 +24,7 @@ import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.dayTitle
+import com.example.recipeclipper.ui.plan.fullDayTitle
 import com.example.recipeclipper.ui.plan.monthTitle
 import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.DINNER
@@ -186,6 +187,35 @@ class WeekScreenTest {
         compose.onNodeWithTag("addToDay-$today").assertDoesNotExist()
         compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today + 7))
         compose.onNodeWithTag("toggleMonth").assertTextEquals("Month")
+    }
+
+    @Test
+    fun theDayStripMarksPlannedDaysAndATapScrollsToThatDay() {
+        plan.titles[7] = "Chicken Adobo"
+        val monday = today + 5
+        runBlocking { plan.addRecipe(7, monday, DINNER, servings = null) }
+        show()
+
+        // The seven days the header names (#286), read aloud as full dates.
+        compose.onNodeWithTag("stripDay-$today").assertContentDescriptionEquals(fullDayTitle(today))
+        compose.onNodeWithTag("stripDay-$monday")
+            .assertContentDescriptionEquals("${fullDayTitle(monday)}, meals planned")
+        compose.onNodeWithTag("stripDay-${today + 7}").assertDoesNotExist()
+        // An empty day says so, above its "+ Add".
+        compose.onNodeWithTag("nothingPlanned-$today").assertTextEquals("Nothing planned")
+
+        compose.onNodeWithTag("stripDay-$monday").performClick()
+        // That day at the top; the header and the strip stay on this week.
+        compose.onNodeWithText("Chicken Adobo").assertIsDisplayed()
+        compose.onNodeWithTag("addToDay-$today").assertDoesNotExist()
+        compose.onNodeWithTag("nothingPlanned-$monday").assertDoesNotExist()
+        compose.onNodeWithTag("weekRange").assertTextEquals(weekRange(today))
+        compose.onNodeWithTag("stripDay-$today").assertIsDisplayed()
+
+        // › moves the strip with the header.
+        compose.onNodeWithContentDescription("Next week").performClick()
+        compose.onNodeWithTag("stripDay-${today + 7}").assertIsDisplayed()
+        compose.onNodeWithTag("stripDay-$today").assertDoesNotExist()
     }
 
     @Test

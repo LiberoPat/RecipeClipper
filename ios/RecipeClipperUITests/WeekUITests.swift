@@ -130,6 +130,27 @@ final class WeekUITests: RecipeUITestCase {
         XCTAssertTrue(app.buttons["addToDay-\(today)"].isHittable)
     }
 
+    /// The day strip (#286): the seven days the header names, a planned day read aloud as such,
+    /// and a tap brings that day to the top without moving the header. An empty day says so.
+    func testTheDayStripMarksAPlannedDayAndScrollsToTheDayTapped() {
+        openWeek()
+        let range = app.staticTexts["weekRange"]
+        let thisWeek = range.label
+        require(app.staticTexts["nothingPlanned-\(today)"], "Nothing planned, on an empty today")
+        let todayButton = require(app.buttons["stripDay-\(today)"], "today in the strip")
+        XCTAssertFalse(todayButton.label.contains("meals planned"))
+        XCTAssertFalse(app.buttons["stripDay-\(today + 7)"].exists)
+
+        planToday("Miso Soup")
+        requireGone(app.staticTexts["nothingPlanned-\(today)"], "Nothing planned, once today has a meal")
+        XCTAssertTrue(app.buttons["stripDay-\(today)"].label.contains("meals planned"))
+
+        app.buttons["stripDay-\(today + 6)"].tap()
+        XCTAssertTrue(require(app.buttons["addToDay-\(today + 6)"], "the day tapped").isHittable)
+        XCTAssertEqual(range.label, thisWeek)
+        XCTAssertFalse(app.buttons["todayButton"].exists)
+    }
+
     /// The month view (#52): Week ↔ Month, and a tapped day opens its week. The grid's first
     /// row draws (#185: it shared its ids with the weekday headings); the 1st is always in it.
     func testTheMonthViewOpensTheWeekOfATappedDay() {

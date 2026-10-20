@@ -269,6 +269,8 @@
     <string name="action_move_up">Nach oben</string>
     <string name="action_move_down">Nach unten</string>
     <string name="label_meal_type_name">Name der Mahlzeit</string>
+    <!-- Week: day strip (#286) -->
+    <string name="week_nothing_planned">Nichts geplant</string>
 
     <!-- Clip it yourself (#37) -->
     <string name="clip_offer">Öffne die Seite, tippe auf Name, Zutaten und Schritte und wähle jedes auf der Seite aus.</string>
