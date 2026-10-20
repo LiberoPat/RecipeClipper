@@ -81,7 +81,10 @@ sealed class ClipHint {
     /** [field] is armed and [lines] are selected: one tap adds them. */
     data class Confirm(val field: ClipField, val lines: Int) : ClipHint()
 
-    /** Text selected with no field armed (a long press): tap the field it goes in. */
+    /**
+     * Text selected with no field armed (a long press, or lines ticked in the Text view): tap the
+     * field it goes in.
+     */
     data class Selected(val lines: Int) : ClipHint()
 
     /** What was just [added], if anything, and the field to fill [next] (null: all there). */
@@ -89,8 +92,8 @@ sealed class ClipHint {
 }
 
 /**
- * [selection] is the page's current selection split the way it would be assigned (one item a
- * line). [newMarkId] is the mark the page should take from its current selection: the id the
+ * [selection] is the page's current selection (or the Text view's ticked lines) split the way
+ * it would be assigned (one item a line). [newMarkId] is the mark the page should take from its current selection: the id the
  * last assignment recorded. [savedRecipeId] is set once Save lands, so the screen can open it.
  *
  * Field first (#237): [armed] is the field the cook tapped, which the page's taps select for;
@@ -136,8 +139,26 @@ data class ClipUiState(
     /** The post as plain text, read from the page the last time the Text view opened. */
     val pageText: RedditPageText? = null,
     /** The Text view is showing, over the page, which stays loaded under it. */
-    val showingText: Boolean = false
+    val showingText: Boolean = false,
+    /** The Text view's rows (#286: a line a row, with a checkbox), from [pageText]. */
+    val textRows: List<ClipTextRow> = emptyList(),
+    /** The Text view's ticked lines, by [ClipTextRow.Line.index]: its selection (#286). */
+    val ticked: Set<Int> = emptySet(),
+    /** Each add made in the Text view, by its mark's id: the lines it took, for its tag (#286). */
+    val textMarkLines: Map<String, List<Int>> = emptyMap()
 ) {
+    /**
+     * The Text view's lines that an add the draft still holds took, each with that add (the
+     * later one, where two took a line); its first line carries its tag, as on the page.
+     */
+    val textMarks: Map<Int, ClipTextMark>
+        get() = buildMap {
+            textMarkLines.forEach { (id, lines) ->
+                val mark = draft.mark(id) ?: return@forEach
+                lines.forEachIndexed { i, line -> put(line, ClipTextMark(mark, first = i == 0)) }
+            }
+        }
+
     /** Photo is armed: the page's next tap picks the photo. */
     val pickingPhoto: Boolean get() = armed == ClipField.PHOTO
 
@@ -245,7 +266,15 @@ class ClipViewModel @Inject constructor(
 
     // --- Events from the page ---
 
+    /**
+     * The page's selection. Not while the Text view shows, which lies over the page: its ticks
+     * are the selection then, and the page only reports dropping its own.
+     */
     fun onSelectionChanged(text: String) {
+        if (!_uiState.value.showingText) select(text)
+    }
+
+    private fun select(text: String) {
         // Selecting new text (a long press) moves on from the photo: the other fields never wait on it.
         val selectedAnew = text != selectionText
         selectionText = text
@@ -395,11 +424,41 @@ class ClipViewModel @Inject constructor(
         _uiState.update {
             if (text.isEmpty) {
                 it.copy(readingText = false, notice = notice(ClipMessage.TextUnreadable))
+            } else if (text == it.pageText) {
+                // The same text keeps its rows, and the marks its adds left on them.
+                it.copy(readingText = false, showingText = true)
             } else {
-                // The same text keeps the same value, so the view doesn't reload it (and its marks).
-                it.copy(readingText = false, showingText = true, pageText = if (text == it.pageText) it.pageText else text)
+                // New text (more comments loaded) is new rows: the old adds' lines can't be found
+                // on them, as the page loses its marks on a reload.
+                it.copy(
+                    readingText = false, showingText = true, pageText = text,
+                    textRows = ClipTextRow.of(text), ticked = emptySet(), textMarkLines = emptyMap()
+                )
             }
         }
+    }
+
+    /**
+     * A line of the Text view tapped (#286): its checkbox flips. With lines already ticked and
+     * Name not armed, a tap on a line past them ticks the whole run up to it (tap the first line,
+     * then the last), as a second tap stretched a selection on the page (#237). The ticked lines,
+     * in order, are the selection, and go in as the page's would: armed, the confirm adds them;
+     * with nothing armed, a field's button does.
+     */
+    fun onTextLine(index: Int) {
+        val state = _uiState.value
+        val lines = state.textRows.filterIsInstance<ClipTextRow.Line>()
+        if (!state.showingText || index !in lines.indices) return
+        val ticked = state.ticked
+        val next = when {
+            index in ticked -> ticked - index
+            ticked.isEmpty() || state.armed == ClipField.NAME -> ticked + index
+            index > ticked.max() -> ticked + (ticked.max() + 1..index)
+            index < ticked.min() -> ticked + (index until ticked.min())
+            else -> ticked + index
+        }
+        _uiState.update { it.copy(ticked = next) }
+        select(next.sorted().joinToString("\n") { lines[it].text })
     }
 
     /** Back to the page from the Text view: the draft and the armed field carry over. */
@@ -410,7 +469,9 @@ class ClipViewModel @Inject constructor(
 
     private fun clearSelection() {
         selectionText = ""
-        _uiState.update { it.copy(selection = emptyList(), newMarkId = null, clearSelection = it.clearSelection + 1) }
+        _uiState.update {
+            it.copy(selection = emptyList(), ticked = emptySet(), newMarkId = null, clearSelection = it.clearSelection + 1)
+        }
     }
 
     /**
@@ -565,7 +626,14 @@ class ClipViewModel @Inject constructor(
         push(draft, field)
         selectionText = ""
         _uiState.update {
-            it.copy(selection = emptyList(), lastAdded = ClipAdded(field, assigned.mark(markId)?.lines?.size ?: 1))
+            it.copy(
+                selection = emptyList(),
+                lastAdded = ClipAdded(field, assigned.mark(markId)?.lines?.size ?: 1),
+                // Lines ticked in the Text view keep the add's mark there (#286), as the page's
+                // blocks keep theirs; the ticks themselves go.
+                textMarkLines = if (it.ticked.isEmpty()) it.textMarkLines else it.textMarkLines + (markId to it.ticked.sorted()),
+                ticked = emptySet()
+            )
         }
         setDraft(assigned, newMarkId = if (field == ClipField.PHOTO) null else markId)
         return true

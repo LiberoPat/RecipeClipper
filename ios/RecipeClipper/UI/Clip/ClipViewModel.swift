@@ -49,14 +49,15 @@ enum ClipHint: Equatable {
     case step(ClipField, number: Int, added: ClipAdded?)
     /// The field is armed and `lines` are selected: one tap adds them.
     case confirm(ClipField, lines: Int)
-    /// Text selected with no field armed (a long press): tap the field it goes in.
+    /// Text selected with no field armed (a long press, or lines ticked in the Text view): tap
+    /// the field it goes in.
     case selected(lines: Int)
     /// What was just `added`, if anything, and the field to fill `next` (nil: all there).
     case next(added: ClipAdded?, next: ClipField?)
 }
 
-/// Android's ClipUiState. `selection` is the page's current selection split the way it would be
-/// assigned. `newMarkId` is the mark the page should take from its current selection.
+/// Android's ClipUiState. `selection` is the page's current selection (or the Text view's ticked
+/// lines) split the way it would be assigned. `newMarkId` is the mark the page should take from its current selection.
 /// `savedRecipeId` is set once Save lands, so the view can open it. Field first (#237): `armed` is
 /// the field the cook tapped, which the page's taps select for; `lastAdded` is the add just made;
 /// `clearSelection` counts the times the page's selection was dropped, so the page clears its own
@@ -97,6 +98,23 @@ struct ClipUiState: Equatable {
     var pageText: RedditPageText? = nil
     /// The Text view is showing, over the page, which stays loaded under it.
     var showingText = false
+    /// The Text view's rows (#286: a line a row, with a checkbox), from `pageText`.
+    var textRows: [ClipTextRow] = []
+    /// The Text view's ticked lines, by their `index`: its selection (#286).
+    var ticked: Set<Int> = []
+    /// Each add made in the Text view, in order: the lines it took, for its tag (#286).
+    var textMarkLines: [ClipTextAdd] = []
+
+    /// The Text view's lines that an add the draft still holds took, each with that add (the
+    /// later one, where two took a line); its first line carries its tag, as on the page.
+    var textMarks: [Int: ClipTextMark] {
+        var marks: [Int: ClipTextMark] = [:]
+        for add in textMarkLines {
+            guard let mark = draft.mark(add.markId) else { continue }
+            for (i, line) in add.lines.enumerated() { marks[line] = ClipTextMark(mark: mark, first: i == 0) }
+        }
+        return marks
+    }
 
     /// Photo is armed: the page's next tap picks the photo.
     var pickingPhoto: Bool { armed == .photo }
@@ -194,7 +212,13 @@ final class ClipViewModel {
 
     // MARK: Events from the page
 
+    /// The page's selection. Not while the Text view shows, which lies over the page: its ticks
+    /// are the selection then, and the page only reports dropping its own.
     func onSelectionChanged(_ text: String) {
+        if !uiState.showingText { select(text) }
+    }
+
+    private func select(_ text: String) {
         // Selecting new text (a long press) moves on from the photo: the other fields never wait on it.
         let selectedAnew = text != selectionText
         selectionText = text
@@ -346,10 +370,44 @@ final class ClipViewModel {
             state.notice = notice(.textUnreadable)
         } else {
             state.showingText = true
-            // The same text leaves the view's page (and its marks) as they are.
-            if text != state.pageText { state.pageText = text }
+            // The same text keeps its rows, and the marks its adds left on them. New text (more
+            // comments loaded) is new rows: the old adds' lines can't be found on them, as the
+            // page loses its marks on a reload.
+            if text != state.pageText {
+                state.pageText = text
+                state.textRows = ClipTextRow.of(text)
+                state.ticked = []
+                state.textMarkLines = []
+            }
         }
         uiState = state
+    }
+
+    /// A line of the Text view tapped (#286): its checkbox flips. With lines already ticked and
+    /// Name not armed, a tap on a line past them ticks the whole run up to it (tap the first line,
+    /// then the last), as a second tap stretched a selection on the page (#237). The ticked lines,
+    /// in order, are the selection, and go in as the page's would: armed, the confirm adds them;
+    /// with nothing armed, a field's button does.
+    func onTextLine(_ index: Int) {
+        let state = uiState
+        let lines = state.textRows.compactMap(\.lineText)
+        guard state.showingText, lines.indices.contains(index) else { return }
+        var ticked = state.ticked
+        if ticked.contains(index) {
+            ticked.remove(index)
+        } else if let low = ticked.min(), let high = ticked.max(), state.armed != .name {
+            if index > high {
+                ticked.formUnion(high + 1...index)
+            } else if index < low {
+                ticked.formUnion(index..<low)
+            } else {
+                ticked.insert(index)
+            }
+        } else {
+            ticked.insert(index)
+        }
+        uiState.ticked = ticked
+        select(ticked.sorted().map { lines[$0] }.joined(separator: "\n"))
     }
 
     /// Back to the page from the Text view: the draft and the armed field carry over.
@@ -363,6 +421,7 @@ final class ClipViewModel {
         selectionText = ""
         var state = uiState
         state.selection = []
+        state.ticked = []
         state.newMarkId = nil
         state.clearSelection += 1
         uiState = state
@@ -518,6 +577,12 @@ final class ClipViewModel {
         var state = uiState
         state.selection = []
         state.lastAdded = ClipAdded(field: field, count: assigned.mark(markId)?.lines.count ?? 1)
+        // Lines ticked in the Text view keep the add's mark there (#286), as the page's blocks
+        // keep theirs; the ticks themselves go.
+        if !state.ticked.isEmpty {
+            state.textMarkLines.append(ClipTextAdd(markId: markId, lines: state.ticked.sorted()))
+        }
+        state.ticked = []
         uiState = state
         setDraft(assigned, newMarkId: field == .photo ? nil : markId)
         return true

@@ -762,15 +762,46 @@ class ClipViewModelTest {
         assertEquals(listOf("Use 4 apples."), state.pageText?.comments?.single()?.lines)
     }
 
-    @Test fun `text selected in the text view is assigned and saved like the page's`() = runTest(mainDispatcherRule.dispatcher) {
+    // The Text view, line by line (#286): the post's rows, the title first, labels without a box.
+    @Test fun `the text view is the post's lines as rows`() {
+        val vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        assertEquals(
+            listOf(
+                ClipTextRow.Line(0, "Apple Pie", title = true),
+                ClipTextRow.Line(1, "3 apples"),
+                ClipTextRow.Line(2, "1 crust"),
+                ClipTextRow.Line(3, "Bake."),
+                ClipTextRow.Comments,
+                ClipTextRow.Author(0, "baker", 0),
+                ClipTextRow.Line(4, "Use 4 apples.", depth = 0)
+            ),
+            vm.uiState.value.textRows
+        )
+        // Keys are unique across the list (a LazyColumn's).
+        val keys = vm.uiState.value.textRows.map { it.key }
+        assertEquals(keys.size, keys.toSet().size)
+    }
+
+    @Test fun `lines ticked in the text view are assigned and saved like the page's`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = redditViewModel()
         vm.onShowText()
         vm.onPageText(postHtml)
 
-        vm.select("Apple Pie", ClipField.NAME)
-        assertEquals("m1", vm.uiState.value.newMarkId)
-        vm.select("3 apples\n1 crust", ClipField.INGREDIENTS)
-        vm.select("Bake.", ClipField.STEPS)
+        // Guided: step 1 is armed, a tick, then the step's confirm.
+        vm.onTextLine(0)
+        assertEquals(setOf(0), vm.uiState.value.ticked)
+        assertEquals(ClipHint.Confirm(ClipField.NAME, 1), vm.hint)
+        vm.onConfirm()
+        assertEquals(emptySet<Int>(), vm.uiState.value.ticked)
+        assertEquals(ClipField.INGREDIENTS, vm.uiState.value.armed)
+        vm.onTextLine(1)
+        vm.onTextLine(2)
+        assertEquals(ClipHint.Confirm(ClipField.INGREDIENTS, 2), vm.hint)
+        vm.onConfirm()
+        vm.onTextLine(3)
+        vm.onConfirm()
         vm.onReview()
         vm.onSave()
         advanceUntilIdle()
@@ -782,21 +813,110 @@ class ClipViewModelTest {
         assertEquals(post, saved.sourceUrl)
     }
 
+    @Test fun `a tap past the ticked lines ticks the run, and a ticked line unticks`() {
+        val vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onFieldButton(ClipField.INGREDIENTS)
+
+        vm.onTextLine(1)
+        vm.onTextLine(4)
+        assertEquals(setOf(1, 2, 3, 4), vm.uiState.value.ticked)
+        assertEquals(listOf("3 apples", "1 crust", "Bake.", "Use 4 apples."), vm.uiState.value.selection)
+        vm.onTextLine(3)
+        assertEquals(setOf(1, 2, 4), vm.uiState.value.ticked)
+        // A tap in a gap ticks that line only; one before the run stretches it back.
+        vm.onTextLine(3)
+        assertEquals(setOf(1, 2, 3, 4), vm.uiState.value.ticked)
+        vm.onTextLine(0)
+        assertEquals(setOf(0, 1, 2, 3, 4), vm.uiState.value.ticked)
+
+        // A name is a line or two, never a run: each tap ticks its own line.
+        vm.onClearSelection()
+        vm.onFieldButton(ClipField.NAME)
+        vm.onTextLine(0)
+        vm.onTextLine(2)
+        assertEquals(setOf(0, 2), vm.uiState.value.ticked)
+        assertEquals(listOf("Apple Pie", "1 crust"), vm.uiState.value.selection)
+    }
+
+    @Test fun `lines ticked first go in with one tap on a field's button`() {
+        val vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onFieldButton(ClipField.NAME) // disarms step 1
+        vm.onTextLine(1)
+        vm.onTextLine(2)
+        assertEquals(ClipHint.Selected(2), vm.hint)
+
+        vm.onFieldButton(ClipField.INGREDIENTS)
+        assertEquals(listOf("3 apples", "1 crust"), vm.draft.ingredients)
+        assertEquals(emptySet<Int>(), vm.uiState.value.ticked)
+        assertEquals(ClipField.STEPS, vm.uiState.value.armed)
+    }
+
+    @Test fun `an add keeps its lines marked and its first line tagged, until it is taken back`() {
+        val vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onFieldButton(ClipField.INGREDIENTS)
+        vm.onTextLine(1)
+        vm.onTextLine(2)
+        vm.onConfirm()
+        val mark = vm.draft.marks.single()
+        assertEquals(mapOf(1 to ClipTextMark(mark, first = true), 2 to ClipTextMark(mark, first = false)), vm.uiState.value.textMarks)
+
+        // The tag takes the add back, and Undo brings it back, marks and all.
+        vm.onTagTapped(mark.id)
+        assertEquals(emptyList<String>(), vm.draft.ingredients)
+        assertEquals(emptyMap<Int, ClipTextMark>(), vm.uiState.value.textMarks)
+        vm.onUndo()
+        assertEquals(setOf(1, 2), vm.uiState.value.textMarks.keys)
+    }
+
+    @Test fun `ticks go with Clear and the other view, and the page's selection isn't heard over them`() {
+        val vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onTextLine(0)
+        // The page under the Text view only reports dropping its own selection.
+        vm.onSelectionChanged("")
+        assertEquals(listOf("Apple Pie"), vm.uiState.value.selection)
+        vm.onClearSelection()
+        assertEquals(emptySet<Int>(), vm.uiState.value.ticked)
+        assertEquals(emptyList<String>(), vm.uiState.value.selection)
+
+        vm.onTextLine(0)
+        vm.onShowPage()
+        assertEquals(emptySet<Int>(), vm.uiState.value.ticked)
+        vm.onTextLine(1) // the Text view isn't showing
+        assertEquals(emptySet<Int>(), vm.uiState.value.ticked)
+    }
+
     @Test fun `back to the page keeps the text and the draft`() {
         val vm = redditViewModel()
         vm.onShowText()
         vm.onPageText(postHtml)
-        vm.select("Apple Pie", ClipField.NAME)
+        vm.onTextLine(0)
+        vm.onConfirm()
         vm.onShowPage()
         assertFalse(vm.uiState.value.showingText)
         assertEquals("Apple Pie", vm.uiState.value.pageText?.title)
         assertEquals("Apple Pie", vm.draft.name)
 
-        // Reading the same text again keeps the same value, so the view keeps its marks.
-        val before = vm.uiState.value.pageText
+        // Reading the same text again keeps its rows and the name's mark on them.
+        val before = vm.uiState.value.textRows
         vm.onShowText()
         vm.onPageText(postHtml)
-        assertTrue(before === vm.uiState.value.pageText)
+        assertTrue(before === vm.uiState.value.textRows)
+        assertEquals(setOf(0), vm.uiState.value.textMarks.keys)
+
+        // New text (more comments loaded) is new rows: the old marks can't be found on them.
+        vm.onShowPage()
+        vm.onShowText()
+        vm.onPageText(postHtml.replace("Use 4 apples.", "Use 5 apples."))
+        assertEquals(emptyMap<Int, ClipTextMark>(), vm.uiState.value.textMarks)
+        assertEquals("Use 5 apples.", (vm.uiState.value.textRows.last() as ClipTextRow.Line).text)
     }
 
     // The owner (#237): "when toggling a reddit page from text back to page, page doesnt work".
@@ -811,7 +931,8 @@ class ClipViewModelTest {
         vm.onPageText(postHtml)
         assertEquals(ClipField.INGREDIENTS, vm.uiState.value.armed)
         assertEquals(cleared + 1, vm.uiState.value.clearSelection)
-        vm.onSelectionChanged("3 apples\n1 crust")
+        vm.onTextLine(1)
+        vm.onTextLine(2)
         vm.onConfirm()
         // The next step (Steps) armed in the Text view, and carries back to the page.
         assertEquals(ClipField.STEPS, vm.uiState.value.armed)
