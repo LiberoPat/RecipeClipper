@@ -74,7 +74,11 @@ internal fun ListCoverTile(list: RecipeList, photos: List<String>, onClick: () -
 private fun CoverMosaic(photos: List<String>, modifier: Modifier) {
     val gap = Arrangement.spacedBy(MosaicGap)
     // The gaps show the screen's ground; each photo carries its own placeholder fill.
-    val plain = if (photos.isEmpty()) Modifier.background(MaterialTheme.colorScheme.outlineVariant) else Modifier
+    val plain = if (photos.isEmpty()) {
+        Modifier.background(MaterialTheme.colorScheme.outlineVariant)
+    } else {
+        Modifier
+    }
     Box(modifier.clip(CoverShape).then(plain)) {
         when (photos.size) {
             0 -> Icon(
