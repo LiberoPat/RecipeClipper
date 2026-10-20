@@ -417,6 +417,11 @@
     <string name="snackbar_checked_cleared">Checked items removed</string>
     <string name="snackbar_done_shopping">Pantry updated, checked items removed</string>
     <string name="action_done_shopping">Done shopping</string>
+    <!-- The Done shopping bar (#286), with the number of rows ticked. -->
+    <plurals name="done_shopping_ticked">
+        <item quantity="one">Done shopping · %1$d ticked</item>
+        <item quantity="other">Done shopping · %1$d ticked</item>
+    </plurals>
     <string name="put_away_intro">Tick what goes in the pantry. Everything checked comes off the list.</string>
     <string name="action_put_away">Put away and clear</string>
     <!-- Using up the pantry when cook mode is finished (#147). -->

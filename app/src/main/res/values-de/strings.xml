@@ -366,6 +366,11 @@
     <string name="snackbar_checked_cleared">Abgehakte Artikel entfernt</string>
     <string name="snackbar_done_shopping">Vorrat aktualisiert, abgehakte Artikel entfernt</string>
     <string name="action_done_shopping">Einkauf erledigt</string>
+    <!-- The Done shopping bar (#286), with the number of rows ticked. -->
+    <plurals name="done_shopping_ticked">
+        <item quantity="one">Einkauf erledigt · %1$d abgehakt</item>
+        <item quantity="other">Einkauf erledigt · %1$d abgehakt</item>
+    </plurals>
     <string name="put_away_intro">Hake ab, was in den Vorrat kommt. Alles Abgehakte verschwindet von der Liste.</string>
     <string name="action_put_away">Einräumen und entfernen</string>
     <!-- Using up the pantry when cook mode is finished (#147). -->

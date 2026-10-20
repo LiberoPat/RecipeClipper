@@ -383,6 +383,12 @@
     <string name="snackbar_checked_cleared">Articles cochés retirés</string>
     <string name="snackbar_done_shopping">Garde-manger mis à jour, articles cochés retirés</string>
     <string name="action_done_shopping">Courses terminées</string>
+    <!-- The Done shopping bar (#286), with the number of rows ticked. -->
+    <plurals name="done_shopping_ticked">
+        <item quantity="one">Courses terminées · %1$d coché</item>
+        <item quantity="many">Courses terminées · %1$d cochés</item>
+        <item quantity="other">Courses terminées · %1$d cochés</item>
+    </plurals>
     <string name="put_away_intro">Cochez ce qui va au garde-manger. Tous les articles cochés quittent la liste.</string>
     <string name="action_put_away">Ranger et retirer</string>
     <!-- Using up the pantry when cook mode is finished (#147). -->

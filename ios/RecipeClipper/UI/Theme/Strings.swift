@@ -583,6 +583,8 @@ enum Strings {
     // "Done shopping" (#146)
     static var doneShoppingCleared: String { String(localized: "snackbar_done_shopping") }
     static var doneShopping: String { String(localized: "action_done_shopping") }
+    // The Done shopping bar (#286), with the number of rows ticked.
+    static func doneShoppingTicked(_ n: Int) -> String { String(localized: "done_shopping_ticked \(n)") }
     static var putAwayIntro: String { String(localized: "put_away_intro") }
     static var putAway: String { String(localized: "action_put_away") }
     // Clearing from the Groceries menu, without "Done shopping" (#219)

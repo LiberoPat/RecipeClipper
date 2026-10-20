@@ -34,6 +34,8 @@ struct PutAwaySheet: Equatable {
 /// is the row whose aisle is being chosen. `putAway` is the open "Done shopping" sheet.
 /// `recipeTitles` names the recipes items came from, for "Send list" (#149). `confirmClearAll` is
 /// the number of rows "Clear the whole list" asks about (#219), while its dialog is open.
+/// `recipeLines` is the line under each row naming the recipes it came from (#286), by the row's
+/// id; a row only typed in has none.
 struct GroceriesUiState: Equatable {
     var sections: [GroceryCombiner.Section]?
     var draft = ""
@@ -42,8 +44,13 @@ struct GroceriesUiState: Equatable {
     var putAway: PutAwaySheet?
     var recipeTitles: [Int64: String] = [:]
     var confirmClearAll: Int?
+    var recipeLines: [Int64: String] = [:]
 
     var hasChecked: Bool { (sections ?? []).contains { $0.rows.contains { $0.items.contains(where: \.checked) } } }
+    /// The rows ticked, for the "Done shopping" bar (#286): a combined row is one thing in the basket.
+    var ticked: Int {
+        (sections ?? []).reduce(0) { sum, section in sum + section.rows.filter { $0.items.contains(where: \.checked) }.count }
+    }
     var isEmpty: Bool { sections?.isEmpty == true }
     /// Anything on the list: what "Clear the whole list" needs (#219).
     var hasItems: Bool { !(sections ?? []).isEmpty }
@@ -99,7 +106,11 @@ final class GroceriesViewModel {
             .sink { [weak self] in self?.pantryItems = $0 }
         titlesSubscription = repository.observeRecipeTitles()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] in self?.uiState.recipeTitles = $0 }
+            .sink { [weak self] titles in
+                guard let self else { return }
+                self.uiState.recipeTitles = titles
+                self.uiState.recipeLines = Self.recipeLines(self.uiState.sections, titles: titles)
+            }
         let answers = decisions?.observe() ?? Just(Decisions.none).eraseToAnyPublisher()
         subscription = repository.observeItems().combineLatest(answers)
             .receive(on: DispatchQueue.main)
@@ -121,10 +132,22 @@ final class GroceriesViewModel {
     private func show() {
         let items = latestItems
         uiState.sections = visitOrder.sections(items, decisions: latestDecisions)
+        uiState.recipeLines = Self.recipeLines(uiState.sections, titles: uiState.recipeTitles)
         // A row being moved that has since gone closes the aisle picker.
         if let moving = uiState.moving, !moving.items.allSatisfy({ i in items.contains { $0.id == i.id } }) {
             uiState.moving = nil
         }
+    }
+
+    /// The line under each row naming the recipes it came from (#286), as "Send list" names them
+    /// (#149): each once, in the order added, whatever the row adds up. A row only typed in has none.
+    private static func recipeLines(_ sections: [GroceryCombiner.Section]?, titles: [Int64: String]) -> [Int64: String] {
+        var lines: [Int64: String] = [:]
+        for row in (sections ?? []).flatMap(\.rows) {
+            let recipes = GroceryShareText.recipes(row.items, recipeTitles: titles)
+            if !recipes.isEmpty { lines[row.id] = recipes.joined(separator: ", ") }
+        }
+        return lines
     }
 
     /// The screen was left (#219): the next visit tidies the list, ticked rows at the bottom of
