@@ -376,18 +376,25 @@ enum GroceryCombiner {
 /// several recipes added to. `recipeTitles` names them by id; a typed item names none.
 enum GroceryShareText {
 
+    /// The recipes `items` came from, by title, in order and each once; none for a typed item or a
+    /// recipe that's gone. Also the recipe line under a row on the Groceries screen (#286).
+    static func recipes(_ items: [GroceryItem], recipeTitles: [Int64: String]) -> [String] {
+        var recipes: [String] = []
+        for item in items {
+            guard let id = item.recipeId, let title = recipeTitles[id]?.kTrimmed, !title.isEmpty,
+                  !recipes.contains(title) else { continue }
+            recipes.append(title)
+        }
+        return recipes
+    }
+
     static func format(
         _ sections: [GroceryCombiner.Section], title: String, recipeTitles: [Int64: String] = [:],
         aisleName: (Aisle) -> String
     ) -> String {
         var lines = [title]
         func line(_ text: String, _ items: [GroceryItem]) {
-            var recipes: [String] = []
-            for item in items {
-                guard let id = item.recipeId, let title = recipeTitles[id]?.kTrimmed, !title.isEmpty,
-                      !recipes.contains(title) else { continue }
-                recipes.append(title)
-            }
+            let recipes = GroceryShareText.recipes(items, recipeTitles: recipeTitles)
             lines.append(recipes.isEmpty ? "- \(text)" : "- \(text) (\(recipes.joined(separator: ", ")))")
         }
         for section in sections {

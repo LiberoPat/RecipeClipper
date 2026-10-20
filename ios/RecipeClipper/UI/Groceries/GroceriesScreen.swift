@@ -38,16 +38,13 @@ struct GroceriesScreen: View {
                 }
                 .padding(.top, 4)
                 ForEach(state.sections ?? []) { section in
-                    VStack(alignment: .leading, spacing: 4) {
-                        SectionHeading(Strings.aisle(section.aisle))
-                        Hairline()
-                    }
-                    .padding(.top, 18)
-                    .padding(.bottom, 2)
-                    .accessibilityAddTraits(.isHeader)
+                    AisleLabel(name: Strings.aisle(section.aisle))
                     ForEach(section.rows) { row in
                         // The tick and long-press tooltips (#190) point at the list's first row.
-                        GroceryRowView(row: row, first: row.id == state.sections?.first?.rows.first?.id, vm: vm)
+                        GroceryRowView(
+                            row: row, recipes: state.recipeLines[row.id],
+                            first: row.id == state.sections?.first?.rows.first?.id, vm: vm
+                        )
                     }
                 }
             }
@@ -101,8 +98,9 @@ struct GroceriesScreen: View {
         .tooltipHost(.groceries, blocked: state.moving != nil || state.putAway != nil || state.removed != nil
             || state.confirmClearAll != nil || receiveVM?.uiState.lines != nil)
         // Snackbars only for undo (#146): a delete, "Done shopping", or a clear from the menu
-        // (#219). "Done shopping" itself
-        // shows while anything is ticked; the snackbar sits above it.
+        // (#219). "Done shopping" itself is a bar pinned above the tab bar while anything is
+        // ticked (#286), counting the rows; the snackbar sits above it, and the list's inset
+        // grows with both, so neither covers the last rows.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 if let removed = state.removed {
@@ -119,15 +117,18 @@ struct GroceriesScreen: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 if state.hasChecked {
-                    Button(Strings.doneShopping, action: vm.onDoneShopping)
-                        .buttonStyle(PrimaryButtonStyle(fillWidth: true))
-                        .accessibilityIdentifier("doneShopping")
-                        .tooltipAnchor(.groceriesDoneShopping)
-                        .frame(maxWidth: ReadableWidth.column)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity)
-                        .background(Palette.background)
+                    VStack(spacing: 0) {
+                        Hairline()
+                        Button(Strings.doneShoppingTicked(state.ticked), action: vm.onDoneShopping)
+                            .buttonStyle(PrimaryButtonStyle(fillWidth: true))
+                            .accessibilityIdentifier("doneShopping")
+                            .frame(maxWidth: ReadableWidth.column)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .background(Palette.background)
+                    .tooltipAnchor(.groceriesDoneShopping)
                 }
             }
         }
@@ -239,29 +240,73 @@ private struct PutAwaySheetView: View {
 
 /// A row on the list, always one tick. An added-up total shows its lines under it; lines that
 /// can't be added up honestly sit under their ingredient's name, as written, without ticks of
-/// their own: ticking the row ticks them all.
+/// their own: ticking the row ticks them all. Under those, `recipes` names the recipes the row
+/// came from (#286); a row only typed in has none.
 private struct GroceryRowView: View {
     let row: GroceryCombiner.Row
+    let recipes: String?
     let first: Bool
     let vm: GroceriesViewModel
 
     var body: some View {
+        let recipeLine = recipes.map { [$0] } ?? []
         switch row {
         case .single(let item):
-            CheckLine(text: item.text, detail: [], checked: item.checked, row: row, label: item.text, first: first, vm: vm)
+            CheckLine(text: item.text, detail: recipeLine, checked: item.checked, row: row, label: item.text, first: first, vm: vm)
         case .combined(_, let text, let items):
             // "2 corn × 3" under "6 corn"; nothing under a line that is its own detail.
             CheckLine(
-                text: text, detail: [GroceryCombiner.lines(row).joined(separator: " + ")].filter { $0 != text },
+                text: text, detail: [GroceryCombiner.lines(row).joined(separator: " + ")].filter { $0 != text } + recipeLine,
                 checked: items.allSatisfy(\.checked), row: row, label: text, first: first, vm: vm
             )
         case .together(let name, let items):
             // One tick for the ingredient; its lines, as written, have none of their own.
             CheckLine(
-                text: name, detail: GroceryCombiner.lines(row),
+                text: name, detail: GroceryCombiner.lines(row) + recipeLine,
                 checked: items.allSatisfy(\.checked), row: row, label: name, first: first, vm: vm
             )
         }
+    }
+}
+
+/// An aisle's name in small spaced capitals (#286), a heading. VoiceOver and tests read the name
+/// as written ("Dairy & eggs"), not the capitals.
+private struct AisleLabel: View {
+    let name: String
+
+    var body: some View {
+        Text(name.uppercased())
+            .textStyle(Typography.labelSmall)
+            .foregroundStyle(Palette.muted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 18)
+            .padding(.bottom, 4)
+            .accessibilityLabel(name)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// A row's tick (#286): a ring on the right, under the thumb, that fills paprika with a check.
+/// Drawn only: the row around it is the control, and carries the selected trait.
+private struct RoundTick: View {
+    let checked: Bool
+    /// Grows with the text beside it, up to half again, as `CheckboxGlyph` does.
+    @ScaledMetric(relativeTo: .body) private var scaledSize: CGFloat = 22
+    private var size: CGFloat { min(scaledSize, 33) }
+
+    var body: some View {
+        ZStack {
+            if checked {
+                Circle().fill(Palette.primary)
+                Image(systemName: "checkmark")
+                    .font(.system(size: size * 0.55, weight: .bold))
+                    .foregroundStyle(Palette.onPrimary)
+            } else {
+                Circle().strokeBorder(Palette.muted, lineWidth: 2)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }
 
@@ -276,8 +321,7 @@ private struct CheckLine: View {
 
     var body: some View {
         Button { vm.onToggle(row) } label: {
-            HStack(spacing: 12) {
-                CheckboxGlyph(checked: checked)
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(text)
                         .textStyle(Typography.bodyLarge)
@@ -289,8 +333,10 @@ private struct CheckLine: View {
                 }
                 .modifier(FirstRowAnchor(tooltip: .groceriesLongPress, first: first))
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // On the right, level with the first line.
+                RoundTick(checked: checked).padding(.top, 2)
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 7)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -196,6 +196,46 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertFalse(repository.items.value.contains(where: \.checked))
     }
 
+    /// #286: the line under a row names its recipes, as "Send list" does: each once, in the order
+    /// added, whatever the row adds up; a typed row names none.
+    func testEachRowNamesTheRecipesItCameFromAndATypedRowNamesNone() async {
+        repository.recipeTitles.send([1: "Chicken Adobo", 2: "Weeknight Chili"])
+        await repository.add([
+            NewGroceryLine(text: "1 onion, sliced", language: "en", recipeId: 1),
+            NewGroceryLine(text: "1 onion, sliced", language: "en", recipeId: 1),
+            NewGroceryLine(text: "1 onion, diced", language: "en", recipeId: 2),
+            NewGroceryLine(text: "1 cup sugar", language: "en", recipeId: 2),
+            NewGroceryLine(text: "100 g sugar", language: "en"),
+            NewGroceryLine(text: "milk", language: "en"),
+            NewGroceryLine(text: "1 lime", language: "en", recipeId: 9),
+        ])
+        let vm = await viewModel()
+        await settleMain { !vm.uiState.recipeLines.isEmpty }
+
+        let lines = vm.uiState.recipeLines
+        XCTAssertEqual(lines[row(vm, "1 onion, diced").id], "Chicken Adobo, Weeknight Chili")
+        XCTAssertEqual(lines[row(vm, "100 g sugar").id], "Weeknight Chili")
+        XCTAssertNil(lines[row(vm, "milk").id])
+        XCTAssertNil(lines[row(vm, "1 lime").id], "a recipe that's gone names nothing")
+
+        // A title that changes, or lands late, follows.
+        repository.recipeTitles.send([1: "Adobo", 2: "Weeknight Chili", 9: "Guacamole"])
+        await settleMain { vm.uiState.recipeLines[self.row(vm, "1 lime").id] != nil }
+        XCTAssertEqual(vm.uiState.recipeLines[row(vm, "1 onion, diced").id], "Adobo, Weeknight Chili")
+        XCTAssertEqual(vm.uiState.recipeLines[row(vm, "1 lime").id], "Guacamole")
+    }
+
+    /// #286: the Done shopping bar counts rows, so an added-up row is one thing in the basket.
+    func testTheTickedCountIsTheRowsTicked() async {
+        await add("200 g flour", "100 g flour", "2 onions", "1 lemon")
+        let vm = await viewModel()
+        XCTAssertEqual(vm.uiState.ticked, 0)
+
+        await toggle(vm, "200 g flour")
+        await toggle(vm, "2 onions")
+        XCTAssertEqual(vm.uiState.ticked, 2)
+    }
+
     func testMovingARowToAnotherAisleKeepsItThere() async {
         await add("1 jar pickles")
         let vm = await viewModel()

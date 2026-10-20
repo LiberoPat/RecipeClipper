@@ -6,6 +6,8 @@ import android.content.res.Resources
 import androidx.activity.compose.LocalActivity
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,16 +23,19 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -68,9 +73,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -147,21 +156,9 @@ fun GroceriesScreen(
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(snackbarData = it) } },
                 // "Done shopping" (#146), while anything is ticked: one step to put away and clear.
+                // A bar pinned above the tab bar (#286); the Scaffold keeps the list clear of it.
                 bottomBar = {
-                    if (state.hasChecked) {
-                        Button(
-                            onClick = viewModel::onDoneShopping,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                                .padding(horizontal = 20.dp, vertical = 8.dp)
-                                .testTag("doneShopping")
-                                .tooltipAnchor(Tooltip.GROCERIES_DONE_SHOPPING)
-                        ) {
-                            Text(stringResource(R.string.action_done_shopping))
-                        }
-                    }
+                    if (state.hasChecked) DoneShoppingBar(state.ticked, viewModel::onDoneShopping)
                 },
                 containerColor = MaterialTheme.colorScheme.background,
                 contentWindowInsets = WindowInsets.safeDrawing
@@ -230,15 +227,12 @@ fun GroceriesScreen(
                     val firstRow = state.sections?.firstOrNull()?.rows?.firstOrNull()
                     state.sections.orEmpty().forEach { section ->
                         item(key = "aisle-${section.aisle.key}") {
-                            Column(Modifier.padding(top = 18.dp, bottom = 2.dp)) {
-                                SectionHeading(stringResource(section.aisle.label()))
-                                Spacer(Modifier.height(4.dp))
-                                Hairline()
-                            }
+                            AisleLabel(stringResource(section.aisle.label()))
                         }
                         items(section.rows, key = { row -> "row-${row.items.first().id}" }) { row ->
                             GroceryRowView(
                                 row = row,
+                                recipes = state.recipeLines[row.items.first().id],
                                 first = row == firstRow,
                                 onToggle = viewModel::onToggle,
                                 onMove = viewModel::onMoveStart,
@@ -358,13 +352,62 @@ private fun GroceriesMenu(
 }
 
 /**
+ * "Done shopping" (#146) as a bar pinned above the tab bar while anything is ticked (#286),
+ * counting the rows ticked. The tooltip points at the bar.
+ */
+@Composable
+private fun DoneShoppingBar(ticked: Int, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+            .tooltipAnchor(Tooltip.GROCERIES_DONE_SHOPPING)
+    ) {
+        Hairline()
+        Button(
+            onClick = onClick,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 10.dp)
+                .testTag("doneShopping")
+        ) {
+            Text(pluralStringResource(R.plurals.done_shopping_ticked, ticked, ticked))
+        }
+    }
+}
+
+/**
+ * An aisle's name in small spaced capitals (#286), a heading. Screen readers and tests read the
+ * name as written ("Dairy & eggs"), not the capitals.
+ */
+@Composable
+private fun AisleLabel(name: String) {
+    Text(
+        name.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 18.dp, bottom = 4.dp)
+            .clearAndSetSemantics {
+                heading()
+                text = AnnotatedString(name)
+            }
+    )
+}
+
+/**
  * A row on the list, always one tick. An added-up total shows its lines under it; lines that
  * can't be added up honestly sit under their ingredient's name, as written, without ticks of
- * their own: ticking the row ticks them all.
+ * their own: ticking the row ticks them all. Under those, [recipes] names the recipes the row
+ * came from (#286); a row only typed in has none.
  */
 @Composable
 private fun GroceryRowView(
     row: GroceryRow,
+    recipes: String?,
     first: Boolean,
     onToggle: (GroceryRow) -> Unit,
     onMove: (GroceryRow) -> Unit,
@@ -373,7 +416,7 @@ private fun GroceryRowView(
     when (row) {
         is GroceryRow.Single -> CheckLine(
             text = row.item.text,
-            detail = emptyList(),
+            detail = listOfNotNull(recipes),
             checked = row.item.checked,
             tag = "grocery-${row.item.id}",
             first = first,
@@ -383,7 +426,7 @@ private fun GroceryRowView(
         )
         is GroceryRow.Combined -> CheckLine(
             text = row.text,
-            detail = listOf(GroceryCombiner.lines(row).joinToString(" + ")).filter { it != row.text },
+            detail = listOf(GroceryCombiner.lines(row).joinToString(" + ")).filter { it != row.text } + listOfNotNull(recipes),
             checked = row.items.all { it.checked },
             tag = "grocery-${row.items.first().id}",
             first = first,
@@ -393,7 +436,7 @@ private fun GroceryRowView(
         )
         is GroceryRow.Together -> CheckLine(
             text = row.name,
-            detail = GroceryCombiner.lines(row),
+            detail = GroceryCombiner.lines(row) + listOfNotNull(recipes),
             checked = row.items.all { it.checked },
             tag = "grocery-${row.items.first().id}",
             first = first,
@@ -419,20 +462,15 @@ private fun CheckLine(
     var menuOpen by remember { mutableStateOf(false) }
     Box {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(role = Role.Checkbox, onClick = onToggle, onLongClick = { menuOpen = true })
                 // A long-press as well as a tap, so not `toggleable`; the state is still announced.
                 .semantics { toggleableState = ToggleableState(checked) }
-                .padding(vertical = 6.dp)
+                .padding(vertical = 7.dp)
                 .testTag(tag)
         ) {
-            Checkbox(
-                checked = checked,
-                onCheckedChange = null
-            )
-            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f).then(if (first) Modifier.tooltipAnchor(Tooltip.GROCERIES_LONG_PRESS) else Modifier)) {
                 Text(
                     text,
@@ -448,6 +486,8 @@ private fun CheckLine(
                     )
                 }
             }
+            Spacer(Modifier.width(12.dp))
+            RoundTick(checked, Modifier.padding(top = 2.dp))
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
@@ -465,6 +505,26 @@ private fun CheckLine(
                 }
             )
         }
+    }
+}
+
+/**
+ * A row's tick (#286): a ring on the right, under the thumb, that fills paprika with a check.
+ * Drawn only: the row around it is the checkbox, for tests and TalkBack.
+ */
+@Composable
+private fun RoundTick(checked: Boolean, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(22.dp)
+            .then(
+                if (checked) Modifier.background(colors.primary, CircleShape)
+                else Modifier.border(2.dp, colors.onSurfaceVariant, CircleShape)
+            )
+    ) {
+        if (checked) Icon(Icons.Default.Check, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(15.dp))
     }
 }
 

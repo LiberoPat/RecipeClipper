@@ -385,6 +385,12 @@
     <string name="snackbar_checked_cleared">Itens marcados removidos</string>
     <string name="snackbar_done_shopping">Despensa atualizada, itens marcados removidos</string>
     <string name="action_done_shopping">Compras feitas</string>
+    <!-- The Done shopping bar (#286), with the number of rows ticked. -->
+    <plurals name="done_shopping_ticked">
+        <item quantity="one">Compras feitas · %1$d marcado</item>
+        <item quantity="many">Compras feitas · %1$d marcados</item>
+        <item quantity="other">Compras feitas · %1$d marcados</item>
+    </plurals>
     <string name="put_away_intro">Marque o que vai para a despensa. Tudo o que foi marcado sai da lista.</string>
     <string name="action_put_away">Guardar e remover</string>
     <!-- Using up the pantry when cook mode is finished (#147). -->

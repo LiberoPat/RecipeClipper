@@ -385,6 +385,12 @@
     <string name="snackbar_checked_cleared">Articoli spuntati rimossi</string>
     <string name="snackbar_done_shopping">Dispensa aggiornata, articoli spuntati rimossi</string>
     <string name="action_done_shopping">Spesa fatta</string>
+    <!-- The Done shopping bar (#286), with the number of rows ticked. -->
+    <plurals name="done_shopping_ticked">
+        <item quantity="one">Spesa fatta · %1$d spuntato</item>
+        <item quantity="many">Spesa fatta · %1$d spuntati</item>
+        <item quantity="other">Spesa fatta · %1$d spuntati</item>
+    </plurals>
     <string name="put_away_intro">Spunta cosa va in dispensa. Tutto ciò che è spuntato esce dalla lista.</string>
     <string name="action_put_away">Metti via e rimuovi</string>
     <!-- Using up the pantry when cook mode is finished (#147). -->

@@ -50,6 +50,8 @@ data class PutAwaySheet(val items: List<PutAwayItem>, val ticked: Set<String>)
  * is the row whose aisle is being chosen. [putAway] is the open "Done shopping" sheet.
  * [recipeTitles] names the recipes items came from, for "Send list" (#149). [confirmClearAll] is
  * the number of rows "Clear the whole list" asks about (#219), while its dialog is open.
+ * [recipeLines] is the line under each row naming the recipes it came from (#286), by the row's
+ * first item's id; a row only typed in has none.
  */
 data class GroceriesUiState(
     val sections: List<GroceryCombiner.Section>? = null,
@@ -58,9 +60,12 @@ data class GroceriesUiState(
     val removed: RemovedGroceries? = null,
     val putAway: PutAwaySheet? = null,
     val recipeTitles: Map<Long, String> = emptyMap(),
-    val confirmClearAll: Int? = null
+    val confirmClearAll: Int? = null,
+    val recipeLines: Map<Long, String> = emptyMap()
 ) {
     val hasChecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { it.checked } } }
+    /** The rows ticked, for the "Done shopping" bar (#286): a combined row is one thing in the basket. */
+    val ticked: Int get() = sections.orEmpty().sumOf { s -> s.rows.count { r -> r.items.any { it.checked } } }
     val isEmpty: Boolean get() = sections?.isEmpty() == true
     /** Anything on the list: what "Clear the whole list" needs (#219). */
     val hasItems: Boolean get() = !sections.isNullOrEmpty()
@@ -117,7 +122,9 @@ class GroceriesViewModel @Inject constructor(
             pantry.observeItems().collect { pantryItems = it }
         }
         viewModelScope.launch {
-            repository.observeRecipeTitles().collect { titles -> _uiState.update { it.copy(recipeTitles = titles) } }
+            repository.observeRecipeTitles().collect { titles ->
+                _uiState.update { it.copy(recipeTitles = titles, recipeLines = recipeLines(it.sections, titles)) }
+            }
         }
         viewModelScope.launch {
             val answers = decisions?.observe() ?: flowOf(Decisions.NONE)
@@ -137,9 +144,18 @@ class GroceriesViewModel @Inject constructor(
         _uiState.update { state ->
             // A row being moved that has since gone closes the aisle picker.
             val moving = state.moving?.takeIf { row -> row.items.all { i -> items.any { it.id == i.id } } }
-            state.copy(sections = sections, moving = moving)
+            state.copy(sections = sections, moving = moving, recipeLines = recipeLines(sections, state.recipeTitles))
         }
     }
+
+    /**
+     * The line under each row naming the recipes it came from (#286), as "Send list" names them
+     * (#149): each once, in the order added, whatever the row adds up. A row only typed in has none.
+     */
+    private fun recipeLines(sections: List<GroceryCombiner.Section>?, titles: Map<Long, String>): Map<Long, String> =
+        sections.orEmpty().flatMap { it.rows }.mapNotNull { row ->
+            GroceryShareText.recipes(row.items, titles).takeIf { it.isNotEmpty() }?.let { row.items.first().id to it.joinToString(", ") }
+        }.toMap()
 
     /**
      * The screen was left (not rotated, #219): the next visit tidies the list, ticked rows at the

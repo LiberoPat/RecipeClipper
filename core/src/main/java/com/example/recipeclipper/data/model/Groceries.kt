@@ -399,6 +399,13 @@ object GroceryCombiner {
  */
 object GroceryShareText {
 
+    /**
+     * The recipes [items] came from, by title, in order and each once; none for a typed item or a
+     * recipe that's gone. Also the recipe line under a row on the Groceries screen (#286).
+     */
+    fun recipes(items: List<GroceryItem>, recipeTitles: Map<Long, String>): List<String> =
+        items.mapNotNull { item -> item.recipeId?.let { recipeTitles[it]?.trim() } }.filter { it.isNotEmpty() }.distinct()
+
     fun format(
         sections: List<GroceryCombiner.Section>,
         title: String,
@@ -407,8 +414,7 @@ object GroceryShareText {
     ): String {
         val lines = mutableListOf(title)
         fun line(text: String, items: List<GroceryItem>) {
-            val recipes = items.mapNotNull { item -> item.recipeId?.let { recipeTitles[it]?.trim() } }
-                .filter { it.isNotEmpty() }.distinct()
+            val recipes = recipes(items, recipeTitles)
             lines += if (recipes.isEmpty()) "- $text" else "- $text (${recipes.joinToString(", ")})"
         }
         for (section in sections) {
