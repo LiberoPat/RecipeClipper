@@ -17,7 +17,10 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -65,8 +68,12 @@ class PantryScreenTest {
         inStock: Boolean = true,
         expires: Long? = null,
         aisle: Aisle = Aisle.OTHER,
-        quantity: String? = null
-    ) = PantryItem(id, name, quantity, "en", aisle, inStock, alwaysHave = false, purchasedDay = null, expiresDay = expires)
+        quantity: String? = null,
+        runningLow: Boolean = false
+    ) = PantryItem(id, name, quantity, "en", aisle, inStock, alwaysHave = false, purchasedDay = null, expiresDay = expires, runningLow = runningLow)
+
+    /** The Run out section's heading, not the Run out count above the list (#286). */
+    private val runOutHeading = hasText("Run out") and isHeading()
 
     /** The row's TalkBack actions are exactly [expected], then Select (#258). */
     private fun actionsOffer(id: Long, vararg expected: String) {
@@ -79,6 +86,46 @@ class PantryScreenTest {
     fun anEmptyPantrySaysHowToFillIt() {
         show()
         compose.onNodeWithText("Nothing in the pantry yet", substring = true).assertIsDisplayed()
+        // No counts while there's nothing to count (#286).
+        compose.onNodeWithTag("pantryCount-IN_STOCK").assertDoesNotExist()
+    }
+
+    // #286: three counts under the title, each read as one ("2, Run out"); a tap scrolls to the
+    // first of its rows, or to the heading of the section it heads. A zero does nothing.
+    @Test
+    fun theCountsSumThePantryAndJumpToTheirRows() {
+        val shelf = (1L..20L).map { item(it, "item %02d".format(it), runningLow = it == 15L) }
+        show(*(shelf + item(21, "milk", inStock = false, aisle = Aisle.DAIRY) + item(22, "eggs", inStock = false)).toTypedArray())
+        compose.onNodeWithTag("pantryCount-IN_STOCK").assertTextEquals("19", "In stock")
+        compose.onNodeWithTag("pantryCount-RUNNING_LOW").assertTextEquals("1", "Running low")
+        compose.onNodeWithTag("pantryCount-RUN_OUT").assertTextEquals("2", "Run out").assertIsEnabled()
+        compose.onNode(runOutHeading).assertIsNotDisplayed()
+
+        compose.onNodeWithTag("pantryCount-RUN_OUT").performClick()
+        compose.onNode(runOutHeading).assertIsDisplayed()
+        compose.onNodeWithTag("pantry-22").assertIsDisplayed()
+
+        compose.onNodeWithTag("pantryList").performScrollToNode(hasTestTag("pantryCount-RUNNING_LOW"))
+        compose.onNodeWithTag("pantryCount-RUNNING_LOW").performClick()
+        compose.onNodeWithTag("pantry-15").assertIsDisplayed()
+        compose.onNodeWithTag("low-15", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    // #286: a search narrows the counts to what it shows; a zero is off. While selecting (#258)
+    // they stay put, off, so the rows don't move.
+    @Test
+    fun theCountsFollowTheSearchAndAreOffWhileSelecting() {
+        show(item(1, "salt"), item(2, "rice"), item(3, "oats", inStock = false))
+        compose.onNodeWithTag("pantryCount-RUNNING_LOW").assertTextEquals("0", "Running low").assertIsNotEnabled()
+        compose.onNodeWithTag("pantrySearch").performTextInput("rice")
+        compose.onNodeWithTag("pantryCount-IN_STOCK").assertTextEquals("1", "In stock")
+        compose.onNodeWithTag("pantryCount-RUN_OUT").assertTextEquals("0", "Run out").assertIsNotEnabled()
+
+        compose.onNodeWithTag("pantry-2").performTouchInput { longClick() }
+        compose.onNodeWithTag("selectedCount").assertTextEquals("1 selected")
+        compose.onNodeWithTag("pantryCount-IN_STOCK").assertIsNotEnabled()
+        compose.onNodeWithTag("exitSelection").performClick()
+        compose.onNodeWithTag("pantryCount-IN_STOCK").assertIsEnabled()
     }
 
     @Test
@@ -113,7 +160,7 @@ class PantryScreenTest {
         compose.onNodeWithTag("onList-1").assertDoesNotExist()
         compose.onNodeWithTag("pantry-1").performTouchInput { swipeLeft() }
         compose.waitUntil(5_000) { !pantry.items.value.single().inStock }
-        compose.onNodeWithText("Run out").assertIsDisplayed()
+        compose.onNode(runOutHeading).assertIsDisplayed()
         compose.onNodeWithText("Dairy & eggs").assertDoesNotExist()
 
         compose.waitUntil(5_000) { groceries.items.value.isNotEmpty() }
@@ -314,11 +361,11 @@ class PantryScreenTest {
         compose.onNodeWithText("Clear run-out items").performClick()
         compose.onNodeWithTag("clearRunOutConfirm").performClick()
         compose.runOnIdle { assertEquals(listOf("oil"), pantry.items.value.map { it.name }) }
-        compose.onNodeWithText("Run out").assertDoesNotExist()
+        compose.onNode(runOutHeading).assertDoesNotExist()
         compose.onNodeWithText("Run-out items cleared").assertIsDisplayed()
         compose.onNodeWithText("Undo").performClick()
         compose.runOnIdle { assertEquals(listOf("oil", "milk", "rice"), pantry.items.value.map { it.name }) }
-        compose.onNodeWithText("Run out").assertIsDisplayed()
+        compose.onNode(runOutHeading).assertIsDisplayed()
 
         // Nothing run out: the item is there, disabled.
         compose.runOnIdle { pantry.items.value = pantry.items.value.map { it.copy(inStock = true) } }

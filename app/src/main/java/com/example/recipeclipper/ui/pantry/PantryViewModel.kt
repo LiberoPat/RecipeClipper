@@ -74,6 +74,13 @@ data class PantrySelection(
 )
 
 /**
+ * One of the three counts under the title (#286): how many of the rows shown are [stock] (in
+ * stock, running low with its Low tag, or in the Run out section), and [firstId], the first of
+ * them top to bottom, where a tap scrolls; null when there are none.
+ */
+data class PantryCount(val stock: PantryStock, val count: Int, val firstId: Long?)
+
+/**
  * [sections] is null until the pantry has loaded; [hasItems] says whether it holds anything at
  * all (a search can find nothing in a full pantry), and [hasInStock] whether anything is in
  * stock, which is what "Send list" and "Send as file" send (#149). [onList] holds the items
@@ -81,9 +88,12 @@ data class PantrySelection(
  * the basket Groceries tag (#146).
  * [hasRunOut] says whether anything has run out, what "Clear run-out items" needs, and
  * [confirmClearRunOut] is how many items its dialog asks about, while it's open (#194).
+ * [counts] are In stock, Running low and Run out, counting what the list shows (a search
+ * narrows them too), or empty while the pantry is, which hides them (#286).
  */
 data class PantryUiState(
     val sections: List<PantrySection>? = null,
+    val counts: List<PantryCount> = emptyList(),
     val hasItems: Boolean = false,
     val hasInStock: Boolean = false,
     val query: String = "",
@@ -146,9 +156,14 @@ class PantryViewModel @Inject constructor(
     private fun PantryUiState.arranged(): PantryUiState {
         val sections = PantryList.arrange(items, query, sort)
         // What the search hides, or what has gone, is no longer selected.
-        val shown = sections.flatMap { section -> section.items.map { it.id } }.toSet()
+        val rows = sections.flatMap { it.items }
+        val shown = rows.map { it.id }.toSet()
         return copy(
             sections = sections,
+            counts = if (items.isEmpty()) emptyList() else PantryStock.entries.map { stock ->
+                val those = rows.filter { it.stock == stock }
+                PantryCount(stock, those.size, those.firstOrNull()?.id)
+            },
             selection = selection?.let { it.copy(ids = it.ids intersect shown, base = it.base intersect shown) }
         )
     }

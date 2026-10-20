@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The Pantry tab (#51; Android's PantryScreen): "Add to the pantry", a search field, then
+/// The Pantry tab (#51; Android's PantryScreen): counts of what's in stock, running low and run
+/// out, each jumping to its rows (#286), "Add to the pantry", a search field, then
 /// everything by aisle (or by expiry, from the menu), and what has run out last (#194). Each row
 /// shows whether it's in stock, running low or run out, and its quantity as written; tapping the
 /// row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes as
@@ -23,7 +24,8 @@ struct PantryScreen: View {
         let state = vm.uiState
         // The selection bar lies over the top of the List, not in it or above it: the List's
         // rows never change, nor move from under the finger that has just started selecting.
-        list(state)
+        // The reader scrolls to a count's rows (#286).
+        ScrollViewReader { proxy in list(state, proxy) }
             .overlay(alignment: .top) {
                 if let selection = state.selection {
                     PantrySelectionBar(
@@ -77,11 +79,20 @@ struct PantryScreen: View {
         .modifier(SendFileEffect(vm: sendFileVM))
     }
 
-    private func list(_ state: PantryUiState) -> some View {
+    private func list(_ state: PantryUiState, _ proxy: ScrollViewProxy) -> some View {
         List {
             Group {
                 VStack(alignment: .leading, spacing: 8) {
                     ScreenTitle(Strings.tabPantry)
+                    // In stock, Running low, Run out (#286); hidden while the pantry is empty.
+                    if !state.counts.isEmpty {
+                        PantryCounts(counts: state.counts, enabled: state.selection == nil) { id in
+                            guard let target = PantryListRow.scrollTarget(id, in: state.sections ?? []) else { return }
+                            withAnimation { proxy.scrollTo(target, anchor: .top) }
+                        }
+                        .padding(.top, 4)
+                        .padding(.bottom, 4)
+                    }
                     OutlinedField(
                         label: Strings.pantryAddHint,
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),

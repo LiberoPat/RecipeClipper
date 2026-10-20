@@ -75,6 +75,30 @@ final class PantryUITests: RecipeUITestCase {
         require(onListTag, "the basket tag")
     }
 
+    // MARK: - Counts at the top (#286)
+
+    /// Three counts under the title, each read as one ("2, Run out"); a tap scrolls to the Run
+    /// out section. While selecting they stay put, off.
+    func testACountJumpsToItsRowsAndIsOffWhileSelecting() {
+        launch(.walkthroughPantry)
+        require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
+        let runOut = require(app.buttons["pantryCount-runOut"], "the Run out count")
+        XCTAssertTrue(runOut.label.hasSuffix("Run out"), runOut.label)
+        XCTAssertTrue(require(app.buttons["pantryCount-inStock"], "the In stock count").label.hasSuffix("In stock"))
+        XCTAssertTrue(require(app.buttons["pantryCount-runningLow"], "the Running low count").label.hasSuffix("Running low"))
+        runOut.tap()
+        let heading = requireState(text("Run out"), "isHittable == true", "the Run out heading, scrolled to")
+        XCTAssertLessThan(heading.frame.maxY, tabBar.frame.minY, "the Run out heading, above the tab bar")
+        require(pantryRow("garlic", "Run out"), "garlic, run out")
+
+        for _ in 0..<3 { app.swipeDown() }
+        reveal(pantryRow("soy sauce"), "soy sauce").press(forDuration: 0.8)
+        requireState(selectedCount, "label == '1 selected'", "1 selected")
+        requireState(app.buttons["pantryCount-inStock"], "isEnabled == false", "the In stock count, off while selecting")
+        require(app.buttons["exitSelection"], "✕").tap()
+        requireState(app.buttons["pantryCount-inStock"], "isEnabled == true", "the In stock count, on again")
+    }
+
     // MARK: - Selecting several (#258)
 
     private var selectedCount: XCUIElement { app.staticTexts["selectedCount"] }

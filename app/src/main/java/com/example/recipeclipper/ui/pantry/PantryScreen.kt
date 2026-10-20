@@ -61,12 +61,14 @@ import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TooltipHost
+import kotlinx.coroutines.launch
 
 /** The list's leading padding, which the drag's checkbox column is measured from. */
 private val ListStart = 20.dp
 
 /**
- * The Pantry tab (#51): "Add to the pantry", a search field, then everything by aisle (or by
+ * The Pantry tab (#51): counts of what's in stock, running low and run out, each jumping to its
+ * rows (#286), "Add to the pantry", a search field, then everything by aisle (or by
  * expiry, from the menu), and what has run out last (#194). Each row shows whether it's in
  * stock, running low or run out, and its quantity as written; tapping the row opens its edit sheet (stock, quantity, staple, use-by date, delete), with swipes as shortcuts. The menu sends what's in stock, as
  * plain text or as a file (#149), and clears what has run out after asking, with undo (#194).
@@ -176,6 +178,14 @@ fun PantryScreen(
                                     canSelect = state.sections.orEmpty().isNotEmpty(),
                                     onSelectItems = viewModel::onStartSelecting
                                 )
+                            }
+                            // In stock, Running low, Run out (#286); hidden while the pantry is empty.
+                            if (state.counts.isNotEmpty()) {
+                                Spacer(Modifier.height(12.dp))
+                                PantryCounts(state.counts, enabled = selection == null) { id ->
+                                    state.sections?.scrollIndex(id)?.let { scope.launch { listState.animateScrollToItem(it) } }
+                                }
+                                Spacer(Modifier.height(4.dp))
                             }
                             Spacer(Modifier.height(8.dp))
                             OutlinedTextField(
