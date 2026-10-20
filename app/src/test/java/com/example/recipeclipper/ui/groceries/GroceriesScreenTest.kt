@@ -1,5 +1,9 @@
 package com.example.recipeclipper.ui.groceries
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -65,9 +69,64 @@ class GroceriesScreenTest {
         compose.onNodeWithTag("groceryDraft").performTextInput("milk")
         compose.onNodeWithTag("groceryDraft").performImeAction()
 
-        compose.onNodeWithText("Dairy & eggs").assertIsDisplayed()
+        // In small capitals (#286), a heading read as written.
+        compose.onNodeWithText("Dairy & eggs").assertIsDisplayed().assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         compose.onNodeWithText("milk").assertIsDisplayed()
         compose.runOnIdle { assertEquals(Aisle.DAIRY, repository.items.value.single().aisle) }
+    }
+
+    // #286: each row names the recipes it came from on a line under it; a typed row names none,
+    // and an added-up row keeps its lines, so the sum can still be checked.
+    @Test
+    fun aRowNamesItsRecipesUnderIt() {
+        repository.recipeTitles.value = mapOf(1L to "Chicken Adobo", 2L to "Weeknight Chili")
+        runBlocking {
+            repository.add(
+                listOf(
+                    NewGroceryLine("2 limes", "en", recipeId = 2),
+                    NewGroceryLine("200 g flour", "en", recipeId = 1),
+                    NewGroceryLine("100 g flour", "en", recipeId = 2),
+                    NewGroceryLine("milk", "en")
+                )
+            )
+        }
+        show()
+        compose.onNodeWithText("2 limes").assertIsDisplayed()
+        compose.onNodeWithText("Weeknight Chili").assertIsDisplayed()
+        compose.onNodeWithText("300 g flour").assertIsDisplayed()
+        compose.onNodeWithText("200 g flour + 100 g flour").assertIsDisplayed()
+        compose.onNodeWithText("Chicken Adobo, Weeknight Chili").assertIsDisplayed()
+        compose.onAllNodes(isToggleable()).assertCountEquals(3)
+    }
+
+    // #286: the tick is a round ring on the right, and the row is still a checkbox to tests and TalkBack.
+    @Test
+    fun theRoundTickIsStillACheckbox() {
+        show("2 onions")
+        val id = repository.items.value.single().id
+        compose.onNodeWithTag("grocery-$id")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
+            .assertIsOff()
+            .performClick()
+        compose.onNodeWithTag("grocery-$id").assertIsOn()
+    }
+
+    // #286: Done shopping is a bar counting the ticked rows (an added-up row is one), and the
+    // list stops above it, so it never covers the last rows.
+    @Test
+    fun theDoneShoppingBarCountsTheTickedRowsAndNeverCoversTheList() {
+        // Flour first (Baking), then sixteen lines in Other, the last row of a list that scrolls.
+        show(*Array(16) { "${it + 1} item$it" }, "200 g flour", "100 g flour")
+        val ids = repository.items.value.map { it.id }
+        compose.onNodeWithTag("grocery-${ids[16]}").performClick()
+        compose.onNodeWithText("Done shopping · 1 ticked").assertIsDisplayed()
+        scrollTo("grocery-${ids[15]}")
+        compose.onNodeWithTag("grocery-${ids[15]}").performClick()
+        compose.onNodeWithText("Done shopping · 2 ticked").assertIsDisplayed()
+
+        val last = compose.onNodeWithTag("grocery-${ids[15]}").getUnclippedBoundsInRoot()
+        val bar = compose.onNodeWithTag("doneShopping").getUnclippedBoundsInRoot()
+        assertTrue("the last row ends above the bar", last.bottom <= bar.top)
     }
 
     @Test

@@ -207,6 +207,52 @@ class GroceriesViewModelTest {
             }
         }
 
+    // #286: the line under a row names its recipes, as "Send list" does: each once, in the order
+    // added, whatever the row adds up; a typed row names none.
+    @Test
+    fun `each row names the recipes it came from, and a typed row names none`() = runTest(mainDispatcherRule.dispatcher) {
+        repository.recipeTitles.value = mapOf(1L to "Chicken Adobo", 2L to "Weeknight Chili")
+        repository.add(
+            listOf(
+                NewGroceryLine("1 onion, sliced", "en", recipeId = 1),
+                NewGroceryLine("1 onion, sliced", "en", recipeId = 1),
+                NewGroceryLine("1 onion, diced", "en", recipeId = 2),
+                NewGroceryLine("1 cup sugar", "en", recipeId = 2),
+                NewGroceryLine("100 g sugar", "en"),
+                NewGroceryLine("milk", "en"),
+                NewGroceryLine("1 lime", "en", recipeId = 9)
+            )
+        )
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
+        advanceUntilIdle()
+
+        val lines = vm.uiState.value.recipeLines
+        assertEquals("Chicken Adobo, Weeknight Chili", lines[vm.row("1 onion, diced").items.first().id])
+        assertEquals("Weeknight Chili", lines[vm.row("100 g sugar").items.first().id])
+        assertNull(lines[vm.row("milk").items.first().id])
+        assertNull("a recipe that's gone names nothing", lines[vm.row("1 lime").items.first().id])
+
+        // A title that changes, or lands late, follows.
+        repository.recipeTitles.value = mapOf(1L to "Adobo", 2L to "Weeknight Chili", 9L to "Guacamole")
+        advanceUntilIdle()
+        assertEquals("Adobo, Weeknight Chili", vm.uiState.value.recipeLines[vm.row("1 onion, diced").items.first().id])
+        assertEquals("Guacamole", vm.uiState.value.recipeLines[vm.row("1 lime").items.first().id])
+    }
+
+    // #286: the Done shopping bar counts rows, so an added-up row is one thing in the basket.
+    @Test
+    fun `the ticked count is the rows ticked`() = runTest(mainDispatcherRule.dispatcher) {
+        add("200 g flour", "100 g flour", "2 onions", "1 lemon")
+        val vm = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar())
+        advanceUntilIdle()
+        assertEquals(0, vm.uiState.value.ticked)
+
+        vm.onToggle(vm.row("200 g flour"))
+        vm.onToggle(vm.row("2 onions"))
+        advanceUntilIdle()
+        assertEquals(2, vm.uiState.value.ticked)
+    }
+
     @Test
     fun `ticking a combined row ticks every line in it`() = runTest(mainDispatcherRule.dispatcher) {
         add("200 g flour", "100 g flour")

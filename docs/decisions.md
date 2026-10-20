@@ -1677,6 +1677,25 @@ The third tab of #46, still behind the #47 flag.
   checkboxes, pantry-tracked ones ticked, the rest not; one confirm restocks or
   adds the ticked ones (only here, never on the tick) and clears every ticked
   line, with one Undo for both. Snackbars only for undo.
+- **Aisle labels, recipe lines, round ticks** (#286, the owner's pick V1, both platforms). Behaviour
+  is unchanged; only the look moved:
+  - **Aisles** are small spaced capitals (the theme's `labelSmall`, muted, no hairline). Each one is
+    a heading that screen readers and tests read as written ("Dairy & eggs"), not in capitals.
+  - **Each row names its recipes** on a line under it, as "Send list" does
+    (`GroceryShareText.recipes`): each recipe once, in the order its lines were added. A
+    combined row keeps its lines ("200 g flour + 100 g flour"), and lines that sit together keep
+    theirs, as written. The recipe line comes last, so the sum can still be checked. It has no
+    "× 2": the lines above it already say that. A row only typed in shows what it did before,
+    with no recipe line, and so does a recipe that's gone. The ViewModel works the lines out
+    (`recipeLines`, by the row's id) whenever the list or the recipes' titles change.
+  - **The tick** is a ring on the right, under the thumb. It fills paprika with a white check.
+    The ring is drawn in muted, as the old checkbox was, so it stands out. The whole row is
+    still the control: Android's row keeps `Role.Checkbox` and its toggle state, and iOS's
+    keeps the selected trait. The tick sits level with the row's first line.
+  - **Done shopping** is a bar pinned above the tab bar while anything is ticked: a hairline,
+    then the button with the number of rows ticked ("Done shopping · 3 ticked"; an added-up row
+    counts once). The list stops above it (Android's Scaffold bottom bar, iOS's bottom safe-area
+    inset), so it never covers the last rows. The Done shopping tooltip points at the bar.
 
 ## Pantry (#51)
 

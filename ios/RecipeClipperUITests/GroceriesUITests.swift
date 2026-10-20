@@ -21,10 +21,14 @@ final class GroceriesUITests: RecipeUITestCase {
 
         back()
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
+        // Aisles in small capitals (#286), read as written.
         require(text("Meat"), "the meat aisle")
         require(line("2 lb chicken thighs"), "the chicken")
         require(text("Oils, sauces & condiments"), "the condiments aisle")
         require(line("1/2 cup soy sauce"), "the soy sauce")
+        // Each row names its recipe on a line under it (#286).
+        let named = NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "2 lb chicken thighs", "Chicken Adobo")
+        require(app.buttons.matching(named).firstMatch, "the chicken, naming its recipe")
     }
 
     func testATypedItemCanBeDeletedAndBroughtBack() {
@@ -123,9 +127,14 @@ final class GroceriesUITests: RecipeUITestCase {
         let onions = require(line("2 onions"), "the onions")
         require(line("3 carrots"), "the carrots")
         let top = onions.frame.minY
+        XCTAssertFalse(onions.isSelected)
         onions.tap()
-        require(app.buttons["doneShopping"], "Done shopping, once ticked")
+        // The round tick (#286) is still a selected row; the bar counts what's ticked.
+        let done = require(app.buttons["doneShopping"], "Done shopping, once ticked")
+        XCTAssertEqual(done.label, "Done shopping · 1 ticked")
+        XCTAssertTrue(line("2 onions").isSelected, "the ticked row")
         XCTAssertEqual(line("2 onions").frame.minY, top, "the ticked row stays where it was")
+        XCTAssertLessThanOrEqual(line("3 carrots").frame.maxY, done.frame.minY, "the bar covers no row")
 
         require(app.buttons["More options"], "the Groceries menu").tap()
         require(app.buttons["Clear the whole list"], "Clear the whole list").tap()
