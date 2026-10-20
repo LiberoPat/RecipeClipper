@@ -48,9 +48,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.common.LocalFlagValues
-import com.example.recipeclipper.ui.common.RecipeRow
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
@@ -73,7 +73,6 @@ fun RecipesScreen(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val now = remember { System.currentTimeMillis() }
 
     // Resolved here, not inside LaunchedEffect below: its block is a suspend lambda, not a
     // composable one, so stringResource cannot be called from it. Resolving the finished
@@ -140,12 +139,14 @@ fun RecipesScreen(
                                 onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink,
                                 onScan = onScan.takeIf { scanEnabled }
                             )
-                            SortMenu(state.sort, viewModel::onSortChange)
                         }
-                        state.count?.let { LibraryCountText(it) }
                         Spacer(Modifier.height(12.dp))
                         SearchField(query = state.query, onQueryChange = viewModel::onQueryChange)
-                        Spacer(Modifier.height(12.dp))
+                        if (state.showsSortLine) {
+                            SortLine(state, viewModel::onSortChange)
+                        } else {
+                            Spacer(Modifier.height(12.dp))
+                        }
                     }
 
                     val recipes = state.recipes
@@ -167,7 +168,6 @@ fun RecipesScreen(
                         Hairline()
                         SwipeToDeleteRow(
                             recipe = recipe,
-                            now = now,
                             onClick = { onOpenRecipe(recipe.id) },
                             onDelete = { viewModel.onDelete(recipe) }
                         )
@@ -202,7 +202,6 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
 @Composable
 private fun SwipeToDeleteRow(
     recipe: RecipeSummary,
-    now: Long,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -225,7 +224,7 @@ private fun SwipeToDeleteRow(
         onDismiss = onDismiss
     ) {
         Surface(color = MaterialTheme.colorScheme.background) {
-            RecipeRow(recipe, now, onClick = onClick)
+            LibraryRow(recipe, onClick = onClick)
         }
     }
 }
@@ -249,14 +248,25 @@ private fun DeleteBackground(dismissState: SwipeToDismissBoxState) {
     }
 }
 
-/** "12 of 20 recipes", quietly under the title, on the free tier only (#107). */
+/**
+ * The quiet line under search (#286): how many recipes on the left ("20 recipes", or on the
+ * free tier "12 of 20 recipes", #107), and the order they're in on the right.
+ */
 @Composable
-private fun LibraryCountText(count: LibraryCount) {
-    Text(
-        if (count.over) stringResource(R.string.recipes_count_over, count.recipes, count.max)
-        else stringResource(R.string.recipes_count, count.recipes, count.max),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 2.dp)
-    )
+private fun SortLine(state: RecipesUiState, onSort: (RecipeSort) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        val count = state.count
+        val listed = state.listed
+        Text(
+            when {
+                count == null -> pluralStringResource(R.plurals.recipes_listed, listed ?: 0, listed ?: 0)
+                count.over -> stringResource(R.string.recipes_count_over, count.recipes, count.max)
+                else -> stringResource(R.string.recipes_count, count.recipes, count.max)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f).padding(start = 2.dp)
+        )
+        SortMenu(state.sort, onSort)
+    }
 }

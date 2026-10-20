@@ -78,7 +78,8 @@ extension RecipeSummaryRecord {
             lastViewedAt: lastViewedAt,
             isSaved: isSaved,
             isClipped: isClipped,
-            lastCookedDay: lastCookedDay
+            lastCookedDay: lastCookedDay,
+            sourceUrl: sourceUrl
         )
     }
 }

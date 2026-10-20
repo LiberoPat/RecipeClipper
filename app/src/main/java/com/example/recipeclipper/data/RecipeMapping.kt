@@ -74,5 +74,6 @@ internal fun RecipeSummaryRow.toDomain() = RecipeSummary(
     lastViewedAt = lastViewedAt,
     isSaved = isSaved,
     isClipped = isClipped,
-    lastCookedDay = lastCookedDay
+    lastCookedDay = lastCookedDay,
+    sourceUrl = sourceUrl
 )

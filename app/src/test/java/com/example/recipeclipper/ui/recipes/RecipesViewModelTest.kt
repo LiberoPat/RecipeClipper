@@ -83,6 +83,35 @@ class RecipesViewModelTest {
         assertNull(vm.uiState.value.count)
     }
 
+    @Test fun `the line under search counts what is listed, and hides with nothing to order (#286)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
+            assertNull(vm.uiState.value.listed) // still loading
+            assertEquals(false, vm.uiState.value.showsSortLine)
+
+            repository.history.value = listOf(summary(1), summary(2))
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+            assertEquals(2, vm.uiState.value.listed)
+            assertTrue(vm.uiState.value.showsSortLine)
+
+            repository.history.value = emptyList() // a search that matches nothing
+            advanceUntilIdle()
+            assertEquals(0, vm.uiState.value.listed)
+            assertEquals(false, vm.uiState.value.showsSortLine)
+        }
+
+    @Test fun `the free tier's count keeps the line under search even when empty (#286)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val library = FakeLibraryPolicy(LibraryLimit.Free(20))
+            val vm = RecipesViewModel(FakeRecipeRepository(), FakeAppPreferences(), library)
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+            assertEquals(LibraryCount(0, 20), vm.uiState.value.count)
+            assertTrue(vm.uiState.value.showsSortLine)
+        }
+
     @Test fun `recipes stays null until the repository answers`() = runTest(mainDispatcherRule.dispatcher) {
         val repository = FakeRecipeRepository()
         repository.history.value = listOf(summary(1))

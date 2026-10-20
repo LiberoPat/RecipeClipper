@@ -108,6 +108,11 @@ struct RecipeSummary: Equatable, Identifiable {
     var isClipped: Bool = false
     /// The latest day (epoch day) of the user's own photos of it (#116); nil for none.
     var lastCookedDay: Int64? = nil
+    /// Its link, for the site credited under the title (#286); `manual:` for a typed one.
+    var sourceUrl: String = ""
+
+    /// The site, as the reading view credits it; nil for a typed or scanned recipe.
+    var sourceDomain: String? { ManualRecipe.isManual(sourceUrl) ? nil : SourceDomain.of(sourceUrl) }
 }
 
 /// How the Recipes screen orders its rows (#102). Remembered in `AppPreferences` by its
