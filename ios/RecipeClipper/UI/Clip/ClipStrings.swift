@@ -14,14 +14,19 @@ extension Strings {
     }
     /// Not words (Android's translatable="false" `clip_tag_count`).
     static func clipTagCount(_ label: String, _ n: Int) -> String { "\(label) · \(n)" }
+    /// An add's tag (on the page, and on the Text view's line, #286): "Name", "Ingredients · 3".
+    static func clipTag(_ mark: ClipMark) -> String {
+        mark.field.replaces ? clipField(mark.field) : clipTagCount(clipField(mark.field), mark.lines.count)
+    }
     /// What a field button shows it holds (#237): a check, with the count for ingredients and
     /// steps. Not words (Android's translatable="false" `clip_filled` and `clip_filled_count`).
     static func clipFilled(_ field: ClipField, _ n: Int) -> String {
         n == 0 ? "" : field.replaces ? "✓" : "✓ \(n)"
     }
-    static func clipLinesSelected(_ n: Int) -> String {
-        String(localized: "clip_lines_selected \(n)") + " · " + String(localized: "clip_selected_hint")
-    }
+    /// "3 lines selected", the count the dock shows in ink (#286), then `clipSelectedHint`.
+    static func clipLinesSelected(_ n: Int) -> String { String(localized: "clip_lines_selected \(n)") }
+    /// " · tap the field they go in", muted after the count.
+    static var clipSelectedHint: String { " · " + String(localized: "clip_selected_hint") }
     // Guided steps (#251): the header, "Step 2 of 4 · Tap the ingredients".
     static func clipStep(_ number: Int, _ field: ClipField) -> String {
         let what: String

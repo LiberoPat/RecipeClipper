@@ -3,7 +3,6 @@ package com.example.recipeclipper.ui.clip
 import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
-import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -36,11 +35,6 @@ typealias ClipPageLoader = (WebView, String) -> Unit
 
 internal val LoadLiveUrl: ClipPageLoader = { webView, url -> webView.loadUrl(url) }
 
-/** The Text view (#213): [html] as a page of its own, with no address, so nothing on it loads. */
-internal fun loadTextPage(html: String): ClipPageLoader = { webView, _ ->
-    webView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
-}
-
 /**
  * The page being clipped, in a [WebView] with `clipper.js` injected once it has loaded. The
  * view layer's half of the bridge: it forwards the page's events, heard from its main frame only
@@ -56,10 +50,6 @@ internal fun loadTextPage(html: String): ClipPageLoader = { webView, _ ->
  * On reddit.com (#213) `reddit-reader.js` is injected too, which shows the post's whole text and
  * hides Reddit's sign-in and app prompts; [readText] turning true reads the post for the Text
  * view, as [ClipPageEvent.PageText].
- *
- * [visible] false keeps the page loaded, at full size, but not drawn and not touched (the Text
- * view behind the page, #237). Shrinking it to no size instead left its last frame over the
- * page, which then looked dead: Text, then Page, showed the text still, frozen.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -71,8 +61,7 @@ internal fun ClipWebPage(
     loadPage: ClipPageLoader,
     modifier: Modifier = Modifier,
     readsPage: Boolean = false,
-    readText: Boolean = false,
-    visible: Boolean = true
+    readText: Boolean = false
 ) {
     // Read by the WebViewClient when a page finishes loading, so the script it injects starts
     // from the current state rather than the state at creation.
@@ -95,7 +84,6 @@ internal fun ClipWebPage(
         },
         // Captures the two values, so it is a new lambda, and runs again, when either changes.
         update = { webView ->
-            webView.visibility = if (visible) View.VISIBLE else View.INVISIBLE
             if (latest.injected) webView.evaluateJavascript(pageScript(syncState, pickingPhoto), null)
             if (readText && !latest.readingText) {
                 latest.readingText = true

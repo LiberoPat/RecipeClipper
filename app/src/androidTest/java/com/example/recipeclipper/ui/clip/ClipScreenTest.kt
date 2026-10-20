@@ -1,10 +1,14 @@
 package com.example.recipeclipper.ui.clip
 
-import android.view.View
-import android.view.ViewGroup
 import android.webkit.WebView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -33,7 +37,7 @@ import java.util.concurrent.TimeUnit
  * on the page is a script's `click()` on the element, which reaches the page's own listener as
  * a finger's tap does; the page's selection comes back through `selectionchange`, the same path
  * a person's takes. Then the page's own handles, the photo, a tag taking back one add, Review
- * and Save, and the owner's Text → Page bug on a Reddit-like page.
+ * and Save, and on a Reddit-like page the Text view's ticked lines (#286) and Text → Page (#237).
  */
 @OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
@@ -328,39 +332,52 @@ class ClipScreenTest {
     }
 
     /**
-     * The owner (#237): "when toggling a reddit page from text back to page, page doesnt work".
-     * The Text view, hidden by shrinking it to no size, left its last frame on the screen over
-     * the page: the page answered underneath, but what showed was the Text view, frozen. Here the
-     * page is green and the Text view isn't, so back on the page the screen must show green.
-     * Then a real tap (the shell's input, through the view hierarchy) on the page's list selects
-     * it.
+     * The Text view, line by line (#286): the post's lines as rows, each a checkbox. Selected
+     * first: with step 1 disarmed, the title ticked ("1 line selected · tap the field they go
+     * in") goes in with Name's button, and the next step arms. Armed: the first ingredient, then
+     * the last, tick the run, and the step's confirm adds it; the add's tag sits on its first line.
+     *
+     * Then the owner's #237: "when toggling a reddit page from text back to page, page doesnt
+     * work". Here the page is green, so back on the page the screen must show green, and a real
+     * tap (the shell's input, through the view hierarchy) on the page's list selects it.
      */
     @Test
-    fun textThenPageLeavesThePageWorking() {
+    fun theTextViewTicksLinesThenThePageWorks() {
         show(REDDIT_URL, REDDIT_PAGE)
         waitForPage("typeof window.RCReddit", "\"object\"")
 
         compose.onNodeWithText("Text").performClick()
-        compose.waitUntil(PAGE_WAIT_MS) { textView() != null }
-        val text = textView()!!
-        waitForPage("typeof window.RC == 'object' && document.body.innerText.indexOf('1 crust') >= 0", "true", text)
+        compose.waitUntil(PAGE_WAIT_MS) { compose.onAllNodes(hasTestTag("clip.line.5")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("clip.line.0")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
+            .assertIsOff()
 
-        // In the Text view: the first ingredient, then the last, stretch to both.
-        tapField("INGREDIENTS", text)
-        tapOnPage("p:nth-of-type(1)", text)
+        // Selected first: Name's button disarms step 1, a tick, then Name's button adds it.
+        compose.onNodeWithTag("clip.field.NAME").performClick()
+        compose.onNodeWithTag("clip.line.0").performClick().assertIsOn()
+        waitForText("1 line selected · tap the field they go in")
+        compose.onNodeWithTag("clip.field.NAME").performClick()
+        waitForText("Step 2 of 4 · Tap the ingredients")
+        compose.onNodeWithTag("clip.line.0").assertIsOff()
+
+        // Armed: the first ingredient, then the last, tick the run; the confirm adds it.
+        compose.onNodeWithTag("clip.line.1").performClick()
         waitForText("Add 1 line to Ingredients")
-        js("Array.from(document.querySelectorAll('p')).find(function(p){return p.textContent=='1 crust'}).click()", text)
-        waitForText("Add 2 lines to Ingredients")
+        compose.onNodeWithTag("clip.line.5").performClick()
+        waitForText("Add 5 lines to Ingredients")
+        (1..5).forEach { compose.onNodeWithTag("clip.line.$it").assertIsOn() }
+        compose.onNodeWithTag("clip.line.3").performClick().assertIsOff()
+        waitForText("Add 4 lines to Ingredients")
         confirm()
-        waitForText("2 ingredients added.")
+        waitForText("4 ingredients added.")
         waitForText("Step 3 of 4 · Tap the steps")
+        compose.onNodeWithText("Ingredients · 4").assertExists()
 
         compose.onNodeWithText("Page").performClick()
         waitForText("Text")
-        instrumentation.runOnMainSync { assertEquals(View.INVISIBLE, text.visibility) }
+        compose.onNodeWithTag("clip.text").assertDoesNotExist()
         waitForPage("document.documentElement.getAttribute('data-rc-armed')", "\"STEPS\"")
-        // What the screen shows in the middle of the page is the page (its green), not the
-        // Text view's last frame.
+        // What the screen shows in the middle of the page is the page (its green).
         val page = webView!!
         val middle = IntArray(2).also { at -> instrumentation.runOnMainSync { page.getLocationOnScreen(at) } }
         var height = 0
@@ -375,27 +392,13 @@ class ClipScreenTest {
                 android.graphics.Color.red(pixel) < 80 && android.graphics.Color.blue(pixel) < 80
         }
 
-        // A finger's tap on the page's list (Steps armed, carried over), then Ingredients' button
-        // adds it there (selected first, #251).
+        // A finger's tap on the page's list (Steps armed, carried over), then Steps' confirm.
         val (x, y) = screenPoint("#more li")
         instrumentation.uiAutomation.executeShellCommand("input tap $x $y").close()
         waitForText("Add 2 lines to Steps")
-        addSelectionTo("INGREDIENTS")
-        waitForText("2 ingredients added.")
+        confirm()
+        waitForText("2 steps added.")
         waitForPage("document.querySelectorAll('.rc-marked').length", "2")
-    }
-
-    /** The Text view's web view: the one that isn't the page. */
-    private fun textView(): WebView? {
-        var found: WebView? = null
-        instrumentation.runOnMainSync {
-            fun walk(view: View) {
-                if (view is WebView && view !== webView) found = view
-                if (view is ViewGroup) for (i in 0 until view.childCount) walk(view.getChildAt(i))
-            }
-            webView?.rootView?.let(::walk)
-        }
-        return found
     }
 
     /** Where on the screen the page's element matching [selector] is (its middle). */

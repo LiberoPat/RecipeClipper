@@ -27,7 +27,8 @@ struct ClipScreen: View {
                 ClipWebPage(
                     url: state.pageUrl,
                     fixtureHTML: fixtureHTML,
-                    // The new mark, and taps that select, go to the view showing.
+                    // The new mark, and taps that select, go to the page only while it shows, not
+                    // under the Text view (whose adds are marked on its own rows).
                     syncState: Self.syncJson(
                         state.draft, newMarkId: state.showingText ? nil : state.newMarkId,
                         armed: state.showingText ? nil : state.armedText,
@@ -38,31 +39,14 @@ struct ClipScreen: View {
                     readsPage: waiting,
                     readText: state.readingText
                 )
-                // The Text view (#213) lies over the page, which stays loaded (its scroll and
-                // marks) under it; hidden, it keeps its own.
-                if let text = state.pageText {
-                    let html = RedditTextPage.html(
-                        text, commentsHeading: Strings.clipTextComments, loadedNote: Strings.clipTextLoadedNote,
-                        author: Strings.clipTextAuthor
-                    )
-                    ClipWebPage(
-                        url: state.pageUrl,
-                        textHTML: html,
-                        syncState: Self.syncJson(
-                            state.draft, newMarkId: state.showingText ? state.newMarkId : nil,
-                            armed: state.showingText ? state.armedText : nil,
-                            // The Text view has no pictures: it outlines text only.
-                            outline: state.showingText && state.outline == .text ? .text : nil,
-                            clear: state.clearSelection
-                        ),
-                        pickingPhoto: false,
-                        onEvent: onPageEvent
-                    )
-                    .id(html)
-                    .opacity(state.showingText ? 1 : 0)
-                    .allowsHitTesting(state.showingText)
-                    .accessibilityHidden(!state.showingText)
-                    .accessibilityIdentifier("clip.text")
+                // The Text view (#213, line by line since #286) lies over the page, which stays
+                // loaded (its scroll and marks) under it; hidden, it keeps its own scroll.
+                if !state.textRows.isEmpty {
+                    ClipTextView(vm: vm)
+                        .opacity(state.showingText ? 1 : 0)
+                        .allowsHitTesting(state.showingText)
+                        .accessibilityHidden(!state.showingText)
+                        .accessibilityIdentifier("clip.text")
                 }
                 if state.reviewing {
                     ClipReviewPane(vm: vm)
@@ -208,9 +192,7 @@ struct ClipScreen: View {
     ) -> String {
         var marks: [[String: String]] = []
         for mark in draft.marks where mark.field != .photo {
-            let label = mark.field.replaces
-                ? Strings.clipField(mark.field) : Strings.clipTagCount(Strings.clipField(mark.field), mark.lines.count)
-            marks.append(["id": mark.id, "field": mark.field.rawValue, "label": label])
+            marks.append(["id": mark.id, "field": mark.field.rawValue, "label": Strings.clipTag(mark)])
         }
         var json: [String: Any] = [
             "marks": marks, "armed": armed?.rawValue ?? NSNull(), "clear": clear,
@@ -290,11 +272,14 @@ private struct ClipToolbar: View {
                 }
             }
         case .selected(let lines):
+            // "3 lines selected · tap the field they go in", the count in ink (#286). The Text
+            // view shows its ticked lines, so only the page's selection gets its first line here.
             VStack(alignment: .leading, spacing: 2) {
-                Text(Strings.clipLinesSelected(lines))
-                    .textStyle(Typography.labelLarge)
-                    .foregroundStyle(Palette.muted)
-                if let line = state.selection.first {
+                Text(selectedText(lines))
+                    .textStyle(Typography.bodyMedium)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("clip.selected")
+                if !state.showingText, let line = state.selection.first {
                     Text(line).textStyle(Typography.bodySmall).lineLimit(1)
                 }
             }
@@ -320,6 +305,16 @@ private struct ClipToolbar: View {
                 }
             }
         }
+    }
+
+    /// "3 lines selected" in ink and heavier, then " · tap the field they go in" muted.
+    private func selectedText(_ lines: Int) -> AttributedString {
+        var count = AttributedString(Strings.clipLinesSelected(lines))
+        count.inlinePresentationIntent = .stronglyEmphasized
+        count.foregroundColor = Palette.onBackground
+        var hint = AttributedString(Strings.clipSelectedHint)
+        hint.foregroundColor = Palette.muted
+        return count + hint
     }
 
     private func fieldButton(_ field: ClipField, armed: Bool, count: Int) -> some View {

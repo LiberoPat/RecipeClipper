@@ -1,7 +1,7 @@
 import XCTest
 @testable import RecipeClipper
 
-/// Mirrors Android's RedditPageTextTest and RedditTextPageTest, on the same fixtures
+/// Mirrors Android's RedditPageTextTest and ClipTextRowTest, on the same fixtures
 /// (`shared/fixtures/reddit/page-text`): what `RCReddit.text()` returned in the clip view in
 /// September 2026, with the usernames replaced and the icons cut.
 final class RedditPageTextTests: XCTestCase {
@@ -76,32 +76,32 @@ final class RedditPageTextTests: XCTestCase {
         XCTAssertEqual(RedditPageText.parse(#"<shreddit-post><h1 slot="title"> Soup </h1></shreddit-post>"#).title, "Soup")
     }
 
-    // MARK: The Text view's page (RedditTextPage)
+    // MARK: The Text view's rows (ClipTextRow, #286)
 
-    private func page(_ text: RedditPageText) -> String {
-        RedditTextPage.html(text, commentsHeading: "Comments", loadedNote: "Only loaded ones.", author: { "u/\($0)" })
+    func testThePostIsALineARowTheTitleFirstWithNoCommentsHeadingWithoutComments() {
+        XCTAssertEqual(ClipTextRow.of(RedditPageText(title: "Pie", body: ["3 apples", "Bake."], comments: [])), [
+            .line(index: 0, text: "Pie", title: true),
+            .line(index: 1, text: "3 apples"),
+            .line(index: 2, text: "Bake."),
+        ])
+        // No title, no title row: the body's first line is line 0.
+        XCTAssertEqual(ClipTextRow.of(RedditPageText(title: " ", body: ["Bake."], comments: [])), [.line(index: 0, text: "Bake.")])
     }
 
-    func testThePostIsAPageOfParagraphsTheTitleFirst() {
-        let html = page(RedditPageText(title: "Pie", body: ["3 apples", "Bake."], comments: []))
-        XCTAssertTrue(html.contains("<h1>Pie</h1><p>3 apples</p><p>Bake.</p>"))
-        XCTAssertFalse(html.contains("Comments"))
-    }
-
-    func testCommentsFollowUnderAHeadingAndANoteTheirLabelsUnselectableRepliesIndented() {
-        let html = page(RedditPageText(title: "Pie", body: [], comments: [
-            RedditPageComment(author: "baker", depth: 0, lines: ["Use 4."]),
-            RedditPageComment(author: "op", depth: 1, lines: ["Thanks!"]),
+    func testCommentsFollowUnderTheHeadingEachUnderItsAuthorLinesNumberedOnRepliesIndentedToSix() {
+        let rows = ClipTextRow.of(RedditPageText(title: "", body: ["Pie"], comments: [
+            RedditPageComment(author: "baker", depth: 0, lines: ["Use 4.", "Or 5."]),
+            RedditPageComment(author: "op", depth: 9, lines: ["Thanks!"]),
         ]))
-        XCTAssertTrue(html.contains(#"<h2 class="label">Comments</h2><p class="label note">Only loaded ones.</p>"#))
-        XCTAssertTrue(html.contains(#"<section style="margin-left:0px"><p class="label author">u/baker</p><p>Use 4.</p></section>"#))
-        XCTAssertTrue(html.contains(#"<section style="margin-left:12px"><p class="label author">u/op</p><p>Thanks!</p></section>"#))
-        XCTAssertTrue(html.contains(".label{-webkit-user-select:none;user-select:none}"))
-    }
-
-    func testWhatThePostSaysIsTextNeverMarkup() {
-        let html = page(RedditPageText(title: "<b>Pie</b> & \"more\"", body: ["<script>alert(1)</script>"], comments: []))
-        XCTAssertTrue(html.contains("<h1>&lt;b&gt;Pie&lt;/b&gt; &amp; &quot;more&quot;</h1>"))
-        XCTAssertFalse(html.contains("<script>"))
+        XCTAssertEqual(rows, [
+            .line(index: 0, text: "Pie"),
+            .comments,
+            .author(comment: 0, name: "baker", depth: 0),
+            .line(index: 1, text: "Use 4.", depth: 0),
+            .line(index: 2, text: "Or 5.", depth: 0),
+            .author(comment: 1, name: "op", depth: 6),
+            .line(index: 3, text: "Thanks!", depth: 6),
+        ])
+        XCTAssertEqual(Set(rows.map(\.id)).count, rows.count)
     }
 }

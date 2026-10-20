@@ -736,15 +736,43 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(state.pageText?.comments.first?.lines, ["Use 4 apples."])
     }
 
-    func testTextSelectedInTheTextViewIsAssignedAndSavedLikeThePages() async throws {
+    // The Text view, line by line (#286): the post's rows, the title first, labels without a box.
+    func testTheTextViewIsThePostsLinesAsRows() {
+        let vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        XCTAssertEqual(vm.uiState.textRows, [
+            .line(index: 0, text: "Apple Pie", title: true),
+            .line(index: 1, text: "3 apples"),
+            .line(index: 2, text: "1 crust"),
+            .line(index: 3, text: "Bake."),
+            .comments,
+            .author(comment: 0, name: "baker", depth: 0),
+            .line(index: 4, text: "Use 4 apples.", depth: 0)
+        ])
+        // Ids are unique across the list (a ForEach's).
+        let ids = vm.uiState.textRows.map(\.id)
+        XCTAssertEqual(ids.count, Set(ids).count)
+    }
+
+    func testLinesTickedInTheTextViewAreAssignedAndSavedLikeThePages() async throws {
         let vm = redditViewModel()
         vm.onShowText()
         vm.onPageText(postHtml)
 
-        select(vm, "Apple Pie", .name)
-        XCTAssertEqual(vm.uiState.newMarkId, "m1")
-        select(vm, "3 apples\n1 crust", .ingredients)
-        select(vm, "Bake.", .steps)
+        // Guided: step 1 is armed, a tick, then the step's confirm.
+        vm.onTextLine(0)
+        XCTAssertEqual(vm.uiState.ticked, [0])
+        XCTAssertEqual(vm.uiState.hint, .confirm(.name, lines: 1))
+        vm.onConfirm()
+        XCTAssertEqual(vm.uiState.ticked, [])
+        XCTAssertEqual(vm.uiState.armed, .ingredients)
+        vm.onTextLine(1)
+        vm.onTextLine(2)
+        XCTAssertEqual(vm.uiState.hint, .confirm(.ingredients, lines: 2))
+        vm.onConfirm()
+        vm.onTextLine(3)
+        vm.onConfirm()
         vm.onReview()
         vm.onSave()
         await settleMain()
@@ -756,15 +784,108 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual(saved.sourceUrl, post)
     }
 
+    func testATapPastTheTickedLinesTicksTheRunAndATickedLineUnticks() {
+        let vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onFieldButton(.ingredients)
+
+        vm.onTextLine(1)
+        vm.onTextLine(4)
+        XCTAssertEqual(vm.uiState.ticked, [1, 2, 3, 4])
+        XCTAssertEqual(vm.uiState.selection, ["3 apples", "1 crust", "Bake.", "Use 4 apples."])
+        vm.onTextLine(3)
+        XCTAssertEqual(vm.uiState.ticked, [1, 2, 4])
+        // A tap in a gap ticks that line only; one before the run stretches it back.
+        vm.onTextLine(3)
+        XCTAssertEqual(vm.uiState.ticked, [1, 2, 3, 4])
+        vm.onTextLine(0)
+        XCTAssertEqual(vm.uiState.ticked, [0, 1, 2, 3, 4])
+
+        // A name is a line or two, never a run: each tap ticks its own line.
+        vm.onClearSelection()
+        vm.onFieldButton(.name)
+        vm.onTextLine(0)
+        vm.onTextLine(2)
+        XCTAssertEqual(vm.uiState.ticked, [0, 2])
+        XCTAssertEqual(vm.uiState.selection, ["Apple Pie", "1 crust"])
+    }
+
+    func testLinesTickedFirstGoInWithOneTapOnAFieldsButton() {
+        let vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onFieldButton(.name) // disarms step 1
+        vm.onTextLine(1)
+        vm.onTextLine(2)
+        XCTAssertEqual(vm.uiState.hint, .selected(lines: 2))
+
+        vm.onFieldButton(.ingredients)
+        XCTAssertEqual(vm.uiState.draft.ingredients, ["3 apples", "1 crust"])
+        XCTAssertEqual(vm.uiState.ticked, [])
+        XCTAssertEqual(vm.uiState.armed, .steps)
+    }
+
+    func testAnAddKeepsItsLinesMarkedAndItsFirstLineTaggedUntilItIsTakenBack() throws {
+        let vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onFieldButton(.ingredients)
+        vm.onTextLine(1)
+        vm.onTextLine(2)
+        vm.onConfirm()
+        let mark = try XCTUnwrap(vm.uiState.draft.marks.first)
+        XCTAssertEqual(vm.uiState.textMarks, [1: ClipTextMark(mark: mark, first: true), 2: ClipTextMark(mark: mark, first: false)])
+
+        // The tag takes the add back, and Undo brings it back, marks and all.
+        vm.onTagTapped(mark.id)
+        XCTAssertEqual(vm.uiState.draft.ingredients, [])
+        XCTAssertEqual(vm.uiState.textMarks, [:])
+        vm.onUndo()
+        XCTAssertEqual(Set(vm.uiState.textMarks.keys), [1, 2])
+    }
+
+    func testTicksGoWithClearAndTheOtherViewAndThePagesSelectionIsntHeardOverThem() {
+        let vm = redditViewModel()
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        vm.onTextLine(0)
+        // The page under the Text view only reports dropping its own selection.
+        vm.onSelectionChanged("")
+        XCTAssertEqual(vm.uiState.selection, ["Apple Pie"])
+        vm.onClearSelection()
+        XCTAssertEqual(vm.uiState.ticked, [])
+        XCTAssertEqual(vm.uiState.selection, [])
+
+        vm.onTextLine(0)
+        vm.onShowPage()
+        XCTAssertEqual(vm.uiState.ticked, [])
+        vm.onTextLine(1) // the Text view isn't showing
+        XCTAssertEqual(vm.uiState.ticked, [])
+    }
+
     func testBackToThePageKeepsTheTextAndTheDraft() {
         let vm = redditViewModel()
         vm.onShowText()
         vm.onPageText(postHtml)
-        select(vm, "Apple Pie", .name)
+        vm.onTextLine(0)
+        vm.onConfirm()
         vm.onShowPage()
         XCTAssertFalse(vm.uiState.showingText)
         XCTAssertEqual(vm.uiState.pageText?.title, "Apple Pie")
         XCTAssertEqual(vm.uiState.draft.name, "Apple Pie")
+
+        // Reading the same text again keeps its rows and the name's mark on them.
+        vm.onShowText()
+        vm.onPageText(postHtml)
+        XCTAssertEqual(Set(vm.uiState.textMarks.keys), [0])
+
+        // New text (more comments loaded) is new rows: the old marks can't be found on them.
+        vm.onShowPage()
+        vm.onShowText()
+        vm.onPageText(postHtml.replacingOccurrences(of: "Use 4 apples.", with: "Use 5 apples."))
+        XCTAssertEqual(vm.uiState.textMarks, [:])
+        XCTAssertEqual(vm.uiState.textRows.last?.lineText, "Use 5 apples.")
     }
 
     // The owner (#237): "when toggling a reddit page from text back to page, page doesnt work".
@@ -779,7 +900,8 @@ final class ClipViewModelTests: XCTestCase {
         vm.onPageText(postHtml)
         XCTAssertEqual(vm.uiState.armed, .ingredients)
         XCTAssertEqual(vm.uiState.clearSelection, cleared + 1)
-        vm.onSelectionChanged("3 apples\n1 crust")
+        vm.onTextLine(1)
+        vm.onTextLine(2)
         vm.onConfirm()
         // The next step (Steps) armed in the Text view, and carries back to the page.
         XCTAssertEqual(vm.uiState.armed, .steps)

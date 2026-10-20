@@ -192,4 +192,35 @@ final class ClipUITests: RecipeUITestCase {
         app.navigationBars.buttons["Cancel"].tap()
         require(app.textFields["Recipe URL"], "Home, not an error screen")
     }
+
+    /// The Text view, line by line (#286): on a Reddit post, Text lists the post's lines (the
+    /// fixture's hidden `shreddit-post`) as rows, each a tick. Selected first: step 1 disarmed,
+    /// the title ticked ("1 line selected · tap the field they go in"), and Name's button adds it.
+    /// Armed: the first ingredient, then the last, tick the run, and the step's confirm adds it,
+    /// its tag on its first line. Mirrors Android's ClipScreenTest.theTextViewTicksLinesThenThePageWorks.
+    func testTheTextViewTicksLinesSelectedFirstOrArmed() {
+        launch(.empty, flags: ["reddit"])
+        importLink("reddit.com/r/recipes/comments/abc123/blocked")
+        onPage(page.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Brown Butter Oat Cookies")).firstMatch, "the page")
+        require(app.navigationBars.buttons["Text"], "Text").tap()
+
+        let title = require(app.buttons["clip.line.0"], "the post's title, a line to tick")
+        XCTAssertFalse(title.isSelected)
+        fieldButton("NAME").tap() // disarms step 1
+        title.tap()
+        require(textContaining("1 line selected · tap the field they go in"), "the count")
+        XCTAssertTrue(app.buttons["clip.line.0"].isSelected)
+        fieldButton("NAME").tap()
+        require(text("Step 2 of 4 · Tap the ingredients"), "the next step, armed by itself")
+        XCTAssertFalse(app.buttons["clip.line.0"].isSelected)
+
+        app.buttons["clip.line.1"].tap()
+        require(app.buttons["Add 1 line to Ingredients"], "one line ticked")
+        app.buttons["clip.line.3"].tap()
+        XCTAssertTrue(app.buttons["clip.line.2"].isSelected, "the run between")
+        confirm("Add 3 lines to Ingredients")
+        require(text("Step 3 of 4 · Tap the steps"), "step 3")
+        XCTAssertEqual(require(app.buttons["clip.tag.m2"], "the add's tag").label, "Ingredients · 3")
+        XCTAssertFalse(app.buttons["clip.line.1"].isSelected)
+    }
 }

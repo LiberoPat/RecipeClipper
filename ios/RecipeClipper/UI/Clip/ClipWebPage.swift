@@ -71,12 +71,10 @@ enum ClipperScript {
 ///
 /// On reddit.com (#213) `reddit-reader.js` runs too, from the document's start, which shows the
 /// post's whole text and hides Reddit's sign-in and app prompts; `readText` turning true reads
-/// the post for the Text view, as `.pageText`. `textHTML` is the Text view's own page, loaded
-/// with no address.
+/// the post for the Text view, as `.pageText`.
 struct ClipWebPage: UIViewRepresentable {
     let url: String
     var fixtureHTML: String? = nil
-    var textHTML: String? = nil
     let syncState: String
     let pickingPhoto: Bool
     let onEvent: (ClipPageEvent) -> Void
@@ -94,7 +92,6 @@ struct ClipWebPage: UIViewRepresentable {
         coordinator.onEvent = onEvent
         coordinator.readsPage = readsPage
         coordinator.pageUrl = url
-        coordinator.localPage = textHTML != nil
         let config = WKWebViewConfiguration()
         config.userContentController.addUserScript(
             WKUserScript(source: ClipperScript.redditReader, injectionTime: .atDocumentStart, forMainFrameOnly: true)
@@ -114,9 +111,7 @@ struct ClipWebPage: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = coordinator
         webView.accessibilityIdentifier = "clip.page"
-        if let textHTML {
-            webView.loadHTMLString(textHTML, baseURL: nil)
-        } else if let fixtureHTML {
+        if let fixtureHTML {
             webView.loadHTMLString(fixtureHTML, baseURL: URL(string: url))
         } else if let pageUrl = URL(string: url) {
             webView.load(URLRequest(url: pageUrl))
@@ -151,8 +146,6 @@ struct ClipWebPage: UIViewRepresentable {
         var readsPage = false
         var pageUrl = ""
         var readingText = false
-        /// The Text view's own page (#213): it loads as about:blank, which no web page may.
-        var localPage = false
         var pendingRead: Task<Void, Never>?
         private var loaded = false
         private var sent: String?
@@ -200,10 +193,6 @@ struct ClipWebPage: UIViewRepresentable {
         ) {
             guard navigationAction.targetFrame?.isMainFrame == true else {
                 decisionHandler(.allow)
-                return
-            }
-            if localPage {
-                decisionHandler(navigationAction.request.url?.scheme == "about" ? .allow : .cancel)
                 return
             }
             let type = navigationAction.navigationType

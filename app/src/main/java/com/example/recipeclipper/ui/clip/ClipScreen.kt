@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,7 +35,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +50,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -118,7 +122,8 @@ fun ClipScreen(
         val label = resources.getString(field.labelRes)
         if (field.replaces) label else resources.getString(R.string.clip_tag_count, label, count)
     }
-    // The new mark, and taps that select, go to the view showing: the page, or the Text view.
+    // The new mark, and taps that select, go to the page only while it shows, not under the
+    // Text view (whose adds are marked on its own rows).
     val pageSync = remember(state.draft, state.newMarkId, state.showingText, state.armed, state.clearSelection) {
         syncJson(
             state.draft,
@@ -129,27 +134,8 @@ fun ClipScreen(
             label = tagLabel
         )
     }
-    val textSync = remember(state.draft, state.newMarkId, state.showingText, state.armed, state.clearSelection) {
-        syncJson(
-            state.draft,
-            newMarkId = state.newMarkId.takeIf { state.showingText },
-            armed = state.armedText.takeIf { state.showingText },
-            // The Text view has no pictures: it outlines text only.
-            outline = state.outline.takeIf { state.showingText && it == ClipOutline.TEXT },
-            clear = state.clearSelection,
-            label = tagLabel
-        )
-    }
-    val textPage = state.pageText?.let { text ->
-        remember(text) {
-            RedditTextPage.html(
-                text,
-                commentsHeading = resources.getString(R.string.clip_text_comments),
-                loadedNote = resources.getString(R.string.clip_text_loaded_note),
-                author = { resources.getString(R.string.clip_text_author, it) }
-            )
-        }
-    }
+    // Kept while the Text view is hidden, so it opens again where it was.
+    val textList = rememberLazyListState()
     val onPageEvent: (ClipPageEvent) -> Unit = { event ->
         when (event) {
             is ClipPageEvent.Selection -> viewModel.onSelectionChanged(event.text)
@@ -200,25 +186,17 @@ fun ClipScreen(
                             readText = state.readingText,
                             modifier = Modifier.fillMaxSize()
                         )
-                        // The Text view (#213) lies over the page, which stays loaded (its scroll
-                        // and marks) under it. Hidden, it keeps its own: full size, but not drawn
-                        // and under the page (#237: shrunk to no size, its last frame stayed over
-                        // the page, which then looked dead).
-                        if (textPage != null) {
-                            key(textPage) {
-                                ClipWebPage(
-                                    url = state.pageUrl,
-                                    syncState = textSync,
-                                    pickingPhoto = false,
-                                    onEvent = onPageEvent,
-                                    loadPage = loadTextPage(textPage),
-                                    visible = state.showingText,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .zIndex(if (state.showingText) 1f else -1f)
-                                        .then(if (state.showingText) Modifier.testTag("clip.text") else Modifier)
-                                )
-                            }
+                        // The Text view (#213, line by line since #286) lies over the page, which
+                        // stays loaded (its scroll and marks) under it.
+                        if (state.showingText) {
+                            ClipTextView(
+                                state = state,
+                                listState = textList,
+                                tagLabel = tagLabel,
+                                onLine = viewModel::onTextLine,
+                                onTag = viewModel::onTagTapped,
+                                modifier = Modifier.fillMaxSize().zIndex(1f).testTag("clip.text")
+                            )
                         }
                         if (state.reviewing) {
                             ReviewPane(state, viewModel, Modifier.fillMaxSize().zIndex(2f))
@@ -431,15 +409,25 @@ private fun HintBar(state: ClipUiState, viewModel: ClipViewModel) {
                     TextButton(onClick = viewModel::onClearSelection) { Text(stringResource(R.string.action_clear)) }
                 }
             }
+            // "3 lines selected · tap the field they go in", the count in ink (#286). The Text
+            // view shows its ticked lines, so only the page's selection gets its first line here.
             is ClipHint.Selected -> {
+                val count = pluralStringResource(R.plurals.clip_lines_selected, hint.lines, hint.lines)
+                val rest = stringResource(R.string.clip_summary_separator) + stringResource(R.string.clip_selected_hint)
+                val ink = MaterialTheme.colorScheme.onBackground
                 Text(
-                    pluralStringResource(R.plurals.clip_lines_selected, hint.lines, hint.lines) +
-                        stringResource(R.string.clip_summary_separator) + stringResource(R.string.clip_selected_hint),
-                    style = MaterialTheme.typography.labelLarge,
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(color = ink, fontWeight = FontWeight.SemiBold)) { append(count) }
+                        append(rest)
+                    },
+                    modifier = Modifier.testTag("clip.selected"),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = muted
                 )
-                state.selection.firstOrNull()?.let { line ->
-                    Text(line, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (!state.showingText) {
+                    state.selection.firstOrNull()?.let { line ->
+                        Text(line, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
             is ClipHint.Next -> Row(verticalAlignment = Alignment.CenterVertically) {

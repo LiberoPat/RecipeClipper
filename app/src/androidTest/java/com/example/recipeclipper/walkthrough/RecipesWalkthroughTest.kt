@@ -572,9 +572,10 @@ class RecipesWalkthroughTest : WalkthroughBase() {
      * the steps are each selected by script ([confirmPick]: a drag across a web page can't be
      * scripted, as in ClipScreenTest) and added with the step's confirm, which arms the next step;
      * the photo is skipped. Done with no name opens Review, which asks for it; typed, Save opens
-     * the recipe. Then a second post in the Text view: its name and ingredients the same way, and
-     * its steps (in the poster's comment) selected first ([pickFirst]): Steps disarmed, the text
-     * selected, then Steps' button. Saved.
+     * the recipe. Then a second post in the Text view, line by line (#286): its name and
+     * ingredients ticked (a real tap on the first line, then the last, ticks the run) and added
+     * the same way, and its steps (in the poster's comment) selected first ([tickFirst]): Steps
+     * disarmed, the lines ticked, then Steps' button. Saved.
      */
     @Test
     fun test31_redditClipYourself() {
@@ -610,21 +611,20 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         pause(2000)
         back()
 
-        // The Text view: the post and its loaded comments as plain text.
+        // The Text view, line by line (#286): the post and its loaded comments as rows to tick.
         openBlockedPost(TEXT_POST)
         tap("Text", 2500)
-        val text = waitForWebView { it.url?.contains("reddit.com") != true }
-        waitForPage(text, "typeof window.RC == 'object' && document.body.innerText.indexOf('Marinate the beef') >= 0")
+        waitLong(hasTestTag("clip.text"))
         pause(2500)
         waitFor(hasText("Step 1 of 4 · Tap the recipe's name"))
         pause(1500)
-        confirmPick(text, "Beef Bourguignon", null)
+        confirmTicks("Beef Bourguignon", null)
         waitFor(hasText("Step 2 of 4 · Tap the ingredients"))
         pause(2000)
-        confirmPick(text, "800g beef chuck", "to serve")
+        confirmTicks("800g beef chuck", "to serve")
         waitFor(hasText("Step 3 of 4 · Tap the steps"))
         pause(2000)
-        pickFirst(text, "Steps", "Marinate the beef overnight", "with parsley on top.")
+        tickFirst("Steps", "Marinate the beef overnight", "with parsley on top.")
         tap("Done", 3000)
         pause(1500)
         tap("Save", 3000)
@@ -765,7 +765,7 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         compose.waitUntil(60_000) { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
     }
 
-    /** The clip view's shown web views (the page, and the Text view over it) that are [which]. */
+    /** The clip view's shown web views (its page) that are [which]. */
     private fun webViews(which: (WebView) -> Boolean): List<WebView> {
         val found = mutableListOf<WebView>()
         scenario!!.onActivity { activity ->
@@ -830,16 +830,37 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         tapTag("clip.confirm", 3000)
     }
 
+    /** The Text view (#286): ticks [from]'s line, then [to]'s (the run between), and confirms. */
+    private fun confirmTicks(from: String, to: String?) {
+        tickLine(from)
+        to?.let(::tickLine)
+        waitFor(hasTestTag("clip.confirm"))
+        pause(2500)
+        tapTag("clip.confirm", 3000)
+    }
+
     /**
-     * Selected first (#251): [field]'s button disarms its step, the text is selected (the hint
-     * says "N lines selected · tap the field they go in"), and the button adds it straight away.
+     * The Text view, selected first (#251): [field]'s button disarms its step, the lines are
+     * ticked ("N lines selected · tap the field they go in"), and the button adds them at once.
      */
-    private fun pickFirst(view: WebView, field: String, from: String, to: String?) {
+    private fun tickFirst(field: String, from: String, to: String?) {
         tapTag("clip.field.${field.uppercase()}", 2000)
-        select(view, from, to)
+        tickLine(from)
+        to?.let(::tickLine)
         waitFor(hasText("tap the field they go in", substring = true))
         pause(3000)
         tapTag("clip.field.${field.uppercase()}", 3000)
+    }
+
+    /** A real tap on the Text view's line holding [text], scrolled into view first. */
+    private fun tickLine(text: String) {
+        val line = hasText(text, substring = true) and SemanticsMatcher("a Text view line") { node ->
+            node.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("clip.line.") == true
+        }
+        compose.onNode(hasTestTag("clip.text")).performScrollToNode(line)
+        pause(1200)
+        compose.onAllNodes(line)[0].performClick()
+        pause(1500)
     }
 
     private fun select(view: WebView, from: String, to: String?) {

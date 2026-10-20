@@ -577,9 +577,10 @@ extension WalkthroughUITests {
     /// fixture buttons do. It opens on the guided steps (#251): the name is skipped, the
     /// ingredients and the steps are each selected and added with the step's confirm, which arms
     /// the next step, and the photo is skipped. Done with no name opens Review, which asks for it;
-    /// typed, Save opens the recipe. Then a second post in the Text view: its name and ingredients
-    /// the same way, and its steps (in the poster's comment) selected first: Steps disarmed, the
-    /// text selected, then Steps' button. Saved.
+    /// typed, Save opens the recipe. Then a second post in the Text view, line by line (#286):
+    /// its name and ingredients ticked (a real tap on the first line, then the last, ticks the
+    /// run) and added the same way, and its steps (in the poster's comment) selected first: Steps
+    /// disarmed, the lines ticked, then Steps' button. Saved.
     func test31_redditClipYourself() {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestSeed", Scenario.walkthrough.rawValue, "-uiTestFlags", "reddit"]
@@ -628,21 +629,20 @@ extension WalkthroughUITests {
         pause(2)
         back()
 
-        // The Text view: the post and its loaded comments as plain text.
+        // The Text view, line by line (#286): the post and its loaded comments as rows to tick.
         openBlockedPost("https://www.reddit.com/r/recipes/comments/1wixh7a/beef_bourguignon/")
         require(app.navigationBars.buttons["Text"], "Text").tap()
-        let textView = app.webViews["clip.text"]
-        let spots = textView.waitForExistence(timeout: 10) ? textView : app.webViews.element(boundBy: 1)
+        require(app.buttons["clip.line.0"], "the Text view", within: 10)
         pause(2.5)
         require(text("Step 1 of 4 · Tap the recipe's name"), "step 1")
         pause(1.5)
-        selectAndConfirm(in: spots, "name")
+        tickAndConfirm("Beef Bourguignon", nil)
         require(text("Step 2 of 4 · Tap the ingredients"), "step 2")
         pause(2)
-        selectAndConfirm(in: spots, "ingredients")
+        tickAndConfirm("800g beef chuck", "to serve")
         require(text("Step 3 of 4 · Tap the steps"), "step 3")
         pause(2)
-        selectFirst(in: spots, "steps", "STEPS")
+        tickFirst("Marinate the beef overnight", "with parsley on top.", "STEPS")
         require(app.navigationBars.buttons["Done"], "Done").tap()
         pause(3)
         require(app.navigationBars.buttons["Save"], "Save").tap()
@@ -779,27 +779,54 @@ extension WalkthroughUITests {
         pause(3)
     }
 
-    /// Selected first (#251): `field`'s button disarms its step, the spot selects the text (the
-    /// hint says "N lines selected · tap the field they go in"), and the button adds it at once.
-    private func selectFirst(in page: XCUIElement, _ spot: String, _ field: String) {
+    /// The Text view (#286): ticks `from`'s line, then `to`'s (the run between), then the armed
+    /// step's confirm, and the next step arms.
+    private func tickAndConfirm(_ from: String, _ to: String?) {
+        tickLine(from)
+        if let to { tickLine(to) }
+        require(app.buttons["clip.confirm"], "\(from) ticked", within: 15)
+        pause(2.5)
+        app.buttons["clip.confirm"].tap()
+        pause(3)
+    }
+
+    /// The Text view, selected first (#251): `field`'s button disarms its step, the lines are
+    /// ticked ("N lines selected · tap the field they go in"), and the button adds them at once.
+    private func tickFirst(_ from: String, _ to: String?, _ field: String) {
         require(app.buttons["clip.field.\(field)"], field).tap()
         pause(2)
-        require(page.buttons["rc-walk-\(spot)"], "the \(spot) spot", within: 60).tap()
-        require(textContaining("tap the field they go in"), "the \(spot) selected", within: 15)
+        tickLine(from)
+        if let to { tickLine(to) }
+        require(textContaining("tap the field they go in"), "\(from) ticked", within: 15)
         pause(3)
         app.buttons["clip.field.\(field)"].tap()
         pause(3)
     }
 
+    /// A real tap on the Text view's line holding `text`, swiped up into view first.
+    private func tickLine(_ text: String) {
+        let line = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'clip.line.' AND label CONTAINS %@", text)
+        ).firstMatch
+        let list = app.scrollViews["clip.text"]
+        var swipes = 0
+        while !(line.exists && line.isHittable) && swipes < 40 {
+            (list.exists ? list : app as XCUIElement).swipeUp(velocity: .slow)
+            swipes += 1
+        }
+        require(line, "the line \(text)").tap()
+        pause(1.5)
+    }
+
     /// Spots down the left edge, clear and unseen, each selecting from its first text to its
-    /// last as a finger's drag would, after scrolling it into view below Reddit's header: the
-    /// first post's lines, else the second's. They wait for the post (not Reddit's check page).
+    /// last as a finger's drag would, after scrolling it into view below Reddit's header (the
+    /// first post's lines; the second post is ticked in the Text view, #286). They wait for the
+    /// post (not Reddit's check page).
     static let clipSpots = """
     (function () {
       var spots = {
-        name: [['Beef Bourguignon', null]],
-        ingredients: [['2 pounds bone-in', 'Black pepper, to taste'], ['800g beef chuck', 'to serve']],
-        steps: [['Prepare the chicken:', 'remaining vinaigrette on the side.'], ['Marinate the beef overnight', 'with parsley on top.']]
+        ingredients: [['2 pounds bone-in', 'Black pepper, to taste']],
+        steps: [['Prepare the chicken:', 'remaining vinaigrette on the side.']]
       };
       function select(from, to) {
         to = to || from;
