@@ -366,11 +366,15 @@ private struct DaySection: View {
                     }
                 }
             }
-            if nothingPlanned {
+            // A day with no meals keeps the line's room until they've loaded: the days above
+            // today growing by a line once they had pushed today off the top on opening (#296).
+            if meals.isEmpty {
                 Text(Strings.nothingPlanned)
                     .textStyle(Typography.bodyMedium)
                     .foregroundStyle(Palette.muted)
                     .padding(.vertical, 4)
+                    .opacity(nothingPlanned ? 1 : 0)
+                    .accessibilityHidden(!nothingPlanned)
                     .accessibilityIdentifier("nothingPlanned-\(day)")
             }
             Button(Strings.addMeal) { vm.onAddToDay(day) }

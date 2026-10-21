@@ -213,7 +213,21 @@ final class PantryUITests: RecipeUITestCase {
                 .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)))
             _ = element.waitForExistence(timeout: 0.6)
         }
+        // Likewise the selection bar, which lies over the top of the list while selecting
+        // (#258): a tap on a row under it lands on the bar (its ✕ ended the selection once the
+        // counts, #286, moved the rows).
+        for _ in 0..<4 where element.exists && element.frame.minY < selectionBarBottom {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)))
+            _ = element.waitForExistence(timeout: 0.6)
+        }
         return require(element, what)
+    }
+
+    /// The bottom of the selection bar, or the top of the screen when not selecting.
+    private var selectionBarBottom: CGFloat {
+        let buttons = [app.buttons["exitSelection"], app.buttons["removeSelected"]].filter(\.exists)
+        return buttons.map(\.frame.maxY).max().map { $0 + 8 } ?? 0
     }
 
     /// Each named row sits under its heading (the nearest one above it), and no gap in the list
@@ -225,17 +239,7 @@ final class PantryUITests: RecipeUITestCase {
             if pass == 1 { for _ in 0..<3 { app.swipeDown() } } else if pass > 1 { app.swipeUp() }
             // Let the move's animation and the scroll settle.
             _ = app.staticTexts["#203 settle"].waitForExistence(timeout: 1.5)
-            let screen = app.frame
-            var visible: [(name: String, heading: Bool, frame: CGRect)] = []
-            for heading in headings {
-                let element = app.staticTexts[heading].firstMatch
-                if element.exists, screen.contains(element.frame) { visible.append((heading, true, element.frame)) }
-            }
-            for item in items {
-                let element = pantryRow(item)
-                if element.exists, screen.contains(element.frame) { visible.append((item, false, element.frame)) }
-            }
-            visible.sort { $0.frame.minY < $1.frame.minY }
+            let visible = onScreen().sorted { $0.frame.minY < $1.frame.minY }
             for (a, b) in zip(visible, visible.dropFirst()) {
                 XCTAssertLessThan(b.frame.minY - a.frame.maxY, 30, "a blank row between \(a.name) and \(b.name)", file: file, line: line)
             }
@@ -246,7 +250,35 @@ final class PantryUITests: RecipeUITestCase {
             }
         }
         XCTAssertEqual(placed, Set(expected.keys), "the rows seen under a heading", file: file, line: line)
-        if expected.values.contains("Run out") { reveal(text("Run out"), "the Run out heading") }
+        if expected.values.contains("Run out") {
+            // The heading itself, not the Run out count box over the list (#286).
+            let shown = { self.onScreen().contains { $0.heading && $0.name == "Run out" } }
+            for _ in 0..<4 where !shown() { app.swipeUp() }
+            XCTAssertTrue(shown(), "the Run out heading", file: file, line: line)
+        }
+    }
+
+    /// The headings and rows fully on screen, from one snapshot of the tree. Asking each element
+    /// for `exists` and `frame` costs a round trip to the app every time: about a hundred per
+    /// check, which took each test above to nine minutes on CI (#296).
+    private func onScreen() -> [(name: String, heading: Bool, frame: CGRect)] {
+        guard let root = try? app.snapshot() else { return [] }
+        var found: [(name: String, heading: Bool, frame: CGRect)] = []
+        var seen = Set<String>()
+        func visit(_ node: XCUIElementSnapshot) {
+            // The count boxes over the list (#286) read "Run out" too: not a heading.
+            if node.identifier.hasPrefix("pantryCount-") { return }
+            // The first match of each, in tree order, as `firstMatch` took it.
+            if node.elementType == .staticText, headings.contains(node.label), seen.insert(node.label).inserted {
+                if root.frame.contains(node.frame) { found.append((node.label, true, node.frame)) }
+            } else if node.elementType == .button,
+                      let item = items.first(where: { node.label.hasPrefix("\($0), ") }), seen.insert(item).inserted {
+                if root.frame.contains(node.frame) { found.append((item, false, node.frame)) }
+            }
+            node.children.forEach(visit)
+        }
+        visit(root)
+        return found
     }
 }
 

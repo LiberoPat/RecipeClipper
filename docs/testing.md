@@ -780,8 +780,16 @@ both.
   as of September 2026). `DEVELOPER_DIR` selects Xcode 27 explicitly. It runs
   `RecipeClipperTests` on the image's iPhone 17 / iOS 27.0 simulator and
   uploads the `.xcresult` on failure.
-- **iOS UI tests** (`ios-ui-tests.yml`), about 18 minutes: nightly at 03:00
-  UTC and on demand (Actions → iOS UI tests → Run workflow).
+- **iOS UI tests** (`ios-ui-tests.yml`), about an hour: nightly at 03:00
+  UTC and on demand (Actions → iOS UI tests → Run workflow, or
+  `gh workflow run ios-ui-tests.yml --ref <branch>`). It builds once, then
+  tests on a simulator it creates and boots first, and deletes after. Each
+  test has five minutes (ten at most), so a stuck one fails alone, and no
+  diagnostics are collected from the simulator (after a failure that timed
+  out at ten minutes, every time). If the
+  test runner crashes before any test runs ("never finished bootstrapping",
+  the preview image's simulator hanging), it reboots the simulator and runs
+  once more (#296).
 - **Recipe site check** (`site-check.yml`, #32): Mondays at 06:00 UTC and on
   demand, and on a pull request that changes the check, its URL list or
   `shared/tables/site-rules.json`. It
