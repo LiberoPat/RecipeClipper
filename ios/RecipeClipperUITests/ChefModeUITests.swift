@@ -18,12 +18,12 @@ final class ChefModeUITests: RecipeUITestCase {
 
     func testShortStepsInTheReadingViewAndCookMode() {
         launch(.chef, flags: ["chefMode"])
-        openSettings()
-        for _ in 0..<2 where !chefMode.isHittable { app.swipeUp() }
+        openSettings("steps") // Settings' index (#286): Steps' own page
         require(textContaining("For recipes in English"), "the languages line")
         chefMode.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
         requireState(chefMode, "value == '1'", "Chef mode on")
-        back()
+        back() // to the index
+        back() // to Home
 
         openRecipe("Sponge Cake")
         app.swipeUp()

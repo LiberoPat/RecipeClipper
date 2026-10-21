@@ -50,7 +50,10 @@ final class TabShellUITests: RecipeUITestCase {
         openLists()
         XCTAssertTrue(tabBar.isHittable, "bar on Lists")
         back()
-        openSettings()
+        openSettings("units")
+        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Metric'")).firstMatch, "Units' page")
+        XCTAssertTrue(tabBar.isHittable, "bar on a Settings page (#286)")
+        back()
         XCTAssertTrue(tabBar.isHittable, "bar on Settings")
         back()
 

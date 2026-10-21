@@ -82,10 +82,14 @@ final class FreeTierViewModelTests: XCTestCase {
 
     func testTheSettingsRowOnlyWithTheFlagThenUnlocks() async {
         let store = FakeEntitlements(UnlockState(price: "$2.99"))
-        XCTAssertNil(settings(flags(freeTier: false), store).unlockRow)
+        let off = settings(flags(freeTier: false), store)
+        XCTAssertNil(off.unlockRow)
+        // The index (#286) has no Unlimited recipes row either.
+        XCTAssertFalse(off.sections.contains(.unlimited))
 
         let vm = settings(flags(freeTier: true), store)
         XCTAssertEqual(vm.unlockRow, UnlockRow(unlocked: false, price: "$2.99"))
+        XCTAssertEqual(vm.sections, SettingsSection.allCases)
         vm.onUnlock()
         await settleMain()
         XCTAssertEqual(vm.unlockRow?.unlocked, true)

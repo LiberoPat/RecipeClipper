@@ -1,7 +1,8 @@
 import Foundation
 
 /// Every destination above Home. Mirrors Android's nav graph: `recipe/{recipeId}`,
-/// `recipe/import?url={url}` (Paste a link and the deep link), `recipes`, `settings` (from Home's gear), `lists`,
+/// `recipe/import?url={url}` (Paste a link and the deep link), `recipes`, `settings` (from Home's gear) and
+/// its `settings/<section>` pages, `lists`,
 /// `lists/{listId}`, `clip?url={url}`.
 enum Route: Hashable {
     case recipe(id: Int64)
@@ -12,6 +13,9 @@ enum Route: Hashable {
     /// The library of every recipe (#102); it replaced History (`history`).
     case recipes
     case settings
+    /// A section of Settings on its own page, from its row on the index (#286; Android's
+    /// `settings/<section>`).
+    case settingsSection(SettingsSection)
     /// Hidden: seven taps on the version in Settings (#87; Android's `settings/developer`).
     case developerSettings
     case lists

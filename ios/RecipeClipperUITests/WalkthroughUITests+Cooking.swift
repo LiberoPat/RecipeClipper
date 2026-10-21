@@ -145,9 +145,9 @@ extension WalkthroughUITests {
     func test21_chefModeUnsupportedSimulated() {
         start(flags: ["chefMode"], extraArguments: ["-uiTestChefUnsupported"])
         require(app.buttons["Settings"]).tap()
+        require(settingsRow("steps"), "Settings' Steps row").tap() // the index (#286)
         pause()
         scrollTo(app.descendants(matching: .any)["settings.chefModeNote"], "the Chef mode note")
-        app.swipeUp() // clear of the foot of the screen
         pause(4)
     }
 }

@@ -81,9 +81,11 @@ extension WalkthroughUITests {
     func test07_amountsInSteps() {
         startAsShipped()
         require(app.buttons["Settings"]).tap()
+        require(settingsRow("steps"), "Settings' Steps row").tap() // the index (#286)
         pause()
         flipSwitch("Amounts in steps")
-        back()
+        back() // to the index
+        back() // to Home
         openRecipes()
         pause()
         scrollTo(row("Lemon Garlic Salmon"), "the salmon").tap()
@@ -111,9 +113,11 @@ extension WalkthroughUITests {
     func test08_chefModeStubModel() {
         startAsShipped(flags: ["chefMode"])
         require(app.buttons["Settings"]).tap()
+        require(settingsRow("steps"), "Settings' Steps row").tap() // the index (#286)
         pause()
         flipSwitch("Chef mode")
-        back()
+        back() // to the index
+        back() // to Home
         open("Sponge Cake")
         app.swipeUp()
         pause(2.5)

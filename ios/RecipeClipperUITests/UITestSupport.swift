@@ -105,9 +105,20 @@ class RecipeUITestCase: XCTestCase {
         require(app.buttons["lists.newList"], "the Lists screen")
     }
 
+    /// Settings' index (#286): a row per section, each a button named by its route.
     func openSettings() {
         require(app.buttons["Settings"]).tap()
-        require(text("Oven temperature"), "Settings")
+        require(settingsRow("oven-temperature"), "Settings")
+    }
+
+    /// Settings' index row for a section: "units", "oven-temperature", "steps", "pantry",
+    /// "your-recipes", "help"…
+    func settingsRow(_ section: String) -> XCUIElement { app.buttons["settings.\(section)"] }
+
+    /// Opens Settings, then a section's own page (#286); wait for something on it.
+    func openSettings(_ section: String) {
+        openSettings()
+        settingsRow(section).tap()
     }
 
     /// Opens a recipe from Home and waits for its title.

@@ -4766,8 +4766,9 @@ reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receive
 
 ### Routes
 
-`home`, `recipes` (the library; was `history`), `settings` (and the hidden
-`settings/developer`), `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`
+`home`, `recipes` (the library; was `history`), `settings` (the index, #286: each
+section's page is `settings/<section>`, such as `settings/units` or `settings/help`; and the
+hidden `settings/developer`), `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`
 (`cook=true` from a timer notification opens cook mode), `recipe/import?url={url}` (the
 share target: parse, then upsert with no list membership), and
 `edit?recipeId={recipeId}` (no id: a new recipe; saving replaces the edit screen, and
@@ -4800,17 +4801,32 @@ extension writes to as well.
 
 ### Settings: the sections and the keys
 
-**Sections:** Units (with "Also convert liquids" for Ounces only), Oven temperature
+**Sections, in order:** Units (with "Also convert liquids" for Ounces only), Oven temperature
 (independent of units, default As written), Appearance ("Dark while cooking"), Steps
 ("Amounts in steps", off, #101; "Chef mode", behind the `chefMode` flag, #100),
 Pantry ("Expiry reminders"; asks for notifications when turned on,
-never at launch), Unlimited recipes (only with `freeTier`: "Unlock for <store price>"
+never at launch), Your recipes (export, import and the automatic copy, #150), Help ("Show
+tips again", #190), and Unlimited recipes (only with `freeTier`: "Unlock for <store price>"
 and "Restore purchase", or the sentence "Unlocked: every recipe is kept."; Developer
-settings has an "Unlocked" override), Help ("Show tips again", #190), and Your
-recipes (export, import and the automatic copy, #150). Reached from the gear beside
+settings has an "Unlocked" override). Reached from the gear beside
 the Home title, on every tab of the shell. It could now open from elsewhere too (the
 recipe screen follows `AppPreferences.settings`), but adding an entry point is the
 owner's call.
+
+**An index with values (#286, the owner's pick of the redesign):** Settings opens on one row
+per section, in the order above: an icon (hand-drawn drawables on Android, SF Symbols on iOS),
+the name, its current value muted on the right, and a chevron. Each row opens the section's
+own page (`settings/<section>`; iOS `Route.settingsSection`) holding exactly the controls it
+had on the one long screen; Back returns to the index. The values come from the settings, never
+sample text: Units and Oven temperature their choice; Appearance "Dark while cooking" when on,
+else "System theme" (dark mode is the system's call); Steps "Amounts on/off" (Chef mode isn't
+summarised); Pantry "Reminders on/off"; Your recipes the automatic copy's "Last backed up"
+(how long ago) or "Not backed up yet", in the error colour while any of its page's warnings
+shows; Unlimited recipes "Unlocked" once it is; Help none. The value takes at most half the row
+and wraps; at the largest text sizes it sits under the name. Each page has its own ViewModel,
+like any destination, and every one follows the preferences, so the index is never stale. The
+version stays at the foot of the index (seven taps, #87). "Show tips again"'s tooltip (#190)
+is hosted by Help's page, so its visit is that page's; the index hosts none.
 
 **Keys** (the SharedPreferences file `unit_preferences`, and `UserDefaults` on iOS,
 the same on both): `unit_system`, `convert_liquids`, `temperature_unit`,
