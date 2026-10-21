@@ -456,6 +456,35 @@ final class PhotoTextSorterTests: XCTestCase {
         )
     }
 
+    func testAStripIsItsBoxWithALittleRoomAroundItClampedToThePicture() {
+        // A line a tenth of a 1000 by 500 picture tall: 0.035 above and below, and as many pixels
+        // (0.0175 of the width) either side.
+        let strip = PhotoBox(left: 0.2, top: 0.4, right: 0.6, bottom: 0.5).padded(width: 1000, height: 500)
+        XCTAssertEqual(strip.left, 0.1825, accuracy: 1e-5)
+        XCTAssertEqual(strip.top, 0.365, accuracy: 1e-5)
+        XCTAssertEqual(strip.right, 0.6175, accuracy: 1e-5)
+        XCTAssertEqual(strip.bottom, 0.535, accuracy: 1e-5)
+        let whole = PhotoBox(left: 0, top: 0, right: 1, bottom: 1)
+        XCTAssertEqual(whole.padded(width: 100, height: 100), whole)
+    }
+
+    func testALineTheCookEditsKeepsItsReasonsAndPlaceAndItsChipsWhileItHoldsALookAlike() {
+        let box = PhotoBox(left: 0.1, top: 0.2, right: 0.8, bottom: 0.3)
+        let oats = LineFlag(raw: "▢ 2% cups oats", shown: "2% cups oats", reasons: [.misread, .fraction], page: 0, box: box)
+        XCTAssertEqual(
+            PhotoTextSorter.edited(oats, "▢ 2% cup oats"),
+            LineFlag(raw: "▢ 2% cup oats", shown: "2% cup oats", reasons: [.misread, .fraction], page: 0, box: box)
+        )
+        XCTAssertEqual(
+            PhotoTextSorter.edited(oats, "2 ⅔ cups oats"),
+            LineFlag(raw: "2 ⅔ cups oats", shown: "2 ⅔ cups oats", reasons: [.misread], page: 0, box: box)
+        )
+        // Nothing is checked again: a corrected amount stays listed, as after a chip.
+        let salt = LineFlag(raw: "34 tsp salt", shown: "34 tsp salt", reasons: [.large])
+        XCTAssertEqual(PhotoTextSorter.edited(salt, "¾ tsp salt"), LineFlag(raw: "¾ tsp salt", shown: "¾ tsp salt", reasons: [.large]))
+        XCTAssertEqual(PhotoTextSorter.edited(oats, oats.raw), oats)
+    }
+
     func testAMalformedPlausibleAmountsTableIsRefusedAsSharedTablesDoes() {
         // A nil here is the app's fatalError, as SharedTables traps on a malformed table.
         XCTAssertNotNil(PlausibleAmounts(SharedTables.read("plausible-amounts")))

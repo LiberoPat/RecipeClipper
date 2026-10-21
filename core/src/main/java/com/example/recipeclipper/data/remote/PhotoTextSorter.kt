@@ -27,7 +27,24 @@ data class PhotoLine(
  * recogniser saw it and the review shows it).
  */
 data class PhotoBox(val left: Float, val top: Float, val right: Float, val bottom: Float) {
+    /**
+     * The strip the review shows for this box (#286) on a [width] by [height] picture: the box
+     * with a little room around it, [PAD] of the line's height above and below and as many
+     * pixels either side, clamped to the picture.
+     */
+    fun padded(width: Int, height: Int): PhotoBox {
+        val dy = (bottom - top) * PAD
+        val dx = if (width > 0) dy * height / width else 0f
+        return PhotoBox(
+            (left - dx).coerceAtLeast(0f), (top - dy).coerceAtLeast(0f),
+            (right + dx).coerceAtMost(1f), (bottom + dy).coerceAtMost(1f)
+        )
+    }
+
     companion object {
+        /** The room around a line's strip, in its height (#286). */
+        const val PAD = 0.35f
+
         /**
          * A box from a rectangle in [width] by [height] pixels, top-left origin (ML Kit's
          * `boundingBox` in the bitmap it read), clamped to the picture; null if nothing of it is
@@ -337,6 +354,22 @@ object PhotoTextSorter {
         return flag.copy(
             raw = flag.raw.replaceRange(at, at + flag.shown.length, shown), shown = shown,
             reasons = flag.reasons - CheckReason.FRACTION
+        )
+    }
+
+    /**
+     * [flag] once the cook has changed its line in the box to [line] (#286): the line as it is now,
+     * and as listed (cleaned as [sort] cleans a line, so "▢" and "•" go). It stays listed with its
+     * reasons, since nothing is checked again, but its chips stay only while the line still holds
+     * a look-alike for them to replace. Its page and box are kept.
+     */
+    fun edited(flag: LineFlag, line: String, words: LanguageWords = LanguageWords.ENGLISH): LineFlag {
+        if (line == flag.raw) return flag
+        val shown = RecipeTextSplitter.line(line, words).text.ifEmpty { line }
+        val chips = flag.chips && shown in line && fractionSlot(shown, words) != null
+        return flag.copy(
+            raw = line, shown = shown,
+            reasons = if (chips) flag.reasons else flag.reasons - CheckReason.FRACTION
         )
     }
 

@@ -19,6 +19,18 @@ struct PhotoBox: Equatable, Hashable, Sendable {
     let top: Float
     let right: Float
     let bottom: Float
+
+    /// The room around a line's strip, in its height (#286).
+    static let pad: Float = 0.35
+
+    /// The strip the review shows for this box (#286) on a `width` by `height` picture: the box
+    /// with a little room around it, `pad` of the line's height above and below and as many
+    /// pixels either side, clamped to the picture.
+    func padded(width: Int, height: Int) -> PhotoBox {
+        let dy = (bottom - top) * Self.pad
+        let dx = width > 0 ? dy * Float(height) / Float(width) : 0
+        return PhotoBox(left: max(left - dx, 0), top: max(top - dy, 0), right: min(right + dx, 1), bottom: min(bottom + dy, 1))
+    }
 }
 
 /// Why a line read from a photo is listed for the cook to check (#198). Flagged only: nothing is
@@ -342,6 +354,23 @@ enum PhotoTextSorter {
             raw: raw.replacingCharacters(in: at, with: shown), shown: shown, reasons: flag.reasons.subtracting([.fraction]),
             page: flag.page, box: flag.box
         )
+    }
+
+    /// `flag` once the cook has changed its line in the box to `line` (#286): the line as it is now,
+    /// and as listed (cleaned as `sort` cleans a line, so "▢" and "•" go). It stays listed with its
+    /// reasons, since nothing is checked again, but its chips stay only while the line still holds
+    /// a look-alike for them to replace. Its page and box are kept.
+    static func edited(_ flag: LineFlag, _ line: String, words: LanguageWords = .english) -> LineFlag {
+        guard line != flag.raw else { return flag }
+        let cleaned = RecipeTextSplitter.line(line, words: words).text
+        let shown = cleaned.isEmpty ? line : cleaned
+        let holds = (line as NSString).range(of: shown, options: .literal).location != NSNotFound
+        let chips = flag.chips && holds && fractionSlot(shown, words: words) != nil
+        var edited = flag
+        edited.raw = line
+        edited.shown = shown
+        if !chips { edited.reasons.remove(.fraction) }
+        return edited
     }
 
     /// A unit glued to the next word in `rest`, after the leading amount, where the scaler reads none.

@@ -258,6 +258,24 @@
     <string name="photo_fraction_chip">Mettre %1$s dans %2$s</string>
     <string name="photo_image_description">Photo de %1$s</string>
 
+    <!-- Check the recipe: the photo beside each line (#286) -->
+    <plurals name="photo_pages_count">
+        <item quantity="one">%1$d page</item>
+        <item quantity="many">%1$d de pages</item>
+        <item quantity="other">%1$d pages</item>
+    </plurals>
+    <plurals name="photo_photos_count">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="many">%1$d de photos</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
+    <plurals name="photo_lines_to_check">
+        <item quantity="one">%1$d ligne à vérifier</item>
+        <item quantity="many">%1$d de lignes à vérifier</item>
+        <item quantity="other">%1$d lignes à vérifier</item>
+    </plurals>
+    <string name="photo_strip_description">La ligne sur la photo</string>
+
     <!-- Scan a recipe (#226) -->
     <string name="action_scan_recipe">Scanner une recette</string>
     <string name="scan_page_description">Page %1$d sur %2$d</string>

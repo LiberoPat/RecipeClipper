@@ -470,6 +470,34 @@ class PhotoTextSorterTest {
         assertEquals(LineFlag("2 ⅔ cups oats", "2 ⅔ cups oats", setOf(CheckReason.MISREAD), 1, box), PhotoTextSorter.replaceFraction(flag, "⅔"))
     }
 
+    @Test fun `a strip is its box with a little room around it, clamped to the picture`() {
+        // A line a tenth of a 1000 by 500 picture tall: 0.035 above and below, and as many pixels
+        // (0.0175 of the width) either side.
+        val strip = PhotoBox(0.2f, 0.4f, 0.6f, 0.5f).padded(1000, 500)
+        assertEquals(0.1825f, strip.left, 1e-5f)
+        assertEquals(0.365f, strip.top, 1e-5f)
+        assertEquals(0.6175f, strip.right, 1e-5f)
+        assertEquals(0.535f, strip.bottom, 1e-5f)
+        assertEquals(PhotoBox(0f, 0f, 1f, 1f), PhotoBox(0f, 0f, 1f, 1f).padded(100, 100))
+    }
+
+    @Test fun `a line the cook edits keeps its reasons and place, and its chips while it holds a look-alike`() {
+        val box = PhotoBox(0.1f, 0.2f, 0.8f, 0.3f)
+        val oats = LineFlag("▢ 2% cups oats", "2% cups oats", setOf(CheckReason.MISREAD, CheckReason.FRACTION), 0, box)
+        assertEquals(
+            LineFlag("▢ 2% cup oats", "2% cup oats", setOf(CheckReason.MISREAD, CheckReason.FRACTION), 0, box),
+            PhotoTextSorter.edited(oats, "▢ 2% cup oats")
+        )
+        assertEquals(
+            LineFlag("2 ⅔ cups oats", "2 ⅔ cups oats", setOf(CheckReason.MISREAD), 0, box),
+            PhotoTextSorter.edited(oats, "2 ⅔ cups oats")
+        )
+        // Nothing is checked again: a corrected amount stays listed, as after a chip.
+        val salt = LineFlag("34 tsp salt", "34 tsp salt", setOf(CheckReason.LARGE))
+        assertEquals(LineFlag("¾ tsp salt", "¾ tsp salt", setOf(CheckReason.LARGE)), PhotoTextSorter.edited(salt, "¾ tsp salt"))
+        assertEquals(oats, PhotoTextSorter.edited(oats, oats.raw))
+    }
+
     @Test fun `a box in pixels becomes fractions of the picture, clamped to it`() {
         assertEquals(PhotoBox(0.25f, 0.1f, 0.75f, 0.2f), PhotoBox.fromPixels(100, 80, 300, 160, 400, 800))
         // ML Kit's box may run past the picture's edge.

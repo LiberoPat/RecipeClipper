@@ -1,24 +1,11 @@
 package com.example.recipeclipper.ui.edit
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.platform.testTag
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.platform.LocalContext
-import coil.compose.AsyncImage
-import coil.request.CachePolicy
-import coil.request.ImageRequest
 import com.example.recipeclipper.data.PhotoPost
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,14 +30,12 @@ import androidx.compose.runtime.LaunchedEffect
 import com.example.recipeclipper.ui.common.LibraryFullDialog
 import com.example.recipeclipper.ui.common.noticeMessage
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -110,7 +95,9 @@ fun EditRecipeScreen(
                     modifier = Modifier.semantics { heading() }
                 )
                 Spacer(Modifier.height(16.dp))
-                state.photo?.let { PhotoReview(it, state, viewModel::onReadAgain, viewModel::onFraction) }
+                state.photo?.let {
+                    PhotoReview(it, state, viewModel::onReadAgain, viewModel::onPage, viewModel::onCheckLine, viewModel::onFraction)
+                }
                 when {
                     state.loading -> CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     state.missing -> Text(
@@ -161,38 +148,22 @@ private fun EditFields(state: EditRecipeUiState, onChange: (RecipeDraft) -> Unit
 }
 
 /**
- * "Read the photo" (#198), above the fields: the post's pictures to check the lines against,
- * how the reading went, and the lines the recogniser was unsure of ("Check these lines"). A scan
- * (#226) shows the cook's pages the same way, each named "Page 1 of 2" for TalkBack, and read
- * from where they are, never cached (a reused camera file must not show an earlier picture).
+ * "Read the photo" (#198), above the fields: the post's pictures as thumbnails to check the lines
+ * against (#286: tap one to see it large), how the reading went, and the lines to check, each a
+ * card with the strip of the photo it was read from ([CheckCard]). A scan (#226) shows the cook's
+ * pages the same way, each named "Page 1 of 2" for TalkBack, and read from where they are, never
+ * cached (a reused camera file must not show an earlier picture).
  */
 @Composable
 private fun PhotoReview(
     post: PhotoPost,
     state: EditRecipeUiState,
     onReadAgain: () -> Unit,
+    onPage: (Int) -> Unit,
+    onCheckLine: (Int, String) -> Unit,
     onFraction: (flag: LineFlag, fraction: String) -> Unit
 ) {
-    val context = LocalContext.current
-    post.imageUrls.forEachIndexed { index, image ->
-        AsyncImage(
-            model = if (state.scan) {
-                remember(image) {
-                    ImageRequest.Builder(context).data(image)
-                        .memoryCachePolicy(CachePolicy.DISABLED).diskCachePolicy(CachePolicy.DISABLED).build()
-                }
-            } else image,
-            contentDescription = if (state.scan) {
-                stringResource(R.string.scan_page_description, index + 1, post.imageUrls.size)
-            } else stringResource(R.string.photo_image_description, post.title),
-            contentScale = ContentScale.FillWidth,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 480.dp)
-                .clip(RoundedCornerShape(12.dp))
-        )
-        Spacer(Modifier.height(12.dp))
-    }
+    PageThumbnails(post, state, onPage)
     when (state.photoOutcome) {
         null -> if (state.reading) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -220,58 +191,17 @@ private fun PhotoReview(
             Spacer(Modifier.height(16.dp))
         }
     }
-    if (state.flags.isNotEmpty()) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-                .padding(14.dp)
-                .semantics(mergeDescendants = true) {}
-        ) {
-            if (state.checkHeading) {
-                Text(
-                    stringResource(R.string.photo_check_heading),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(6.dp))
-            }
-            state.flags.forEachIndexed { index, flag ->
-                Text("• ${flag.shown}", style = MaterialTheme.typography.bodyMedium)
-                if (flag.largeOnly) LineNote(stringResource(R.string.photo_check_large), bottom = 4.dp)
-                if (flag.chips) FractionChips(index, flag, state.fractions, onFraction)
-            }
+    if (state.checks.isNotEmpty()) {
+        if (state.checkHeading) {
+            Text(
+                stringResource(R.string.photo_check_heading),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
         }
-        Spacer(Modifier.height(16.dp))
-    }
-}
-
-/**
- * A line whose amount holds a fraction glyph's look-alike (#245), or glyphs run together (#276,
- * "½⅓"): the fractions as one-tap
- * replacements, since "%" can't say whether it was ½, ¼ or ¾. The cook can still type instead.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun FractionChips(index: Int, flag: LineFlag, fractions: List<String>, onFraction: (LineFlag, String) -> Unit) {
-    LineNote(stringResource(R.string.photo_fraction_prompt))
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(start = 12.dp, bottom = 6.dp)
-    ) {
-        fractions.forEach { fraction ->
-            val spoken = stringResource(R.string.photo_fraction_chip, fraction, flag.shown)
-            OutlinedButton(
-                onClick = { onFraction(flag, fraction) },
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 14.dp),
-                modifier = Modifier
-                    .semantics { contentDescription = spoken }
-                    .testTag("edit.fraction.$index.$fraction")
-            ) {
-                Text(fraction, style = MaterialTheme.typography.titleMedium)
-            }
-        }
+        state.checks.forEachIndexed { index, check -> CheckCard(index, check, state.fractions, onCheckLine, onFraction) }
+        Spacer(Modifier.height(6.dp))
     }
 }
 
@@ -279,17 +209,6 @@ private fun FractionChips(index: Int, flag: LineFlag, fractions: List<String>, o
 private fun Note(text: String) {
     Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(12.dp))
-}
-
-/** A muted line under a line to check: why it's listed (#281), or what its chips are for (#245). */
-@Composable
-private fun LineNote(text: String, bottom: Dp = 0.dp) {
-    Text(
-        text,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = bottom)
-    )
 }
 
 @Composable

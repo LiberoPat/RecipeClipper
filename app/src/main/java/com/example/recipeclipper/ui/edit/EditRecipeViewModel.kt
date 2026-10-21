@@ -17,6 +17,8 @@ import com.example.recipeclipper.data.model.SourceType
 import com.example.recipeclipper.data.needsNotice
 import com.example.recipeclipper.data.remote.CheckReason
 import com.example.recipeclipper.data.remote.LineFlag
+import com.example.recipeclipper.data.remote.PhotoBox
+import com.example.recipeclipper.data.remote.PhotoReading
 import com.example.recipeclipper.data.remote.PhotoTextSorter
 import com.example.recipeclipper.data.remote.RecipeTextSplitter
 import com.example.recipeclipper.di.DefaultDispatcher
@@ -43,6 +45,21 @@ enum class PhotoOutcome {
     /** The phone's photo reader isn't there yet (Play services' model): try again or type it. */
     NOT_READY
 }
+
+/**
+ * The strip of a picture a line was read from (#286): [image], a post's picture (a web link, from
+ * the image cache the read filled) or a scan's page (a local URI, never cached: [local]), cropped
+ * to [box].
+ */
+data class PhotoStrip(val image: String, val box: PhotoBox, val local: Boolean)
+
+/**
+ * A line to check in the review (#198, #283, #286): [flag] as the sorter listed it, kept to the
+ * line as it is now in the box ([LineFlag.raw], which the card's field and the box both edit);
+ * where that line is, line [index] of the steps box when [steps], else of the ingredients box;
+ * and the [strip] of the photo it was read from, null when the reader didn't say where.
+ */
+data class CheckLine(val flag: LineFlag, val steps: Boolean, val index: Int, val strip: PhotoStrip?)
 
 /**
  * [isNew] is "New recipe" from Home; otherwise the recipe [draft] was loaded from.
@@ -73,13 +90,22 @@ data class EditRecipeUiState(
     val photoOutcome: PhotoOutcome? = null,
     /** The lines to check against the photo, as the sorter listed them (#198, #283), each with
      *  why: the photo was hard to read there, its amount holds a fraction look-alike (the
-     *  [fractions] as one-tap replacements, #245) or looks too large (#281). */
-    val flags: List<LineFlag> = emptyList(),
-    val fractions: List<String> = PhotoTextSorter.FRACTIONS
+     *  [fractions] as one-tap replacements, #245) or looks too large (#281); each a card with
+     *  its strip of the photo and its line as a field (#286). */
+    val checks: List<CheckLine> = emptyList(),
+    val fractions: List<String> = PhotoTextSorter.FRACTIONS,
+    /** The picture shown large under the thumbnails, tapped open (#286); null when none is. */
+    val openPage: Int? = null
 ) {
+    /** The [checks]' lines, each with why. */
+    val flags: List<LineFlag> get() = checks.map { it.flag }
+
     /** "Check these lines: the photo was hard to read there" heads the list, unless every line
      *  is listed only because its amount looks too large: each of those says so itself (#281). */
-    val checkHeading: Boolean get() = flags.any { !it.largeOnly }
+    val checkHeading: Boolean get() = checks.any { !it.flag.largeOnly }
+
+    /** The pictures read, for "2 pages · 5 lines to check" over the cards (#286). */
+    val pageCount: Int get() = photo?.imageUrls?.size ?: 0
 }
 
 /**
@@ -163,7 +189,7 @@ class EditRecipeViewModel @Inject constructor(
         photoLanguage = null
         _uiState.update {
             it.copy(
-                reading = true, photoOutcome = null, flags = emptyList(),
+                reading = true, photoOutcome = null, checks = emptyList(),
                 // A post's first picture is its photo; a scan's pages are never kept (#226).
                 draft = RecipeDraft(
                     name = post.title,
@@ -184,7 +210,7 @@ class EditRecipeViewModel @Inject constructor(
                     else -> state.copy(
                         reading = false,
                         photoOutcome = if (reading.sorted) PhotoOutcome.READ else PhotoOutcome.NOT_SORTED,
-                        flags = reading.flags,
+                        checks = checksOf(reading, post),
                         draft = state.draft.copy(
                             yield = reading.yield.orEmpty(),
                             prepTime = reading.prepTime.orEmpty(),
@@ -199,41 +225,72 @@ class EditRecipeViewModel @Inject constructor(
         }
     }
 
+    /** The sorter's list as cards (#286): each line found in its box (the ingredients first, as
+     *  listed), with the strip of the picture it was read from. Every listed line is a box's. */
+    private fun checksOf(reading: PhotoReading, post: PhotoPost): List<CheckLine> = reading.flags.mapNotNull { flag ->
+        val inIngredients = reading.ingredients.indexOf(flag.raw)
+        val steps = inIngredients < 0
+        val index = if (steps) reading.instructions.indexOf(flag.raw) else inIngredients
+        if (index < 0) return@mapNotNull null
+        val image = flag.page?.let { post.imageUrls.getOrNull(it) }
+        val box = flag.box
+        val strip = if (image != null && box != null) PhotoStrip(image, box, scanPages != null) else null
+        CheckLine(flag, steps, index, strip)
+    }
+
     /**
      * A fraction chip (#245): [flag]'s look-alike ("%" in "2% cups oats") becomes [fraction], the
-     * cook's reading of the photo, in the box that holds the line and in its entry in the list to
-     * check, which keeps any markup the line has ("▢ 2⅔ cups oats", #283). A line the cook has
-     * since changed in the box is left alone. Either way the entry's chips go.
+     * cook's reading of the photo, in the box that holds the line and in its card, which keeps any
+     * markup the line has ("▢ 2⅔ cups oats", #283). The card's chips go.
      */
     fun onFraction(flag: LineFlag, fraction: String) = _uiState.update { state ->
         val index = state.flags.indexOf(flag)
         if (index < 0) return@update state
         val fixed = PhotoTextSorter.replaceFraction(flag, fraction, RecipeTextSplitter.wordsFor(photoLanguage))
-        val draft = state.draft
-        val ingredients = fixed?.let { replaceLine(draft.ingredientsText, flag.raw, it.raw) }
-        val steps = if (ingredients == null) fixed?.let { replaceLine(draft.instructionsText, flag.raw, it.raw) } else null
-        val entry = fixed?.takeIf { ingredients != null || steps != null }
-            ?: flag.copy(reasons = flag.reasons - CheckReason.FRACTION)
-        state.copy(
-            draft = when {
-                ingredients != null -> draft.copy(ingredientsText = ingredients)
-                steps != null -> draft.copy(instructionsText = steps)
-                else -> draft
-            },
-            flags = state.flags.toMutableList().apply { this[index] = entry }
-        )
+            ?: return@update state.copy(
+                checks = state.checks.toMutableList().apply {
+                    this[index] = this[index].copy(flag = flag.copy(reasons = flag.reasons - CheckReason.FRACTION))
+                }
+            )
+        // The card is the box's line, so the box changes with it.
+        val changed = withLine(state, index, fixed.raw)
+        changed.copy(checks = changed.checks.toMutableList().apply { this[index] = this[index].copy(flag = fixed) })
     }
 
-    /** [text] with its first line that reads [line] (trimmed) holding [fixed] instead; null if none does. */
-    private fun replaceLine(text: String, line: String, fixed: String): String? {
-        val lines = text.split("\n")
-        val i = lines.indexOfFirst { it.trim() == line }
-        if (i < 0) return null
-        return lines.toMutableList().apply { this[i] = this[i].replace(line, fixed) }.joinToString("\n")
+    /** A card's field (#286): its line, typed over, in the box that holds it. */
+    fun onCheckLine(index: Int, text: String) = _uiState.update { withLine(it, index, text.replace("\n", " ")) }
+
+    /** [state] with card [index]'s line in its box holding [line] instead. */
+    private fun withLine(state: EditRecipeUiState, index: Int, line: String): EditRecipeUiState {
+        val check = state.checks.getOrNull(index) ?: return state
+        val box = if (check.steps) state.draft.instructionsText else state.draft.ingredientsText
+        val lines = box.split("\n").toMutableList()
+        if (check.index !in lines.indices) return state
+        lines[check.index] = line
+        val text = lines.joinToString("\n")
+        return withDraft(state, if (check.steps) state.draft.copy(instructionsText = text) else state.draft.copy(ingredientsText = text))
     }
 
-    fun onDraftChange(draft: RecipeDraft) =
-        _uiState.update { it.copy(draft = draft, saveFailed = false, unlockNotice = null) }
+    fun onDraftChange(draft: RecipeDraft) = _uiState.update { withDraft(it, draft) }
+
+    /**
+     * [state] with [draft] (#286): each card follows its line through the edit ([followLine]) and
+     * shows it as it now is ([PhotoTextSorter.edited]); a card whose line was edited away goes.
+     */
+    private fun withDraft(state: EditRecipeUiState, draft: RecipeDraft): EditRecipeUiState {
+        val words = RecipeTextSplitter.wordsFor(photoLanguage)
+        val old = state.draft.ingredientsText.split("\n") to state.draft.instructionsText.split("\n")
+        val new = draft.ingredientsText.split("\n") to draft.instructionsText.split("\n")
+        val checks = state.checks.mapNotNull { check ->
+            val (before, after) = if (check.steps) old.second to new.second else old.first to new.first
+            val index = followLine(before, after, check.index)?.takeIf { it in after.indices } ?: return@mapNotNull null
+            check.copy(flag = PhotoTextSorter.edited(check.flag, after[index], words), index = index)
+        }
+        return state.copy(draft = draft, checks = checks, saveFailed = false, unlockNotice = null)
+    }
+
+    /** A page's thumbnail (#286): shows that picture large under the row, or hides it again. */
+    fun onPage(page: Int) = _uiState.update { it.copy(openPage = if (it.openPage == page) null else page) }
 
     fun onSave() {
         val state = _uiState.value
@@ -328,5 +385,29 @@ class EditRecipeViewModel @Inject constructor(
 
         /** "Scan a recipe" (#226): the pages, local URIs one per line, in order. */
         const val SCAN_PAGES_ARG = "pages"
+    }
+}
+
+/**
+ * Where line [index] of a box's [old] lines is in its [new] lines, after one edit (#286): the
+ * lines before the first that changed, and after the last, are the same lines (moved by as many
+ * as were added or taken away). A line inside the change keeps its place in it while the change
+ * still has a line there (typed over, or split by a new line), and is gone when it hasn't (the
+ * line deleted): null.
+ */
+internal fun followLine(old: List<String>, new: List<String>, index: Int): Int? {
+    var start = 0
+    while (start < old.size && start < new.size && old[start] == new[start]) start++
+    var endOld = old.size
+    var endNew = new.size
+    while (endOld > start && endNew > start && old[endOld - 1] == new[endNew - 1]) {
+        endOld--
+        endNew--
+    }
+    return when {
+        index < start -> index
+        index >= endOld -> index + new.size - old.size
+        index < endNew -> index
+        else -> null
     }
 }
