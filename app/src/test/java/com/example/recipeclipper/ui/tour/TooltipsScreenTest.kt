@@ -10,6 +10,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -34,6 +35,8 @@ import com.example.recipeclipper.fake.FakeTourPreferences
 import com.example.recipeclipper.ui.home.HomeScreen
 import com.example.recipeclipper.ui.home.HomeViewModel
 import com.example.recipeclipper.ui.settings.SettingsScreen
+import com.example.recipeclipper.ui.settings.SettingsSection
+import com.example.recipeclipper.ui.settings.SettingsSectionScreen
 import com.example.recipeclipper.ui.settings.SettingsViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -103,19 +106,27 @@ class TooltipsScreenTest {
     }
 
     @Test
-    fun aTooltipShowsOnlyOnceItsControlIsOnScreen() {
-        // Settings' tooltip points at "Show tips again", far down the list.
+    fun settingsTooltipShowsOnHelpsPageNotOnTheIndex() {
+        // Settings' tooltip points at "Show tips again", on Help's own page (#286): the visit is
+        // that page's, and the index, which has no such control, shows none.
         var replays = 0
         val settings = SettingsViewModel(FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo())
+        var page by mutableStateOf<SettingsSection?>(null)
         compose.setContent {
             CompositionLocalProvider(LocalTooltips provides tooltips) {
-                SettingsScreen(onBack = {}, onShowTips = { replays++; tooltips.onReplay() }, viewModel = settings)
+                when (val open = page) {
+                    null -> SettingsScreen(onBack = {}, onOpenSection = { page = it }, viewModel = settings)
+                    else -> SettingsSectionScreen(
+                        open, onBack = { page = null }, onShowTips = { replays++; tooltips.onReplay() }, viewModel = settings
+                    )
+                }
             }
         }
         compose.mainClock.advanceTimeBy(Tooltips.SETTLE_MILLIS * 2)
         compose.onNodeWithTag("tooltip-settings_show_tips").assertDoesNotExist()
 
-        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Show tips again"))
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Help"))
+        compose.onNode(hasText("Help") and hasClickAction()).performClick()
         compose.waitUntil(timeoutMillis = 5_000) { compose.onAllNodesWithTagExists("tooltip-settings_show_tips") }
         compose.onNodeWithText("See every tip again, one at a time.").performClick()
         assertTrue(Tooltip.SETTINGS_SHOW_TIPS in seen())

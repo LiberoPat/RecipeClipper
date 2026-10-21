@@ -22,6 +22,8 @@ import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.week.WhatINeedViewModel
 import com.example.recipeclipper.ui.settings.DeveloperSettingsScreen
 import com.example.recipeclipper.ui.settings.SettingsScreen
+import com.example.recipeclipper.ui.settings.SettingsSection
+import com.example.recipeclipper.ui.settings.SettingsSectionScreen
 import com.example.recipeclipper.ui.tour.LocalTooltips
 
 object Routes {
@@ -32,6 +34,9 @@ object Routes {
 
     // Hidden: seven taps on the version in Settings (#87).
     const val DEVELOPER_SETTINGS = "settings/developer"
+
+    // Settings' pages (#286), one per section of its index: `settings/units`, `settings/help`…
+    fun settingsSection(section: SettingsSection) = "settings/${section.route}"
     const val LISTS = "lists"
     const val LIST_DETAIL = "lists/{${ListDetailViewModel.LIST_ID_ARG}}"
     const val RECIPE =
@@ -138,13 +143,24 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     // Opened from the gear beside the Home title. Any screen could navigate here: open
     // ViewModels collect AppPreferences.settings, so none is left showing stale units.
     composable(Routes.SETTINGS) {
-        // "Show tips again" (#190): every tooltip once more, from the app's one TooltipsViewModel.
-        val tooltips = LocalTooltips.current
         SettingsScreen(
             onBack = { navController.popBackStack() },
-            onOpenDeveloperSettings = { navController.navigate(Routes.DEVELOPER_SETTINGS) },
-            onShowTips = { tooltips?.onReplay() }
+            onOpenSection = { navController.navigate(Routes.settingsSection(it)) },
+            onOpenDeveloperSettings = { navController.navigate(Routes.DEVELOPER_SETTINGS) }
         )
+    }
+
+    // Each section's page (#286); Back returns to the index.
+    SettingsSection.entries.forEach { section ->
+        composable(Routes.settingsSection(section)) {
+            // "Show tips again" (#190): every tooltip once more, from the app's one TooltipsViewModel.
+            val tooltips = LocalTooltips.current
+            SettingsSectionScreen(
+                section,
+                onBack = { navController.popBackStack() },
+                onShowTips = { tooltips?.onReplay() }
+            )
+        }
     }
 
     composable(Routes.DEVELOPER_SETTINGS) {

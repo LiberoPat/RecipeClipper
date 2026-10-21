@@ -592,6 +592,13 @@
     <string name="settings_section_help">Hilfe</string>
     <string name="settings_show_tips">Tipps erneut zeigen</string>
     <string name="settings_show_tips_description">Jeder Tipp erscheint noch einmal, einer nach dem anderen.</string>
+    <!-- Settings' index (#286) -->
+    <string name="settings_value_system_theme">Systemdesign</string>
+    <string name="settings_value_amounts_on">Mengen: an</string>
+    <string name="settings_value_amounts_off">Mengen: aus</string>
+    <string name="settings_value_reminders_on">Erinnerungen: an</string>
+    <string name="settings_value_reminders_off">Erinnerungen: aus</string>
+    <string name="settings_value_unlocked">Freigeschaltet</string>
     <string name="clip_hint_start">Tippe unten auf Name und dann auf den Namen des Rezepts auf der Seite.</string>
     <string name="clip_confirm_name">Als Namen verwenden</string>
     <string name="clip_step">Schritt %1$d von %2$d · %3$s</string>

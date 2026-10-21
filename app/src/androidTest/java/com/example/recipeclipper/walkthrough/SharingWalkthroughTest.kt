@@ -62,6 +62,7 @@ class SharingWalkthroughTest : WalkthroughBase() {
         waitForSystemScreen() // the system's file picker
         systemBack()
         tapDescription("Settings")
+        tapTag("settingsSection-your-recipes") // Settings' index (#286)
         show("Back up now", 3000)
         tap("Backup folder", 0)
         waitForSystemScreen() // the system's folder picker

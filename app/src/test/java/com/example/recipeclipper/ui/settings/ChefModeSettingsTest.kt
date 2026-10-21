@@ -46,7 +46,7 @@ class ChefModeSettingsTest {
         val viewModel = SettingsViewModel(
             preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo(), flags, shortSteps
         )
-        compose.setContent { SettingsScreen(onBack = {}, viewModel = viewModel) }
+        compose.setContent { SettingsSectionScreen(SettingsSection.STEPS, onBack = {}, viewModel = viewModel) }
     }
 
     private fun switch() = compose.onNode(isToggleable().and(hasText("Chef mode", substring = true)))
@@ -57,7 +57,11 @@ class ChefModeSettingsTest {
 
     @Test
     fun hiddenWithoutTheFlag() {
+        // Off by hand: flags are on by default. (On the one long Settings screen the row was below
+        // the fold, so this passed whatever the flag; on Steps' own page it's on screen, #286.)
+        flags.set(Flag.CHEF_MODE, false)
         show()
+        compose.onNodeWithText("Amounts in steps").assertExists()
         compose.onNodeWithText("Chef mode").assertDoesNotExist()
     }
 

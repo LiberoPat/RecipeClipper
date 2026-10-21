@@ -1,0 +1,14 @@
+<!-- Settings index (#286): Units, a balance. Hand-drawn like the tab icons (see ic_tab_recipes.xml). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,4V20M8,20H16M5,7H19M5,7L2.5,13M5,7L7.5,13M19,7L16.5,13M19,7L21.5,13M2.5,13A2.5,2.5 0,0 0,7.5,13ZM16.5,13A2.5,2.5 0,0 0,21.5,13Z" />
+</vector>

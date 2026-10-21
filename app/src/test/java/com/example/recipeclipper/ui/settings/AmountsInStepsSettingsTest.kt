@@ -34,7 +34,7 @@ class AmountsInStepsSettingsTest {
 
     private fun show() {
         val viewModel = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo(), flags)
-        compose.setContent { SettingsScreen(onBack = {}, viewModel = viewModel) }
+        compose.setContent { SettingsSectionScreen(SettingsSection.STEPS, onBack = {}, viewModel = viewModel) }
     }
 
     @Test fun offByDefaultAndTurnsOn() {

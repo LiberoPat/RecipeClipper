@@ -125,7 +125,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
     fun test05_expiryReminders() {
         start()
         tapDescription("Settings")
-        repeat(3) { swipeUp() }
+        tapTag("settingsSection-pantry") // Settings' index (#286)
         tap("Expiry reminders", 2500)
     }
 

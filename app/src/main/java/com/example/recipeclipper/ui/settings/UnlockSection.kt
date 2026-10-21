@@ -1,7 +1,5 @@
 package com.example.recipeclipper.ui.settings
 
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,12 +14,10 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.ui.common.noticeMessage
-import com.example.recipeclipper.ui.recipe.Hairline
-import com.example.recipeclipper.ui.recipe.SectionHeading
 
 /**
- * "Unlimited recipes" (#107), only with the `freeTier` flag. Actions, not choices, so plain
- * rows; the unlocked state is a sentence, never a bare checkmark.
+ * "Unlimited recipes" (#107), only with the `freeTier` flag: its own Settings page (#286). Actions,
+ * not choices, so plain rows; the unlocked state is a sentence, never a bare checkmark.
  */
 @Composable
 internal fun UnlockSection(
@@ -30,11 +26,6 @@ internal fun UnlockSection(
     onUnlock: () -> Unit,
     onRestore: () -> Unit
 ) {
-    Spacer(Modifier.height(16.dp))
-    Hairline()
-    Spacer(Modifier.height(16.dp))
-    SectionHeading(stringResource(R.string.unlimited_title))
-    Spacer(Modifier.height(4.dp))
     if (row.unlocked) {
         Text(
             stringResource(R.string.unlimited_unlocked),

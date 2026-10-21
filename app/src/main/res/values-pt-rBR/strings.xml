@@ -615,6 +615,13 @@
     <string name="settings_section_help">Ajuda</string>
     <string name="settings_show_tips">Mostrar as dicas de novo</string>
     <string name="settings_show_tips_description">Cada dica aparece mais uma vez, uma de cada vez.</string>
+    <!-- Settings' index (#286) -->
+    <string name="settings_value_system_theme">Tema do sistema</string>
+    <string name="settings_value_amounts_on">Quantidades: sim</string>
+    <string name="settings_value_amounts_off">Quantidades: não</string>
+    <string name="settings_value_reminders_on">Lembretes: sim</string>
+    <string name="settings_value_reminders_off">Lembretes: não</string>
+    <string name="settings_value_unlocked">Desbloqueado</string>
     <string name="clip_hint_start">Toque em Nome abaixo e depois no nome da receita na página.</string>
     <string name="clip_confirm_name">Usar como nome</string>
     <string name="clip_step">Passo %1$d de %2$d · %3$s</string>

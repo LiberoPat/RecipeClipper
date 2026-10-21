@@ -70,6 +70,10 @@ data class SettingsUiState(
     val autoBackup: AutoBackupRow? = null
 ) {
     val chefModeAvailable: Boolean get() = chefSupport is ChefSupport.Available
+
+    /** The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag. */
+    val sections: List<SettingsSection>
+        get() = SettingsSection.entries.filter { it != SettingsSection.UNLIMITED || unlock != null }
 }
 
 /**
@@ -101,6 +105,11 @@ data class AutoBackupRow(
 ) {
     /** "Back up now" needs somewhere to write. */
     val canBackUpNow: Boolean get() = destination == BackupDestination.READY && !running
+
+    /** One of the page's warning lines shows, so the index's value is in the error colour too (#286). */
+    val needsAttention: Boolean
+        get() = destination == BackupDestination.LOST || folderRefused || nudge ||
+            (lastFailed && destination == BackupDestination.READY)
 
     companion object {
         fun of(state: AutoBackupState, now: Long, previous: AutoBackupRow?, running: Boolean) = AutoBackupRow(
