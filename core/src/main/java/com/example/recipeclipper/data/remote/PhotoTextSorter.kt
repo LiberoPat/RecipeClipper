@@ -10,9 +10,39 @@ import org.json.JSONObject
 /**
  * One line of text the device read from a photo (#198), in reading order, with the
  * recogniser's [confidence] (0 to 1) when it gives one: Vision always does; ML Kit gives it per
- * line and per word, and null means it said nothing.
+ * line and per word, and null means it said nothing. [page] is the picture it was read from (0
+ * for the first) and [box] where on it (#286), so the review can show the line beside its strip
+ * of the photo; null when the reader didn't say.
  */
-data class PhotoLine(val text: String, val confidence: Float? = null)
+data class PhotoLine(
+    val text: String,
+    val confidence: Float? = null,
+    val page: Int? = null,
+    val box: PhotoBox? = null
+)
+
+/**
+ * Where a line was read on its picture (#286): a rectangle in fractions of the picture's width
+ * and height, 0 to 1, measured from its top-left corner, in the picture the right way up (as the
+ * recogniser saw it and the review shows it).
+ */
+data class PhotoBox(val left: Float, val top: Float, val right: Float, val bottom: Float) {
+    companion object {
+        /**
+         * A box from a rectangle in [width] by [height] pixels, top-left origin (ML Kit's
+         * `boundingBox` in the bitmap it read), clamped to the picture; null if nothing of it is
+         * on the picture.
+         */
+        fun fromPixels(left: Int, top: Int, right: Int, bottom: Int, width: Int, height: Int): PhotoBox? {
+            if (width <= 0 || height <= 0) return null
+            val l = (left.toFloat() / width).coerceIn(0f, 1f)
+            val t = (top.toFloat() / height).coerceIn(0f, 1f)
+            val r = (right.toFloat() / width).coerceIn(0f, 1f)
+            val b = (bottom.toFloat() / height).coerceIn(0f, 1f)
+            return if (r > l && b > t) PhotoBox(l, t, r, b) else null
+        }
+    }
+}
 
 /**
  * Why a line read from a photo is listed for the cook to check (#198). Flagged only: nothing is
@@ -36,8 +66,16 @@ enum class CheckReason {
 /**
  * One line listed to check (#198, #283): [raw] as it is in the editor's boxes, which a fraction
  * chip changes; [shown] as the list shows it, without list markup ("▢", "•", "3)"); and why.
+ * [page] and [box] are where it was read (#286: its [PhotoLine]'s), null when the reader didn't
+ * say.
  */
-data class LineFlag(val raw: String, val shown: String, val reasons: Set<CheckReason>) {
+data class LineFlag(
+    val raw: String,
+    val shown: String,
+    val reasons: Set<CheckReason>,
+    val page: Int? = null,
+    val box: PhotoBox? = null
+) {
     /** Listed only because its amount looks too large: the photo was read clearly there, so it
      *  gets a note of its own rather than the heading (#281). */
     val largeOnly: Boolean get() = reasons == setOf(CheckReason.LARGE)
@@ -97,7 +135,8 @@ object PhotoTextSorter {
     const val LOW_CONFIDENCE = 0.5f
 
     fun sort(lines: List<PhotoLine>): PhotoReading {
-        val read = lines.flatMap { line -> line.text.split(LINE_BREAK).map { PhotoLine(it.trim(), line.confidence) } }
+        // A piece of a line keeps the whole line's confidence, page and box (#286).
+        val read = lines.flatMap { line -> line.text.split(LINE_BREAK).map { line.copy(text = it.trim()) } }
             .filter { it.text.isNotEmpty() }
         val text = read.joinToString("\n") { it.text }
         val language = RecipeTextSplitter.languageOf(text)
@@ -130,11 +169,14 @@ object PhotoTextSorter {
     }
 
     /** The lines to list, gathered line by line: each box line ([LineFlag.raw]) once, in the
-     *  order first shown, with the reasons of every copy of it. */
+     *  order first shown, with the reasons of every copy of it, and the page and box of the
+     *  first (#286). The splitter keeps each read line whole (it never joins two), so an
+     *  ingredient or step was read where its own line was. */
     private class Listed(
         val read: List<PhotoLine>, val cleaned: List<RecipeTextSplitter.Line>, val words: LanguageWords
     ) {
         private val shown = LinkedHashMap<String, String>()
+        private val where = HashMap<String, PhotoLine>()
         private val reasons = HashMap<String, MutableSet<CheckReason>>()
         private val checked = HashMap<Pair<String, Boolean>, Set<CheckReason>>()
 
@@ -149,12 +191,15 @@ object PhotoTextSorter {
             if (show !in raw) found -= CheckReason.FRACTION
             if ((read[source].confidence ?: 1f) < LOW_CONFIDENCE) found += CheckReason.UNSURE
             shown.putIfAbsent(raw, show)
+            where.putIfAbsent(raw, read[source])
             reasons.getOrPut(raw) { mutableSetOf() } += found
         }
 
         fun flags(): List<LineFlag> = shown.mapNotNull { (raw, show) ->
-            reasons.getValue(raw).takeIf { it.isNotEmpty() }
-                ?.let { found -> LineFlag(raw, show, found.sortedBy { it.ordinal }.toSet()) }
+            reasons.getValue(raw).takeIf { it.isNotEmpty() }?.let { found ->
+                val at = where.getValue(raw)
+                LineFlag(raw, show, found.sortedBy { it.ordinal }.toSet(), at.page, at.box)
+            }
         }
     }
 
@@ -289,7 +334,10 @@ object PhotoTextSorter {
         if (!flag.chips) return null
         val shown = replaceFraction(flag.shown, fraction, words) ?: return null
         val at = flag.raw.indexOf(flag.shown).takeIf { it >= 0 } ?: return null
-        return LineFlag(flag.raw.replaceRange(at, at + flag.shown.length, shown), shown, flag.reasons - CheckReason.FRACTION)
+        return flag.copy(
+            raw = flag.raw.replaceRange(at, at + flag.shown.length, shown), shown = shown,
+            reasons = flag.reasons - CheckReason.FRACTION
+        )
     }
 
     /** A unit glued to the next word in [rest], after the leading amount, where the scaler reads none. */

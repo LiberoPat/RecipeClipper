@@ -3,6 +3,7 @@ package com.example.recipeclipper.data.model
 import com.example.recipeclipper.data.remote.CardHeadings
 import com.example.recipeclipper.data.remote.CheckReason
 import com.example.recipeclipper.data.remote.JsonLdRecipeParser
+import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.data.remote.PhotoTextSorter
 import com.example.recipeclipper.data.remote.RecipeTextSplitter
@@ -107,7 +108,10 @@ import java.io.File
  * they were read in, whether they sorted, the ingredients, steps, the lines to check one by one
  * ([PhotoReading.flags]: the line in the box, as listed, and why) and those listed only as large;
  * write only the lines. `Check("line")` rows (#283) pin [PhotoTextSorter.check], the per-line
- * check the sorter runs, on an ingredient line (optionally `, lang: "de"`).
+ * check the sorter runs, on an ingredient line (optionally `, lang: "de"`). `PhotoAt([At("line",
+ * 0, [left, top, right, bottom]), ...])` rows (#286) pin where each listed line was read: its
+ * page and box, through split, repeated and unsorted lines; write only the lines (`nil` for no
+ * page or box, and a confidence after the box if wanted).
  *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
@@ -171,6 +175,10 @@ class DifferentialCorpusTest {
     private val splitRow = Regex("""^(\s*)Split\("((?:[^"\\]|\\.)*)"""")
     // A photo row (#208): the lines read from a photo.
     private val photoRow = Regex("""^(\s*)Photo\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A placed-photo row (#286): the lines read, each with its page and box and optionally its
+    // confidence, as `At("line", 0, [left, top, right, bottom])` (nil for no page or box).
+    private val photoAtRow = Regex("""^(\s*)PhotoAt\(\[((?:\s*At\((?:[^()"]|"(?:[^"\\]|\\.)*")*\),?)*)\s*]""")
+    private val atLine = Regex("""At\("((?:[^"\\]|\\.)*)", (nil|\d+), (nil|\[[^\]]*])(?:, ([\d.]+))?\)""")
     // A per-line check row (#198, #208, #283): a line read from a photo, optionally its language.
     private val checkRow = Regex("""^(\s*)Check\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A fraction row (#245): a line read from a photo, optionally its language.
@@ -341,6 +349,23 @@ class DifferentialCorpusTest {
             }
             return m.groupValues[1] + "Photo(${list(lines)}, $language, ${reading.sorted}, " +
                 "${list(reading.ingredients)}, ${list(reading.instructions)}, $flags, ${list(reading.large)}),"
+        }
+        photoAtRow.find(line)?.let { m ->
+            val lines = atLine.findAll(m.groupValues[2]).map { a ->
+                val box = a.groupValues[3].takeIf { it != "nil" }
+                    ?.trim('[', ']')?.split(",")?.map { it.trim().toFloat() }
+                    ?.let { (l, t, r, b) -> PhotoBox(l, t, r, b) }
+                PhotoLine(unescape(a.groupValues[1]), a.groupValues[4].ifEmpty { null }?.toFloat(), a.groupValues[2].toIntOrNull(), box)
+            }.toList()
+            val at = lines.joinToString(", ", "[", "]") { l ->
+                "At(${q(l.text)}, ${l.page ?: "nil"}, ${l.box?.let { "[${it.left}, ${it.top}, ${it.right}, ${it.bottom}]" } ?: "nil"}" +
+                    "${l.confidence?.let { ", $it" } ?: ""})"
+            }
+            val flags = PhotoTextSorter.sort(lines).flags.joinToString(", ", "[", "]") {
+                "LineFlag(raw: ${q(it.raw)}, shown: ${q(it.shown)}, reasons: ${reasons(it.reasons)}, page: ${it.page ?: "nil"}, " +
+                    "box: ${it.box?.let { b -> "PhotoBox(left: ${b.left}, top: ${b.top}, right: ${b.right}, bottom: ${b.bottom})" } ?: "nil"})"
+            }
+            return m.groupValues[1] + "PhotoAt($at, $flags),"
         }
         checkRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])

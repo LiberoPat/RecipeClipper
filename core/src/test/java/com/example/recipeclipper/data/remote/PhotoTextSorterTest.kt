@@ -438,6 +438,47 @@ class PhotoTextSorterTest {
         assertEquals(listOf("34 tsp salt"), reading.uncertain)
     }
 
+    @Test fun `a listed line keeps the page and box it was read at`() {
+        val flour = PhotoBox(0.1f, 0.2f, 0.8f, 0.3f)
+        val sugar = PhotoBox(0.1f, 0.4f, 0.6f, 0.45f)
+        val reading = PhotoTextSorter.sort(listOf(
+            PhotoLine("INGREDIENTS", page = 0, box = PhotoBox(0.1f, 0.05f, 0.5f, 0.1f)),
+            // A caller's line with a break: each piece keeps the whole line's place.
+            PhotoLine("1 a cups flour\n2 % cups oats", page = 0, box = flour),
+            PhotoLine("½ oup sugar", 0.3f, page = 0, box = sugar),
+            PhotoLine("1 egg", page = 0, box = PhotoBox(0.1f, 0.5f, 0.4f, 0.55f)),
+            PhotoLine("METHOD", page = 1),
+            PhotoLine("1. Mix and bake.", page = 1),
+            // Read again on the second page: listed once, where it was first read.
+            PhotoLine("½ oup sugar", page = 1, box = PhotoBox(0.2f, 0.5f, 0.7f, 0.55f))
+        ))
+        assertEquals(
+            listOf(Triple("1 a cups flour", 0, flour), Triple("2 % cups oats", 0, flour), Triple("½ oup sugar", 0, sugar)),
+            reading.flags.map { Triple(it.raw, it.page, it.box) }
+        )
+        assertEquals(setOf(CheckReason.UNSURE, CheckReason.MISREAD), reading.flags[2].reasons)
+    }
+
+    @Test fun `a line read with no place is listed with none`() {
+        val reading = PhotoTextSorter.sort(listOf(PhotoLine("Grandma's card"), PhotoLine("▢ 34 tsp salt")))
+        assertEquals(listOf(LineFlag("▢ 34 tsp salt", "34 tsp salt", setOf(CheckReason.LARGE))), reading.flags)
+    }
+
+    @Test fun `a fraction chip keeps the line's place`() {
+        val box = PhotoBox(0.1f, 0.2f, 0.8f, 0.3f)
+        val flag = LineFlag("2 % cups oats", "2 % cups oats", setOf(CheckReason.MISREAD, CheckReason.FRACTION), 1, box)
+        assertEquals(LineFlag("2 ⅔ cups oats", "2 ⅔ cups oats", setOf(CheckReason.MISREAD), 1, box), PhotoTextSorter.replaceFraction(flag, "⅔"))
+    }
+
+    @Test fun `a box in pixels becomes fractions of the picture, clamped to it`() {
+        assertEquals(PhotoBox(0.25f, 0.1f, 0.75f, 0.2f), PhotoBox.fromPixels(100, 80, 300, 160, 400, 800))
+        // ML Kit's box may run past the picture's edge.
+        assertEquals(PhotoBox(0f, 0.9f, 1f, 1f), PhotoBox.fromPixels(-20, 720, 450, 820, 400, 800))
+        assertNull(PhotoBox.fromPixels(10, 10, 10, 50, 400, 800))
+        assertNull(PhotoBox.fromPixels(500, 10, 600, 50, 400, 800))
+        assertNull(PhotoBox.fromPixels(0, 0, 10, 10, 0, 800))
+    }
+
     @Test fun `a malformed plausible-amounts table throws, as SharedTables does`() {
         PlausibleAmounts.from(SharedTables.read("plausible-amounts"))
         PlausibleAmounts.from(JSONObject("""{"maximums": {"TSP": 10}, "fractionShapedMaximums": {}, "fractionShapes": ["12"]}"""))
