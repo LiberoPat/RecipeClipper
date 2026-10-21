@@ -93,7 +93,9 @@ final class EditRecipePhotoTests: XCTestCase {
         ])
     }
 
-    func testAChipForALineTheCookHasChangedOnlyTakesItsChipsAway() async throws {
+    /// #286: the card is the box's line, so a fix typed in the box shows in the card, whose chips
+    /// go with the look-alike; a chip still on screen from before does nothing.
+    func testALineTheCookChangesInTheBoxChangesInItsCard() async throws {
         let lines = ["Ingredients", "2 % cups oats", "1 cup flour", "Directions", "1. Mix."]
         let vm = viewModel(FakePhotoTextReader(.read(lines.map { PhotoLine(text: $0, confidence: 1) })))
         await settleMain(until: { !vm.uiState.reading })
@@ -102,10 +104,86 @@ final class EditRecipePhotoTests: XCTestCase {
         draft.ingredientsText = "2 ¼ cups oats\n1 cup flour"
         vm.onDraftChange(draft)
 
+        XCTAssertEqual(vm.uiState.flags, [LineFlag(raw: "2 ¼ cups oats", shown: "2 ¼ cups oats", reasons: [.misread])])
         vm.onFraction(oats, "⅔")
-
         XCTAssertEqual(vm.uiState.draft.ingredientsText, "2 ¼ cups oats\n1 cup flour")
-        XCTAssertEqual(vm.uiState.flags, [LineFlag(raw: "2 % cups oats", shown: "2 % cups oats", reasons: [.misread])])
+        XCTAssertEqual(vm.uiState.flags, [LineFlag(raw: "2 ¼ cups oats", shown: "2 ¼ cups oats", reasons: [.misread])])
+    }
+
+    /// #286: each card has the strip of the picture its line was read from, cut to its box; a line
+    /// the reader didn't place, or placed on no picture there is, has none.
+    func testEachCardHasTheStripOfThePictureItsLineWasReadFrom() async {
+        let oats = PhotoBox(left: 0.1, top: 0.3, right: 0.8, bottom: 0.36)
+        let vm = viewModel(FakePhotoTextReader(.read([
+            PhotoLine(text: "Ingredients", page: 0, box: PhotoBox(left: 0.1, top: 0.1, right: 0.5, bottom: 0.15)),
+            PhotoLine(text: "2 % cups oats", page: 1, box: oats),
+            PhotoLine(text: "34 tsp salt", page: 0),
+            PhotoLine(text: "11/2 cups flour", page: 5, box: oats),
+            PhotoLine(text: "Directions"),
+            PhotoLine(text: "1. Mix."),
+        ])))
+        await settleMain(until: { !vm.uiState.reading })
+
+        XCTAssertEqual(vm.uiState.pageCount, 2)
+        XCTAssertEqual(vm.uiState.checks.map(\.flag.raw), ["2 % cups oats", "34 tsp salt", "11/2 cups flour"])
+        XCTAssertEqual(vm.uiState.checks.map(\.strip), [PhotoStrip(image: back, box: oats, local: false), nil, nil])
+    }
+
+    /// #286: a card's field is its line in the box: typed over, the box changes, and so does the
+    /// card, its chips gone once the look-alike is; its reasons and strip stay.
+    func testACardsFieldEditsItsLineInTheBox() async {
+        let box = PhotoBox(left: 0.1, top: 0.3, right: 0.8, bottom: 0.36)
+        let vm = viewModel(FakePhotoTextReader(.read([
+            PhotoLine(text: "Ingredients"), PhotoLine(text: "1 cup flour"), PhotoLine(text: "2 % cups oats", page: 0, box: box),
+            PhotoLine(text: "Directions"), PhotoLine(text: "1. Mix."),
+        ])))
+        await settleMain(until: { !vm.uiState.reading })
+
+        vm.onCheckLine(0, "2 ⅔ cups oats")
+
+        XCTAssertEqual(vm.uiState.draft.ingredientsText, "1 cup flour\n2 ⅔ cups oats")
+        XCTAssertEqual(vm.uiState.checks.first?.flag, LineFlag(raw: "2 ⅔ cups oats", shown: "2 ⅔ cups oats", reasons: [.misread], page: 0, box: box))
+        XCTAssertEqual(vm.uiState.checks.first?.strip, PhotoStrip(image: front, box: box, local: false))
+    }
+
+    /// #286: a card follows its line through edits in the box, and goes when the line does.
+    func testACardFollowsItsLineThroughTheBoxAndGoesWithIt() async {
+        let lines = ["Ingredients", "1 cup flour", "2 % cups oats", "Directions", "1. Mix."]
+        let vm = viewModel(FakePhotoTextReader(.read(lines.map { PhotoLine(text: $0) })))
+        await settleMain(until: { !vm.uiState.reading })
+        var draft = vm.uiState.draft
+        draft.ingredientsText = "1 cup butter\n1 cup flour\n2 % cups oats"
+        vm.onDraftChange(draft)
+        vm.onCheckLine(0, "2 ⅔ cups oats")
+        XCTAssertEqual(vm.uiState.draft.ingredientsText, "1 cup butter\n1 cup flour\n2 ⅔ cups oats")
+
+        draft = vm.uiState.draft
+        draft.ingredientsText = "1 cup butter\n1 cup flour"
+        vm.onDraftChange(draft)
+        XCTAssertTrue(vm.uiState.checks.isEmpty)
+    }
+
+    func testAThumbnailOpensItsPictureAndClosesItAgain() async {
+        let vm = viewModel(FakePhotoTextReader(.read(card)))
+        await settleMain(until: { !vm.uiState.reading })
+        XCTAssertNil(vm.uiState.openPage)
+        vm.onPage(1)
+        XCTAssertEqual(vm.uiState.openPage, 1)
+        vm.onPage(0)
+        XCTAssertEqual(vm.uiState.openPage, 0)
+        vm.onPage(0)
+        XCTAssertNil(vm.uiState.openPage)
+    }
+
+    func testFollowLineKeepsALineThroughOneEdit() {
+        let old = ["a", "b", "c", "d"]
+        XCTAssertEqual(followLine(old, ["a", "b", "c", "d"], 2), 2)
+        XCTAssertEqual(followLine(old, ["a", "B", "c", "d"], 1), 1, "typed over")
+        XCTAssertEqual(followLine(old, ["a", "new", "b", "c", "d"], 2), 3, "a line added above")
+        XCTAssertEqual(followLine(old, ["a", "c", "d"], 3), 2, "a line taken away above")
+        XCTAssertNil(followLine(old, ["a", "c", "d"], 1), "the line itself deleted")
+        XCTAssertEqual(followLine(old, ["a", "b", "c1", "c2", "d"], 2), 2, "split by a new line")
+        XCTAssertEqual(followLine(old, ["a", "b", "c", "d", "e"], 0), 0, "a line added below")
     }
 
     func testNothingIsSavedUntilTheCookSavesThenUnderThePostsLink() async {

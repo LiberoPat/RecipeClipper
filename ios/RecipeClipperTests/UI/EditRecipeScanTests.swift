@@ -56,6 +56,41 @@ final class EditRecipeScanTests: XCTestCase {
         XCTAssertEqual(state.draft.ingredientsText, "1 cup butter\n11/2 cups flour")
         XCTAssertEqual(state.draft.instructionsText, "Cream the butter.\nStir in the flour.")
         XCTAssertEqual(state.flags.map(\.raw), ["11/2 cups flour", "Stir in the flour."])
+        XCTAssertEqual(state.checks.map(\.steps), [false, true])
+    }
+
+    /// #286: a strip is its line's box with a little room, cut from the page decoded at most 1600
+    /// pixels a side (the fixture card, a real JPEG), and nothing more of the page.
+    func testAStripIsCutFromThePageDecodedSmall() throws {
+        let card = try XCTUnwrap(Bundle(for: EditRecipeScanTests.self)
+            .url(forResource: "card-front", withExtension: "jpg", subdirectory: "fixtures/reddit/photos"))
+        let data = try Data(contentsOf: card)
+        let page = try XCTUnwrap(ReviewImages.downsampled(data, maxSide: ReviewImages.stripPageSide))
+        XCTAssertLessThanOrEqual(max(page.width, page.height), ReviewImages.stripPageSide)
+
+        let box = PhotoBox(left: 0.1, top: 0.4, right: 0.6, bottom: 0.45)
+        let strip = try XCTUnwrap(ReviewImages.strip(data, box: box))
+        let rect = ReviewImages.pixels(box.padded(width: page.width, height: page.height), width: page.width, height: page.height)
+        XCTAssertEqual(strip.size, rect.size)
+        XCTAssertLessThan(strip.size.height, CGFloat(page.height) / 10)
+
+        XCTAssertEqual(ReviewImages.pixels(PhotoBox(left: 0, top: 0, right: 1, bottom: 1), width: 100, height: 50), CGRect(x: 0, y: 0, width: 100, height: 50))
+        XCTAssertEqual(ReviewImages.pixels(PhotoBox(left: 0.5, top: 0.5, right: 0.5, bottom: 0.5), width: 100, height: 50), CGRect(x: 50, y: 25, width: 1, height: 1))
+        XCTAssertEqual(ReviewImages.stripHeight(width: 300, aspect: 3), 56, "a short line, at most 56 points")
+        XCTAssertEqual(ReviewImages.stripHeight(width: 300, aspect: 30), 28, "a long line, at least 28")
+        XCTAssertEqual(ReviewImages.stripHeight(width: 300, aspect: 7.5), 40)
+    }
+
+    /// #286: a scan's strip is cut from the cook's own page, read from its file, never cached.
+    func testAScansCardHasTheStripOfItsPage() async {
+        let box = PhotoBox(left: 0.1, top: 0.5, right: 0.7, bottom: 0.56)
+        let vm = viewModel(FakePhotoTextReader(.read([
+            PhotoLine(text: "Ingredients", page: 0), PhotoLine(text: "11/2 cups flour", page: 1, box: box),
+            PhotoLine(text: "Directions", page: 1), PhotoLine(text: "1. Mix.", page: 1),
+        ])), pages: [front, back])
+        await settleMain(until: { !vm.uiState.reading })
+
+        XCTAssertEqual(vm.uiState.checks.map(\.strip), [PhotoStrip(image: back, box: box, local: true)])
     }
 
     func testNothingIsSavedUntilTheCookSavesThenAsATypedInRecipeWithNoPicture() async {

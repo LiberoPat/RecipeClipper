@@ -69,4 +69,31 @@ final class ScanUITests: RecipeUITestCase {
         require(text("Aunt June's oatmeal cookies"), "its name")
         assertAbsent(app.buttons["Open original"], "a source link, on a recipe of your own")
     }
+
+    /// #286: the handwritten fraction card (#245), read by the real Vision: the page in the row
+    /// with the count, and each line to check a card with the strip of the page it was read from
+    /// beside its field; tapping the page shows it large.
+    func testEachLineToCheckShowsTheStripOfThePageItWasReadFrom() throws {
+        let card = try XCTUnwrap(Bundle(for: ScanUITests.self)
+            .url(forResource: "card-fractions-hand", withExtension: "jpg", subdirectory: "reddit/photos"))
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestSeed", Scenario.empty.rawValue, "-uiTestFlags", "photoText"]
+        app.launchEnvironment["RC_UITEST_PHOTO_VISION"] = "1"
+        app.launchEnvironment["RC_UITEST_SCAN_IMAGES"] = card.absoluteString
+        app.launch()
+        self.app = app
+
+        require(textContaining("Read from the photo"), "how the reading went", within: 30)
+        require(textContaining("1 page · "), "the count over the cards")
+        let card0 = require(app.descendants(matching: .any)["edit.check.0"], "the first line to check")
+        let strip = require(card0.descendants(matching: .any)["edit.strip.0"], "its strip of the page")
+        let field = require(card0.textFields["edit.checkLine.0"], "its line, as a field")
+        XCTAssertLessThan(strip.frame.maxY, field.frame.minY + 1, "the strip sits above the line")
+
+        let page = require(app.buttons["Page 1 of 1"], "the page's thumbnail")
+        page.tap()
+        XCTAssertTrue(page.isSelected, "the page shown large")
+        page.tap()
+        XCTAssertFalse(page.isSelected, "and hidden again")
+    }
 }

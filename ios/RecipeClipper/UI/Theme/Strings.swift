@@ -73,6 +73,11 @@ enum Strings {
     static var photoFractionPrompt: String { String(localized: "photo_fraction_prompt") }
     static func photoFractionChip(_ fraction: String, _ line: String) -> String { String(localized: "photo_fraction_chip \(fraction) \(line)") }
     static func photoImageDescription(_ title: String) -> String { String(localized: "photo_image_description \(title)") }
+    // Check the recipe: the photo beside each line (#286)
+    static func photoPagesCount(_ n: Int) -> String { String(localized: "photo_pages_count \(n)") }
+    static func photoPhotosCount(_ n: Int) -> String { String(localized: "photo_photos_count \(n)") }
+    static func photoLinesToCheck(_ n: Int) -> String { String(localized: "photo_lines_to_check \(n)") }
+    static var photoStripDescription: String { String(localized: "photo_strip_description") }
     // Scan a recipe (#226)
     static var scanRecipe: String { String(localized: "action_scan_recipe") }
     static func scanPageDescription(_ page: Int, _ count: Int) -> String {

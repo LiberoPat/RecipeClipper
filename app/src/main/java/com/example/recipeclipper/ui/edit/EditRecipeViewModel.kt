@@ -59,7 +59,7 @@ data class PhotoStrip(val image: String, val box: PhotoBox, val local: Boolean)
  * where that line is, line [index] of the steps box when [steps], else of the ingredients box;
  * and the [strip] of the photo it was read from, null when the reader didn't say where.
  */
-data class CheckLine(val flag: LineFlag, val steps: Boolean, val index: Int, val strip: PhotoStrip?)
+data class LineToCheck(val flag: LineFlag, val steps: Boolean, val index: Int, val strip: PhotoStrip?)
 
 /**
  * [isNew] is "New recipe" from Home; otherwise the recipe [draft] was loaded from.
@@ -92,7 +92,7 @@ data class EditRecipeUiState(
      *  why: the photo was hard to read there, its amount holds a fraction look-alike (the
      *  [fractions] as one-tap replacements, #245) or looks too large (#281); each a card with
      *  its strip of the photo and its line as a field (#286). */
-    val checks: List<CheckLine> = emptyList(),
+    val checks: List<LineToCheck> = emptyList(),
     val fractions: List<String> = PhotoTextSorter.FRACTIONS,
     /** The picture shown large under the thumbnails, tapped open (#286); null when none is. */
     val openPage: Int? = null
@@ -227,7 +227,7 @@ class EditRecipeViewModel @Inject constructor(
 
     /** The sorter's list as cards (#286): each line found in its box (the ingredients first, as
      *  listed), with the strip of the picture it was read from. Every listed line is a box's. */
-    private fun checksOf(reading: PhotoReading, post: PhotoPost): List<CheckLine> = reading.flags.mapNotNull { flag ->
+    private fun checksOf(reading: PhotoReading, post: PhotoPost): List<LineToCheck> = reading.flags.mapNotNull { flag ->
         val inIngredients = reading.ingredients.indexOf(flag.raw)
         val steps = inIngredients < 0
         val index = if (steps) reading.instructions.indexOf(flag.raw) else inIngredients
@@ -235,7 +235,7 @@ class EditRecipeViewModel @Inject constructor(
         val image = flag.page?.let { post.imageUrls.getOrNull(it) }
         val box = flag.box
         val strip = if (image != null && box != null) PhotoStrip(image, box, scanPages != null) else null
-        CheckLine(flag, steps, index, strip)
+        LineToCheck(flag, steps, index, strip)
     }
 
     /**

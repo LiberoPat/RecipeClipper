@@ -419,10 +419,14 @@ private struct UITestPhotoTextReader: PhotoTextReader {
 
     func read(_ imageUrls: [String]) async -> PhotoTextResult {
         let text = ProcessInfo.processInfo.environment[Self.linesKey] ?? ""
-        return .read(text.split(separator: "\n").map { line in
-            line.hasPrefix("?")
-                ? PhotoLine(text: String(line.dropFirst()), confidence: 0.3)
-                : PhotoLine(text: String(line), confidence: 1)
+        // Each line read on the first picture, one under another (#286), so the review shows
+        // each flagged line's strip.
+        return .read(text.split(separator: "\n").enumerated().map { i, line in
+            let top = min(Float(i) * 0.08 + 0.04, 0.9)
+            let box = PhotoBox(left: 0.08, top: top, right: 0.9, bottom: top + 0.06)
+            return line.hasPrefix("?")
+                ? PhotoLine(text: String(line.dropFirst()), confidence: 0.3, page: 0, box: box)
+                : PhotoLine(text: String(line), confidence: 1, page: 0, box: box)
         })
     }
 }

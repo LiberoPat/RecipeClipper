@@ -224,7 +224,7 @@ extension WalkthroughUITests {
         // more: find it by what it holds, select all of it and type it back corrected, so no
         // caret placement can land a fix on the wrong line.
         let box = app.descendants(matching: .any).matching(NSPredicate(
-            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@ AND NOT (identifier BEGINSWITH 'edit.checkLine.')",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "cup butter"
         )).firstMatch
         scrollTo(box, "the ingredients")
@@ -313,7 +313,7 @@ extension WalkthroughUITests {
 
         // Fix the glued line, as clip 28 does: the whole box typed back corrected.
         let box = app.descendants(matching: .any).matching(NSPredicate(
-            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@ AND NOT (identifier BEGINSWITH 'edit.checkLine.')",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "de farine"
         )).firstMatch
         scrollTo(box, "the ingredients")
@@ -384,7 +384,7 @@ extension WalkthroughUITests {
 
         // Fix the lines flagged to check, as clip 28 does: the whole box typed back corrected.
         let box = app.descendants(matching: .any).matching(NSPredicate(
-            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@ AND NOT (identifier BEGINSWITH 'edit.checkLine.')",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "brown sugar"
         )).firstMatch
         scrollTo(box, "the ingredients")
@@ -474,7 +474,7 @@ extension WalkthroughUITests {
         print("FRACTION-CHIPS \(chipLines.joined(separator: " | "))")
         XCTAssertFalse(chipLines.isEmpty, "Vision's reading of the card offered no chip")
         let box = app.descendants(matching: .any).matching(NSPredicate(
-            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@ AND NOT (identifier BEGINSWITH 'edit.checkLine.')",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "chocolate"
         )).firstMatch
         func boxLines() -> [String] {

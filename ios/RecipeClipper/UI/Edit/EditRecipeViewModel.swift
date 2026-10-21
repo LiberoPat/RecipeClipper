@@ -11,6 +11,27 @@ enum PhotoOutcome: Equatable {
     case failed
 }
 
+/// The strip of a picture a line was read from (#286): `image`, a post's picture (a web link, from
+/// the image cache the read filled) or a scan's page (a file URL, never cached: `local`), cropped
+/// to `box`. Android's `PhotoStrip`.
+struct PhotoStrip: Hashable, Sendable {
+    let image: String
+    let box: PhotoBox
+    let local: Bool
+}
+
+/// A line to check in the review (#198, #283, #286): `flag` as the sorter listed it, kept to the
+/// line as it is now in the box (`LineFlag.raw`, which the card's field and the box both edit);
+/// where that line is, line `index` of the steps box when `steps`, else of the ingredients box; and
+/// the `strip` of the photo it was read from, nil when the reader didn't say where. Android's
+/// `LineToCheck`.
+struct LineToCheck: Equatable {
+    var flag: LineFlag
+    let steps: Bool
+    var index: Int
+    let strip: PhotoStrip?
+}
+
 /// `isNew` is "New recipe" from Home; otherwise the recipe `draft` was loaded from.
 /// `showInvalid` is set by a Save that failed validation, so the rule is only pointed out once
 /// the user has tried. `savedId` is set once the save lands, for the view to open it.
@@ -38,9 +59,12 @@ struct EditRecipeUiState: Equatable {
     var photoOutcome: PhotoOutcome?
     /// The lines to check against the photo, as the sorter listed them (#198, #283), each with
     /// why: the photo was hard to read there, its amount holds a fraction look-alike (the
-    /// `fractions` as one-tap replacements, #245) or looks too large (#281).
-    var flags: [LineFlag] = []
+    /// `fractions` as one-tap replacements, #245) or looks too large (#281); each a card with its
+    /// strip of the photo and its line as a field (#286).
+    var checks: [LineToCheck] = []
     var fractions: [String] = PhotoTextSorter.fractions
+    /// The picture shown large under the thumbnails, tapped open (#286); nil when none is.
+    var openPage: Int?
 
     init(isNew: Bool, photo: PhotoPost? = nil, scan: Bool = false) {
         self.isNew = isNew
@@ -51,7 +75,13 @@ struct EditRecipeUiState: Equatable {
 
     /// "Check these lines: the photo was hard to read there" heads the list, unless every line is
     /// listed only because its amount looks too large: each of those says so itself (#281).
-    var checkHeading: Bool { flags.contains { !$0.largeOnly } }
+    var checkHeading: Bool { checks.contains { !$0.flag.largeOnly } }
+
+    /// The `checks`' lines, each with why.
+    var flags: [LineFlag] { checks.map(\.flag) }
+
+    /// The pictures read, for "2 pages · 5 lines to check" over the cards (#286).
+    var pageCount: Int { photo?.imageUrls.count ?? 0 }
 }
 
 /// Edits a recipe's content, or types a new one in (#29; Android's EditRecipeViewModel).
@@ -130,7 +160,7 @@ final class EditRecipeViewModel {
         photoLanguage = nil
         uiState.reading = true
         uiState.photoOutcome = nil
-        uiState.flags = []
+        uiState.checks = []
         // A post's first picture is its photo; a scan's pages are never kept (#226).
         uiState.draft = RecipeDraft(name: post.title, image: scanPages != nil ? "" : post.imageUrls.first ?? "")
         readTask = Task { [weak self, photoReader] in
@@ -150,7 +180,7 @@ final class EditRecipeViewModel {
                 guard let reading = sorted else { return }
                 photoLanguage = reading.language
                 uiState.photoOutcome = reading.sorted ? .read : .notSorted
-                uiState.flags = reading.flags
+                uiState.checks = checks(of: reading, post: post)
                 uiState.draft.yield = reading.yield ?? ""
                 uiState.draft.prepTime = reading.prepTime ?? ""
                 uiState.draft.cookTime = reading.cookTime ?? ""
@@ -161,36 +191,80 @@ final class EditRecipeViewModel {
         }
     }
 
-    /// A fraction chip (#245): `flag`'s look-alike ("%" in "2% cups oats") becomes `fraction`, the
-    /// cook's reading of the photo, in the box that holds the line and in its entry in the list to
-    /// check, which keeps any markup the line has ("▢ 2⅔ cups oats", #283). A line the cook has
-    /// since changed in the box is left alone. Either way the entry's chips go.
-    func onFraction(_ flag: LineFlag, _ fraction: String) {
-        guard let index = uiState.flags.firstIndex(of: flag) else { return }
-        let fixed = PhotoTextSorter.replaceFraction(flag, fraction, words: RecipeTextSplitter.wordsFor(photoLanguage))
-        if let fixed, let ingredients = Self.replaceLine(uiState.draft.ingredientsText, flag.raw, fixed.raw) {
-            uiState.draft.ingredientsText = ingredients
-            uiState.flags[index] = fixed
-        } else if let fixed, let steps = Self.replaceLine(uiState.draft.instructionsText, flag.raw, fixed.raw) {
-            uiState.draft.instructionsText = steps
-            uiState.flags[index] = fixed
-        } else {
-            uiState.flags[index] = LineFlag(raw: flag.raw, shown: flag.shown, reasons: flag.reasons.subtracting([.fraction]))
+    /// The sorter's list as cards (#286): each line found in its box (the ingredients first, as
+    /// listed), with the strip of the picture it was read from. Every listed line is a box's.
+    private func checks(of reading: PhotoReading, post: PhotoPost) -> [LineToCheck] {
+        reading.flags.compactMap { flag in
+            let inIngredients = reading.ingredients.firstIndex(of: flag.raw)
+            guard let index = inIngredients ?? reading.instructions.firstIndex(of: flag.raw) else { return nil }
+            var strip: PhotoStrip?
+            if let page = flag.page, post.imageUrls.indices.contains(page), let box = flag.box {
+                strip = PhotoStrip(image: post.imageUrls[page], box: box, local: scanPages != nil)
+            }
+            return LineToCheck(flag: flag, steps: inIngredients == nil, index: index, strip: strip)
         }
     }
 
-    /// `text` with its first line that reads `line` (trimmed) holding `fixed` instead; nil if none does.
-    private static func replaceLine(_ text: String, _ line: String, _ fixed: String) -> String? {
-        var lines = text.components(separatedBy: "\n")
-        guard let i = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == line }) else { return nil }
-        lines[i] = lines[i].replacingOccurrences(of: line, with: fixed)
-        return lines.joined(separator: "\n")
+    /// A fraction chip (#245): `flag`'s look-alike ("%" in "2% cups oats") becomes `fraction`, the
+    /// cook's reading of the photo, in the box that holds the line and in its card, which keeps any
+    /// markup the line has ("▢ 2⅔ cups oats", #283). The card's chips go.
+    func onFraction(_ flag: LineFlag, _ fraction: String) {
+        guard let index = uiState.flags.firstIndex(of: flag) else { return }
+        guard let fixed = PhotoTextSorter.replaceFraction(flag, fraction, words: RecipeTextSplitter.wordsFor(photoLanguage)) else {
+            uiState.checks[index].flag.reasons.remove(.fraction)
+            return
+        }
+        // The card is the box's line, so the box changes with it.
+        var state = withLine(uiState, index, fixed.raw)
+        if state.checks.indices.contains(index) { state.checks[index].flag = fixed }
+        uiState = state
+    }
+
+    /// A card's field (#286): its line, typed over, in the box that holds it.
+    func onCheckLine(_ index: Int, _ text: String) {
+        uiState = withLine(uiState, index, text.replacingOccurrences(of: "\n", with: " "))
+    }
+
+    /// `state` with card `index`'s line in its box holding `line` instead.
+    private func withLine(_ state: EditRecipeUiState, _ index: Int, _ line: String) -> EditRecipeUiState {
+        guard state.checks.indices.contains(index) else { return state }
+        let check = state.checks[index]
+        var lines = (check.steps ? state.draft.instructionsText : state.draft.ingredientsText).components(separatedBy: "\n")
+        guard lines.indices.contains(check.index) else { return state }
+        lines[check.index] = line
+        var draft = state.draft
+        if check.steps { draft.instructionsText = lines.joined(separator: "\n") } else { draft.ingredientsText = lines.joined(separator: "\n") }
+        return withDraft(state, draft)
     }
 
     func onDraftChange(_ draft: RecipeDraft) {
-        uiState.draft = draft
-        uiState.saveFailed = false
-        uiState.unlockNotice = nil
+        uiState = withDraft(uiState, draft)
+    }
+
+    /// `state` with `draft` (#286): each card follows its line through the edit (`followLine`) and
+    /// shows it as it now is (`PhotoTextSorter.edited`); a card whose line was edited away goes.
+    private func withDraft(_ state: EditRecipeUiState, _ draft: RecipeDraft) -> EditRecipeUiState {
+        let words = RecipeTextSplitter.wordsFor(photoLanguage)
+        let old = (state.draft.ingredientsText.components(separatedBy: "\n"), state.draft.instructionsText.components(separatedBy: "\n"))
+        let new = (draft.ingredientsText.components(separatedBy: "\n"), draft.instructionsText.components(separatedBy: "\n"))
+        var next = state
+        next.checks = state.checks.compactMap { check in
+            let (before, after) = check.steps ? (old.1, new.1) : (old.0, new.0)
+            guard let index = followLine(before, after, check.index), after.indices.contains(index) else { return nil }
+            var moved = check
+            moved.flag = PhotoTextSorter.edited(check.flag, after[index], words: words)
+            moved.index = index
+            return moved
+        }
+        next.draft = draft
+        next.saveFailed = false
+        next.unlockNotice = nil
+        return next
+    }
+
+    /// A page's thumbnail (#286): shows that picture large under the row, or hides it again.
+    func onPage(_ page: Int) {
+        uiState.openPage = uiState.openPage == page ? nil : page
     }
 
     /// Unlock from the full-library prompt (#107), then save the recipe as typed.
@@ -279,4 +353,23 @@ final class EditRecipeViewModel {
             }
         }
     }
+}
+
+/// Where line `index` of a box's `old` lines is in its `new` lines, after one edit (#286): the
+/// lines before the first that changed, and after the last, are the same lines (moved by as many
+/// as were added or taken away). A line inside the change keeps its place in it while the change
+/// still has a line there (typed over, or split by a new line), and is gone when it hasn't (the
+/// line deleted): nil. Android's `followLine`.
+func followLine(_ old: [String], _ new: [String], _ index: Int) -> Int? {
+    var start = 0
+    while start < old.count, start < new.count, old[start] == new[start] { start += 1 }
+    var endOld = old.count
+    var endNew = new.count
+    while endOld > start, endNew > start, old[endOld - 1] == new[endNew - 1] {
+        endOld -= 1
+        endNew -= 1
+    }
+    if index < start { return index }
+    if index >= endOld { return index + new.count - old.count }
+    return index < endNew ? index : nil
 }

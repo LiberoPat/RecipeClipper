@@ -8,7 +8,9 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.SourceType
 import com.example.recipeclipper.data.remote.CheckReason
+import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.data.remote.LineFlag
+import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.fake.FakePhotoTextReader
 import com.example.recipeclipper.fake.FakeRecipeRepository
@@ -132,7 +134,9 @@ class EditRecipePhotoViewModelTest {
             )
         }
 
-    @Test fun `a chip for a line the cook has changed only takes its chips away`() =
+    /** #286: the card is the box's line, so a fix typed in the box shows in the card, whose chips
+     *  go with the look-alike; a chip still on screen from before does nothing. */
+    @Test fun `a line the cook changes in the box changes in its card`() =
         runTest(mainDispatcherRule.dispatcher) {
             val lines = listOf("Ingredients", "2 % cups oats", "1 cup flour", "Directions", "1. Mix.")
             val vm = viewModel(FakePhotoTextReader(PhotoTextResult.Read(lines.map { PhotoLine(it, 1f) })))
@@ -140,11 +144,98 @@ class EditRecipePhotoViewModelTest {
             val oats = vm.uiState.value.flags.single()
             vm.onDraftChange(vm.uiState.value.draft.copy(ingredientsText = "2 ¼ cups oats\n1 cup flour"))
 
+            val changed = listOf(LineFlag("2 ¼ cups oats", "2 ¼ cups oats", setOf(CheckReason.MISREAD)))
+            assertEquals(changed, vm.uiState.value.flags)
             vm.onFraction(oats, "⅔")
-
             assertEquals("2 ¼ cups oats\n1 cup flour", vm.uiState.value.draft.ingredientsText)
-            assertEquals(listOf(LineFlag("2 % cups oats", "2 % cups oats", setOf(CheckReason.MISREAD))), vm.uiState.value.flags)
+            assertEquals(changed, vm.uiState.value.flags)
         }
+
+    /** #286: each card has the strip of the picture its line was read from, cut to its box; a line
+     *  the reader didn't place, or placed on no picture there is, has none. */
+    @Test fun `each card has the strip of the picture its line was read from`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val oats = PhotoBox(0.1f, 0.3f, 0.8f, 0.36f)
+            val vm = viewModel(FakePhotoTextReader(
+                PhotoLine("Ingredients", page = 0, box = PhotoBox(0.1f, 0.1f, 0.5f, 0.15f)),
+                PhotoLine("2 % cups oats", page = 1, box = oats),
+                PhotoLine("34 tsp salt", page = 0),
+                PhotoLine("11/2 cups flour", page = 5, box = oats),
+                PhotoLine("Directions"),
+                PhotoLine("1. Mix.")
+            ))
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(2, state.pageCount)
+            assertEquals(listOf("2 % cups oats", "34 tsp salt", "11/2 cups flour"), state.checks.map { it.flag.raw })
+            assertEquals(listOf(PhotoStrip(back, oats, local = false), null, null), state.checks.map { it.strip })
+        }
+
+    /** #286: a card's field is its line in the box: typed over, the box changes, and so does the
+     *  card, its chips gone once the look-alike is; its reasons and strip stay. */
+    @Test fun `a card's field edits its line in the box`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val box = PhotoBox(0.1f, 0.3f, 0.8f, 0.36f)
+            val vm = viewModel(FakePhotoTextReader(
+                PhotoLine("Ingredients"), PhotoLine("1 cup flour"), PhotoLine("2 % cups oats", page = 0, box = box),
+                PhotoLine("Directions"), PhotoLine("1. Mix.")
+            ))
+            advanceUntilIdle()
+
+            vm.onCheckLine(0, "2 ⅔ cups oats")
+
+            val state = vm.uiState.value
+            assertEquals("1 cup flour\n2 ⅔ cups oats", state.draft.ingredientsText)
+            assertEquals(LineFlag("2 ⅔ cups oats", "2 ⅔ cups oats", setOf(CheckReason.MISREAD), 0, box), state.checks.single().flag)
+            assertEquals(PhotoStrip(front, box, local = false), state.checks.single().strip)
+        }
+
+    /** #286: a card follows its line through edits in the box, and goes when the line does. */
+    @Test fun `a card follows its line through the box and goes with it`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val lines = listOf("Ingredients", "1 cup flour", "2 % cups oats", "Directions", "1. Mix.")
+            val vm = viewModel(FakePhotoTextReader(PhotoTextResult.Read(lines.map { PhotoLine(it) })))
+            advanceUntilIdle()
+            vm.onDraftChange(vm.uiState.value.draft.copy(ingredientsText = "1 cup butter\n1 cup flour\n2 % cups oats"))
+            vm.onCheckLine(0, "2 ⅔ cups oats")
+            assertEquals("1 cup butter\n1 cup flour\n2 ⅔ cups oats", vm.uiState.value.draft.ingredientsText)
+
+            vm.onDraftChange(vm.uiState.value.draft.copy(ingredientsText = "1 cup butter\n1 cup flour"))
+            assertTrue(vm.uiState.value.checks.isEmpty())
+        }
+
+    @Test fun `a thumbnail opens its picture and closes it again`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val vm = viewModel(FakePhotoTextReader(PhotoTextResult.Read(card)))
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.openPage)
+            vm.onPage(1)
+            assertEquals(1, vm.uiState.value.openPage)
+            vm.onPage(0)
+            assertEquals(0, vm.uiState.value.openPage)
+            vm.onPage(0)
+            assertNull(vm.uiState.value.openPage)
+        }
+
+    @Test fun `followLine keeps a line through one edit`() {
+        val old = listOf("a", "b", "c", "d")
+        assertEquals(2, followLine(old, listOf("a", "b", "c", "d"), 2))
+        assertEquals("typed over", 1, followLine(old, listOf("a", "B", "c", "d"), 1))
+        assertEquals("a line added above", 3, followLine(old, listOf("a", "new", "b", "c", "d"), 2))
+        assertEquals("a line taken away above", 2, followLine(old, listOf("a", "c", "d"), 3))
+        assertNull("the line itself deleted", followLine(old, listOf("a", "c", "d"), 1))
+        assertEquals("split by a new line", 2, followLine(old, listOf("a", "b", "c1", "c2", "d"), 2))
+        assertEquals("a line added below", 0, followLine(old, listOf("a", "b", "c", "d", "e"), 0))
+    }
+
+    @Test fun `a strip is cut in whole pixels and shown at a readable height`() {
+        assertEquals(listOf(0, 0, 100, 50), stripPixels(PhotoBox(0f, 0f, 1f, 1f), 100, 50))
+        assertEquals(listOf(50, 25, 51, 26), stripPixels(PhotoBox(0.5f, 0.5f, 0.5f, 0.5f), 100, 50))
+        assertEquals("a short line, at most 56 dp", STRIP_MAX, stripHeight(300.dp, 3f))
+        assertEquals("a long line, at least 28 dp", STRIP_MIN, stripHeight(300.dp, 30f))
+        assertEquals(40.dp, stripHeight(300.dp, 7.5f))
+    }
 
     @Test fun `nothing is saved until the cook saves, then under the post's link`() =
         runTest(mainDispatcherRule.dispatcher) {

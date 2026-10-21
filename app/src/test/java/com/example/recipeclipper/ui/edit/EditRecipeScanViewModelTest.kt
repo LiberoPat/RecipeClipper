@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.PhotoTextResult
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.fake.FakePhotoTextReader
 import com.example.recipeclipper.fake.FakeRecipeRepository
@@ -70,6 +71,21 @@ class EditRecipeScanViewModelTest {
             assertEquals("1 cup butter\n11/2 cups flour", state.draft.ingredientsText)
             assertEquals("Cream the butter.\nStir in the flour.", state.draft.instructionsText)
             assertEquals(listOf("11/2 cups flour", "Stir in the flour."), state.flags.map { it.raw })
+            assertEquals(listOf(false, true), state.checks.map { it.steps })
+        }
+
+    /** #286: a scan's strip is cut from the cook's own page, read where it is, never cached. */
+    @Test fun `a scan's card has the strip of its page`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val box = PhotoBox(0.1f, 0.5f, 0.7f, 0.56f)
+            val reader = FakePhotoTextReader(
+                PhotoLine("Ingredients", page = 0), PhotoLine("11/2 cups flour", page = 1, box = box),
+                PhotoLine("Directions", page = 1), PhotoLine("1. Mix.", page = 1)
+            )
+            val vm = EditRecipeViewModel(scan(front, back), FakeRecipeRepository(), photoReader = reader, sorting = mainDispatcherRule.dispatcher)
+            advanceUntilIdle()
+
+            assertEquals(listOf(PhotoStrip(back, box, local = true)), vm.uiState.value.checks.map { it.strip })
         }
 
     @Test fun `nothing is saved until the cook saves, then as a typed-in recipe with no picture`() =

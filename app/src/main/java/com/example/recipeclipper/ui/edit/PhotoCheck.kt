@@ -202,7 +202,7 @@ internal fun stripPixels(box: PhotoBox, width: Int, height: Int): List<Int> {
 @Composable
 internal fun CheckCard(
     index: Int,
-    check: CheckLine,
+    check: LineToCheck,
     fractions: List<String>,
     onLine: (Int, String) -> Unit,
     onFraction: (LineFlag, String) -> Unit
