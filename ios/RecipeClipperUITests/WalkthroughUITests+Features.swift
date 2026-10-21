@@ -374,6 +374,12 @@ extension WalkthroughUITests {
         require(app.descendants(matching: .any)["Page 2 of 2"], "both pages")
         require(textContaining("Read from the photo"), "how the reading went", within: 30)
         pause(3)
+        // The pages sit in a row over the lines to check (#286): the first opened large, then closed.
+        let first = require(app.buttons["Page 1 of 2"], "the first page's thumbnail")
+        first.tap()
+        pause(2.5)
+        first.tap()
+        pause(1.5)
         // No title is guessed: the cook names it.
         let name = require(app.textFields["Name"], "the name field")
         name.tap()

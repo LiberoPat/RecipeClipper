@@ -4645,6 +4645,60 @@ potatoes" still is (lb 25), as are "10–14 tsp" (tsp 10) and "12–14 cups" (cu
   listed only for its size ("4 tsp salt" stays unflagged, a plausible amount). Clips: iOS 70 s,
   Android 67 s.
 
+## Check the recipe: the photo beside each line (#286, 2026-10-21)
+
+The owner's pick for "Check the recipe" (#286, V2 "The photo beside the line"): each line to check
+is one card, with the strip of the photo it was read from, so the cook compares the handwriting
+with the text without scrolling back to the photo. The rules stay: nothing is corrected or
+suggested, nothing is saved unchecked, no name is guessed, and each line keeps its reason (#283).
+
+- **The pages** sit as thumbnails in a row at the top with "2 pages · 5 lines to check" (a post's
+  pictures are "photos"; with nothing to check, the count alone), two plurals in all six languages.
+  They replace the full-width pictures. **Tapping one shows it large under the row**, and tapping it
+  again hides it (decided here, not in the mockup: the note still says to check every line against
+  the photo, which a 56-point thumbnail can't serve). The open page is in the UiState (`openPage`).
+- **Each card:** the strip, the line as a field, then its note ("This amount looks large: check
+  it") or the fraction prompt and chips. "Check these lines: the photo was hard to read there"
+  still heads the cards when a line isn't only large. The field is the box's line, list markup
+  and all (an unsorted reading's "▢ 34 tsp salt"); the chips' spoken names use it without.
+- **Where a line was read** (`PhotoLine.page` and `.box`, optional): the picture's index, and a
+  rectangle in fractions of the picture, 0 to 1 from its top-left corner, the picture the right
+  way up. ML Kit's `boundingBox` is in pixels of the bitmap Coil decoded (EXIF applied by Coil,
+  given to ML Kit at rotation 0), divided by its size (`PhotoBox.fromPixels`); Vision's is
+  normalised from the bottom-left corner of the picture as its EXIF orientation says (the handler
+  is given it), so y is flipped (`VisionPhotoTextReader.box`). The sorter carries them to each
+  `LineFlag`: a caller's line split at a break gives each piece the whole line's place; the
+  splitter never joins lines, so every ingredient and step is its own line's; a line read twice
+  (a card's two photos) is listed once, at its first copy's place. `PhotoAt` rows in the
+  differential corpus pin it. A line with no box (an old caller, a reader that gave none) gets
+  a card with no strip.
+- **The strip** is the box with 0.35 of the line's height around it (`PhotoBox.padded`), cut from
+  the page decoded at most 1600 px a side, and only the strip is kept: Android through Coil with
+  a crop `Transformation` (`CropToBox`), iOS with ImageIO (`ReviewImages`: a thumbnail with its
+  transform, cropped and redrawn so the page isn't held). Not `BitmapRegionDecoder`: it reads the
+  stored, unrotated picture, so it would have to redo Coil's EXIF handling to land on the box ML
+  Kit saw; going through the same decoder as the read keeps them in step. Shown 28 to 56 points
+  tall, as wide as the card allows; a longer line's end is cut, never its start, where the amount
+  is. iOS's thumbnails are decoded small the same way (the full-width pages were decoded whole).
+- **Where the pictures come from:** a scan's pages are local and never cached (#226), as before.
+  A post's pictures aren't kept by the app: the strips and thumbnails read them from the image
+  cache the read filled (Coil's disk cache; iOS's `ImageLoader`), and fetch them again only if
+  the cache has let them go.
+- **The field and the box are one line.** Typing in a card types in its box; typing in the box
+  changes the card (`followLine`: the lines before and after the change keep their place; a line
+  inside it keeps its place while the change still has a line there; a line deleted takes its
+  card with it). An edited line stays listed with its reasons, since nothing is checked again (as
+  after a chip), and loses its chips once the look-alike is gone (`PhotoTextSorter.edited`). A
+  chip still on screen for a line since changed does nothing.
+- **Tests:** `PhotoTextSorterTest(s)` (the place carried, padded, an edit), `PhotoAt` corpus rows,
+  `EditRecipePhotoViewModelTest` / `EditRecipePhotoTests` and the scan twins (strips, the field,
+  following a line, the thumbnail, `followLine`), `EditRecipePhotoScreenTest` and
+  `ScanEntryScreenTest`, the Vision box flip and a strip cut from the fixture card
+  (`EditRecipeScanTests`), `MlKitFractionGlyphsTest` (device: every line has a box), and
+  `PhotoTextUITests` (the stub reader places each line) and `ScanUITests` (Vision over the
+  fraction card: a strip above its line's field). Walkthroughs 28, 29, 30 and 34 need
+  re-recording; 30 now opens and closes a page.
+
 ## Undo snackbars close by themselves (2026-09-29)
 
 The owner saw "Checked items removed" stay on the Groceries screen, and come back after changing
