@@ -37,11 +37,15 @@ struct CheckCard: View {
             }
             if check.flag.chips {
                 lineNote(Strings.photoFractionPrompt)
+                // One row, else two of three, else one under another (large text): never a
+                // grid narrower than its chips, which drew them over each other.
                 ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) { fractionButtons }
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], alignment: .leading, spacing: 8) {
-                        fractionButtons
+                    HStack(spacing: 6) { fractionButtons(fractions) }
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) { fractionButtons(Array(fractions.prefix(3))) }
+                        HStack(spacing: 6) { fractionButtons(Array(fractions.dropFirst(3))) }
                     }
+                    VStack(alignment: .leading, spacing: 6) { fractionButtons(fractions) }
                 }
             }
         }
@@ -55,16 +59,19 @@ struct CheckCard: View {
     /// A line whose amount holds a fraction glyph's look-alike (#245), or glyphs run together
     /// (#276, "½⅓"): the fractions as one-tap replacements, since "%" can't say whether it was ½,
     /// ¼ or ¾. The cook can still type instead.
-    private var fractionButtons: some View {
-        ForEach(fractions, id: \.self) { fraction in
+    private func fractionButtons(_ shown: [String]) -> some View {
+        ForEach(shown, id: \.self) { fraction in
             Button { onFraction(check.flag, fraction) } label: {
                 Text(fraction)
                     .textStyle(Typography.titleMedium)
+                    .foregroundStyle(Palette.onBackground)
                     .frame(minWidth: 44, minHeight: 44)
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, 2)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Palette.background))
+                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.outline, lineWidth: 1))
+                    .contentShape(RoundedRectangle(cornerRadius: 10))
             }
-            .buttonStyle(.bordered)
-            .tint(Palette.primary)
+            .buttonStyle(.plain)
             .accessibilityLabel(Strings.photoFractionChip(fraction, check.flag.shown))
             .accessibilityIdentifier("edit.fraction.\(index).\(fraction)")
         }

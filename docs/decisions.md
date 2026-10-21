@@ -4661,6 +4661,9 @@ suggested, nothing is saved unchecked, no name is guessed, and each line keeps i
   it") or the fraction prompt and chips. "Check these lines: the photo was hard to read there"
   still heads the cards when a line isn't only large. The field is the box's line, list markup
   and all (an unsorted reading's "▢ 34 tsp salt"); the chips' spoken names use it without.
+  iOS's chips are outlined, as Android's are and the mockup draws them, in one row, else two
+  rows of three: the tinted buttons sat in a grid narrower than they were, which drew them over
+  each other in the card.
 - **Where a line was read** (`PhotoLine.page` and `.box`, optional): the picture's index, and a
   rectangle in fractions of the picture, 0 to 1 from its top-left corner, the picture the right
   way up. ML Kit's `boundingBox` is in pixels of the bitmap Coil decoded (EXIF applied by Coil,
