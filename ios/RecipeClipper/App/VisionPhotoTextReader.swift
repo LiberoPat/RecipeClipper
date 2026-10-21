@@ -12,19 +12,20 @@ struct VisionPhotoTextReader: PhotoTextReader {
     func read(_ imageUrls: [String]) async -> PhotoTextResult {
         var anyRead = false
         var lines: [PhotoLine] = []
-        for string in imageUrls {
+        for (page, string) in imageUrls.enumerated() {
             if Task.isCancelled { return .failed }
             guard let url = URL(string: string), let data = try? await ImageLoader.shared.data(for: url) else { continue }
-            guard let read = await Self.recognise(data) else { continue } // this picture failed; the others may still read
+            guard let read = await Self.recognise(data, page: page) else { continue } // this picture failed; the others may still read
             anyRead = true
             lines += read
         }
         return anyRead ? .read(lines) : .failed
     }
 
-    /// The picture's lines, or nil when Vision couldn't read it at all. Off the main thread:
-    /// `perform` blocks until it is done.
-    private static func recognise(_ data: Data) async -> [PhotoLine]? {
+    /// The picture's lines, or nil when Vision couldn't read it at all, each with `page` (its
+    /// index in the list) and where on it it was read (#286). Off the main thread: `perform`
+    /// blocks until it is done.
+    private static func recognise(_ data: Data, page: Int) async -> [PhotoLine]? {
         await Task.detached(priority: .userInitiated) {
             let request = VNRecognizeTextRequest()
             request.recognitionLevel = .accurate
@@ -37,9 +38,21 @@ struct VisionPhotoTextReader: PhotoTextReader {
             }
             return (request.results ?? []).compactMap { observation -> PhotoLine? in
                 guard let best = observation.topCandidates(1).first else { return nil }
-                return PhotoLine(text: best.string, confidence: best.confidence)
+                return PhotoLine(text: best.string, confidence: best.confidence, page: page, box: box(observation.boundingBox))
             }
         }.value
+    }
+
+    /// Vision's `boundingBox` as the review's box (#286). Vision's is normalised with its origin
+    /// at the bottom left, in the picture the way up its EXIF orientation says (the handler is
+    /// given it); the box's origin is the top left, so y is flipped. Clamped to the picture; nil
+    /// if nothing of it is on the picture.
+    static func box(_ rect: CGRect) -> PhotoBox? {
+        func clamp(_ value: CGFloat) -> Float { Float(min(max(value, 0), 1)) }
+        let left = clamp(rect.minX), right = clamp(rect.maxX)
+        let top = clamp(1 - rect.maxY), bottom = clamp(1 - rect.minY)
+        guard right > left, bottom > top else { return nil }
+        return PhotoBox(left: left, top: top, right: right, bottom: bottom)
     }
 
     /// The picture's EXIF orientation (a phone's camera photo is usually stored sideways), up

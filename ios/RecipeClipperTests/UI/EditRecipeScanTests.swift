@@ -147,6 +147,27 @@ final class EditRecipeScanTests: XCTestCase {
         guard case .read(let lines) = result else { return XCTFail("not read: \(result)") }
         XCTAssertTrue(lines.contains { $0.text.localizedCaseInsensitiveContains("butter") }, "\(lines.map(\.text))")
         XCTAssertNil(ImageLoader.shared.cache.cachedResponse(for: URLRequest(url: card)), "a local page is never cached")
+        // Each line says where it was read (#286): the first page, a box on it, read top down.
+        XCTAssertTrue(lines.allSatisfy { $0.page == 0 }, "\(lines.map(\.page))")
+        let boxes = lines.compactMap(\.box)
+        XCTAssertEqual(boxes.count, lines.count)
+        XCTAssertTrue(boxes.allSatisfy { 0 <= $0.left && $0.left < $0.right && $0.right <= 1 && 0 <= $0.top && $0.top < $0.bottom && $0.bottom <= 1 })
+        XCTAssertLessThan(try XCTUnwrap(boxes.first).top, try XCTUnwrap(boxes.last).top, "the first line is above the last")
+    }
+
+    /// Vision's box (normalised, origin bottom left) as the review's (origin top left) (#286).
+    func testVisionsBoxIsFlippedToATopLeftOrigin() {
+        XCTAssertEqual(
+            VisionPhotoTextReader.box(CGRect(x: 0.1, y: 0.7, width: 0.5, height: 0.1)),
+            PhotoBox(left: 0.1, top: 0.2, right: 0.6, bottom: 0.3)
+        )
+        // Past the picture's edge: clamped to it.
+        XCTAssertEqual(
+            VisionPhotoTextReader.box(CGRect(x: -0.1, y: -0.05, width: 0.6, height: 0.15)),
+            PhotoBox(left: 0, top: 0.9, right: 0.5, bottom: 1)
+        )
+        XCTAssertNil(VisionPhotoTextReader.box(CGRect(x: 0.2, y: 0.2, width: 0, height: 0.1)))
+        XCTAssertNil(VisionPhotoTextReader.box(CGRect(x: 1.2, y: 0.2, width: 0.3, height: 0.1)))
     }
 
     /// The fraction-glyph cards (#245), read by the real Vision: what it makes of ½ ¼ ¾ ⅓ ⅔ ⅛ is
