@@ -1552,7 +1552,10 @@ The first real tab of #46, still behind the #47 flag.
   hides it.
 - **An empty day says "Nothing planned"** (#286), above its "+ Add", which stays where it was
   (the mockup put "+ Add" beside the heading). Only once the day's meals have loaded
-  (`isNothingPlanned`), so a day outside the window of meals never claims to be empty.
+  (`isNothingPlanned`), so a day outside the window of meals never claims to be empty. On iOS
+  a day with no meals keeps the line's room before then (the text hidden): the days above
+  today growing by a line once loaded pushed today off the top on opening, which the UI
+  tests caught (#296). Android's LazyColumn holds its first item when those above it grow.
 - **Meal types are a table** (`meal_types`, owner's call): Breakfast, Lunch,
   Dinner and Snack are seeded with a `builtInKey` that survives a rename, as
   `isFavorites` does for lists. Any type can be renamed and reordered; only

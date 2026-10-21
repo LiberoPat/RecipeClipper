@@ -12,7 +12,8 @@ final class ScanUITests: RecipeUITestCase {
     func testHomeAndTheRecipesMenuOfferTheCameraOrTheLibrary() {
         launch(.empty, flags: ["photoText"])
 
-        require(app.buttons["Scan a recipe"], "Home's Scan a recipe").tap()
+        // Home's tile (#286) reads its hint after the name.
+        require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Scan a recipe")).firstMatch, "Home's Scan a recipe").tap()
         require(app.buttons["Choose from library"], "the library choice")
         require(app.buttons["Take a photo"], "the camera choice").tap()
         let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.buttons["Allow"]
