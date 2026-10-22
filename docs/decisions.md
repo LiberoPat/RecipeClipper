@@ -2062,9 +2062,8 @@ its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
   Text view's rows are ticked as any Compose or SwiftUI row is (#286); iOS's fixture page holds a
   hidden `shreddit-post` for it to read.
 - **Walkthrough clips:** 31 (live Reddit, selected by script) and 32 (a live blog page, real
-  taps) show the field-first flow, recorded 2026-10-13 (#250). Their tests follow the guided
-  flow since #251 (31 selects first, 32 goes step by step); the clips weren't re-recorded.
-  Since #286, 31's second post ticks the Text view's rows with real taps; 31 needs re-recording.
+  taps) show the guided flow (#251: 31 selects first, 32 goes step by step). Since #286, 31's
+  second post ticks the Text view's rows with real taps; both re-recorded 2026-10-22.
   `ClipScreenTest` and `ClipUITests` walk the guided steps from step 1, jump back to Steps for a
   second block added select first, and Skip.
 
@@ -4699,8 +4698,8 @@ suggested, nothing is saved unchecked, no name is guessed, and each line keeps i
   `ScanEntryScreenTest`, the Vision box flip and a strip cut from the fixture card
   (`EditRecipeScanTests`), `MlKitFractionGlyphsTest` (device: every line has a box), and
   `PhotoTextUITests` (the stub reader places each line) and `ScanUITests` (Vision over the
-  fraction card: a strip above its line's field). Walkthroughs 28, 29, 30 and 34 need
-  re-recording; 30 now opens and closes a page.
+  fraction card: a strip above its line's field). Walkthroughs 28, 29, 30 and 34 were
+  re-recorded 2026-10-22; 30 now opens and closes a page.
 
 ## Undo snackbars close by themselves (2026-09-29)
 

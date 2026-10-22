@@ -112,7 +112,8 @@ abstract class WalkthroughBase {
         // Two-thirds size: the script scales every clip to 1280 high anyway, and a smaller frame
         // keeps the emulator's encoder up with the screen on a busy machine (at full size it fell
         // behind and lost the ends of clips).
-        shell("screenrecord --bit-rate 6000000 --size 720x1616 $VIDEO")
+        // Past screenrecord's default 3 minutes: clip 31 (two live posts, #286's Text view) runs longer.
+        shell("screenrecord --bit-rate 6000000 --size 720x1616 --time-limit 600 $VIDEO")
         Thread.sleep(1000) // screenrecord takes a moment to start
         pause(1500)
     }
@@ -261,6 +262,26 @@ abstract class WalkthroughBase {
     fun tapScrolling(matcher: SemanticsMatcher) {
         reveal(matcher)
         tap(matcher)
+    }
+
+    /**
+     * Opens [title] from the Recipes screen, through Home's Recipes row: since #286 Home's recent
+     * recipes are a row of photos, so one past the first few can't be scrolled to on Home.
+     */
+    fun openFromRecipes(title: String) {
+        tapScrolling(hasText("Recipes") and hasText("›"))
+        val row = hasText(title) and !hasSetTextAction()
+        // Not just composed: the list composes the next row ahead, unplaced, pinned at its top,
+        // where a tap can't reach it. Placed, and clear of the foot and the tab bar.
+        val screen = compose.onAllNodes(isRoot())[0].fetchSemanticsNode().boundsInRoot
+        for (i in 0 until 10) {
+            compose.waitForIdle()
+            val box = compose.onAllNodes(row).fetchSemanticsNodes()
+                .firstOrNull { it.layoutInfo.isPlaced }?.boundsInRoot
+            if (box != null && box.height > 1f && box.center.y < screen.bottom * 0.75f) break
+            swipeUp()
+        }
+        tap(row)
     }
 
     /** Swipes up until [matcher] is composed (a lazy list composes only what shows). */

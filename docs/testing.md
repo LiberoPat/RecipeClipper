@@ -752,7 +752,9 @@ in `+MealPlan.swift`). What they need from outside the app:
   iCloud Drive, so iOS's copy goes to a throwaway local folder (`-uiTestBackupFolder`) and
   "Back up now" shows "Last backed up".
 - **Android records at 720×1616**, two-thirds size (the clips end up 1280 high anyway): at full
-  size the emulator's encoder fell behind on a busy machine and lost the ends of clips.
+  size the emulator's encoder fell behind on a busy machine and lost the ends of clips. It
+  records for up to 10 minutes (`--time-limit 600`): screenrecord stops at 3 by default, which
+  cut the end of 31.
 - **Chef mode unsupported** is the stub model's answer: Android's classes bind
   `ChefSupport.Unsupported` (and a decision model that supports nothing, so no AI answer shows);
   iOS passes `-uiTestChefUnsupported`.

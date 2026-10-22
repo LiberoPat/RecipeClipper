@@ -59,7 +59,7 @@ extension WalkthroughUITests {
         start(scenario: .walkthroughPantry)
         tab("Groceries")
         for item in ["soy sauce", "garlic", "bay leaves"] {
-            require(line(item), item).tap()
+            tick(item)
             pause(1)
         }
         pause()

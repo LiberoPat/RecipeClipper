@@ -107,6 +107,22 @@ final class WalkthroughUITests: RecipeUITestCase {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
+    /// Ticks a Groceries row, first dragging the list up while the row sits under the Done
+    /// shopping bar (#286: pinned above the tab bar once anything is ticked; the list scrolls
+    /// beneath it) or the tab bar, where a tap would land on the bar instead.
+    func tick(_ text: String) {
+        let row = require(line(text), text)
+        let bar = app.buttons["doneShopping"]
+        for _ in 0..<5 {
+            let floor = min(bar.exists ? bar.frame.minY - 12 : .infinity, tabBar.exists ? tabBar.frame.minY : .infinity)
+            if row.frame.maxY <= floor { break }
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+            pause(0.6)
+        }
+        row.tap()
+    }
+
     /// Flips a SwiftUI Toggle at its trailing edge, scrolling Settings until it can be tapped.
     func flipSwitch(_ prefix: String) {
         let toggle = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch

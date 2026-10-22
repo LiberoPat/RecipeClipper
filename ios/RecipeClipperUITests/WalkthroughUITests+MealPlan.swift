@@ -50,7 +50,7 @@ extension WalkthroughUITests {
         tab("Groceries")
         pause()
         for item in ["chicken thighs", "soy sauce"] {
-            require(line(item), item).tap()
+            tick(item)
             pause(1.5)
         }
         // Done shopping (#159): the pantry is empty, so nothing starts ticked; both go in.
