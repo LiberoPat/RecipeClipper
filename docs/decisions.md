@@ -1745,7 +1745,9 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   its section below). The dates are **epoch days** (named `…Day`, like
   `plannedDay`), not the `…At` millis the brief suggested: a use-by date is a
   calendar day, and the plan already counts days that way.
-- **The quantity is never read.** It's a note for the cook ("half a bag"). Matching
+- **The quantity never decides Have or Buy.** It's a note for the cook ("half a bag"),
+  used up after cooking only when exact (#147) and shown beside the week's total (#302,
+  below), never compared with it. Matching
   is by name only, so Have means "you have flour", never "you have enough flour":
   the screen says so under "In your pantry". This keeps the pantry inside "never a
   confident wrong number".
@@ -1755,13 +1757,30 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   which pantry item it matched ("You have butter"), so the cook can check. A staple (`alwaysHave`)
   is never on Buy, in stock or not. A line the app can't name ("salt and pepper",
   a heading) stands alone and is always Buy: nothing is guessed. Lines group by
-  exact name (a listed pair's number aside, #191) and language, each shown as written with its recipe and day; nothing
-  is added up here (the grocery list does that, when it's exact).
+  exact name (a listed pair's number aside, #191) and language, each shown as written with its recipe and day; the
+  lines are never merged into one (a Have row's total sits beside them, #302 below).
 - **"What I need"** is its own screen on the Week's stack (`week/need/{weekStart}`),
   from the Week menu, for the week shown. Its lines come from the same
   `GrocerySources.fromPlan` as "Add this week's ingredients", so both show the
   same text at the same servings. It follows the pantry live. "Add to groceries"
   puts every Buy line on the list through #50's add path, once.
+- **The pantry's amount beside the week's, never a verdict** (#302, owner, 2026-10-22). Under
+  an "In your pantry" ingredient, after "You have chicken thighs", one muted line:
+  - "You have 3 lb · this week's recipes use 4 lb" when the pantry item has an amount and the
+    row's lines add up exactly; "You have 3 lb" when they don't; nothing new when the item has
+    no amount. Staples keep their "Always have" alone.
+  - The pantry's amount is shown as written (trimmed); the week's is the lines summed as they
+    were rendered (the planned servings, the user's units) by `GroceryCombiner.total`: the
+    grocery list's own adder (`combine`'s exact rules, no second one), giving the figure and
+    its unit ("4 lb", "1 1/8 cup") or a count with its words ("5 eggs"). One line counts when
+    it is one exact amount. A range, a second measure, mixed families or "× 3" repeats give no
+    total, never an estimate.
+  - No arithmetic between the two, and nothing moves to To buy or says "enough" or "short":
+    the cook judges. Without it a week planning two chicken recipes showed chicken as Have,
+    and the cook learned it had run out only after the second "Update the pantry".
+  - In core (`NeedRow.pantryQuantity`, `weekTotal`, set only on a Have row, the total only
+    beside an amount), pinned for iOS by the corpus's `Need` rows. The ViewModels pass the
+    rows through, so the line follows the pantry live like the rest.
 - **iOS rows are keyed `buy-0`, `have-0`, as Android's** (#185): a lazy stack pools every
   `ForEach`'s ids, so bare offsets left the first pantry rows blank (and, the same way, the
   week sheet's later recipes and the month grid's first row).
