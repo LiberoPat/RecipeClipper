@@ -789,18 +789,35 @@ extension WalkthroughUITests {
         pause(3)
     }
 
-    /// A real tap on the Text view's line holding `text`, swiped up into view first.
+    /// A real tap on the Text view's line holding `text`, dragged up into view first: short drags
+    /// held before lifting, so the list stops where the finger does. A swipe's fling carried a
+    /// line from under the dock past the top between two looks.
     private func tickLine(_ text: String) {
         let line = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'clip.line.' AND label CONTAINS %@", text)
         ).firstMatch
         let list = app.scrollViews["clip.text"]
-        var swipes = 0
-        while !(line.exists && line.isHittable) && swipes < 40 {
-            (list.exists ? list : app as XCUIElement).swipeUp(velocity: .slow)
-            swipes += 1
+        // In view: inside the list's frame. Not `isHittable`: over the live page (kept loaded
+        // under the Text view), a row the list has scrolled to never reads as hittable.
+        func inView() -> Bool {
+            guard line.exists else { return false }
+            guard list.exists else { return line.isHittable }
+            let row = line.frame, box = list.frame
+            return row.height > 0 && row.minY >= box.minY && row.maxY <= box.maxY
         }
-        require(line, "the line \(text)").tap()
+        var drags = 0
+        while !inView() && drags < 60 {
+            let area = list.exists ? list : app as XCUIElement
+            area.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7)).press(
+                forDuration: 0.1,
+                thenDragTo: area.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)),
+                withVelocity: .slow,
+                thenHoldForDuration: 0.3
+            )
+            pause(0.4)
+            drags += 1
+        }
+        require(line, "the line \(text)").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         pause(1.5)
     }
 
