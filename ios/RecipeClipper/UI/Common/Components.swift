@@ -254,7 +254,9 @@ struct OutlinedField: View {
 
     @ViewBuilder private var input: some View {
         if let example {
+            // The label stays the field's name while the example is its placeholder.
             TextField(label, text: $text, prompt: Text(focused ? example : label))
+                .accessibilityLabel(label)
         } else {
             TextField(label, text: $text)
         }
