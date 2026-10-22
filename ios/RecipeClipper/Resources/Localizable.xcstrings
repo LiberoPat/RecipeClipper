@@ -25,7 +25,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter « %@ » comme note"
+            "value" : "Ajouter « %@ » comme note"
           }
         },
         "it" : {
@@ -107,7 +107,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter à %@"
+            "value" : "Ajouter au %@"
           }
         },
         "it" : {
@@ -119,7 +119,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar em %@"
+            "value" : "Adicionar para %@"
           }
         }
       }
@@ -599,7 +599,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "OK"
+            "value" : "Ouvrir"
           }
         },
         "it" : {
@@ -722,7 +722,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Déplacer à %@"
+            "value" : "Déplacer au %@"
           }
         },
         "it" : {
@@ -1413,7 +1413,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Actualizar desde la fuente"
+            "value" : "Actualizar desde el original"
           }
         },
         "fr" : {
@@ -1431,7 +1431,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Atualizar da fonte"
+            "value" : "Atualizar do site"
           }
         }
       }
@@ -1460,7 +1460,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter à %@"
+            "value" : "Ajouter au %@"
           }
         },
         "it" : {
@@ -1472,7 +1472,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar em %@"
+            "value" : "Adicionar para %@"
           }
         }
       }
@@ -1884,13 +1884,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle Rezepte und Listen in einer Datei speichern – zum Aufbewahren oder für den Umzug auf ein anderes Telefon"
+            "value" : "Alle Rezepte und Listen in einer Datei speichern – zum Aufbewahren oder für den Umzug auf ein anderes Gerät"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvare tutte le ricette e le liste in un file, da conservare o trasferire su un altro telefono"
+            "value" : "Salva tutte le ricette e le liste in un file, da conservare o da trasferire su un altro telefono"
           }
         },
         "pt-BR" : {
@@ -2001,7 +2001,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter les recettes et listes d'un fichier d'exportation. Rien n'est remplacé ni supprimé ici."
+            "value" : "Ajouter les recettes et listes d'un fichier d'exportation. Rien de ce qui est déjà là n'est remplacé ni supprimé."
           }
         },
         "de" : {
@@ -2013,7 +2013,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiungere le ricette e le liste da un file di esportazione. Qui non viene sostituito né eliminato nulla."
+            "value" : "Aggiunge le ricette e le liste di un file di esportazione. Niente di ciò che c'è già viene sostituito o eliminato."
           }
         },
         "pt-BR" : {
@@ -2083,7 +2083,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importation terminée : %1$@ et %2$@."
+            "value" : "Importation terminée : %1$@ et %2$@."
           }
         },
         "de" : {
@@ -2124,7 +2124,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rien de nouveau : tout ce que contient ce fichier est déjà là."
+            "value" : "Rien de nouveau : tout ce que contient ce fichier est déjà là."
           }
         },
         "de" : {
@@ -2165,7 +2165,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importation terminée : %@."
+            "value" : "Importation terminée : %@."
           }
         },
         "de" : {
@@ -2206,7 +2206,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importation…"
+            "value" : "Importation en cours…"
           }
         },
         "de" : {
@@ -2503,166 +2503,276 @@
         }
       }
     },
-    "backup_skipped_free_one %lld" : {
+    "backup_skipped_free %lld %lld" : {
       "extractionState" : "manual",
       "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 älteres Rezept ohne Liste wurde nicht hinzugefügt: Die kostenlose App behält %lld Rezepte."
-          }
-        },
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 older recipe in no list wasn't added: the free app keeps %lld recipes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld older recipe in no list wasn't added: the free app keeps %2$lld recipes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld older recipes in no list weren't added: the free app keeps %2$lld recipes."
+                }
+              }
+            }
           }
         },
         "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receta antigua sin lista no se añadió: la app gratuita guarda %lld recetas."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receta antigua sin lista no se añadió: la app gratuita guarda %2$lld recetas."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$lld recetas."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$lld recetas."
+                }
+              }
+            }
           }
         },
         "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 ancienne recette sans liste n'a pas été ajoutée : l'app gratuite garde %lld recettes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ancienne recette sans liste n'a pas été ajoutée : la version gratuite conserve %2$lld recettes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld d'anciennes recettes sans liste n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld älteres Rezept ohne Liste wurde nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                }
+              }
+            }
           }
         },
         "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 vecchia ricetta senza lista non è stata aggiunta: l'app gratuita conserva %lld ricette."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricetta meno recente senza lista non è stata aggiunta: l'app gratuita conserva %2$lld ricette."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld di ricette meno recenti senza lista non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricette meno recenti senza lista non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receita antiga sem lista não foi adicionada: o app gratuito guarda %lld receitas."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receita antiga sem lista não foi adicionada: o app gratuito guarda %2$lld receitas."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                }
+              }
+            }
           }
         }
       }
     },
-    "backup_skipped_free_other %lld %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld older recipes in no list weren't added: the free app keeps %2$lld recipes."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$lld recetas."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : l'app gratuite garde %2$lld recettes."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld vecchie ricette senza lista non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$lld receitas."
-          }
-        }
-      }
-    },
-    "backup_skipped_one %lld" : {
+    "backup_skipped %lld %lld" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 older recipe in no list wasn't added: history keeps the %lld most recent."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld older recipe in no list wasn't added: history keeps the %2$lld most recent."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld older recipes in no list weren't added: history keeps the %2$lld most recent."
+                }
+              }
+            }
           }
         },
         "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receta antigua sin lista no se añadió: el historial conserva las %lld más recientes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receta antigua sin lista no se añadió: el historial conserva las %2$lld más recientes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de recetas antiguas sin lista no se añadieron: el historial conserva las %2$lld más recientes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recetas antiguas sin lista no se añadieron: el historial conserva las %2$lld más recientes."
+                }
+              }
+            }
           }
         },
         "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 ancienne recette sans liste n'a pas été ajoutée : l'historique garde les %lld plus récentes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ancienne recette sans liste n'a pas été ajoutée : l'historique garde les %2$lld plus récentes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld d'anciennes recettes sans liste n'ont pas été ajoutées : l'historique garde les %2$lld plus récentes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : l'historique garde les %2$lld plus récentes."
+                }
+              }
+            }
           }
         },
         "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 älteres Rezept ohne Liste wurde nicht hinzugefügt: Der Verlauf behält die %lld zuletzt angesehenen."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld älteres Rezept ohne Liste wurde nicht hinzugefügt: Der Verlauf behält die %2$lld zuletzt angesehenen."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Der Verlauf behält die %2$lld zuletzt angesehenen."
+                }
+              }
+            }
           }
         },
         "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 vecchia ricetta senza lista non è stata aggiunta: la cronologia conserva le %lld più recenti."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricetta meno recente senza lista non è stata aggiunta: la cronologia conserva le %2$lld più recenti."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld di ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$lld più recenti."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$lld più recenti."
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receita antiga sem lista não foi adicionada: o histórico mantém as %lld mais recentes."
-          }
-        }
-      }
-    },
-    "backup_skipped_other %lld %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld older recipes in no list weren't added: history keeps the %2$lld most recent."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recetas antiguas sin lista no se añadieron: el historial conserva las %2$lld más recientes."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : l'historique garde les %2$lld plus récentes."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Der Verlauf behält die %2$lld zuletzt angesehenen."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld vecchie ricette senza lista non sono state aggiunte: la cronologia conserva le %2$lld più recenti."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$lld mais recentes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receita antiga sem lista não foi adicionada: o histórico mantém as %2$lld mais recentes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$lld mais recentes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$lld mais recentes."
+                }
+              }
+            }
           }
         }
       }
@@ -3452,7 +3562,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kurze Schritte, auf diesem Telefon geschrieben. Tippe auf einen, um ihn wie im Rezept zu sehen."
+            "value" : "Kurze Schritte, auf diesem Gerät formuliert. Tippe auf einen, um ihn wie im Rezept zu sehen."
           }
         },
         "en" : {
@@ -3534,7 +3644,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schalte Apple Intelligence in den iPhone-Einstellungen ein, um den Chefmodus zu nutzen."
+            "value" : "Schalte Apple Intelligence in den iPhone-Einstellungen ein, um den Profimodus zu nutzen."
           }
         },
         "en" : {
@@ -3575,7 +3685,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Modell auf dem Telefon ist noch nicht bereit. Versuche es später noch einmal."
+            "value" : "Das KI-Modell auf diesem Gerät ist noch nicht bereit. Versuche es später noch einmal."
           }
         },
         "en" : {
@@ -3593,13 +3703,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le modèle du téléphone n'est pas encore prêt. Réessayez plus tard."
+            "value" : "Le modèle d'IA du téléphone n'est pas encore prêt. Réessayez plus tard."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il modello del telefono non è ancora pronto. Riprova più tardi."
+            "value" : "Il modello sul dispositivo non è ancora pronto. Riprova più tardi."
           }
         },
         "pt-BR" : {
@@ -3616,7 +3726,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chefmodus"
+            "value" : "Profimodus"
           }
         },
         "en" : {
@@ -3849,7 +3959,7 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld d’ingrédients ajoutés"
+                  "value" : "%lld d'ingrédients ajoutés"
                 }
               },
               "other" : {
@@ -4068,7 +4178,7 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld d’étapes ajoutées"
+                  "value" : "%lld d'étapes ajoutées"
                 }
               },
               "other" : {
@@ -4683,7 +4793,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffne die Seite, tippe auf Name, Zutaten und Schritte und wähle jedes auf der Seite aus."
+            "value" : "Öffne die Seite, tippe dann auf Name, Zutaten und Schritte und wähle sie jeweils auf der Seite aus."
           }
         },
         "en" : {
@@ -5076,7 +5186,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile leggere un'immagine lì. La foto è facoltativa."
+            "value" : "Nessuna immagine leggibile in quel punto. La foto è facoltativa."
           }
         },
         "pt-BR" : {
@@ -5234,7 +5344,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tapez le nom de la recette pour l'enregistrer, ou touchez Nom puis le nom sur la page."
+            "value" : "Saisissez le nom de la recette pour l'enregistrer, ou touchez Nom puis le nom sur la page."
           }
         },
         "it" : {
@@ -5298,7 +5408,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tippe zum Speichern auf Name, dann auf Zutaten oder Schritte, und wähle jedes auf der Seite aus."
+            "value" : "Tippe zum Speichern auf Name, dann auf Zutaten oder Schritte und wähle sie jeweils auf der Seite aus."
           }
         },
         "en" : {
@@ -5363,7 +5473,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il post non è ancora caricato. Attendi un momento, poi tocca di nuovo Testo."
+            "value" : "Il post non si è ancora caricato. Attendi un momento, poi tocca di nuovo Testo."
           }
         },
         "pt-BR" : {
@@ -5515,7 +5625,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Solo están los comentarios que Reddit ha cargado hasta ahora."
+            "value" : "Aquí solo aparecen los comentarios que Reddit ha cargado hasta ahora."
           }
         },
         "fr" : {
@@ -5822,7 +5932,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tirée du texte de la page : vérifiez-la sur la source"
+            "value" : "Tirée du texte de la page : vérifiez-la sur la source"
           }
         },
         "it" : {
@@ -5834,7 +5944,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tirada do texto da página: confira com a fonte"
+            "value" : "Extraída do texto da página: confira com o original"
           }
         }
       }
@@ -5945,7 +6055,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminé — finir"
+            "value" : "Terminé — fin de la recette"
           }
         },
         "it" : {
@@ -5957,7 +6067,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Feito — concluir"
+            "value" : "Pronto — concluir"
           }
         }
       }
@@ -5998,7 +6108,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Feito — próximo passo"
+            "value" : "Pronto — próximo passo"
           }
         }
       }
@@ -6062,19 +6172,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Después"
+            "value" : "Más adelante"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plus tard"
+            "value" : "Pour la suite"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Più tardi"
+            "value" : "Più avanti"
           }
         },
         "pt-BR" : {
@@ -6341,7 +6451,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modo cozinhar com fundo escuro mesmo no modo claro"
+            "value" : "Modo cozinha com fundo escuro mesmo no modo claro"
           }
         }
       }
@@ -6364,13 +6474,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oscuro al cocinar"
+            "value" : "Modo oscuro al cocinar"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sombre en cuisine"
+            "value" : "Mode cuisine sombre"
           }
         },
         "it" : {
@@ -6469,43 +6579,43 @@
         }
       }
     },
-    "delete_meal_type_body" : {
+    "delete_meal_type_body %@" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Damit geplante Mahlzeiten werden zu Abendessen verschoben, nicht gelöscht."
+            "value" : "Die hier geplanten Mahlzeiten werden zu „%@“ verschoben, nicht gelöscht."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Meals planned as this move to Dinner. They are not deleted."
+            "value" : "Meals planned as this move to “%@”. They are not deleted."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las comidas planificadas con este tipo pasan a Cena. No se eliminan."
+            "value" : "Las comidas planificadas con este tipo pasan a «%@». No se eliminan."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les repas prévus avec ce type passent en Dîner. Ils ne sont pas supprimés."
+            "value" : "Les repas prévus avec ce type sont déplacés vers « %@ ». Ils ne sont pas supprimés."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I pasti pianificati con questo tipo passano a Cena. Non vengono eliminati."
+            "value" : "I pasti pianificati con questo tipo passano a «%@». Non vengono eliminati."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As refeições planejadas com este tipo passam para Jantar. Elas não são excluídas."
+            "value" : "As refeições planejadas com este tipo passam para “%@”. Elas não são excluídas."
           }
         }
       }
@@ -6534,7 +6644,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer « %@ » ?"
+            "value" : "Supprimer « %@ » ?"
           }
         },
         "it" : {
@@ -6721,7 +6831,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kochzeit"
+            "value" : "Garzeit"
           }
         },
         "en" : {
@@ -7131,7 +7241,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Seite hat die App blockiert (HTTP %lld). Das ist oft nur vorübergehend – versuch es in einer Minute noch einmal."
+            "value" : "Die Website hat die App blockiert (HTTP %lld). Das ist oft nur vorübergehend – versuch es in einer Minute noch einmal."
           }
         },
         "en" : {
@@ -7295,7 +7405,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Für diesen Beitrag wurde kein Rezepttext gefunden. Auf Reddit stehen Rezepte oft nur im Foto, und noch niemand hat dieses in den Kommentaren abgetippt."
+            "value" : "Für diesen Beitrag wurde kein Rezepttext gefunden. Auf Reddit stehen Rezepte oft nur auf dem Foto, und noch niemand hat dieses in den Kommentaren abgetippt."
           }
         },
         "en" : {
@@ -7436,7 +7546,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vous êtes hors ligne. La recette se chargera dès que vous serez de nouveau connecté."
+            "value" : "Vous êtes hors ligne. La recette se chargera dès que la connexion sera rétablie."
           }
         },
         "it" : {
@@ -7746,7 +7856,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Karte oder Buchseite"
+            "value" : "Rezeptkarte oder Kochbuchseite"
           }
         },
         "en" : {
@@ -7770,13 +7880,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una scheda o la pagina di un libro"
+            "value" : "Una scheda o la pagina di un ricettario"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Um cartão ou a página de um livro"
+            "value" : "Um caderno ou livro de receitas"
           }
         }
       }
@@ -7910,7 +8020,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die kostenlose App behält %lld Rezepte, und deine sind alle in Listen, Plänen oder selbst eingegeben. Schalte unbegrenzte Rezepte frei oder lösche eines, um Platz zu schaffen."
+            "value" : "Die kostenlose App behält %lld Rezepte, und deine sind alle in Listen, Plänen oder selbst eingegeben. Schalte unbegrenzt viele Rezepte frei oder lösche eines, um Platz zu schaffen."
           }
         },
         "en" : {
@@ -7922,19 +8032,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La app gratuita guarda %lld recetas, y todas las tuyas están en listas o planes, o las escribiste tú. Desbloquea recetas ilimitadas o borra una para hacer sitio."
+            "value" : "La app gratuita guarda %lld recetas, y todas las tuyas están en listas o planes, o las escribiste tú. Desbloquea recetas ilimitadas o elimina una para hacer sitio."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'app gratuite garde %lld recettes, et les vôtres sont toutes dans des listes, des plans ou saisies à la main. Débloquez les recettes illimitées, ou supprimez-en une pour faire de la place."
+            "value" : "La version gratuite conserve %lld recettes, et les vôtres sont toutes dans des listes, dans le planning ou saisies à la main. Débloquez les recettes illimitées, ou supprimez-en une pour faire de la place."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'app gratuita conserva %lld ricette, e le tue sono tutte in liste, piani o scritte a mano. Sblocca le ricette illimitate o eliminane una per fare spazio."
+            "value" : "L'app gratuita conserva %lld ricette, e le tue sono tutte in liste, pianificate o scritte da te. Sblocca le ricette illimitate o eliminane una per fare spazio."
           }
         },
         "pt-BR" : {
@@ -8092,7 +8202,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une fraction ? Touchez celle de la photo :"
+            "value" : "Une fraction ? Touchez celle de la photo :"
           }
         },
         "it" : {
@@ -8526,7 +8636,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Zeile im Foto"
+            "value" : "Die Zeile auf dem Foto"
           }
         },
         "en" : {
@@ -8585,13 +8695,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non enregistrée : vos %lld recettes sont toutes dans des listes, des plans ou saisies à la main."
+            "value" : "Non enregistrée : vos %lld recettes sont toutes dans des listes, dans le planning ou saisies à la main."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non salvata: le tue %lld ricette sono tutte in liste, piani o scritte a mano."
+            "value" : "Non salvata: le tue %lld ricette sono tutte in liste, pianificate o scritte da te."
           }
         },
         "pt-BR" : {
@@ -8626,7 +8736,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld recettes sur %2$lld"
+            "value" : "%1$lld sur %2$lld recettes"
           }
         },
         "it" : {
@@ -8898,7 +9008,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhuma receita corresponde a “%@”."
+            "value" : "Nenhuma receita encontrada para “%@”."
           }
         }
       }
@@ -9126,7 +9236,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comida"
+            "value" : "Tipo de comida"
           }
         },
         "fr" : {
@@ -9267,7 +9377,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "URL da receita"
+            "value" : "Link da receita"
           }
         }
       }
@@ -9296,7 +9406,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher titres et ingrédients"
+            "value" : "Rechercher par titre ou ingrédient"
           }
         },
         "it" : {
@@ -9454,25 +9564,25 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cantidades: no"
+            "value" : "Sin cantidades"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantités : non"
+            "value" : "Quantités masquées"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantità: no"
+            "value" : "Senza quantità"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantidades: não"
+            "value" : "Sem quantidades"
           }
         }
       }
@@ -9495,25 +9605,25 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cantidades: sí"
+            "value" : "Con cantidades"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantités : oui"
+            "value" : "Quantités affichées"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantità: sì"
+            "value" : "Con le quantità"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantidades: sim"
+            "value" : "Com quantidades"
           }
         }
       }
@@ -9536,25 +9646,25 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avisos: no"
+            "value" : "Sin avisos"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rappels : non"
+            "value" : "Rappels désactivés"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promemoria: no"
+            "value" : "Promemoria disattivati"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lembretes: não"
+            "value" : "Sem lembretes"
           }
         }
       }
@@ -9577,25 +9687,25 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avisos: sí"
+            "value" : "Con avisos"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rappels : oui"
+            "value" : "Rappels activés"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promemoria: sì"
+            "value" : "Promemoria attivi"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lembretes: sim"
+            "value" : "Com lembretes"
           }
         }
       }
@@ -9688,7 +9798,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffne Recipe Clipper, um unbegrenzte Rezepte freizuschalten."
+            "value" : "Öffne Recipe Clipper, um unbegrenzt viele Rezepte freizuschalten."
           }
         },
         "en" : {
@@ -9811,7 +9921,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hinzugefügt am"
+            "value" : "Zuletzt hinzugefügt"
           }
         },
         "en" : {
@@ -9823,7 +9933,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fecha de adición"
+            "value" : "Añadidas recientemente"
           }
         },
         "fr" : {
@@ -10499,7 +10609,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Original : %@"
+            "value" : "À l'origine : %@"
           }
         },
         "it" : {
@@ -10575,7 +10685,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cambiar el nombre"
+            "value" : "Cambiar nombre del tipo de comida"
           }
         },
         "fr" : {
@@ -10622,7 +10732,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ va dans la nouvelle liste."
+            "value" : "%@ ira dans la nouvelle liste."
           }
         },
         "it" : {
@@ -10698,7 +10808,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo abrir la imagen. Vuelve a intentarlo, o vuelve atrás y elige otra."
+            "value" : "No se pudo abrir la imagen. Inténtalo de nuevo o vuelve atrás y elige otra."
           }
         },
         "fr" : {
@@ -11233,7 +11343,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rezept wird geladen …"
+            "value" : "Rezept wird geladen…"
           }
         },
         "en" : {
@@ -11263,7 +11373,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obtendo a receita…"
+            "value" : "Buscando a receita…"
           }
         }
       }
@@ -11491,25 +11601,25 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Guardado"
+            "value" : "Guardada"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enregistré"
+            "value" : "Enregistrée"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvato"
+            "value" : "Salvata"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvo"
+            "value" : "Salva"
           }
         }
       }
@@ -11538,7 +11648,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ (à l'origine %2$lld)"
+            "value" : "%1$@ (au lieu de %2$lld)"
           }
         },
         "it" : {
@@ -11561,7 +11671,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffne Recipe Clipper, um das aus diesem Foto gelesene Rezept zu prüfen. Es wartet dort in den nächsten Minuten."
+            "value" : "Öffne Recipe Clipper, um das aus diesem Foto gelesene Rezept zu prüfen. Es wartet dort noch ein paar Minuten auf dich."
           }
         },
         "en" : {
@@ -11585,13 +11695,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri Recipe Clipper per controllare la ricetta letta da questa foto. Ti aspetta lì per i prossimi minuti."
+            "value" : "Apri Recipe Clipper per controllare la ricetta letta da questa foto. Resterà lì ad aspettarti per qualche minuto."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abra o Recipe Clipper para conferir a receita lida desta foto. Ela fica esperando lá pelos próximos minutos."
+            "value" : "Abra o Recipe Clipper para conferir a receita lida desta foto. Ela fica disponível lá por alguns minutos."
           }
         }
       }
@@ -11833,7 +11943,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ quitado del plan"
+            "value" : "Quitado del plan: %@"
           }
         },
         "fr" : {
@@ -11845,13 +11955,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ rimosso dal piano"
+            "value" : "Rimosso dal piano: %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ removido do plano"
+            "value" : "Removido do plano: %@"
           }
         }
       }
@@ -12906,7 +13016,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Temps écoulé : étape %lld"
+            "value" : "Temps écoulé : étape %lld"
           }
         },
         "it" : {
@@ -12953,7 +13063,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⏱ Avvia timer di %@"
+            "value" : "⏱ Avvia timer da %@"
           }
         },
         "pt-BR" : {
@@ -13316,7 +13426,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'app gratuite garde %lld recettes. Un achat unique garde toutes celles que vous ajoutez."
+            "value" : "La version gratuite conserve %lld recettes. Avec un achat unique, toutes celles que vous ajoutez sont conservées."
           }
         },
         "it" : {
@@ -13339,7 +13449,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kauf ausstehend: Er wird freigeschaltet, sobald die Zahlung durch ist."
+            "value" : "Kauf ausstehend: Die Freischaltung erfolgt, sobald die Zahlung durch ist."
           }
         },
         "en" : {
@@ -13357,7 +13467,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Achat en attente : il se débloque dès que le paiement aboutit."
+            "value" : "Achat en attente : le déblocage se fera dès que le paiement aura abouti."
           }
         },
         "it" : {
@@ -13421,7 +13531,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unbegrenzte Rezepte"
+            "value" : "Unbegrenzt viele Rezepte"
           }
         },
         "en" : {
@@ -13480,7 +13590,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Débloqué : toutes les recettes sont gardées."
+            "value" : "Débloqué : toutes les recettes sont conservées."
           }
         },
         "it" : {
@@ -13685,7 +13795,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La recette sera de nouveau récupérée sur son site et remplacera votre version. Vos modifications seront perdues ; votre note et vos listes sont conservées."
+            "value" : "La recette sera de nouveau récupérée sur son site et remplacera votre version. Vos modifications seront perdues ; votre note et vos listes sont conservées."
           }
         },
         "it" : {
@@ -13697,7 +13807,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A receita será buscada de novo no site e substituirá sua versão. Suas alterações serão perdidas; sua nota e suas listas continuam."
+            "value" : "A receita será buscada de novo no site e substituirá sua versão. Suas alterações serão perdidas; sua anotação e suas listas continuam."
           }
         }
       }
@@ -13726,19 +13836,19 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La page est rechargée, et le nom, les ingrédients, les étapes et la photo que vous avez découpés sont remplacés par les données de recette du site. Elle reste dans vos listes et votre historique."
+            "value" : "La page est rechargée, et le nom, les ingrédients, les étapes et la photo que vous avez découpés sont remplacés par les données de recette du site. La recette reste dans vos listes et votre historique."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nei tuoi elenchi e nella cronologia."
+            "value" : "La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nelle tue liste e nella cronologia."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. Ela continua nas suas listas e no histórico."
+            "value" : "Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. A receita continua nas suas listas e no histórico."
           }
         }
       }
@@ -13802,7 +13912,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo actualizar desde la fuente. %@"
+            "value" : "No se pudo actualizar desde el original. %@"
           }
         },
         "fr" : {
@@ -13820,7 +13930,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível atualizar da fonte. %@"
+            "value" : "Não foi possível atualizar do site. %@"
           }
         }
       }
@@ -13849,7 +13959,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remplacer votre version ?"
+            "value" : "Remplacer votre version ?"
           }
         },
         "it" : {
@@ -14382,7 +14492,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In anderen Gang verschieben…"
+            "value" : "In andere Abteilung verschieben…"
           }
         },
         "it" : {
@@ -14394,7 +14504,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mover para outro corredor…"
+            "value" : "Mover para outra seção…"
           }
         }
       }
@@ -14423,7 +14533,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gang"
+            "value" : "Abteilung"
           }
         },
         "it" : {
@@ -14435,7 +14545,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Corredor"
+            "value" : "Seção"
           }
         }
       }
@@ -14458,7 +14568,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimé : %@"
+            "value" : "Supprimé : %@"
           }
         },
         "de" : {
@@ -14634,7 +14744,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spunta cosa va in dispensa. Tutto ciò che è spuntato esce dalla lista."
+            "value" : "Spunta cosa va in dispensa. Tutto ciò che è spuntato viene tolto dalla lista."
           }
         },
         "pt-BR" : {
@@ -14675,7 +14785,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Metti via e rimuovi"
+            "value" : "Metti via e togli dalla lista"
           }
         },
         "pt-BR" : {
@@ -14909,7 +15019,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pâtisserie"
+            "value" : "Aide à la pâtisserie"
           }
         },
         "de" : {
@@ -15003,13 +15113,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scatolame"
+            "value" : "Conserve"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enlatados"
+            "value" : "Enlatados e conservas"
           }
         }
       }
@@ -15073,19 +15183,19 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Épices"
+            "value" : "Herbes et épices"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gewürze"
+            "value" : "Gewürze & Kräuter"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spezie"
+            "value" : "Erbe e spezie"
           }
         },
         "pt-BR" : {
@@ -15337,7 +15447,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pesquise na despensa"
+            "value" : "Buscar na despensa"
           }
         }
       }
@@ -15401,13 +15511,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun résultat pour « %@ »."
+            "value" : "Aucun résultat pour « %@ »."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nichts passt zu „%@“."
+            "value" : "Keine Treffer für „%@“."
           }
         },
         "it" : {
@@ -15419,7 +15529,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nada corresponde a “%@”."
+            "value" : "Nada encontrado para “%@”."
           }
         }
       }
@@ -15448,7 +15558,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nach Gang sortieren"
+            "value" : "Nach Abteilung sortieren"
           }
         },
         "it" : {
@@ -15460,7 +15570,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordenar por corredor"
+            "value" : "Ordenar por seção"
           }
         }
       }
@@ -15770,25 +15880,25 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poco"
+            "value" : "Queda poco"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bas"
+            "value" : "Presque fini"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poco"
+            "value" : "Sta finendo"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pouco"
+            "value" : "Acabando"
           }
         }
       }
@@ -15893,7 +16003,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les produits de base ne figurent jamais dans « À acheter »."
+            "value" : "Les produits de base ne figurent jamais dans « À acheter »."
           }
         },
         "de" : {
@@ -15905,7 +16015,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gli essenziali non sono mai in «Da comprare»."
+            "value" : "I prodotti di base non finiscono mai in «Da comprare»."
           }
         },
         "pt-BR" : {
@@ -15975,7 +16085,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "À consommer avant le %@"
+            "value" : "À consommer jusqu'au %@"
           }
         },
         "de" : {
@@ -15993,7 +16103,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Consumir até %@"
+            "value" : "Vence em %@"
           }
         }
       }
@@ -16385,7 +16495,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimé : %@"
+            "value" : "Supprimé : %@"
           }
         },
         "de" : {
@@ -16590,7 +16700,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "« Dans votre garde-manger » signifie que vous en avez, pas que vous en avez assez."
+            "value" : "« Dans votre garde-manger » signifie que vous en avez, pas que vous en avez assez."
           }
         },
         "de" : {
@@ -16631,7 +16741,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rien à acheter : chaque ingrédient est dans votre garde-manger."
+            "value" : "Rien à acheter : tous les ingrédients sont dans votre garde-manger."
           }
         },
         "de" : {
@@ -16643,7 +16753,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Niente da comprare: ogni ingrediente è nella tua dispensa."
+            "value" : "Niente da comprare: tutti gli ingredienti sono nella tua dispensa."
           }
         },
         "pt-BR" : {
@@ -16672,7 +16782,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vous avez : %@"
+            "value" : "Vous avez : %@"
           }
         },
         "de" : {
@@ -16953,13 +17063,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Funciones aún en desarrollo. Los cambios se aplican al instante; si uno cambia la navegación de la app, puedes volver al inicio."
+            "value" : "Funciones aún en desarrollo. Los cambios se aplican al instante; si uno cambia la navegación de la app, puede que vuelvas al inicio."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fonctionnalités encore en chantier. Les changements s'appliquent aussitôt ; si l'un d'eux modifie la navigation, l'app peut revenir à l'accueil."
+            "value" : "Fonctionnalités encore en chantier. Les changements s'appliquent aussitôt ; si l'un d'eux modifie la navigation, l'appli peut vous ramener à l'accueil."
           }
         },
         "de" : {
@@ -17457,7 +17567,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une notification à 9 h quand un article en stock périme aujourd’hui ou demain"
+            "value" : "Une notification à 9 h quand un article en stock se périme aujourd'hui ou demain"
           }
         },
         "it" : {
@@ -17480,7 +17590,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mitteilungen sind für Recipe Clipper ausgeschaltet. Erlaube sie in den Systemeinstellungen, um Erinnerungen zu erhalten."
+            "value" : "Mitteilungen sind für Recipe Clipper ausgeschaltet. Erlaube sie in den Einstellungen, um Erinnerungen zu erhalten."
           }
         },
         "en" : {
@@ -17510,7 +17620,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As notificações estão desativadas para o Recipe Clipper. Permita-as nos ajustes do sistema para receber lembretes."
+            "value" : "As notificações estão desativadas para o Recipe Clipper. Permita-as nos Ajustes para receber lembretes."
           }
         }
       }
@@ -17580,7 +17690,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ périme aujourd’hui."
+            "value" : "%@ se périme aujourd'hui."
           }
         },
         "it" : {
@@ -17621,7 +17731,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ périment aujourd’hui."
+            "value" : "%@ se périment aujourd'hui."
           }
         },
         "it" : {
@@ -17662,7 +17772,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ périme demain."
+            "value" : "%@ se périme demain."
           }
         },
         "it" : {
@@ -17703,7 +17813,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ périment demain."
+            "value" : "%@ se périment demain."
           }
         },
         "it" : {
@@ -18066,7 +18176,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun menu pour l’instant. Planifiez une semaine, puis choisissez « Enregistrer la semaine comme menu… »."
+            "value" : "Aucun menu pour l'instant. Planifiez une semaine, puis choisissez « Enregistrer la semaine comme menu… »."
           }
         },
         "de" : {
@@ -18107,7 +18217,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer « %@ » ?"
+            "value" : "Supprimer « %@ » ?"
           }
         },
         "de" : {
@@ -18189,7 +18299,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "« %@ » enregistré"
+            "value" : "« %@ » enregistré"
           }
         },
         "de" : {
@@ -18230,7 +18340,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d’enregistrer le menu"
+            "value" : "Impossible d'enregistrer le menu"
           }
         },
         "de" : {
@@ -18441,19 +18551,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld repas ajouté depuis « %2$@ »"
+                  "value" : "%1$lld repas ajouté depuis « %2$@ »"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld de repas ajoutés depuis « %2$@ »"
+                  "value" : "%1$lld de repas ajoutés depuis « %2$@ »"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld repas ajoutés depuis « %2$@ »"
+                  "value" : "%1$lld repas ajoutés depuis « %2$@ »"
                 }
               }
             }
@@ -18598,7 +18708,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostra la quantità di ogni ingrediente dove un passaggio lo nomina"
+            "value" : "Mostra la quantità di ogni ingrediente dove un passaggio lo cita"
           }
         },
         "pt-BR" : {
@@ -18715,7 +18825,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vous l'avez faite ? Gardez une photo et une courte note."
+            "value" : "Vous l'avez faite ? Gardez une photo et une courte note."
           }
         },
         "it" : {
@@ -18756,13 +18866,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je l'ai fait"
+            "value" : "Je l'ai faite"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'ho fatto"
+            "value" : "L'ho preparata"
           }
         },
         "pt-BR" : {
@@ -18879,13 +18989,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choisir dans la galerie"
+            "value" : "Choisir dans la photothèque"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scegli dalla galleria"
+            "value" : "Scegli dalla libreria"
           }
         },
         "pt-BR" : {
@@ -19301,7 +19411,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Foto não está neste celular"
+            "value" : "A foto não está neste celular"
           }
         }
       }
@@ -19558,7 +19668,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Rezept wird aus dem Verlauf und allen Listen entfernt, mit deinem Foto davon. Das lässt sich nicht rückgängig machen."
+            "value" : "Das Rezept wird aus dem Verlauf und allen Listen entfernt, und dein Foto davon wird gelöscht. Das lässt sich nicht rückgängig machen."
           }
         },
         "en" : {
@@ -19599,7 +19709,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Rezept wird aus dem Verlauf und allen Listen entfernt, mit deinen %lld Fotos davon. Das lässt sich nicht rückgängig machen."
+            "value" : "Das Rezept wird aus dem Verlauf und allen Listen entfernt, und deine %lld Fotos davon werden gelöscht. Das lässt sich nicht rückgängig machen."
           }
         },
         "en" : {
@@ -19693,7 +19803,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dernière sauvegarde : %@"
+            "value" : "Dernière sauvegarde : %@"
           }
         },
         "de" : {
@@ -19734,7 +19844,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pas encore sauvegardé"
+            "value" : "Aucune sauvegarde pour l'instant"
           }
         },
         "de" : {
@@ -19746,7 +19856,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nessun backup ancora"
+            "value" : "Ancora nessun backup"
           }
         },
         "pt-BR" : {
@@ -19775,7 +19885,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La dernière copie n'a pas pu être écrite. Essayez « Sauvegarder maintenant »."
+            "value" : "La dernière copie n'a pas pu être écrite. Essayez « Sauvegarder maintenant »."
           }
         },
         "de" : {
@@ -19898,7 +20008,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sauvegarde…"
+            "value" : "Sauvegarde en cours…"
           }
         },
         "de" : {
@@ -19986,7 +20096,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hält eine Kopie von allem, Fotos inklusive, im Ordner „Recipe Clipper“ in iCloud Drive und aktualisiert sie nach Änderungen"
+            "value" : "Legt eine Kopie von allem, Fotos inklusive, im Ordner „Recipe Clipper“ in iCloud Drive ab und hält sie nach Änderungen aktuell"
           }
         },
         "it" : {
@@ -20027,7 +20137,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud Drive ist nicht verfügbar, daher wird keine Kopie angelegt. Aktiviere es in der Einstellungen-App oder exportiere eine Kopie."
+            "value" : "iCloud Drive ist nicht verfügbar, daher wird keine Kopie angelegt. Aktiviere es in der App „Einstellungen“ oder exportiere eine Kopie."
           }
         },
         "it" : {
@@ -20273,13 +20383,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articles du garde-manger au garde-manger"
+            "value" : "Les ranger dans le garde-manger"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articoli della dispensa in dispensa"
+            "value" : "Metti gli articoli in dispensa"
           }
         },
         "pt-BR" : {
@@ -20308,19 +20418,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Artículos de despensa a la lista de compras"
+            "value" : "Artículos de despensa a la lista de la compra"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articles du garde-manger à la liste de courses"
+            "value" : "Les ajouter à la liste de courses"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articoli della dispensa nella lista della spesa"
+            "value" : "Metti gli articoli nella lista della spesa"
           }
         },
         "pt-BR" : {
@@ -20331,84 +20441,139 @@
         }
       }
     },
-    "receive_file_skipped_free_one %lld" : {
+    "receive_file_skipped_free %lld %lld" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 recipe wasn't added: the free app keeps %lld recipes."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 Rezept wurde nicht hinzugefügt: Die kostenlose App behält %lld Rezepte."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receta no se añadió: la app gratuita guarda %lld recetas."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 recette n'a pas été ajoutée : l'app gratuite garde %lld recettes."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 ricetta non è stata aggiunta: l'app gratuita conserva %lld ricette."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receita não foi adicionada: o app gratuito guarda %lld receitas."
-          }
-        }
-      }
-    },
-    "receive_file_skipped_free_other %lld %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recipes weren't added: the free app keeps %2$lld recipes."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld Rezepte wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recipe wasn't added: the free app keeps %2$lld recipes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recipes weren't added: the free app keeps %2$lld recipes."
+                }
+              }
+            }
           }
         },
         "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recetas no se añadieron: la app gratuita guarda %2$lld recetas."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receta no se añadió: la app gratuita guarda %2$lld recetas."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de recetas no se añadieron: la app gratuita guarda %2$lld recetas."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recetas no se añadieron: la app gratuita guarda %2$lld recetas."
+                }
+              }
+            }
           }
         },
         "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recettes n'ont pas été ajoutées : l'app gratuite garde %2$lld recettes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recette n'a pas été ajoutée : la version gratuite conserve %2$lld recettes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de recettes n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recettes n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld Rezept wurde nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld Rezepte wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                }
+              }
+            }
           }
         },
         "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld ricette non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricetta non è stata aggiunta: l'app gratuita conserva %2$lld ricette."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld di ricette non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricette non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld receitas não foram adicionadas: o app gratuito guarda %2$lld receitas."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receita não foi adicionada: o app gratuito guarda %2$lld receitas."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de receitas não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receitas não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                }
+              }
+            }
           }
         }
       }
@@ -20478,13 +20643,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Was du verbraucht hast, nach den abgehakten Zutaten. Entferne den Haken bei allem, was nicht stimmt."
+            "value" : "Was du beim Kochen verbraucht hast, laut den abgehakten Zutaten. Entferne den Haken bei allem, was nicht stimmt."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cosa hai usato, dagli ingredienti spuntati. Togli la spunta a ciò che non va."
+            "value" : "Ecco cosa hai usato, in base agli ingredienti spuntati. Togli la spunta a ciò che non va."
           }
         },
         "pt-BR" : {
@@ -20636,19 +20801,19 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Garder"
+            "value" : "Inchangé"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Behalten"
+            "value" : "Unverändert"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lascia"
+            "value" : "Invariato"
           }
         },
         "pt-BR" : {
@@ -20724,7 +20889,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leer"
+            "value" : "Aufgebraucht"
           }
         },
         "it" : {
@@ -20882,13 +21047,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@, de %2$@ à épuisé ; ajouté à la liste de courses"
+            "value" : "%1$@, de %2$@ à épuisé ; ajouté à la liste de courses"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@, von %2$@ auf aufgebraucht; kommt auf die Einkaufsliste"
+            "value" : "%1$@, %2$@ aufgebraucht; kommt auf die Einkaufsliste"
           }
         },
         "it" : {
@@ -20900,7 +21065,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@, de %2$@ para acabou; vai para a lista de compras"
+            "value" : "%1$@: tinha %2$@, acabou; vai para a lista de compras"
           }
         }
       }
@@ -20923,7 +21088,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ : %2$@"
+            "value" : "%1$@ : %2$@"
           }
         },
         "de" : {
@@ -20970,13 +21135,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vérifiez ces lignes : la photo y était difficile à lire"
+            "value" : "Vérifiez ces lignes : la photo y était difficile à lire"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Controlla queste righe: lì la foto era difficile da leggere"
+            "value" : "Controlla queste righe: in quei punti la foto era poco leggibile"
           }
         },
         "pt-BR" : {
@@ -21011,13 +21176,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette quantité semble grande : vérifiez-la"
+            "value" : "Cette quantité semble élevée : vérifiez-la"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questa quantità sembra grande: controllala"
+            "value" : "Questa quantità sembra alta: controllala"
           }
         },
         "pt-BR" : {
@@ -21052,7 +21217,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de charger la photo. Vérifiez la connexion et réessayez."
+            "value" : "Impossible de charger la photo. Vérifiez votre connexion et réessayez."
           }
         },
         "it" : {
@@ -21134,7 +21299,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de lire une recette sur la photo : terminez-la à la main."
+            "value" : "Impossible de lire une recette sur la photo : terminez-la à la main."
           }
         },
         "it" : {
@@ -21157,7 +21322,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aus dem Foto gelesen. Prüfe jede Zeile daran, vor allem die Mengen, bevor du speicherst."
+            "value" : "Aus dem Foto gelesen. Gleiche jede Zeile damit ab, vor allem die Mengen, bevor du speicherst."
           }
         },
         "en" : {
@@ -21175,13 +21340,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lu sur la photo. Comparez chaque ligne avec elle, surtout les quantités, avant d'enregistrer."
+            "value" : "Recette lue sur la photo. Comparez chaque ligne à la photo, surtout les quantités, avant d'enregistrer."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Letto dalla foto. Confronta ogni riga con la foto, soprattutto le quantità, prima di salvare."
+            "value" : "Ricetta letta dalla foto. Confronta ogni riga con la foto, soprattutto le quantità, prima di salvare."
           }
         },
         "pt-BR" : {
@@ -21198,7 +21363,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Foto wird auf diesem Telefon gelesen…"
+            "value" : "Das Foto wird auf diesem Gerät gelesen…"
           }
         },
         "en" : {
@@ -21257,7 +21422,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vérifiez la recette"
+            "value" : "Vérifier la recette"
           }
         },
         "it" : {
@@ -21362,7 +21527,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wie im Rezept zeigt jede Menge genau so, wie das Rezept sie angibt. Tippe hier, um jedes Rezept in Metrisch oder Unzen zu sehen; was sich nicht genau umrechnen lässt, bleibt wie im Rezept."
+            "value" : "„Wie im Rezept“ zeigt jede Menge genau so, wie das Rezept sie angibt. Tippe hier, um alle Rezepte in „Metrisch“ oder „Unzen“ zu sehen; was sich nicht genau umrechnen lässt, bleibt wie im Rezept."
           }
         },
         "en" : {
@@ -21374,25 +21539,25 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Como en la receta muestra cada cantidad tal como la da la receta. Toca para ver todas las recetas en Métrico u Onzas; lo que no se pueda convertir con exactitud se queda como en la receta."
+            "value" : "«Como en la receta» muestra cada cantidad tal como la da la receta. Toca para ver todas las recetas en «Métrico» u «Onzas»; lo que no se pueda convertir con exactitud se queda como en la receta."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comme dans la recette affiche chaque quantité exactement comme la recette la donne. Touchez pour voir toutes les recettes en Métrique ou en Onces ; ce qui ne peut pas être converti exactement reste comme dans la recette."
+            "value" : "« Comme dans la recette » affiche chaque quantité telle que la recette la donne. Touchez pour afficher toutes les recettes en « Métrique » ou en « Onces » ; ce qui ne peut pas être converti exactement reste tel quel."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Come nella ricetta mostra ogni quantità esattamente come la dà la ricetta. Tocca per vedere ogni ricetta in Metrico o Once; ciò che non si può convertire con precisione resta come nella ricetta."
+            "value" : "«Come nella ricetta» mostra ogni quantità esattamente come la dà la ricetta. Tocca per vedere ogni ricetta in «Metrico» o «Once»; ciò che non si può convertire con precisione resta come nella ricetta."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Como na receita mostra cada quantidade exatamente como a receita dá. Toque para ver todas as receitas em Métrico ou Onças; o que não puder ser convertido com exatidão fica como na receita."
+            "value" : "“Como na receita” mostra cada quantidade exatamente como está na receita. Toque para ver todas as receitas em “Métrico” ou “Onças”; o que não puder ser convertido com exatidão fica como na receita."
           }
         }
       }
@@ -21415,13 +21580,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modo cocina: un paso cada vez, con temporizadores, y la pantalla sigue encendida."
+            "value" : "Modo cocina: paso a paso, con temporizadores y la pantalla siempre encendida."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mode cuisine : une étape à la fois, avec minuteurs, et l'écran reste allumé."
+            "value" : "Mode cuisine : une étape à la fois, avec minuteurs, et l'écran reste allumé."
           }
         },
         "it" : {
@@ -21433,7 +21598,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modo cozinhar: um passo de cada vez, com timers, e a tela fica ligada."
+            "value" : "Modo cozinha: um passo de cada vez, com timers, e a tela fica ligada."
           }
         }
       }
@@ -21444,7 +21609,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gekocht? Füge ein Foto und eine Notiz hinzu, oder Als gekocht markieren."
+            "value" : "Nachgekocht? Füge ein Foto und eine Notiz hinzu oder tippe auf „Als gekocht markieren“."
           }
         },
         "en" : {
@@ -21456,25 +21621,25 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿La has hecho? Añade una foto y una nota, o Marcar como cocinada."
+            "value" : "¿La has hecho? Añade una foto y una nota, o toca «Marcar como cocinada»."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vous l'avez faite ? Ajoutez une photo et une note, ou Marquer comme cuisinée."
+            "value" : "Vous l'avez faite ? Ajoutez une photo et une note, ou touchez « Marquer comme cuisinée »."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'hai fatta? Aggiungi una foto e una nota, oppure Segna come cucinata."
+            "value" : "L'hai preparata? Aggiungi una foto e una nota, oppure tocca «Segna come cucinata»."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fez a receita? Adicione uma foto e uma nota, ou Marcar como feita."
+            "value" : "Fez a receita? Adicione uma foto e uma nota, ou toque em “Marcar como feita”."
           }
         }
       }
@@ -21608,7 +21773,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Halte einen Artikel gedrückt, um ihn in einen anderen Gang zu verschieben oder zu löschen."
+            "value" : "Halte einen Artikel gedrückt, um ihn in eine andere Abteilung zu verschieben oder zu löschen."
           }
         },
         "en" : {
@@ -21626,7 +21791,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Maintenez un article appuyé pour le déplacer dans un autre rayon, ou le supprimer."
+            "value" : "Maintenez le doigt sur un article pour le déplacer dans un autre rayon ou le supprimer."
           }
         },
         "it" : {
@@ -21638,7 +21803,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toque e segure um item para movê-lo para outro corredor, ou excluí-lo."
+            "value" : "Toque e segure um item para movê-lo para outra seção, ou excluí-lo."
           }
         }
       }
@@ -21667,13 +21832,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "De retour ? Rangez ce que vous avez coché dans le garde-manger, et retirez-le de la liste."
+            "value" : "De retour ? Rangez ce que vous avez coché dans le garde-manger, et retirez-le de la liste."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tornato a casa? Metti in dispensa quello che hai spuntato e toglilo dalla lista."
+            "value" : "Di ritorno dalla spesa? Metti in dispensa quello che hai spuntato e toglilo dalla lista."
           }
         },
         "pt-BR" : {
@@ -21690,7 +21855,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tippe auf einen Eintrag, um Vorrat oder Menge zu ändern; wische nach links, wenn er aufgebraucht ist. Die Korb-Markierung heißt: Er steht auf deiner Einkaufsliste."
+            "value" : "Tippe auf einen Eintrag, um Bestand oder Menge zu ändern; wische nach links, wenn er aufgebraucht ist. Die Korb-Markierung heißt: Er steht auf deiner Einkaufsliste."
           }
         },
         "en" : {
@@ -21708,13 +21873,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touchez un article pour changer son stock ou sa quantité ; balayez vers la gauche quand il est épuisé. L'étiquette panier indique qu'il est sur votre liste de courses."
+            "value" : "Touchez un article pour changer son stock ou sa quantité ; balayez vers la gauche quand il est épuisé. L'étiquette panier indique qu'il est sur votre liste de courses."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tocca un articolo per cambiarne la scorta o la quantità; scorri a sinistra quando finisce. L'etichetta col cestino indica che è nella tua lista della spesa."
+            "value" : "Tocca un articolo per cambiarne la disponibilità o la quantità; scorri a sinistra quando finisce. L'etichetta col cestino indica che è nella tua lista della spesa."
           }
         },
         "pt-BR" : {
@@ -21731,7 +21896,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sieh jeden Tipp noch einmal, einen nach dem anderen."
+            "value" : "Sieh dir alle Tipps noch einmal an, einen nach dem anderen."
           }
         },
         "en" : {
@@ -21772,7 +21937,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tipps erneut zeigen"
+            "value" : "Tipps erneut anzeigen"
           }
         },
         "en" : {
@@ -21831,7 +21996,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chaque astuce s'affiche une fois de plus, une à la fois."
+            "value" : "Chaque astuce s'affiche de nouveau, une à la fois."
           }
         },
         "it" : {
@@ -21854,7 +22019,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit hat die App diesen Beitrag nicht lesen lassen, deshalb ist er hier geöffnet: Markiere das Rezept."
+            "value" : "Reddit hat der App den Zugriff auf diesen Beitrag verweigert, deshalb ist er hier geöffnet: Markiere das Rezept."
           }
         },
         "en" : {
@@ -21872,7 +22037,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit n'a pas laissé l'appli lire cette publication, elle est donc ouverte ici : sélectionnez la recette."
+            "value" : "Reddit n'a pas laissé l'appli lire cette publication, elle est donc ouverte ici : sélectionnez la recette."
           }
         },
         "it" : {
@@ -21895,7 +22060,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit hat die App diesen Beitrag nicht lesen lassen. Öffne Recipe Clipper: Dort ist der Beitrag geöffnet, um das Rezept zu markieren."
+            "value" : "Reddit hat der App den Zugriff auf diesen Beitrag verweigert. Öffne Recipe Clipper: Dort ist der Beitrag geöffnet, und du kannst das Rezept markieren."
           }
         },
         "en" : {
@@ -21913,19 +22078,19 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit n'a pas laissé l'appli lire cette publication. Ouvrez Recipe Clipper : elle y sera ouverte, pour sélectionner la recette."
+            "value" : "Reddit n'a pas laissé l'appli lire cette publication. Ouvrez Recipe Clipper : elle y sera ouverte pour que vous sélectionniez la recette."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit non ha permesso all'app di leggere questo post. Apri Recipe Clipper: il post sarà aperto lì, per selezionare la ricetta."
+            "value" : "Reddit non ha permesso all'app di leggere questo post. Apri Recipe Clipper: lì troverai il post aperto, per selezionare la ricetta."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Reddit não deixou o app ler este post. Abra o Recipe Clipper: o post estará aberto lá para selecionar a receita."
+            "value" : "O Reddit não deixou o app ler este post. Abra o Recipe Clipper: o post estará aberto lá para você selecionar a receita."
           }
         }
       }
@@ -21960,7 +22125,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimuovi articoli spuntati"
+            "value" : "Rimuovi gli articoli spuntati"
           }
         },
         "pt-BR" : {
@@ -22030,7 +22195,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vider"
+            "value" : "Effacer"
           }
         },
         "de" : {
@@ -22042,7 +22207,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Svuota"
+            "value" : "Rimuovi"
           }
         },
         "pt-BR" : {
@@ -22145,19 +22310,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Retirer %lld article ?"
+                  "value" : "Retirer %lld article ?"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Retirer les %lld d’articles ?"
+                  "value" : "Retirer les %lld d'articles ?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Retirer les %lld articles ?"
+                  "value" : "Retirer les %lld articles ?"
                 }
               }
             }
@@ -22267,7 +22432,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este site quer confirmar que você é humano. Marque a caixa e a receita vai abrir."
+            "value" : "Este site quer confirmar que você não é um robô. Marque a caixa e a receita vai abrir."
           }
         }
       }
@@ -22296,7 +22461,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La vérification est passée, mais cette page n'a pas de recette que l'appli sait lire, elle est donc ouverte ici : sélectionnez la recette."
+            "value" : "La vérification a réussi, mais cette page n'a pas de recette que l'appli sait lire, elle est donc ouverte ici : sélectionnez la recette."
           }
         },
         "it" : {
@@ -22337,7 +22502,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce site veut vérifier que vous êtes humain avant de laisser entrer l'appli. Ouvrez l'original, cochez la case, puis réessayez."
+            "value" : "Ce site veut vérifier que vous êtes humain avant de laisser l'appli y accéder. Ouvrez l'original, cochez la case, puis réessayez."
           }
         },
         "it" : {
@@ -22349,7 +22514,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este site quer confirmar que você é humano antes de deixar o app entrar. Abra o original, marque a caixa e tente de novo."
+            "value" : "Este site quer confirmar que você não é um robô antes de deixar o app entrar. Abra o original, marque a caixa e tente de novo."
           }
         }
       }
@@ -22487,19 +22652,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Retirer %lld article épuisé ?"
+                  "value" : "Retirer %lld article épuisé ?"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Retirer %lld d’articles épuisés ?"
+                  "value" : "Retirer %lld d'articles épuisés ?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Retirer %lld articles épuisés ?"
+                  "value" : "Retirer %lld articles épuisés ?"
                 }
               }
             }
@@ -22671,7 +22836,7 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld d’articles retirés de la liste de courses"
+                  "value" : "%lld d'articles retirés de la liste de courses"
                 }
               },
               "other" : {
@@ -22857,7 +23022,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ensuite : touchez Nom."
+            "value" : "Ensuite : touchez Nom."
           }
         },
         "it" : {
@@ -22898,7 +23063,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ensuite : touchez Ingrédients."
+            "value" : "Ensuite : touchez Ingrédients."
           }
         },
         "it" : {
@@ -22939,7 +23104,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ensuite : touchez Étapes."
+            "value" : "Ensuite : touchez Étapes."
           }
         },
         "it" : {
@@ -22980,7 +23145,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ensuite : touchez Photo, ou Terminé."
+            "value" : "Ensuite : touchez Photo, ou Terminé."
           }
         },
         "it" : {
@@ -23062,7 +23227,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "touchez le champ où ils vont"
+            "value" : "touchez le champ où elles vont"
           }
         },
         "it" : {
@@ -23074,7 +23239,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "toque no campo onde eles vão"
+            "value" : "toque no campo de destino"
           }
         }
       }
@@ -23088,13 +23253,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Zeile zu Zutaten hinzufügen"
+                  "value" : "%lld Zeile zu den Zutaten hinzufügen"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Zeilen zu Zutaten hinzufügen"
+                  "value" : "%lld Zeilen zu den Zutaten hinzufügen"
                 }
               }
             }
@@ -23225,13 +23390,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Zeile zu Schritte hinzufügen"
+                  "value" : "%lld Zeile zu den Schritten hinzufügen"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Zeilen zu Schritte hinzufügen"
+                  "value" : "%lld Zeilen zu den Schritten hinzufügen"
                 }
               }
             }
@@ -23428,7 +23593,7 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld d’ingrédients retirés"
+                  "value" : "%lld d'ingrédients retirés"
                 }
               },
               "other" : {
@@ -23565,7 +23730,7 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld d’étapes retirées"
+                  "value" : "%lld d'étapes retirées"
                 }
               },
               "other" : {
@@ -23882,7 +24047,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uma cópia para abrir no Recipe Clipper"
+            "value" : "Uma cópia para alguém abrir no Recipe Clipper"
           }
         }
       }
@@ -23899,19 +24064,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cambia tus ediciones por lo último de la web"
+            "value" : "Sustituye tus cambios por la versión actual de la web"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remplace vos modifications par la version du site"
+            "value" : "Remplace vos modifications par la dernière version du site"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ersetzt deine Änderungen durch die aktuelle Website"
+            "value" : "Ersetzt deine Änderungen durch die aktuelle Fassung der Website"
           }
         },
         "it" : {
@@ -24075,7 +24240,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Mahlzeiten eines gespeicherten Menüs in diese Woche"
+            "value" : "Die Mahlzeiten eines gespeicherten Menüs in diese Woche übernehmen"
           }
         },
         "it" : {
@@ -24110,25 +24275,25 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter, renommer ou réordonner les repas du jour"
+            "value" : "Ajoute, renomme ou réordonne les repas du jour"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mahlzeiten des Tages hinzufügen, umbenennen, ordnen"
+            "value" : "Mahlzeiten des Tages hinzufügen, umbenennen oder neu ordnen"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiungi, rinomina o riordina i pasti del giorno"
+            "value" : "Aggiunge, rinomina o riordina i pasti del giorno"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicione, renomeie ou reordene as refeições do dia"
+            "value" : "Adiciona, renomeia ou reordena as refeições do dia"
           }
         }
       }
@@ -24274,13 +24439,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retire tout ce qui est marqué Épuisé"
+            "value" : "Retire tout ce qui est marqué « Épuisé »"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Entfernt alles, was als Nicht vorrätig markiert ist"
+            "value" : "Entfernt alles, was als aufgebraucht markiert ist"
           }
         },
         "it" : {
@@ -24321,7 +24486,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Mahlzeiten der Woche in deinen Kalender"
+            "value" : "Die Mahlzeiten der Woche in deinen Kalender eintragen"
           }
         },
         "it" : {
@@ -24473,7 +24638,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Marcar agotado"
+            "value" : "Marcar como agotado"
           }
         },
         "fr" : {
@@ -24737,7 +24902,7 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld d’articles retirés"
+                  "value" : "%lld d'articles retirés"
                 }
               },
               "other" : {
@@ -24844,19 +25009,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld artículo marcado agotado"
+                  "value" : "%lld artículo marcado como agotado"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld de artículos marcados agotados"
+                  "value" : "%lld de artículos marcados como agotados"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld artículos marcados agotados"
+                  "value" : "%lld artículos marcados como agotados"
                 }
               }
             }
@@ -24874,7 +25039,7 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld d’articles marqués épuisés"
+                  "value" : "%lld d'articles marqués épuisés"
                 }
               },
               "other" : {
@@ -24934,19 +25099,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld item marcado que acabou"
+                  "value" : "%lld item marcado como Acabou"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld de itens marcados que acabaram"
+                  "value" : "%lld de itens marcados como Acabou"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld itens marcados que acabaram"
+                  "value" : "%lld itens marcados como Acabou"
                 }
               }
             }

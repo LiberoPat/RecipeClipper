@@ -142,6 +142,23 @@ final class MealTypesViewModelTests: XCTestCase {
         XCTAssertEqual(plan.meals.value.first?.mealTypeId, FakeMealPlanRepository.dinner)
     }
 
+    /// The confirmation names Dinner as the Week shows it: stored in English, maybe renamed.
+    func testTheDeleteConfirmationNamesDinnerAsItIsCalledNow() async {
+        await plan.addMealType(name: "Brunch")
+        let vm = await viewModel()
+        XCTAssertEqual(vm.uiState.movesTo, "Dinner")
+
+        vm.onRenameStart(vm.uiState.types.first { $0.id == FakeMealPlanRepository.dinner }!)
+        vm.onRenameTextChange("Abendessen")
+        vm.onRenameConfirm()
+        await vm.settleWrites()
+        await settleMain()
+        vm.onDeleteStart(vm.uiState.types.first { $0.name == "Brunch" }!)
+
+        XCTAssertEqual(vm.uiState.movesTo, "Abendessen")
+        XCTAssertEqual(Strings.deleteMealTypeBody(vm.uiState.movesTo), "Meals planned as this move to “Abendessen”. They are not deleted.")
+    }
+
     func testASeededTypeOffersNoDelete() async {
         let vm = await viewModel()
         vm.onDeleteStart(vm.uiState.types.first { $0.id == FakeMealPlanRepository.lunch }!)

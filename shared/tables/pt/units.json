@@ -8,7 +8,7 @@
     {"unit": "TSP", "prefixes": ["colher (chá", "colheres (chá", "colher de chá", "colheres de chá"]},
     {"unit": "VARIES", "prefixes": ["colher", "xícara (café", "xícaras (café", "xícara de café", "xícaras de café"]},
     {"unit": "CUP", "prefixes": ["xícara"]},
-    {"unit": "ML", "exact": ["ml"], "prefixes": ["millil"]},
+    {"unit": "ML", "exact": ["ml"], "prefixes": ["milil"]},
     {"unit": "CL", "exact": ["cl"]},
     {"unit": "DL", "exact": ["dl"]},
     {"unit": "KG", "exact": ["kg"], "prefixes": ["quilo"]},

@@ -79,6 +79,23 @@ class MealTypesViewModelTest {
         assertEquals(DINNER, plan.meals.value.single().mealTypeId)
     }
 
+    /** The confirmation names Dinner as the Week shows it: stored in English, maybe renamed. */
+    @Test
+    fun `the delete confirmation names Dinner as it is called now`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addMealType("Brunch")
+        val vm = MealTypesViewModel(plan)
+        advanceUntilIdle()
+        assertEquals("Dinner", vm.uiState.value.movesTo)
+
+        vm.onRenameStart(vm.uiState.value.types.single { it.id == DINNER })
+        vm.onRenameTextChange("Abendessen")
+        vm.onRenameConfirm()
+        advanceUntilIdle()
+        vm.onDeleteStart(vm.uiState.value.types.single { it.name == "Brunch" })
+
+        assertEquals("Abendessen", vm.uiState.value.movesTo)
+    }
+
     @Test
     fun `a seeded type offers no delete`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = MealTypesViewModel(plan)
