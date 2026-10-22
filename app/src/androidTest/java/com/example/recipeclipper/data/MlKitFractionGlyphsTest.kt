@@ -6,6 +6,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.recipeclipper.data.remote.PhotoTextSorter
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,8 +45,13 @@ class MlKitFractionGlyphsTest {
             val toCheck = PhotoTextSorter.sort(lines).uncertain
             for (line in lines) {
                 val codes = line.text.map { "%04X".format(it.code) }.take(6).joinToString(" ")
-                Log.i("FractionOcr", "$name\t${line.confidence}\t${line.text}\t$codes\tcheck=${toCheck.any { line.text.trim() in it }}")
+                Log.i("FractionOcr", "$name\t${line.confidence}\t${line.text}\t$codes\tcheck=${toCheck.any { line.text.trim() in it }}\tbox=${line.box}")
             }
+            // Each line says where it was read (#286): the first page, and a box on it.
+            assertTrue(lines.all { it.page == 0 })
+            val boxes = lines.mapNotNull { it.box }
+            assertEquals(lines.size, boxes.size)
+            assertTrue(boxes.all { it.left >= 0f && it.left < it.right && it.right <= 1f && it.top >= 0f && it.top < it.bottom && it.bottom <= 1f })
         }
     }
 }

@@ -31,7 +31,11 @@ final class PhotoTextUITests: RecipeUITestCase {
         require(text("Check the recipe"), "the review")
         require(textContaining("Read from the photo"), "how the reading went")
         require(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
-        require(textContaining("1 1/2 cups flour"), "the unsure line")
+        // #286: the pictures in a row with the count, and the unsure line as a card: the strip of
+        // the photo it was read from (the stub reader places each line), then the line as a field.
+        require(textContaining("· 1 line to check"), "the count over the cards")
+        require(app.descendants(matching: .any)["edit.strip.0"], "the line's strip of the photo")
+        requireState(app.textFields["edit.checkLine.0"], "value == '1 1/2 cups flour'", "the unsure line, as a field")
 
         require(app.buttons["edit.save"], "Save").tap()
         require(bookmark, "the saved recipe")
@@ -49,7 +53,7 @@ final class PhotoTextUITests: RecipeUITestCase {
         try launch(lines: "Ingredients\n34 tsp salt\n1 cup flour\nDirections\n1. Mix.")
 
         require(app.descendants(matching: .any)["edit.photoCheck"], "the lines to check")
-        require(textContaining("34 tsp salt"), "the large line")
+        requireState(app.textFields["edit.checkLine.0"], "value == '34 tsp salt'", "the large line")
         require(text("This amount looks large: check it"), "its reason")
         XCTAssertFalse(textContaining("Check these lines").exists, "no photo heading for a size alone")
     }
@@ -61,8 +65,9 @@ final class PhotoTextUITests: RecipeUITestCase {
 
         require(textContaining("A fraction? Tap the one in the photo"), "the fraction prompt")
         XCTAssertFalse(app.buttons["edit.fraction.1.⅔"].exists, "only the look-alike's line has chips")
+        require(app.descendants(matching: .any)["edit.strip.0"], "the strip beside the line")
         require(app.buttons["edit.fraction.0.⅔"], "the ⅔ chip").tap()
-        require(textContaining("2 ⅔ cups oats"), "the line, fixed")
+        requireState(app.textFields["edit.checkLine.0"], "value == '2 ⅔ cups oats'", "the line, fixed")
         XCTAssertFalse(app.buttons["edit.fraction.0.⅔"].exists, "the chips go once it's fixed")
 
         require(app.buttons["edit.save"], "Save").tap()

@@ -8,6 +8,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import coil.size.Precision
+import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
@@ -49,9 +50,13 @@ class MlKitPhotoTextReader @Inject constructor(
         if (!modelReady()) return PhotoTextResult.NotReady
         var anyRead = false
         val lines = mutableListOf<PhotoLine>()
-        for (url in imageUrls) {
+        for ((page, url) in imageUrls.withIndex()) {
+            var width = 0
+            var height = 0
             val text = try {
                 val bitmap = load(url) ?: continue
+                width = bitmap.width
+                height = bitmap.height
                 recognizer.process(InputImage.fromBitmap(bitmap, 0)).await()
             } catch (e: CancellationException) {
                 throw e
@@ -63,7 +68,7 @@ class MlKitPhotoTextReader @Inject constructor(
                 continue // this picture failed; the others may still read
             }
             anyRead = true
-            lines += linesOf(text)
+            lines += linesOf(text, page, width, height)
         }
         return if (anyRead) PhotoTextResult.Read(lines) else PhotoTextResult.Failed
     }
@@ -108,9 +113,21 @@ class MlKitPhotoTextReader @Inject constructor(
         return (result.drawable as? BitmapDrawable)?.bitmap
     }
 
-    private fun linesOf(text: Text): List<PhotoLine> =
+    /**
+     * [text]'s lines, read from picture [page] (its index in the list, #286), each with where it
+     * was read: ML Kit's `boundingBox` is in pixels of the bitmap it was given, [width] by
+     * [height], which is the picture the right way up (Coil applied its EXIF orientation, and the
+     * bitmap went in with rotation 0), so dividing by the bitmap's size gives the box the review
+     * crops from the same picture.
+     */
+    private fun linesOf(text: Text, page: Int, width: Int, height: Int): List<PhotoLine> =
         text.textBlocks.flatMap { block ->
-            block.lines.map { line -> PhotoLine(line.text, line.confidence.takeIf { it > 0f }) }
+            block.lines.map { line ->
+                PhotoLine(
+                    line.text, line.confidence.takeIf { it > 0f }, page,
+                    line.boundingBox?.let { PhotoBox.fromPixels(it.left, it.top, it.right, it.bottom, width, height) }
+                )
+            }
         }
 
     private suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { cont ->

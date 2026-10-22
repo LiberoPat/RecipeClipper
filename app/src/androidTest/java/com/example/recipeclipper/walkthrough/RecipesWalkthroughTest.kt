@@ -443,6 +443,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
         // No title is guessed: the cook names it.
         compose.onAllNodes(field("Name"))[0].performTextInput("Aunt June's Oatmeal Cookies")
         pause(1500)
+        // The pages sit in a row over the lines to check (#286): the first opened large, then closed.
+        tapTag("edit.page.0", 2500)
+        tapTag("edit.page.0", 1500)
         show("Check these lines", 3000)
         // Fix the lines flagged to check, and ML Kit's other slips on this card (the simulated
         // lines' "1 cup rasins"; the real reader's "2 eg9s", "11/2", "1 oup", and the back's

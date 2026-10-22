@@ -65,6 +65,9 @@ import XCTest
 // Photo rows (#208): a photo's lines, then PhotoTextSorter.sort's language, whether they sorted, the
 // ingredients, steps, the lines to check one by one (flags: the line in the box, as listed, and
 // why) and those listed only as large. Write only `Photo(["ZUTATEN", "2 Eier", …]),`.
+// Placed-photo rows (#286): a photo's lines, each with the page and box it was read at (and
+// optionally its confidence), then the lines to check with the page and box each keeps. Write only
+// `PhotoAt([At("2 % cups oats", 0, [0.1, 0.2, 0.8, 0.25]), At("1 egg", nil, nil)]),`.
 // Check rows (#198, #208, #283): a line read from a photo, then PhotoTextSorter.check, the per-line
 // check the sorter runs, on an ingredient line. Write only `Check("2 ELZucker", lang: "de"),`.
 // Whole-pick rows (#128): a page's text, a picked name, ingredients and steps, then what
@@ -1915,6 +1918,31 @@ final class DifferentialCorpusTests: XCTestCase {
         Photo(["INGREDIENTS", "34 tsp salt, 11/2 tsp pepper", "12 tbsp vinegar", "METHOD", "Mix."], nil, true, ["34 tsp salt, 11/2 tsp pepper", "12 tbsp vinegar"], ["Mix."], [LineFlag(raw: "34 tsp salt, 11/2 tsp pepper", shown: "34 tsp salt, 11/2 tsp pepper", reasons: [.misread, .large]), LineFlag(raw: "12 tbsp vinegar", shown: "12 tbsp vinegar", reasons: [.large])], ["12 tbsp vinegar"]),
     ]
 
+    /// A line read at a place (#286): its text, page and box (`[left, top, right, bottom]`), and
+    /// optionally the recogniser's confidence.
+    private struct At {
+        let line: PhotoLine
+        init(_ text: String, _ page: Int?, _ box: [Float]?, _ confidence: Float? = nil) {
+            line = PhotoLine(
+                text: text, confidence: confidence, page: page,
+                box: box.map { PhotoBox(left: $0[0], top: $0[1], right: $0[2], bottom: $0[3]) }
+            )
+        }
+    }
+
+    private struct PhotoAt {
+        let lines: [PhotoLine]; let flags: [LineFlag]
+        init(_ lines: [At], _ flags: [LineFlag]) {
+            self.lines = lines.map(\.line); self.flags = flags
+        }
+    }
+
+    // Placed-photo rows (#286): see the header. Write only the lines.
+    private static let photosAt: [PhotoAt] = [
+        PhotoAt([At("Oat Cookies", 0, [0.1, 0.05, 0.7, 0.12]), At("INGREDIENTS", 0, [0.1, 0.15, 0.5, 0.2]), At("1 a cups flour\n2 % cups oats", 0, [0.1, 0.22, 0.8, 0.34]), At("½ oup sugar", 0, [0.1, 0.36, 0.6, 0.41], 0.3), At("1 egg", 0, [0.1, 0.43, 0.4, 0.48]), At("METHOD", 1, [0.1, 0.05, 0.4, 0.1]), At("1. Mix and bake.", 1, [0.1, 0.12, 0.9, 0.17]), At("½ oup sugar", 1, [0.2, 0.5, 0.7, 0.55])], [LineFlag(raw: "1 a cups flour", shown: "1 a cups flour", reasons: [.misread, .fraction], page: 0, box: PhotoBox(left: 0.1, top: 0.22, right: 0.8, bottom: 0.34)), LineFlag(raw: "2 % cups oats", shown: "2 % cups oats", reasons: [.misread, .fraction], page: 0, box: PhotoBox(left: 0.1, top: 0.22, right: 0.8, bottom: 0.34)), LineFlag(raw: "½ oup sugar", shown: "½ oup sugar", reasons: [.unsure, .misread], page: 0, box: PhotoBox(left: 0.1, top: 0.36, right: 0.6, bottom: 0.41))]),
+        PhotoAt([At("Grandma's card", 0, [0.05, 0.05, 0.6, 0.1]), At("▢ 34 tsp salt", nil, nil), At("• 1 oup sugar", 0, [0.05, 0.3, 0.5, 0.35]), At("2 eggs", 0, nil)], [LineFlag(raw: "▢ 34 tsp salt", shown: "34 tsp salt", reasons: [.large], page: nil, box: nil), LineFlag(raw: "• 1 oup sugar", shown: "1 oup sugar", reasons: [.misread], page: 0, box: PhotoBox(left: 0.05, top: 0.3, right: 0.5, bottom: 0.35))]),
+    ]
+
     private struct Check {
         let line: String; let words: LanguageWords; let reasons: Set<CheckReason>
         init(_ line: String, lang: String = "en", _ reasons: Set<CheckReason>) {
@@ -2247,6 +2275,9 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(reading.instructions, row.instructions, label)
             XCTAssertEqual(reading.flags, row.flags, label)
             XCTAssertEqual(reading.large, row.large, label)
+        }
+        for row in Self.photosAt {
+            XCTAssertEqual(PhotoTextSorter.sort(row.lines).flags, row.flags, row.lines.map(\.text).joined(separator: " / "))
         }
         for row in Self.checks {
             XCTAssertEqual(PhotoTextSorter.check(row.line, words: row.words), row.reasons, row.line)

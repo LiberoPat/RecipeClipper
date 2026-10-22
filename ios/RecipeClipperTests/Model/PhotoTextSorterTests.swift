@@ -422,6 +422,69 @@ final class PhotoTextSorterTests: XCTestCase {
         XCTAssertEqual(reading.uncertain, ["34 tsp salt"])
     }
 
+    func testAListedLineKeepsThePageAndBoxItWasReadAt() {
+        let flour = PhotoBox(left: 0.1, top: 0.2, right: 0.8, bottom: 0.3)
+        let sugar = PhotoBox(left: 0.1, top: 0.4, right: 0.6, bottom: 0.45)
+        let reading = PhotoTextSorter.sort([
+            PhotoLine(text: "INGREDIENTS", page: 0, box: PhotoBox(left: 0.1, top: 0.05, right: 0.5, bottom: 0.1)),
+            // A caller's line with a break: each piece keeps the whole line's place.
+            PhotoLine(text: "1 a cups flour\n2 % cups oats", page: 0, box: flour),
+            PhotoLine(text: "½ oup sugar", confidence: 0.3, page: 0, box: sugar),
+            PhotoLine(text: "1 egg", page: 0, box: PhotoBox(left: 0.1, top: 0.5, right: 0.4, bottom: 0.55)),
+            PhotoLine(text: "METHOD", page: 1),
+            PhotoLine(text: "1. Mix and bake.", page: 1),
+            // Read again on the second page: listed once, where it was first read.
+            PhotoLine(text: "½ oup sugar", page: 1, box: PhotoBox(left: 0.2, top: 0.5, right: 0.7, bottom: 0.55)),
+        ])
+        XCTAssertEqual(reading.flags.map(\.raw), ["1 a cups flour", "2 % cups oats", "½ oup sugar"])
+        XCTAssertEqual(reading.flags.map(\.page), [0, 0, 0])
+        XCTAssertEqual(reading.flags.map(\.box), [flour, flour, sugar])
+        XCTAssertEqual(reading.flags[2].reasons, [.unsure, .misread])
+    }
+
+    func testALineReadWithNoPlaceIsListedWithNone() {
+        let reading = PhotoTextSorter.sort([PhotoLine(text: "Grandma's card"), PhotoLine(text: "▢ 34 tsp salt")])
+        XCTAssertEqual(reading.flags, [LineFlag(raw: "▢ 34 tsp salt", shown: "34 tsp salt", reasons: [.large])])
+    }
+
+    func testAFractionChipKeepsTheLinesPlace() {
+        let box = PhotoBox(left: 0.1, top: 0.2, right: 0.8, bottom: 0.3)
+        let flag = LineFlag(raw: "2 % cups oats", shown: "2 % cups oats", reasons: [.misread, .fraction], page: 1, box: box)
+        XCTAssertEqual(
+            PhotoTextSorter.replaceFraction(flag, "⅔"),
+            LineFlag(raw: "2 ⅔ cups oats", shown: "2 ⅔ cups oats", reasons: [.misread], page: 1, box: box)
+        )
+    }
+
+    func testAStripIsItsBoxWithALittleRoomAroundItClampedToThePicture() {
+        // A line a tenth of a 1000 by 500 picture tall: 0.035 above and below, and as many pixels
+        // (0.0175 of the width) either side.
+        let strip = PhotoBox(left: 0.2, top: 0.4, right: 0.6, bottom: 0.5).padded(width: 1000, height: 500)
+        XCTAssertEqual(strip.left, 0.1825, accuracy: 1e-5)
+        XCTAssertEqual(strip.top, 0.365, accuracy: 1e-5)
+        XCTAssertEqual(strip.right, 0.6175, accuracy: 1e-5)
+        XCTAssertEqual(strip.bottom, 0.535, accuracy: 1e-5)
+        let whole = PhotoBox(left: 0, top: 0, right: 1, bottom: 1)
+        XCTAssertEqual(whole.padded(width: 100, height: 100), whole)
+    }
+
+    func testALineTheCookEditsKeepsItsReasonsAndPlaceAndItsChipsWhileItHoldsALookAlike() {
+        let box = PhotoBox(left: 0.1, top: 0.2, right: 0.8, bottom: 0.3)
+        let oats = LineFlag(raw: "▢ 2% cups oats", shown: "2% cups oats", reasons: [.misread, .fraction], page: 0, box: box)
+        XCTAssertEqual(
+            PhotoTextSorter.edited(oats, "▢ 2% cup oats"),
+            LineFlag(raw: "▢ 2% cup oats", shown: "2% cup oats", reasons: [.misread, .fraction], page: 0, box: box)
+        )
+        XCTAssertEqual(
+            PhotoTextSorter.edited(oats, "2 ⅔ cups oats"),
+            LineFlag(raw: "2 ⅔ cups oats", shown: "2 ⅔ cups oats", reasons: [.misread], page: 0, box: box)
+        )
+        // Nothing is checked again: a corrected amount stays listed, as after a chip.
+        let salt = LineFlag(raw: "34 tsp salt", shown: "34 tsp salt", reasons: [.large])
+        XCTAssertEqual(PhotoTextSorter.edited(salt, "¾ tsp salt"), LineFlag(raw: "¾ tsp salt", shown: "¾ tsp salt", reasons: [.large]))
+        XCTAssertEqual(PhotoTextSorter.edited(oats, oats.raw), oats)
+    }
+
     func testAMalformedPlausibleAmountsTableIsRefusedAsSharedTablesDoes() {
         // A nil here is the app's fatalError, as SharedTables traps on a malformed table.
         XCTAssertNotNil(PlausibleAmounts(SharedTables.read("plausible-amounts")))

@@ -7,8 +7,10 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -16,6 +18,7 @@ import androidx.core.content.IntentCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.PhotoTextResult
+import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakePhotoTextReader
@@ -156,8 +159,8 @@ class ScanEntryScreenTest {
         showReview(
             PhotoTextResult.Read(
                 listOf(
-                    PhotoLine("Ingredients"), PhotoLine("11/2 cups flour"), PhotoLine("Directions"),
-                    PhotoLine("1. Stir in the flour.")
+                    PhotoLine("Ingredients", page = 0), PhotoLine("11/2 cups flour", page = 1, box = PhotoBox(0.1f, 0.2f, 0.7f, 0.25f)),
+                    PhotoLine("Directions", page = 1), PhotoLine("1. Stir in the flour.", page = 1)
                 )
             ),
             "content://media/picker/0/1", "content://media/picker/0/2"
@@ -166,8 +169,11 @@ class ScanEntryScreenTest {
         compose.onNodeWithText("Check the recipe").assertIsDisplayed()
         compose.onNodeWithContentDescription("Page 1 of 2").assertExists()
         compose.onNodeWithContentDescription("Page 2 of 2").assertExists()
+        // #286: the pages in a row with the count, and the flagged line beside its strip.
+        compose.onNodeWithText("2 pages · 1 line to check").assertExists()
         compose.onNodeWithText("Read from the photo", substring = true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("• 11/2 cups flour", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("edit.strip.0").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("edit.checkLine.0").assertTextEquals("11/2 cups flour")
         // No "use this photo" switch (#226's decision): the photo link stays empty.
         compose.onNodeWithText("Use this photo", substring = true).assertDoesNotExist()
     }

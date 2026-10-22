@@ -13,7 +13,10 @@ struct EditRecipeScreen: View {
                 ScreenTitle(title(state), style: Typography.headlineSmall)
                     .padding(.bottom, 4)
                 if let photo = state.photo {
-                    PhotoReview(post: photo, state: state, onReadAgain: vm.onReadAgain, onFraction: vm.onFraction)
+                    PhotoReview(
+                        post: photo, state: state, onReadAgain: vm.onReadAgain, onPage: vm.onPage,
+                        onCheckLine: vm.onCheckLine, onFraction: vm.onFraction
+                    )
                 }
                 if state.loading {
                     ProgressView().tint(Palette.primary)
@@ -94,102 +97,39 @@ struct EditRecipeScreen: View {
     }
 }
 
-/// "Read the photo" (#198), above the fields: the post's pictures to check the lines against,
-/// how the reading went, and the lines the recogniser was unsure of ("Check these lines"). A scan
-/// (#226) shows the cook's pages the same way, each named "Page 1 of 2" for VoiceOver, read from
-/// their files (never cached).
+/// "Read the photo" (#198), above the fields: the post's pictures as thumbnails to check the lines
+/// against (#286: tap one to see it large), how the reading went, and the lines to check, each a
+/// card with the strip of the photo it was read from (`CheckCard`). A scan (#226) shows the
+/// cook's pages the same way, each named "Page 1 of 2" for VoiceOver, read from their files
+/// (never cached).
 private struct PhotoReview: View {
     let post: PhotoPost
     let state: EditRecipeUiState
     let onReadAgain: () -> Void
+    let onPage: (Int) -> Void
+    let onCheckLine: (Int, String) -> Void
     let onFraction: (_ flag: LineFlag, _ fraction: String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(Array(post.imageUrls.enumerated()), id: \.offset) { index, image in
-                if let url = URL(string: image) {
-                    CachedAsyncImage(url: url) { picture in
-                        picture.resizable().scaledToFit()
-                    } placeholder: {
-                        Rectangle().fill(Palette.hairline).frame(height: 200)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: 480)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .accessibilityLabel(
-                        state.scan
-                            ? Strings.scanPageDescription(index + 1, post.imageUrls.count)
-                            : Strings.photoImageDescription(post.title)
-                    )
-                }
-            }
+            PageThumbnails(post: post, state: state, onPage: onPage)
             outcome
-            if !state.flags.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
+            if !state.checks.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
                     if state.checkHeading {
                         Text(Strings.photoCheckHeading)
                             .textStyle(Typography.titleSmall)
                             .foregroundStyle(Palette.accentText)
                     }
-                    ForEach(Array(state.flags.enumerated()), id: \.offset) { index, flag in
-                        Text("• \(flag.shown)")
-                            .textStyle(Typography.bodyMedium)
-                            .foregroundStyle(Palette.onBackground)
-                        if flag.largeOnly {
-                            lineNote(Strings.photoCheckLarge)
-                                .padding(.bottom, 4)
-                        }
-                        if flag.chips {
-                            fractionChips(index, flag)
-                        }
+                    ForEach(Array(state.checks.enumerated()), id: \.offset) { index, check in
+                        CheckCard(index: index, check: check, fractions: state.fractions, onLine: onCheckLine, onFraction: onFraction)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.primary, lineWidth: 1))
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("edit.photoCheck")
             }
         }
         .padding(.bottom, 4)
-    }
-
-    /// A line whose amount holds a fraction glyph's look-alike (#245), or glyphs run together (#276,
-    /// "½⅓"): the fractions as one-tap
-    /// replacements, since "%" can't say whether it was ½, ¼ or ¾. The cook can still type instead.
-    @ViewBuilder
-    private func fractionChips(_ index: Int, _ flag: LineFlag) -> some View {
-        lineNote(Strings.photoFractionPrompt)
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) { fractionButtons(index, flag) }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], alignment: .leading, spacing: 8) {
-                fractionButtons(index, flag)
-            }
-        }
-        .padding(.leading, 12)
-        .padding(.bottom, 6)
-    }
-
-    private func fractionButtons(_ index: Int, _ flag: LineFlag) -> some View {
-        ForEach(state.fractions, id: \.self) { fraction in
-            Button { onFraction(flag, fraction) } label: {
-                Text(fraction)
-                    .textStyle(Typography.titleMedium)
-                    .frame(minWidth: 44, minHeight: 44)
-                    .padding(.horizontal, 6)
-            }
-            .buttonStyle(.bordered)
-            .tint(Palette.primary)
-            .accessibilityLabel(Strings.photoFractionChip(fraction, flag.shown))
-            .accessibilityIdentifier("edit.fraction.\(index).\(fraction)")
-        }
-    }
-
-    /// A muted line under a line to check: why it's listed (#281), or what its chips are for (#245).
-    private func lineNote(_ text: String) -> some View {
-        Text(text)
-            .textStyle(Typography.bodySmall)
-            .foregroundStyle(Palette.muted)
-            .padding(.leading, 12)
     }
 
     @ViewBuilder

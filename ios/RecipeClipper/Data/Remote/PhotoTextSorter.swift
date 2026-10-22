@@ -1,10 +1,36 @@
 import Foundation
 
 /// One line of text the device read from a photo (#198), in reading order, with the
-/// recogniser's `confidence` (0 to 1) when it gives one. Android's `PhotoLine`.
+/// recogniser's `confidence` (0 to 1) when it gives one. `page` is the picture it was read from
+/// (0 for the first) and `box` where on it (#286), so the review can show the line beside its
+/// strip of the photo; nil when the reader didn't say. Android's `PhotoLine`.
 struct PhotoLine: Equatable, Sendable {
-    let text: String
+    var text: String
     var confidence: Float? = nil
+    var page: Int? = nil
+    var box: PhotoBox? = nil
+}
+
+/// Where a line was read on its picture (#286): a rectangle in fractions of the picture's width
+/// and height, 0 to 1, measured from its top-left corner, in the picture the right way up (as the
+/// recogniser saw it and the review shows it). Android's `PhotoBox`.
+struct PhotoBox: Equatable, Hashable, Sendable {
+    let left: Float
+    let top: Float
+    let right: Float
+    let bottom: Float
+
+    /// The room around a line's strip, in its height (#286).
+    static let pad: Float = 0.35
+
+    /// The strip the review shows for this box (#286) on a `width` by `height` picture: the box
+    /// with a little room around it, `pad` of the line's height above and below and as many
+    /// pixels either side, clamped to the picture.
+    func padded(width: Int, height: Int) -> PhotoBox {
+        let dy = (bottom - top) * Self.pad
+        let dx = width > 0 ? dy * Float(height) / Float(width) : 0
+        return PhotoBox(left: max(left - dx, 0), top: max(top - dy, 0), right: min(right + dx, 1), bottom: min(bottom + dy, 1))
+    }
 }
 
 /// Why a line read from a photo is listed for the cook to check (#198). Flagged only: nothing is
@@ -23,10 +49,13 @@ enum CheckReason: Sendable {
 
 /// One line listed to check (#198, #283): `raw` as it is in the editor's boxes, which a fraction
 /// chip changes; `shown` as the list shows it, without list markup ("▢", "•", "3)"); and why.
+/// `page` and `box` are where it was read (#286: its `PhotoLine`'s), nil when the reader didn't say.
 struct LineFlag: Equatable, Sendable {
-    let raw: String
-    let shown: String
-    let reasons: Set<CheckReason>
+    var raw: String
+    var shown: String
+    var reasons: Set<CheckReason>
+    var page: Int? = nil
+    var box: PhotoBox? = nil
 
     /// Listed only because its amount looks too large: the photo was read clearly there, so it
     /// gets a note of its own rather than the heading (#281).
@@ -83,9 +112,14 @@ enum PhotoTextSorter {
 
     static func sort(_ lines: [PhotoLine]) -> PhotoReading {
         // A recogniser's line holds no break, but a caller's may: split as the splitter's lines are.
+        // A piece of a line keeps the whole line's confidence, page and box (#286).
         let read = lines.flatMap { line in
             line.text.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
-                .components(separatedBy: "\n").map { PhotoLine(text: $0.kTrimmed, confidence: line.confidence) }
+                .components(separatedBy: "\n").map { piece -> PhotoLine in
+                    var copy = line
+                    copy.text = piece.kTrimmed
+                    return copy
+                }
         }.filter { !$0.text.isEmpty }
         let text = read.map(\.text).joined(separator: "\n")
         let language = RecipeTextSplitter.languageOf(text)
@@ -123,7 +157,9 @@ enum PhotoTextSorter {
     }
 
     /// The lines to list, gathered line by line: each box line (`LineFlag.raw`) once, in the order
-    /// first shown, with the reasons of every copy of it.
+    /// first shown, with the reasons of every copy of it, and the page and box of the first (#286).
+    /// The splitter keeps each read line whole (it never joins two), so an ingredient or step was
+    /// read where its own line was.
     private struct Listed {
         let read: [PhotoLine]
         let cleaned: [RecipeTextSplitter.Line]
@@ -132,6 +168,7 @@ enum PhotoTextSorter {
         private var shown: [String: String] = [:]
         private var reasons: [String: Set<CheckReason>] = [:]
         private var checked: [Checked: Set<CheckReason>] = [:]
+        private var at: [String: PhotoLine] = [:]
 
         private struct Checked: Hashable {
             let text: String
@@ -164,6 +201,7 @@ enum PhotoTextSorter {
             if shown[raw] == nil {
                 shown[raw] = show
                 order.append(raw)
+                at[raw] = read[source]
             }
             reasons[raw, default: []].formUnion(found)
         }
@@ -171,7 +209,7 @@ enum PhotoTextSorter {
         func flags() -> [LineFlag] {
             order.compactMap { raw in
                 guard let found = reasons[raw], !found.isEmpty, let show = shown[raw] else { return nil }
-                return LineFlag(raw: raw, shown: show, reasons: found)
+                return LineFlag(raw: raw, shown: show, reasons: found, page: at[raw]?.page, box: at[raw]?.box)
             }
         }
     }
@@ -313,8 +351,26 @@ enum PhotoTextSorter {
         let at = raw.range(of: flag.shown, options: .literal)
         guard at.location != NSNotFound else { return nil }
         return LineFlag(
-            raw: raw.replacingCharacters(in: at, with: shown), shown: shown, reasons: flag.reasons.subtracting([.fraction])
+            raw: raw.replacingCharacters(in: at, with: shown), shown: shown, reasons: flag.reasons.subtracting([.fraction]),
+            page: flag.page, box: flag.box
         )
+    }
+
+    /// `flag` once the cook has changed its line in the box to `line` (#286): the line as it is now,
+    /// and as listed (cleaned as `sort` cleans a line, so "▢" and "•" go). It stays listed with its
+    /// reasons, since nothing is checked again, but its chips stay only while the line still holds
+    /// a look-alike for them to replace. Its page and box are kept.
+    static func edited(_ flag: LineFlag, _ line: String, words: LanguageWords = .english) -> LineFlag {
+        guard line != flag.raw else { return flag }
+        let cleaned = RecipeTextSplitter.line(line, words: words).text
+        let shown = cleaned.isEmpty ? line : cleaned
+        let holds = (line as NSString).range(of: shown, options: .literal).location != NSNotFound
+        let chips = flag.chips && holds && fractionSlot(shown, words: words) != nil
+        var edited = flag
+        edited.raw = line
+        edited.shown = shown
+        if !chips { edited.reasons.remove(.fraction) }
+        return edited
     }
 
     /// A unit glued to the next word in `rest`, after the leading amount, where the scaler reads none.

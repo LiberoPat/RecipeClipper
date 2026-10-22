@@ -1,15 +1,20 @@
 package com.example.recipeclipper.ui.edit
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.PhotoTextResult
+import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.fake.FakePhotoTextReader
 import com.example.recipeclipper.fake.FakeRecipeRepository
@@ -52,7 +57,8 @@ class EditRecipePhotoScreenTest {
         show(
             PhotoTextResult.Read(
                 listOf(
-                    PhotoLine("Ingredients"), PhotoLine("1 cup butter"), PhotoLine("1 1/2 cups flour", 0.3f),
+                    PhotoLine("Ingredients"), PhotoLine("1 cup butter"),
+                    PhotoLine("1 1/2 cups flour", 0.3f, page = 0, box = PhotoBox(0.1f, 0.3f, 0.8f, 0.36f)),
                     PhotoLine("Directions"), PhotoLine("1. Cream the butter."), PhotoLine("2. Stir in the flour.")
                 )
             )
@@ -61,7 +67,12 @@ class EditRecipePhotoScreenTest {
         compose.onNodeWithText("Check the recipe").assertIsDisplayed()
         compose.onNodeWithText("Read from the photo", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Check these lines", substring = true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("• 1 1/2 cups flour", substring = true).assertExists()
+        // #286: the picture in a row with the count; the unsure line a card, its strip of the
+        // photo above it and the line as a field.
+        compose.onNodeWithText("1 photo · 1 line to check").assertExists()
+        compose.onNodeWithTag("edit.strip.0").assertExists()
+        compose.onNodeWithContentDescription("The line in the photo").assertExists()
+        compose.onNodeWithTag("edit.checkLine.0").assertTextEquals("1 1/2 cups flour")
         compose.onNodeWithText("Aunt June's oatmeal cookies").performScrollTo().assertIsDisplayed()
 
         compose.onNodeWithText("Save").performScrollTo().performClick()
@@ -88,7 +99,7 @@ class EditRecipePhotoScreenTest {
         compose.onNodeWithTag("edit.fraction.1.⅔").assertDoesNotExist()
         compose.onNodeWithContentDescription("Use ⅔ in 2 % cups oats").performScrollTo().performClick()
 
-        compose.onNodeWithText("• 2 ⅔ cups oats", substring = true).assertExists()
+        compose.onNodeWithTag("edit.checkLine.0").assertTextEquals("2 ⅔ cups oats")
         compose.onNodeWithText("A fraction? Tap the one in the photo:", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Save").performScrollTo().performClick()
         compose.waitForIdle()
@@ -108,9 +119,11 @@ class EditRecipePhotoScreenTest {
             )
         )
 
-        compose.onNodeWithText("• 34 tsp salt", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("edit.checkLine.0").performScrollTo().assertTextEquals("34 tsp salt")
         compose.onNodeWithText("This amount looks large: check it").assertExists()
         compose.onNodeWithText("Check these lines", substring = true).assertDoesNotExist()
+        // The reader didn't say where it was read: no strip.
+        compose.onNodeWithTag("edit.strip.0").assertDoesNotExist()
     }
 
     @Test
@@ -129,14 +142,30 @@ class EditRecipePhotoScreenTest {
     }
 
     @Test
-    fun aLineIsListedWithoutItsListMarkup() {
-        // #283: the review listed "• ▢ 34 tsp salt"; the box keeps the line as read.
+    fun aCardsFieldIsItsLineAsInTheBox() {
+        // #283: the review listed "• ▢ 34 tsp salt". Since #286 a card's field is the box's line,
+        // as read, and typing in it types in the box.
         show(PhotoTextResult.Read(listOf(PhotoLine("Grandma's card"), PhotoLine("▢ 34 tsp salt"), PhotoLine("• 1 oup sugar"))))
 
-        compose.onNodeWithText("• 34 tsp salt", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("edit.checkLine.0").performScrollTo().assertTextEquals("▢ 34 tsp salt")
+        compose.onNodeWithTag("edit.checkLine.1").assertTextEquals("• 1 oup sugar")
         compose.onNodeWithText("• ▢", substring = true).assertDoesNotExist()
         compose.onNodeWithText("• •", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("▢ 34 tsp salt", substring = true, useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("Grandma's card\n▢ 34 tsp salt\n• 1 oup sugar").assertExists()
+
+        compose.onNodeWithTag("edit.checkLine.0").performTextReplacement("▢ ¾ tsp salt")
+        compose.onNodeWithText("Grandma's card\n▢ ¾ tsp salt\n• 1 oup sugar").assertExists()
+    }
+
+    @Test
+    fun aThumbnailShowsItsPictureLargeAndHidesItAgain() {
+        show(PhotoTextResult.Read(listOf(PhotoLine("Ingredients"), PhotoLine("34 tsp salt"), PhotoLine("Directions"), PhotoLine("1. Mix."))))
+
+        compose.onNodeWithTag("edit.openPage").assertDoesNotExist()
+        compose.onNodeWithTag("edit.page.0").assertIsNotSelected().performClick()
+        compose.onNodeWithTag("edit.openPage").assertExists()
+        compose.onNodeWithTag("edit.page.0").assertIsSelected().performClick()
+        compose.onNodeWithTag("edit.openPage").assertDoesNotExist()
     }
 
     @Test

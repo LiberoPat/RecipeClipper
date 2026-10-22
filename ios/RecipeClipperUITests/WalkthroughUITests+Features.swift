@@ -225,7 +225,7 @@ extension WalkthroughUITests {
         // more: find it by what it holds, select all of it and type it back corrected, so no
         // caret placement can land a fix on the wrong line.
         let box = app.descendants(matching: .any).matching(NSPredicate(
-            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@ AND NOT (identifier BEGINSWITH 'edit.checkLine.')",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "cup butter"
         )).firstMatch
         scrollTo(box, "the ingredients")
@@ -314,7 +314,7 @@ extension WalkthroughUITests {
 
         // Fix the glued line, as clip 28 does: the whole box typed back corrected.
         let box = app.descendants(matching: .any).matching(NSPredicate(
-            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@ AND NOT (identifier BEGINSWITH 'edit.checkLine.')",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "de farine"
         )).firstMatch
         scrollTo(box, "the ingredients")
@@ -375,6 +375,12 @@ extension WalkthroughUITests {
         require(app.descendants(matching: .any)["Page 2 of 2"], "both pages")
         require(textContaining("Read from the photo"), "how the reading went", within: 30)
         pause(3)
+        // The pages sit in a row over the lines to check (#286): the first opened large, then closed.
+        let first = require(app.buttons["Page 1 of 2"], "the first page's thumbnail")
+        first.tap()
+        pause(2.5)
+        first.tap()
+        pause(1.5)
         // No title is guessed: the cook names it.
         let name = require(app.textFields["Name"], "the name field")
         name.tap()
@@ -385,7 +391,7 @@ extension WalkthroughUITests {
 
         // Fix the lines flagged to check, as clip 28 does: the whole box typed back corrected.
         let box = app.descendants(matching: .any).matching(NSPredicate(
-            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@ AND NOT (identifier BEGINSWITH 'edit.checkLine.')",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "brown sugar"
         )).firstMatch
         scrollTo(box, "the ingredients")
@@ -475,7 +481,7 @@ extension WalkthroughUITests {
         print("FRACTION-CHIPS \(chipLines.joined(separator: " | "))")
         XCTAssertFalse(chipLines.isEmpty, "Vision's reading of the card offered no chip")
         let box = app.descendants(matching: .any).matching(NSPredicate(
-            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@",
+            format: "(elementType == %lu OR elementType == %lu) AND value CONTAINS %@ AND NOT (identifier BEGINSWITH 'edit.checkLine.')",
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue, "chocolate"
         )).firstMatch
         func boxLines() -> [String] {
