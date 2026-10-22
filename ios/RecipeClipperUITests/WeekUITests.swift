@@ -60,6 +60,8 @@ final class WeekUITests: RecipeUITestCase {
     /// chicken thighs, soy sauce and white vinegar in stock and garlic out, so a planned Adobo
     /// has at least three rows to buy and three in the pantry. Both sections sit in one
     /// LazyVStack; with ids repeated across them, the first pantry rows left a blank gap.
+    /// The pantry's chicken (3 lb) and vinegar (2 cups) show their amounts beside the week's
+    /// (#302), never compared; the soy sauce has no amount, so it shows nothing new.
     func testWhatINeedDrawsEveryRowOfBothSections() {
         launch(.walkthroughPantry)
         require(tabBar.buttons["Week"], "the Week tab").tap()
@@ -69,7 +71,10 @@ final class WeekUITests: RecipeUITestCase {
         require(app.staticTexts["garlic"], "the first row to buy")
 
         // Top to bottom: To buy, then In your pantry.
-        for name in ["garlic", "bay leaves", "black peppercorns", "chicken thighs", "soy sauce", "white vinegar"] {
+        for name in [
+            "garlic", "bay leaves", "black peppercorns", "chicken thighs", "You have 3 lb · this week's recipes use 2 lb",
+            "soy sauce", "You have soy sauce", "white vinegar", "You have 2 cups · this week's recipes use 1/3 cup",
+        ] {
             let row = app.staticTexts[name]
             for _ in 0 ..< 4 where !(row.exists && row.isHittable) { app.swipeUp() }
             require(row, name)

@@ -519,9 +519,9 @@ final class PantryViewModelTests: XCTestCase {
         ]
     }
 
-    private func needVM(_ pantry: FakePantryRepository) async -> WhatINeedViewModel {
+    private func needVM(_ pantry: FakePantryRepository, system: UnitSystem = .asWritten) async -> WhatINeedViewModel {
         planWeek()
-        let vm = WhatINeedViewModel(weekStart: 100, groceries: groceries, pantry: pantry, preferences: FakeAppPreferences())
+        let vm = WhatINeedViewModel(weekStart: 100, groceries: groceries, pantry: pantry, preferences: FakeAppPreferences(unitSystem: system))
         await vm.loading?.value
         await settleMain()
         return vm
@@ -544,6 +544,43 @@ final class PantryViewModelTests: XCTestCase {
         await pantry.setStock([1], stock: .runningLow) // running low still counts as having it (#194)
         await settleMain()
         XCTAssertTrue(vm.uiState.needs!.have.contains { $0.name == "eggs" })
+    }
+
+    // #302: the amounts side by side, the week's summed in the user's units; never a verdict.
+    func testAHaveRowCarriesThePantrysAmountAndTheWeeksExactTotalFollowingThePantry() async {
+        func stocked(_ id: Int64, _ name: String, _ quantity: String?, alwaysHave: Bool = false) -> PantryItem {
+            PantryItem(id: id, name: name, quantity: quantity, language: "en", aisle: .other, inStock: true, alwaysHave: alwaysHave, purchasedDay: 1, expiresDay: nil)
+        }
+        let pantry = FakePantryRepository([stocked(1, "flour", "1 kg"), stocked(2, "eggs", nil), stocked(3, "salt", "1 kg", alwaysHave: true)])
+        let vm = await needVM(pantry, system: .metric)
+        let have = vm.uiState.needs!.have
+        let flour = have.first { $0.name == "flour" }!
+        XCTAssertEqual(flour.lines.map(\.text), ["480 g flour", "500 g flour"])
+        XCTAssertEqual(flour.pantryQuantity, "1 kg")
+        XCTAssertEqual(flour.weekTotal, "980 g")
+        XCTAssertEqual(flour.status, .have) // still Have: no verdict
+        let eggs = have.first { $0.name == "eggs" }!
+        XCTAssertNil(eggs.pantryQuantity ?? eggs.weekTotal)
+        let salt = have.first { $0.name == "salt" }! // a staple
+        XCTAssertNil(salt.pantryQuantity ?? salt.weekTotal)
+
+        await pantry.edit(1, PantryEdit(name: "flour", quantity: "half a bag", alwaysHave: false, expiresDay: nil))
+        await pantry.edit(2, PantryEdit(name: "eggs", quantity: "6", alwaysHave: false, expiresDay: nil))
+        await settleMain()
+        let after = vm.uiState.needs!.have
+        XCTAssertEqual(after.first { $0.name == "flour" }?.pantryQuantity, "half a bag")
+        XCTAssertEqual(after.first { $0.name == "flour" }?.weekTotal, "980 g")
+        XCTAssertEqual(after.first { $0.name == "eggs" }?.pantryQuantity, "6")
+        XCTAssertEqual(after.first { $0.name == "eggs" }?.weekTotal, "4 eggs")
+    }
+
+    func testAsWrittenCupsAndGramsDontAddUpSoOnlyThePantrysAmount() async {
+        let vm = await needVM(FakePantryRepository([
+            PantryItem(id: 1, name: "flour", quantity: "1 kg", language: "en", aisle: .other, inStock: true, alwaysHave: false, purchasedDay: 1, expiresDay: nil)
+        ]))
+        let flour = vm.uiState.needs!.have[0]
+        XCTAssertEqual(flour.pantryQuantity, "1 kg")
+        XCTAssertNil(flour.weekTotal)
     }
 
     func testAddingBuyPutsOnlyTheBuyLinesOnGroceriesOnce() async {

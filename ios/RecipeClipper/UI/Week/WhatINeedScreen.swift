@@ -3,7 +3,8 @@ import SwiftUI
 /// "What I need" for the week shown (#51; Android's WhatINeedScreen): To buy, then In your
 /// pantry. Each ingredient shows every planned line naming it, with its recipe and day.
 /// Presence only: the pantry says you have flour, never that there's enough, and the screen
-/// says so.
+/// says so. An ingredient in the pantry with an amount shows it beside what the week's recipes
+/// use, when that adds up exactly (#302): the two side by side, never compared.
 struct WhatINeedScreen: View {
     let vm: WhatINeedViewModel
 
@@ -75,7 +76,12 @@ private struct NeedRowView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(row.name ?? row.lines[0].text).textStyle(Typography.bodyLargeBold).foregroundStyle(Palette.onBackground)
             switch row.status {
-            case .have: muted(Strings.whatINeedYouHave(row.pantryName ?? ""))
+            case .have:
+                muted(Strings.whatINeedYouHave(row.pantryName ?? ""))
+                // #302: the pantry's amount as written, beside the week's exact total; never compared.
+                if let have = row.pantryQuantity {
+                    muted(row.weekTotal.map { Strings.whatINeedPantryAndWeek(have, $0) } ?? Strings.whatINeedPantryAmount(have))
+                }
             case .staple: muted(Strings.pantryAlwaysHave)
             case .buy: EmptyView()
             }

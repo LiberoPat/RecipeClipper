@@ -700,6 +700,11 @@ enum Strings {
     static var whatINeedNothingToBuy: String { String(localized: "what_i_need_nothing_to_buy") }
     static func whatINeedYouHave(_ name: String) -> String { String(localized: "what_i_need_you_have \(name)") }
     static var whatINeedAdded: String { String(localized: "what_i_need_added") }
+    // What I need (#302): the pantry's amount beside the week's, never compared.
+    static func whatINeedPantryAmount(_ have: String) -> String { String(localized: "what_i_need_pantry_amount \(have)") }
+    static func whatINeedPantryAndWeek(_ have: String, _ use: String) -> String {
+        String(localized: "what_i_need_pantry_and_week \(have) \(use)")
+    }
     static var addToPantry: String { String(localized: "action_add_to_pantry") }
 
     // "I made this" (#116)
