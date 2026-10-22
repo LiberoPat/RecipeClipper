@@ -67,7 +67,7 @@
     <string name="cd_show_ingredients">Mostra gli ingredienti</string>
     <!-- The ingredients bar's groups in cook mode (#286) -->
     <string name="cook_in_this_step">In questo passaggio</string>
-    <string name="cook_later">Più tardi</string>
+    <string name="cook_later">Più avanti</string>
     <string name="cd_go_to_step">Vai al passaggio %1$d</string>
     <string name="step_back_to">Torna al passaggio %1$d</string>
     <string name="step_link_show">mostra</string>
@@ -248,11 +248,11 @@
     <string name="action_read_photo">Leggi la foto</string>
     <string name="photo_title">Controlla la ricetta</string>
     <string name="photo_reading">Lettura della foto su questo telefono…</string>
-    <string name="photo_read">Letto dalla foto. Confronta ogni riga con la foto, soprattutto le quantità, prima di salvare.</string>
+    <string name="photo_read">Ricetta letta dalla foto. Confronta ogni riga con la foto, soprattutto le quantità, prima di salvare.</string>
     <string name="photo_not_sorted">Non è stato possibile leggere una ricetta dalla foto: completala a mano.</string>
     <string name="photo_failed">Impossibile caricare la foto. Controlla la connessione e riprova.</string>
     <string name="photo_not_ready">Il lettore di foto non è ancora pronto su questo telefono: i servizi Google Play lo scaricano una volta, via internet. Riprova tra qualche minuto o completa la ricetta a mano qui sotto.</string>
-    <string name="photo_check_heading">Controlla queste righe: lì la foto era difficile da leggere</string>
+    <string name="photo_check_heading">Controlla queste righe: in quei punti la foto era poco leggibile</string>
     <string name="photo_check_large">Questa quantità sembra alta: controllala</string>
     <string name="photo_fraction_prompt">Una frazione? Tocca quella nella foto:</string>
     <string name="photo_fraction_chip">Usa %1$s in %2$s</string>
@@ -395,8 +395,8 @@
     <string name="send_file_failed">Impossibile creare il file da inviare.</string>
     <string name="receive_file_title">Aggiungi da questo file</string>
     <string name="receive_file_empty">In questo file non c\'è niente da aggiungere.</string>
-    <string name="receive_file_to_pantry">Articoli della dispensa in dispensa</string>
-    <string name="receive_file_to_groceries">Articoli della dispensa nella lista della spesa</string>
+    <string name="receive_file_to_pantry">Metti gli articoli in dispensa</string>
+    <string name="receive_file_to_groceries">Metti gli articoli nella lista della spesa</string>
     <!-- %2$d is the free app's recipe limit. -->
     <plurals name="receive_file_skipped_free">
         <item quantity="one">%1$d ricetta non è stata aggiunta: l\'app gratuita conserva %2$d ricette.</item>
@@ -416,14 +416,14 @@
         <item quantity="other">Spesa fatta · %1$d spuntati</item>
     </plurals>
     <string name="put_away_intro">Spunta cosa va in dispensa. Tutto ciò che è spuntato viene tolto dalla lista.</string>
-    <string name="action_put_away">Metti via e rimuovi</string>
+    <string name="action_put_away">Metti via e togli dalla lista</string>
     <!-- Using up the pantry when cook mode is finished (#147). -->
     <string name="use_up_title">Aggiorna la dispensa</string>
     <string name="use_up_intro">Ecco cosa hai usato, in base agli ingredienti spuntati. Togli la spunta a ciò che non va.</string>
     <string name="use_up_change">%1$s → %2$s</string>
     <string name="use_up_used_up">%1$s → finito, nella lista della spesa</string>
     <string name="use_up_cant_work_out">Impossibile calcolare quanto è stato usato</string>
-    <string name="use_up_keep">Lascia</string>
+    <string name="use_up_keep">Invariato</string>
     <string name="use_up_low">Sta finendo</string>
     <string name="use_up_out">Finito</string>
     <string name="action_use_up">Aggiorna dispensa</string>
@@ -438,7 +438,7 @@
     <string name="aisle_bakery">Panetteria</string>
     <string name="aisle_baking">Ingredienti per dolci</string>
     <string name="aisle_grains">Pasta, riso e cereali</string>
-    <string name="aisle_canned">Scatolame</string>
+    <string name="aisle_canned">Conserve</string>
     <string name="aisle_condiments">Oli, salse e condimenti</string>
     <string name="aisle_spices">Erbe e spezie</string>
     <string name="aisle_frozen">Surgelati</string>
@@ -459,7 +459,7 @@
     <string name="pantry_ran_out">Finito</string>
     <string name="pantry_restock">Ricomprato</string>
     <string name="pantry_running_low">Sta finendo</string>
-    <string name="pantry_low">Poco</string>
+    <string name="pantry_low">Sta finendo</string>
     <string name="pantry_take_off_list">Rimuovi dalla lista della spesa</string>
     <string name="snackbar_taken_off_list">Rimosso dalla lista della spesa</string>
     <plurals name="snackbar_taken_off_list_count">
@@ -627,7 +627,7 @@
     <string name="tooltip_cook_timer">Il timer di questo passaggio. Suona anche se esci dall\'app.</string>
     <string name="tooltip_groceries_long_press">Tieni premuto un articolo per spostarlo in un altro reparto, o eliminarlo.</string>
     <string name="tooltip_groceries_done_shopping">Di ritorno dalla spesa? Metti in dispensa quello che hai spuntato e toglilo dalla lista.</string>
-    <string name="tooltip_pantry_in_stock">Tocca un articolo per cambiarne la scorta o la quantità; scorri a sinistra quando finisce. L\'etichetta col cestino indica che è nella tua lista della spesa.</string>
+    <string name="tooltip_pantry_in_stock">Tocca un articolo per cambiarne la disponibilità o la quantità; scorri a sinistra quando finisce. L\'etichetta col cestino indica che è nella tua lista della spesa.</string>
     <string name="tooltip_settings_show_tips">Rivedi ogni suggerimento, uno alla volta.</string>
     <string name="cd_dismiss_tip">Chiudi suggerimento</string>
     <string name="settings_section_help">Aiuto</string>
@@ -635,10 +635,10 @@
     <string name="settings_show_tips_description">Ogni suggerimento compare ancora una volta, uno alla volta.</string>
     <!-- Settings' index (#286) -->
     <string name="settings_value_system_theme">Tema di sistema</string>
-    <string name="settings_value_amounts_on">Quantità: sì</string>
-    <string name="settings_value_amounts_off">Quantità: no</string>
-    <string name="settings_value_reminders_on">Promemoria: sì</string>
-    <string name="settings_value_reminders_off">Promemoria: no</string>
+    <string name="settings_value_amounts_on">Con le quantità</string>
+    <string name="settings_value_amounts_off">Senza quantità</string>
+    <string name="settings_value_reminders_on">Promemoria attivi</string>
+    <string name="settings_value_reminders_off">Promemoria disattivati</string>
     <string name="settings_value_unlocked">Sbloccato</string>
     <string name="clip_hint_start">Tocca Nome qui sotto, poi il nome della ricetta nella pagina.</string>
     <string name="clip_confirm_name">Usa come nome</string>

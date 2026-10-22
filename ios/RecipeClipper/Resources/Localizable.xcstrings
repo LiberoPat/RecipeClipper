@@ -119,7 +119,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar em %@"
+            "value" : "Adicionar para %@"
           }
         }
       }
@@ -1431,7 +1431,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Atualizar da fonte"
+            "value" : "Atualizar do site"
           }
         }
       }
@@ -1472,7 +1472,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar em %@"
+            "value" : "Adicionar para %@"
           }
         }
       }
@@ -3644,7 +3644,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schalte Apple Intelligence in den iPhone-Einstellungen ein, um den Chefmodus zu nutzen."
+            "value" : "Schalte Apple Intelligence in den iPhone-Einstellungen ein, um den Profimodus zu nutzen."
           }
         },
         "en" : {
@@ -3726,7 +3726,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chefmodus"
+            "value" : "Profimodus"
           }
         },
         "en" : {
@@ -6055,7 +6055,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminé — finir"
+            "value" : "Terminé — fin de la recette"
           }
         },
         "it" : {
@@ -6067,7 +6067,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Feito — concluir"
+            "value" : "Pronto — concluir"
           }
         }
       }
@@ -6108,7 +6108,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Feito — próximo passo"
+            "value" : "Pronto — próximo passo"
           }
         }
       }
@@ -6172,7 +6172,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Después"
+            "value" : "Más adelante"
           }
         },
         "fr" : {
@@ -6184,7 +6184,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Più tardi"
+            "value" : "Più avanti"
           }
         },
         "pt-BR" : {
@@ -6451,7 +6451,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modo cozinhar com fundo escuro mesmo no modo claro"
+            "value" : "Modo cozinha com fundo escuro mesmo no modo claro"
           }
         }
       }
@@ -6474,13 +6474,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oscuro al cocinar"
+            "value" : "Modo oscuro al cocinar"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sombre en cuisine"
+            "value" : "Mode cuisine sombre"
           }
         },
         "it" : {
@@ -7405,7 +7405,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Für diesen Beitrag wurde kein Rezepttext gefunden. Auf Reddit stehen Rezepte oft nur im Foto, und noch niemand hat dieses in den Kommentaren abgetippt."
+            "value" : "Für diesen Beitrag wurde kein Rezepttext gefunden. Auf Reddit stehen Rezepte oft nur auf dem Foto, und noch niemand hat dieses in den Kommentaren abgetippt."
           }
         },
         "en" : {
@@ -7886,7 +7886,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Um cartão ou a página de um livro"
+            "value" : "Um caderno ou livro de receitas"
           }
         }
       }
@@ -8636,7 +8636,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Zeile im Foto"
+            "value" : "Die Zeile auf dem Foto"
           }
         },
         "en" : {
@@ -9236,7 +9236,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comida"
+            "value" : "Tipo de comida"
           }
         },
         "fr" : {
@@ -9564,7 +9564,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cantidades: no"
+            "value" : "Sin cantidades"
           }
         },
         "fr" : {
@@ -9576,13 +9576,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantità: no"
+            "value" : "Senza quantità"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantidades: não"
+            "value" : "Sem quantidades"
           }
         }
       }
@@ -9605,7 +9605,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cantidades: sí"
+            "value" : "Con cantidades"
           }
         },
         "fr" : {
@@ -9617,13 +9617,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantità: sì"
+            "value" : "Con le quantità"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantidades: sim"
+            "value" : "Com quantidades"
           }
         }
       }
@@ -9646,7 +9646,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avisos: no"
+            "value" : "Sin avisos"
           }
         },
         "fr" : {
@@ -9658,13 +9658,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promemoria: no"
+            "value" : "Promemoria disattivati"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lembretes: não"
+            "value" : "Sem lembretes"
           }
         }
       }
@@ -9687,7 +9687,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avisos: sí"
+            "value" : "Con avisos"
           }
         },
         "fr" : {
@@ -9699,13 +9699,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promemoria: sì"
+            "value" : "Promemoria attivi"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lembretes: sim"
+            "value" : "Com lembretes"
           }
         }
       }
@@ -10609,7 +10609,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Original : %@"
+            "value" : "À l'origine : %@"
           }
         },
         "it" : {
@@ -13930,7 +13930,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível atualizar da fonte. %@"
+            "value" : "Não foi possível atualizar do site. %@"
           }
         }
       }
@@ -14492,7 +14492,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In anderen Gang verschieben…"
+            "value" : "In andere Abteilung verschieben…"
           }
         },
         "it" : {
@@ -14504,7 +14504,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mover para outro corredor…"
+            "value" : "Mover para outra seção…"
           }
         }
       }
@@ -14533,7 +14533,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gang"
+            "value" : "Abteilung"
           }
         },
         "it" : {
@@ -14545,7 +14545,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Corredor"
+            "value" : "Seção"
           }
         }
       }
@@ -14785,7 +14785,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Metti via e rimuovi"
+            "value" : "Metti via e togli dalla lista"
           }
         },
         "pt-BR" : {
@@ -15019,7 +15019,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pâtisserie"
+            "value" : "Aide à la pâtisserie"
           }
         },
         "de" : {
@@ -15113,13 +15113,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scatolame"
+            "value" : "Conserve"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enlatados"
+            "value" : "Enlatados e conservas"
           }
         }
       }
@@ -15558,7 +15558,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nach Gang sortieren"
+            "value" : "Nach Abteilung sortieren"
           }
         },
         "it" : {
@@ -15570,7 +15570,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordenar por corredor"
+            "value" : "Ordenar por seção"
           }
         }
       }
@@ -15880,7 +15880,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poco"
+            "value" : "Queda poco"
           }
         },
         "fr" : {
@@ -15892,13 +15892,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poco"
+            "value" : "Sta finendo"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pouco"
+            "value" : "Acabando"
           }
         }
       }
@@ -16085,7 +16085,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "À consommer avant le %@"
+            "value" : "À consommer jusqu'au %@"
           }
         },
         "de" : {
@@ -16103,7 +16103,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Consumir até %@"
+            "value" : "Vence em %@"
           }
         }
       }
@@ -18913,7 +18913,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scegli dalla galleria"
+            "value" : "Scegli dalla libreria"
           }
         },
         "pt-BR" : {
@@ -20301,13 +20301,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articles du garde-manger au garde-manger"
+            "value" : "Les ranger dans le garde-manger"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articoli della dispensa in dispensa"
+            "value" : "Metti gli articoli in dispensa"
           }
         },
         "pt-BR" : {
@@ -20342,13 +20342,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articles du garde-manger à la liste de courses"
+            "value" : "Les ajouter à la liste de courses"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articoli della dispensa nella lista della spesa"
+            "value" : "Metti gli articoli nella lista della spesa"
           }
         },
         "pt-BR" : {
@@ -20719,19 +20719,19 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Garder"
+            "value" : "Inchangé"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Behalten"
+            "value" : "Unverändert"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lascia"
+            "value" : "Invariato"
           }
         },
         "pt-BR" : {
@@ -20807,7 +20807,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leer"
+            "value" : "Aufgebraucht"
           }
         },
         "it" : {
@@ -21059,7 +21059,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Controlla queste righe: lì la foto era difficile da leggere"
+            "value" : "Controlla queste righe: in quei punti la foto era poco leggibile"
           }
         },
         "pt-BR" : {
@@ -21264,7 +21264,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Letto dalla foto. Confronta ogni riga con la foto, soprattutto le quantità, prima di salvare."
+            "value" : "Ricetta letta dalla foto. Confronta ogni riga con la foto, soprattutto le quantità, prima di salvare."
           }
         },
         "pt-BR" : {
@@ -21516,7 +21516,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modo cozinhar: um passo de cada vez, com timers, e a tela fica ligada."
+            "value" : "Modo cozinha: um passo de cada vez, com timers, e a tela fica ligada."
           }
         }
       }
@@ -21691,7 +21691,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Halte einen Artikel gedrückt, um ihn in einen anderen Gang zu verschieben oder zu löschen."
+            "value" : "Halte einen Artikel gedrückt, um ihn in eine andere Abteilung zu verschieben oder zu löschen."
           }
         },
         "en" : {
@@ -21721,7 +21721,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toque e segure um item para movê-lo para outro corredor, ou excluí-lo."
+            "value" : "Toque e segure um item para movê-lo para outra seção, ou excluí-lo."
           }
         }
       }
@@ -21797,7 +21797,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tocca un articolo per cambiarne la scorta o la quantità; scorri a sinistra quando finisce. L'etichetta col cestino indica che è nella tua lista della spesa."
+            "value" : "Tocca un articolo per cambiarne la disponibilità o la quantità; scorri a sinistra quando finisce. L'etichetta col cestino indica che è nella tua lista della spesa."
           }
         },
         "pt-BR" : {
@@ -22002,7 +22002,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit non ha permesso all'app di leggere questo post. Apri Recipe Clipper: il post sarà aperto lì, per selezionare la ricetta."
+            "value" : "Reddit non ha permesso all'app di leggere questo post. Apri Recipe Clipper: lì troverai il post aperto, per selezionare la ricetta."
           }
         },
         "pt-BR" : {

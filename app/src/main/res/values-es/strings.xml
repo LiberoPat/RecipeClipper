@@ -67,7 +67,7 @@
     <string name="cd_show_ingredients">Mostrar ingredientes</string>
     <!-- The ingredients bar's groups in cook mode (#286) -->
     <string name="cook_in_this_step">En este paso</string>
-    <string name="cook_later">Después</string>
+    <string name="cook_later">Más adelante</string>
     <string name="cd_go_to_step">Ir al paso %1$d</string>
     <string name="step_back_to">Volver al paso %1$d</string>
     <string name="step_link_show">mostrar</string>
@@ -133,7 +133,7 @@
         <item quantity="many">hace %d de días</item>
         <item quantity="other">hace %d días</item>
     </plurals>
-    <string name="dark_while_cooking_title">Oscuro al cocinar</string>
+    <string name="dark_while_cooking_title">Modo oscuro al cocinar</string>
     <string name="dark_while_cooking_description">Modo cocina con fondo oscuro también en modo claro</string>
     <string name="settings_section_steps">Pasos</string>
     <string name="amounts_in_steps_title">Cantidades en los pasos</string>
@@ -284,7 +284,7 @@
     <!-- Week meal plan (#49) -->
     <string name="action_add_to_plan">Añadir al plan</string>
     <string name="action_add_to_day">Añadir al %1$s</string>
-    <string name="label_meal">Comida</string>
+    <string name="label_meal">Tipo de comida</string>
     <string name="snackbar_removed_from_plan">Quitado del plan: %1$s</string>
     <string name="cd_previous_week">Semana anterior</string>
     <string name="cd_next_week">Semana siguiente</string>
@@ -459,7 +459,7 @@
     <string name="pantry_ran_out">Se acabó</string>
     <string name="pantry_restock">Reponer</string>
     <string name="pantry_running_low">Queda poco</string>
-    <string name="pantry_low">Poco</string>
+    <string name="pantry_low">Queda poco</string>
     <string name="pantry_take_off_list">Quitar de la lista de la compra</string>
     <string name="snackbar_taken_off_list">Quitado de la lista de la compra</string>
     <plurals name="snackbar_taken_off_list_count">
@@ -635,10 +635,10 @@
     <string name="settings_show_tips_description">Cada consejo se muestra una vez más, de uno en uno.</string>
     <!-- Settings' index (#286) -->
     <string name="settings_value_system_theme">Tema del sistema</string>
-    <string name="settings_value_amounts_on">Cantidades: sí</string>
-    <string name="settings_value_amounts_off">Cantidades: no</string>
-    <string name="settings_value_reminders_on">Avisos: sí</string>
-    <string name="settings_value_reminders_off">Avisos: no</string>
+    <string name="settings_value_amounts_on">Con cantidades</string>
+    <string name="settings_value_amounts_off">Sin cantidades</string>
+    <string name="settings_value_reminders_on">Con avisos</string>
+    <string name="settings_value_reminders_off">Sin avisos</string>
     <string name="settings_value_unlocked">Desbloqueado</string>
     <string name="clip_hint_start">Toca Nombre abajo y luego el nombre de la receta en la página.</string>
     <string name="clip_confirm_name">Usar como nombre</string>

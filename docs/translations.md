@@ -70,30 +70,32 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Step | Paso | Étape | Schritt | Passaggio | Passo |
 | Start cooking | Empezar a cocinar | Commencer à cuisiner | Jetzt kochen | Inizia a cucinare | Começar a cozinhar |
 | Continue cooking | Seguir cocinando | Reprendre la recette | Weiterkochen | Continua a cucinare | Continuar cozinhando |
-| Done — next step | Hecho — siguiente paso | Terminé — étape suivante | Fertig – nächster Schritt | Fatto — passaggio successivo | Feito — próximo passo |
+| Done — next step | Hecho — siguiente paso | Terminé — étape suivante | Fertig – nächster Schritt | Fatto — passaggio successivo | Pronto — próximo passo |
 | Start 10 min timer | Temporizador de 10 min | Minuteur de 10 min | Timer für 10 min starten | Avvia timer da 10 min | Timer de 10 min |
 | Reset (timer) | Reiniciar | Réinitialiser | Zurücksetzen | Azzera | Zerar |
 | Time's up | Se acabó el tiempo | Temps écoulé | Zeit ist um | Tempo scaduto | O tempo acabou |
-| Dark while cooking | Oscuro al cocinar | Sombre en cuisine | Dunkel beim Kochen | Scuro in cucina | Escuro ao cozinhar |
+| Dark while cooking | Modo oscuro al cocinar | Mode cuisine sombre | Dunkel beim Kochen | Scuro in cucina | Escuro ao cozinhar |
+| Cook mode (the tooltips) | Modo cocina | Mode cuisine | Kochmodus | Modalità cucina | Modo cozinha |
+| Chef mode (#100) | Modo chef | Mode chef | Profimodus | Modalità chef | Modo chef |
 | Ounces (unit option) | Onzas | Onces | Unzen | Once | Onças (rare in Brazil) |
 | Also convert liquids / pourables | Convertir también los líquidos | Convertir aussi les liquides | Auch Flüssigkeiten umrechnen | Converti anche i liquidi | Converter também os líquidos |
 | Add to groceries (#50) | Añadir a la compra | Ajouter aux courses | Zum Einkauf hinzufügen | Aggiungi alla spesa | Adicionar às compras |
-| Aisle (#50) | Pasillo | Rayon | Gang | Reparto | Corredor |
+| Aisle (#50) | Pasillo | Rayon | Abteilung | Reparto | Seção |
 | Fruit & vegetables (aisle) | Frutas y verduras | Fruits et légumes | Obst & Gemüse | Frutta e verdura | Hortifrúti |
-| Cans & jars (aisle) | Conservas | Conserves | Konserven | Scatolame | Enlatados |
+| Cans & jars (aisle) | Conservas | Conserves | Konserven | Conserve | Enlatados e conservas |
 | Pantry (#51) | Despensa | Garde-manger | Vorrat | Dispensa | Despensa |
 | Always have (a staple, #51) | Siempre en casa | Toujours en réserve | Immer im Haus | Sempre in casa | Sempre tenho |
-| Use by (#51) | Consumir antes del | À consommer avant le | Verbrauchen bis | Da consumare entro il | Consumir até |
+| Use by (#51) | Consumir antes del | À consommer jusqu'au | Verbrauchen bis | Da consumare entro il | Vence em |
 | What I need (#51) | Lo que necesito | Ce qu'il me faut | Was ich brauche | Cosa mi serve | O que preciso |
 | Done shopping (#146) | Compra terminada | Courses terminées | Einkauf erledigt | Spesa fatta | Compras feitas |
-| Put away and clear (#146) | Guardar y quitar de la lista | Ranger et retirer | Einräumen und entfernen | Metti via e rimuovi | Guardar e remover |
+| Put away and clear (#146) | Guardar y quitar de la lista | Ranger et retirer | Einräumen und entfernen | Metti via e togli dalla lista | Guardar e remover |
 | On your grocery list (a pantry row's basket tag, spoken; it shows the Groceries tab's label, #146) | En tu lista de la compra | Sur votre liste de courses | Auf deiner Einkaufsliste | Nella tua lista della spesa | Na sua lista de compras |
 | Remove from grocery list (the tag's action, spoken) | Quitar de la lista de la compra | Retirer de la liste de courses | Von der Einkaufsliste entfernen | Rimuovi dalla lista della spesa | Remover da lista de compras |
 | The basket tag (the Pantry tooltip, #194) | la etiqueta de la cesta | l'étiquette panier | die Korb-Markierung | l'etichetta col cestino | a etiqueta da cesta |
 | Clear run-out items / Clear 3 run-out items? (Pantry menu, #194) | Quitar los artículos agotados / ¿Quitar 3 artículos agotados? | Retirer les articles épuisés / Retirer 3 articles épuisés ? | Aufgebrauchte Artikel entfernen / 3 aufgebrauchte Artikel entfernen? | Rimuovi gli articoli finiti / Rimuovere 3 articoli finiti? | Remover itens que acabaram / Remover 3 itens que acabaram? |
 | Removed from groceries / Removed 2 items from groceries (the basket tag, tapped) | Quitado de la lista de la compra / 2 artículos quitados… | Retiré de la liste de courses / 2 articles retirés… | Von der Einkaufsliste entfernt / 2 Artikel von der Einkaufsliste entfernt | Rimosso dalla lista della spesa / 2 articoli rimossi… | Removido da lista de compras / 2 itens removidos… |
 | Update the pantry (after cooking, #147) | Actualizar la despensa | Mettre à jour le garde-manger | Vorrat aktualisieren | Aggiorna la dispensa | Atualizar a despensa |
-| Keep / Running low / Out (#147) | Dejar igual / Queda poco / Agotado | Garder / Presque fini / Épuisé | Behalten / Wird knapp / Leer | Lascia / Sta finendo / Finito | Manter / Acabando / Acabou |
+| Keep / Running low / Out (#147) | Dejar igual / Queda poco / Agotado | Inchangé / Presque fini / Épuisé | Unverändert / Wird knapp / Aufgebraucht | Invariato / Sta finendo / Finito | Manter / Acabando / Acabou |
 | “In your pantry” means you have some, not enough (#51) | «En tu despensa» significa que tienes algo… | « Dans votre garde-manger » signifie que vous en avez… | „In deinem Vorrat“ heißt, dass du etwas davon hast… | «Nella tua dispensa» vuol dire che ne hai… | “Na sua despensa” quer dizer que você tem um pouco… |
 | Google's on-device AI (Chef mode on an unsupported phone, #144) | la IA de Google en el dispositivo | l'IA embarquée de Google | Googles On-Device-KI | l'IA di Google sul dispositivo | a IA do Google no dispositivo |
 | Your cooks (heading, #116) | Lo que has cocinado | Vos réalisations | Selbst gekocht | I tuoi piatti | O que você fez |
@@ -101,8 +103,8 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Mark as cooked / Cooked (no photo, #173) | Marcar como cocinada / Cocinada | Marquer comme cuisinée / Cuisinée | Als gekocht markieren / Gekocht | Segna come cucinata / Cucinata | Marcar como feita / Feita |
 | Read the photo / Check the recipe (#198) | Leer la foto / Revisa la receta | Lire la photo / Vérifier la recette | Foto lesen / Rezept prüfen | Leggi la foto / Controlla la ricetta | Ler a foto / Confira a receita |
 | Scan a recipe / Page 1 of 2 (#226) | Escanear una receta / Página 1 de 2 | Scanner une recette / Page 1 sur 2 | Rezept scannen / Seite 1 von 2 | Scansiona una ricetta / Pagina 1 di 2 | Escanear uma receita / Página 1 de 2 |
-| Check these lines: the photo was hard to read there (#198) | Revisa estas líneas: ahí la foto se leía mal | Vérifiez ces lignes : la photo y était difficile à lire | Prüfe diese Zeilen: Dort war das Foto schwer zu lesen | Controlla queste righe: lì la foto era difficile da leggere | Confira estas linhas: ali a foto estava difícil de ler |
-| In this step / Later (cook mode's ingredients bar, #286) | En este paso / Después | Pour cette étape / Pour la suite | In diesem Schritt / Später | In questo passaggio / Più tardi | Neste passo / Depois |
+| Check these lines: the photo was hard to read there (#198) | Revisa estas líneas: ahí la foto se leía mal | Vérifiez ces lignes : la photo y était difficile à lire | Prüfe diese Zeilen: Dort war das Foto schwer zu lesen | Controlla queste righe: in quei punti la foto era poco leggibile | Confira estas linhas: ali a foto estava difícil de ler |
+| In this step / Later (cook mode's ingredients bar, #286) | En este paso / Más adelante | Pour cette étape / Pour la suite | In diesem Schritt / Später | In questo passaggio / Più avanti | Neste passo / Depois |
 
 Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and Italian
 (Annulla), as the platforms themselves have it; "Delete" is *Excluir* in Portuguese

@@ -43,7 +43,7 @@
     <string name="cd_increase_servings">Augmenter le nombre de portions</string>
     <string name="cd_decrease_amount">Réduire la quantité</string>
     <string name="cd_increase_amount">Augmenter la quantité</string>
-    <string name="original_servings">Original : %1$s</string>
+    <string name="original_servings">À l\'origine : %1$s</string>
     <string name="cd_change_units">Changer d\'unités</string>
     <string name="units_menu_header">Unités  ·   toutes les recettes</string>
     <string name="unit_as_written">Comme dans la recette</string>
@@ -62,7 +62,7 @@
     <string name="cook_step_label">ÉTAPE %1$d</string>
     <string name="cook_position">Étape %1$d sur %2$d</string>
     <string name="cook_done_next">Terminé — étape suivante</string>
-    <string name="cook_done_finish">Terminé — finir</string>
+    <string name="cook_done_finish">Terminé — fin de la recette</string>
     <string name="cd_hide_ingredients">Masquer les ingrédients</string>
     <string name="cd_show_ingredients">Afficher les ingrédients</string>
     <!-- The ingredients bar's groups in cook mode (#286) -->
@@ -133,7 +133,7 @@
         <item quantity="many">il y a %d de jours</item>
         <item quantity="other">il y a %d jours</item>
     </plurals>
-    <string name="dark_while_cooking_title">Sombre en cuisine</string>
+    <string name="dark_while_cooking_title">Mode cuisine sombre</string>
     <string name="dark_while_cooking_description">Mode cuisine sur fond sombre, même en mode clair</string>
     <string name="settings_section_steps">Étapes</string>
     <string name="amounts_in_steps_title">Quantités dans les étapes</string>
@@ -395,8 +395,8 @@
     <string name="send_file_failed">Impossible de créer le fichier à envoyer.</string>
     <string name="receive_file_title">Ajouter depuis ce fichier</string>
     <string name="receive_file_empty">Ce fichier ne contient rien à ajouter.</string>
-    <string name="receive_file_to_pantry">Articles du garde-manger au garde-manger</string>
-    <string name="receive_file_to_groceries">Articles du garde-manger à la liste de courses</string>
+    <string name="receive_file_to_pantry">Les ranger dans le garde-manger</string>
+    <string name="receive_file_to_groceries">Les ajouter à la liste de courses</string>
     <!-- %2$d is the free app's recipe limit. -->
     <plurals name="receive_file_skipped_free">
         <item quantity="one">%1$d recette n\'a pas été ajoutée : la version gratuite conserve %2$d recettes.</item>
@@ -423,7 +423,7 @@
     <string name="use_up_change">%1$s → %2$s</string>
     <string name="use_up_used_up">%1$s → épuisé, ajouté à la liste de courses</string>
     <string name="use_up_cant_work_out">Impossible de calculer la quantité utilisée</string>
-    <string name="use_up_keep">Garder</string>
+    <string name="use_up_keep">Inchangé</string>
     <string name="use_up_low">Presque fini</string>
     <string name="use_up_out">Épuisé</string>
     <string name="action_use_up">Mettre à jour</string>
@@ -436,7 +436,7 @@
     <string name="aisle_seafood">Poisson et fruits de mer</string>
     <string name="aisle_dairy">Crèmerie et œufs</string>
     <string name="aisle_bakery">Boulangerie</string>
-    <string name="aisle_baking">Pâtisserie</string>
+    <string name="aisle_baking">Aide à la pâtisserie</string>
     <string name="aisle_grains">Pâtes, riz et céréales</string>
     <string name="aisle_canned">Conserves</string>
     <string name="aisle_condiments">Huiles, sauces et condiments</string>
@@ -470,7 +470,7 @@
     <string name="pantry_always_have">Toujours en réserve</string>
     <string name="pantry_always_have_detail">Les produits de base ne figurent jamais dans « À acheter ».</string>
     <string name="pantry_expired">Périmé</string>
-    <string name="pantry_use_by">À consommer avant le %1$s</string>
+    <string name="pantry_use_by">À consommer jusqu\'au %1$s</string>
     <string name="pantry_bought">Acheté le %1$s</string>
     <string name="pantry_edit_title">Modifier l\'article</string>
     <string name="pantry_label_name">Nom</string>
