@@ -11619,7 +11619,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvo"
+            "value" : "Salva"
           }
         }
       }
@@ -21475,7 +21475,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“Como na receita” mostra cada quantidade exatamente como está na receita. Toque para ver todas as receitas em Métrico ou Onças; o que não puder ser convertido com exatidão fica como na receita."
+            "value" : "“Como na receita” mostra cada quantidade exatamente como está na receita. Toque para ver todas as receitas em “Métrico” ou “Onças”; o que não puder ser convertido com exatidão fica como na receita."
           }
         }
       }
@@ -21551,13 +21551,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'hai preparata? Aggiungi una foto e una nota, oppure Segna come cucinata."
+            "value" : "L'hai preparata? Aggiungi una foto e una nota, oppure tocca «Segna come cucinata»."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fez a receita? Adicione uma foto e uma nota, ou toque em Marcar como feita."
+            "value" : "Fez a receita? Adicione uma foto e uma nota, ou toque em “Marcar como feita”."
           }
         }
       }
@@ -24205,7 +24205,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiungi, rinomina o riordina i pasti del giorno"
+            "value" : "Aggiunge, rinomina o riordina i pasti del giorno"
           }
         },
         "pt-BR" : {

@@ -11,7 +11,8 @@ every UI string on both platforms, the tour's sample recipe and the terms table.
 pass found 296 things: its 37 errors and 176 improvements it was sure of are applied, on
 Android and iOS alike. A second, closer pass decided the 83 it wasn't sure of: 76 are
 applied, with the other strings a changed term touches, and the 7 it kept or doubted are
-under "Proposals for a native speaker" below, with the questions still open. None of this
+under "Proposals for a native speaker" below, with the questions still open. A last check
+of the applied changes adjusted three tooltips and left one more proposal there. None of this
 replaces a native speaker's review.
 
 ## Where the words live
@@ -125,20 +126,21 @@ Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and
 ## Proposals for a native speaker (2026-10-22 review)
 
 What the review kept or wasn't sure enough to change. Each is a matter of taste or needs a
-native ear; the reason is the second pass's.
+native ear; the reason is the later passes'.
 
 **Spanish**
 
 | Key | Current | Proposed | Reason |
 |---|---|---|---|
 | `tab_groceries` | Compras | Compra | Spain says "la compra", as the app does elsewhere ("lista de la compra"), but a bare "Compra" on a tab can read as "buy!" or one purchase. Kept. |
-| `aisle_spices` | Especias | Hierbas y especias | Spanish supermarkets label the aisle "Especias", dried herbs included; fr, de and it name only the spices too. Kept. |
+| `aisle_spices` | Especias | Hierbas y especias | Shops in Spain label that aisle "Especias", dried herbs included. Kept. |
 
 **Italian**
 
 | Key | Current | Proposed | Reason |
 |---|---|---|---|
 | `time_just_now` | Proprio ora | Adesso | Both are used for timestamps in Italian apps. Kept. |
+| `pantry_always_have_detail` | I prodotti di base non finiscono mai in «Da comprare». | I prodotti di base non compaiono mai in «Da comprare». | In the Pantry, where "Finito" means run out, "non finiscono mai" first reads as "never run out"; "compaiono" is unambiguous. A later check wasn't sure. |
 | `action_add_to_plan`, `action_remove_from_plan`, `snackbar_removed_from_plan` | Aggiungi al piano / Rimuovi dal piano | Aggiungi al programma / Rimuovi dal programma | "piano" alone is ambiguous, but beside "Aggiungi alla spesa" it's understood, and "programma" is no less bare. Kept; `delete_menu_body`'s "piano dei pasti" can stay either way. |
 
 **Portuguese**
