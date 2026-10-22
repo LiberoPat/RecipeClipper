@@ -38,7 +38,9 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 /**
  * "What I need" for the week shown (#51): To buy, then In your pantry. Each ingredient shows
  * every planned line naming it, with its recipe and day. Presence only: the pantry says you
- * have flour, never that there's enough, and the screen says so.
+ * have flour, never that there's enough, and the screen says so. An ingredient in the pantry
+ * with an amount shows it beside what the week's recipes use, when that adds up exactly (#302):
+ * the two side by side, never compared, so the cook judges.
  */
 @Composable
 fun WhatINeedScreen(onBack: () -> Unit, viewModel: WhatINeedViewModel = hiltViewModel()) {
@@ -117,7 +119,16 @@ private fun NeedRowView(row: NeedRow) {
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
         )
         when (row.status) {
-            NeedStatus.HAVE -> Muted(stringResource(R.string.what_i_need_you_have, row.pantryName.orEmpty()))
+            NeedStatus.HAVE -> {
+                Muted(stringResource(R.string.what_i_need_you_have, row.pantryName.orEmpty()))
+                // #302: the pantry's amount as written, beside the week's exact total; never compared.
+                row.pantryQuantity?.let { have ->
+                    Muted(
+                        row.weekTotal?.let { stringResource(R.string.what_i_need_pantry_and_week, have, it) }
+                            ?: stringResource(R.string.what_i_need_pantry_amount, have)
+                    )
+                }
+            }
             NeedStatus.STAPLE -> Muted(stringResource(R.string.pantry_always_have))
             NeedStatus.BUY -> Unit
         }
