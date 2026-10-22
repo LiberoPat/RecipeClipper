@@ -7,11 +7,11 @@ final class PantryTests: XCTestCase {
 
     private func item(
         _ name: String, inStock: Bool = true, alwaysHave: Bool = false, aisle: Aisle = .other,
-        expires: Int64? = nil, language: String? = "en"
+        expires: Int64? = nil, language: String? = "en", quantity: String? = nil
     ) -> PantryItem {
         defer { nextId += 1 }
         return PantryItem(
-            id: nextId, name: name, quantity: nil, language: language, aisle: aisle, inStock: inStock,
+            id: nextId, name: name, quantity: quantity, language: language, aisle: aisle, inStock: inStock,
             alwaysHave: alwaysHave, purchasedDay: nil, expiresDay: expires
         )
     }
@@ -216,6 +216,65 @@ final class PantryTests: XCTestCase {
         XCTAssertEqual(PantryList.onListLines(item("red onion"), list).map(\.id), [4])
         XCTAssertEqual(PantryList.onListLines(item("flour"), [grocery(1, "1 cup rice flour")]).map(\.id), [])
         XCTAssertEqual(PantryList.onListLines(item("butter"), [grocery(1, "2 tbsp unsalted butter")]).map(\.id), [1])
+    }
+
+    // MARK: Amounts side by side, never compared (#302)
+
+    func testTwoRecipesUsingChickenShowThePantrysAmountAndTheWeeksExactTotal() {
+        let needs = PantryMatch.weekNeeds(
+            [source("Curry", "1 lb chicken thighs"), source("Tacos", "24 oz chicken thighs", recipeId: 2)],
+            pantry: [item("chicken thighs", quantity: " 2 lb ")]
+        )
+        let chicken = needs.have[0]
+        XCTAssertEqual(needs.have.count, 1)
+        XCTAssertEqual(chicken.status, .have) // presence only: 2 lb against 2 1/2 lb is still Have
+        XCTAssertEqual(chicken.pantryQuantity, "2 lb") // as written, trimmed
+        XCTAssertEqual(chicken.weekTotal, "2 1/2 lb")
+        XCTAssertTrue(needs.buy.isEmpty)
+    }
+
+    func testOneExactLineIsTheWeeksTotalACountKeepsItsWords() {
+        let needs = PantryMatch.weekNeeds(
+            [source("Cake", "1 cup milk", "2 eggs"), source("Quiche", "3 eggs", recipeId: 2)],
+            pantry: [item("milk", quantity: "half a carton"), item("eggs", quantity: "6")]
+        )
+        XCTAssertEqual(needs.have.map(\.pantryQuantity), ["half a carton", "6"])
+        XCTAssertEqual(needs.have.map(\.weekTotal), ["1 cup", "5 eggs"])
+    }
+
+    func testLinesThatDontAddUpExactlyShowThePantrysAmountAlone() {
+        let needs = PantryMatch.weekNeeds(
+            [source("Bread", "500 g flour", "1 cup sugar"), source("Pancakes", "2 cups flour", "1-2 cups sugar", recipeId: 2)],
+            pantry: [item("flour", quantity: "1 kg"), item("sugar", quantity: "2 lb")]
+        )
+        XCTAssertEqual(needs.have.map(\.pantryQuantity), ["1 kg", "2 lb"])
+        XCTAssertEqual(needs.have.map(\.weekTotal), [nil, nil])
+    }
+
+    func testAPantryItemWithNoAmountAStapleOrAnItemThatsOutShowsNoAmounts() {
+        let needs = PantryMatch.weekNeeds(
+            [source("Soup", "1 lb carrots", "1 tsp salt", "1 cup milk", "2 tbsp butter")],
+            pantry: [
+                item("carrots"), item("salt", alwaysHave: true, quantity: "1 kg"),
+                item("milk", inStock: false, quantity: "1 l"), item("butter", quantity: "  ")
+            ]
+        )
+        XCTAssertEqual(needs.have.map(\.name), ["carrots", "salt", "butter"])
+        XCTAssertTrue(needs.have.allSatisfy { $0.pantryQuantity == nil && $0.weekTotal == nil })
+        XCTAssertEqual(needs.have[1].status, .staple)
+        XCTAssertEqual(needs.buy.map(\.pantryQuantity), [nil])
+    }
+
+    func testTheWeeksTotalAddsOnlyWhatGroceryCombinerAdds() {
+        let words = LanguageWords.english
+        XCTAssertEqual(GroceryCombiner.total(["1 cup milk", "2 tbsp milk"], words: words), "1 1/8 cup")
+        XCTAssertEqual(GroceryCombiner.total(["200 g butter, softened", "100 g butter"], words: words), "300 g")
+        XCTAssertEqual(GroceryCombiner.total(["2 lb chicken"], words: words), "2 lb")
+        XCTAssertNil(GroceryCombiner.total(["1 cup (120 g) flour", "1 cup flour"], words: words))
+        XCTAssertNil(GroceryCombiner.total(["2 large eggs", "3 eggs"], words: words))
+        XCTAssertNil(GroceryCombiner.total(["1 (14 oz) can tomatoes", "1 (14 oz) can tomatoes"], words: words)) // repeated isn't a total
+        XCTAssertNil(GroceryCombiner.total(["salt to taste"], words: words))
+        XCTAssertNil(GroceryCombiner.total([], words: words))
     }
 
     func testNothingPlannedIsEmpty() {

@@ -304,10 +304,24 @@ enum GroceryCombiner {
         return group.count == 1 ? text : "\(text) × \(group.count)"
     }
 
+    /// What the lines use in all, as an amount (#302): the figure and its unit ("4 lb"; "1 cup"
+    /// and "2 tbsp" are "1 1/8 cup"), or a count with its words ("5 eggs"), by `combine`'s exact
+    /// rules. One line counts when it is one exact amount. Nil when they don't add up exactly, or
+    /// don't all name the same ingredient: then no total is shown, never an estimate.
+    static func total(_ lines: [String], words: LanguageWords) -> String? {
+        lines.isEmpty ? nil : addUp(lines, words: words, requireSameName: true)?.amount
+    }
+
+    /// A total: `amount` is the figure with its unit or a count's words, `text` the whole line.
+    private struct Total { let amount: String; let text: String }
+
     /// The lines added up, or nil. `requireSameName` false skips the same-name check: the model
     /// decided the names are the same (#99); the amounts' rules are unchanged.
     private static func sum(_ lines: [String], words: LanguageWords, requireSameName: Bool = true) -> String? {
-        guard lines.count >= 2 else { return nil }
+        lines.count >= 2 ? addUp(lines, words: words, requireSameName: requireSameName)?.text : nil
+    }
+
+    private static func addUp(_ lines: [String], words: LanguageWords, requireSameName: Bool) -> Total? {
         if requireSameName {
             var names: [String] = []
             for line in lines {
@@ -332,7 +346,8 @@ enum GroceryCombiner {
             let same = IngredientName.key(normalize(rest), words: words)
             if amounts.contains(where: { IngredientName.key(normalize($0.rest), words: words) != same }) { return nil }
             guard let text = exactly(total, metric: false, comma: comma) else { return nil }
-            return "\(text) \(IngredientName.counted(rest, count: total, words: words))"
+            let counted = "\(text) \(IngredientName.counted(rest, count: total, words: words))"
+            return Total(amount: counted, text: counted)
         }
 
         // The largest unit the lines used that shows the total exactly.
@@ -344,7 +359,8 @@ enum GroceryCombiner {
         for unit in units {
             let value = total / sizeOf(unit)!.size
             guard let text = exactly(value, metric: unit.metric, comma: comma) else { continue }
-            return "\(text) \(unitText(amounts, unit, value)) \(rest)"
+            let amount = "\(text) \(unitText(amounts, unit, value))"
+            return Total(amount: amount, text: "\(amount) \(rest)")
         }
         return nil
     }

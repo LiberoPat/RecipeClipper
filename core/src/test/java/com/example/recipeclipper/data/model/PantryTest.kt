@@ -17,8 +17,9 @@ class PantryTest {
         alwaysHave: Boolean = false,
         aisle: Aisle = Aisle.OTHER,
         expires: Long? = null,
-        language: String? = "en"
-    ) = PantryItem(nextId++, name, null, language, aisle, inStock, alwaysHave, null, expires)
+        language: String? = "en",
+        quantity: String? = null
+    ) = PantryItem(nextId++, name, quantity, language, aisle, inStock, alwaysHave, null, expires)
 
     private fun source(title: String, vararg lines: String, day: Long? = 20_720, language: String? = "en", recipeId: Long = 1) =
         GrocerySource("s-$title", recipeId, title, day, language, lines.toList())
@@ -224,6 +225,65 @@ class PantryTest {
         assertEquals(listOf(4L), PantryList.onListLines(item("red onion"), list).map { it.id })
         assertEquals(emptyList<Long>(), PantryList.onListLines(item("flour"), listOf(grocery(1, "1 cup rice flour"))).map { it.id })
         assertEquals(listOf(1L), PantryList.onListLines(item("butter"), listOf(grocery(1, "2 tbsp unsalted butter"))).map { it.id })
+    }
+
+    // --- Amounts side by side, never compared (#302)
+
+    @Test fun `two recipes using chicken show the pantry's amount and the week's exact total`() {
+        val needs = PantryMatch.weekNeeds(
+            listOf(source("Curry", "1 lb chicken thighs"), source("Tacos", "24 oz chicken thighs", recipeId = 2)),
+            listOf(item("chicken thighs", quantity = " 2 lb "))
+        )
+        val chicken = needs.have.single()
+        assertEquals(NeedStatus.HAVE, chicken.status) // presence only: 2 lb against 2 1/2 lb is still Have
+        assertEquals("2 lb", chicken.pantryQuantity) // as written, trimmed
+        assertEquals("2 1/2 lb", chicken.weekTotal)
+        assertTrue(needs.buy.isEmpty())
+    }
+
+    @Test fun `one exact line is the week's total, a count keeps its words`() {
+        val needs = PantryMatch.weekNeeds(
+            listOf(source("Cake", "1 cup milk", "2 eggs"), source("Quiche", "3 eggs", recipeId = 2)),
+            listOf(item("milk", quantity = "half a carton"), item("eggs", quantity = "6"))
+        )
+        assertEquals(listOf("half a carton" to "1 cup", "6" to "5 eggs"), needs.have.map { it.pantryQuantity to it.weekTotal })
+    }
+
+    @Test fun `lines that don't add up exactly show the pantry's amount alone`() {
+        val needs = PantryMatch.weekNeeds(
+            listOf(
+                source("Bread", "500 g flour", "1 cup sugar"),
+                source("Pancakes", "2 cups flour", "1-2 cups sugar", recipeId = 2)
+            ),
+            listOf(item("flour", quantity = "1 kg"), item("sugar", quantity = "2 lb"))
+        )
+        assertEquals(listOf("1 kg" to null, "2 lb" to null), needs.have.map { it.pantryQuantity to it.weekTotal })
+    }
+
+    @Test fun `a pantry item with no amount, a staple or an item that's out shows no amounts`() {
+        val needs = PantryMatch.weekNeeds(
+            listOf(source("Soup", "1 lb carrots", "1 tsp salt", "1 cup milk", "2 tbsp butter")),
+            listOf(
+                item("carrots"), item("salt", alwaysHave = true, quantity = "1 kg"),
+                item("milk", inStock = false, quantity = "1 l"), item("butter", quantity = "  ")
+            )
+        )
+        assertEquals(listOf("carrots", "salt", "butter"), needs.have.map { it.name })
+        assertTrue(needs.have.all { it.pantryQuantity == null && it.weekTotal == null })
+        assertEquals(NeedStatus.STAPLE, needs.have[1].status)
+        assertEquals(listOf<String?>(null), needs.buy.map { it.pantryQuantity })
+    }
+
+    @Test fun `the week's total adds only what GroceryCombiner adds`() {
+        val words = LanguageWords.ENGLISH
+        assertEquals("1 1/8 cup", GroceryCombiner.total(listOf("1 cup milk", "2 tbsp milk"), words))
+        assertEquals("300 g", GroceryCombiner.total(listOf("200 g butter, softened", "100 g butter"), words))
+        assertEquals("2 lb", GroceryCombiner.total(listOf("2 lb chicken"), words))
+        assertNull(GroceryCombiner.total(listOf("1 cup (120 g) flour", "1 cup flour"), words))
+        assertNull(GroceryCombiner.total(listOf("2 large eggs", "3 eggs"), words))
+        assertNull(GroceryCombiner.total(listOf("1 (14 oz) can tomatoes", "1 (14 oz) can tomatoes"), words)) // repeated isn't a total
+        assertNull(GroceryCombiner.total(listOf("salt to taste"), words))
+        assertNull(GroceryCombiner.total(emptyList(), words))
     }
 
     @Test fun `nothing planned is empty`() {
