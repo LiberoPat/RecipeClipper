@@ -11,6 +11,10 @@ struct MealTypesUiState: Equatable {
     var renaming: MealType?
     var renameText = ""
     var deleting: MealType?
+
+    /// Where a deleted type's meals go: Dinner, under the name it has now (the seeded names are
+    /// stored in English, and it may have been renamed), for the delete confirmation to name.
+    var movesTo: String { types.first { $0.builtInKey == MealType.dinner }?.name ?? "" }
 }
 
 /// The Week menu's "Meal types" screen (#49; Android's MealTypesViewModel): add, rename and

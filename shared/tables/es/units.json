@@ -7,7 +7,7 @@
     {"unit": "TSP", "prefixes": ["cucharadita"]},
     {"unit": "TBSP", "prefixes": ["cucharada"]},
     {"unit": "CUP", "prefixes": ["taza"]},
-    {"unit": "ML", "exact": ["ml"], "prefixes": ["millil"]},
+    {"unit": "ML", "exact": ["ml"], "prefixes": ["milil"]},
     {"unit": "CL", "exact": ["cl"]},
     {"unit": "DL", "exact": ["dl"]},
     {"unit": "KG", "exact": ["kg"], "prefixes": ["kilo"]},

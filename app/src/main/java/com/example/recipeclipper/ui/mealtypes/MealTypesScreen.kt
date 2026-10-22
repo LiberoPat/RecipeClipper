@@ -128,7 +128,7 @@ fun MealTypesScreen(
             AlertDialog(
                 onDismissRequest = viewModel::onDeleteDismissed,
                 title = { Text(stringResource(R.string.delete_meal_type_title, type.name)) },
-                text = { Text(stringResource(R.string.delete_meal_type_body)) },
+                text = { Text(stringResource(R.string.delete_meal_type_body, state.movesTo)) },
                 confirmButton = {
                     TextButton(onClick = viewModel::onDeleteConfirm) { Text(stringResource(R.string.action_delete)) }
                 },
