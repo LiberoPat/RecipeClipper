@@ -427,6 +427,8 @@
 
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Zum Vorrat hinzufügen</string>
+    <!-- #302: an amount typed with the name. -->
+    <string name="pantry_add_example">z. B. 3 Zwiebeln</string>
     <string name="pantry_search_hint">Vorrat durchsuchen</string>
     <string name="pantry_empty">Noch nichts im Vorrat. Tippe oben ein, was in deinen Schränken ist, oder räume Dinge ein, wenn du mit dem Einkauf fertig bist.</string>
     <string name="pantry_no_results">Nichts passt zu „%1$s“.</string>

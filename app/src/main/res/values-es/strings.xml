@@ -448,6 +448,8 @@
 
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Añade a la despensa</string>
+    <!-- #302: an amount typed with the name. -->
+    <string name="pantry_add_example">p. ej., 3 cebollas</string>
     <string name="pantry_search_hint">Busca en la despensa</string>
     <string name="pantry_empty">Aún no hay nada en la despensa. Escribe arriba lo que tienes en los armarios, o guarda las cosas al terminar la compra.</string>
     <string name="pantry_no_results">Nada coincide con «%1$s».</string>
