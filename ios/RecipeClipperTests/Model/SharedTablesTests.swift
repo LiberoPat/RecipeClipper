@@ -94,6 +94,21 @@ final class SharedTablesTests: XCTestCase {
         }
     }
 
+    /// The spelled-out millilitre names ML in every language: es and pt once looked for "millil".
+    func testTheSpelledOutMillilitreIsMlInEveryLanguage() throws {
+        let names: [String: [String]] = [
+            "en": ["milliliters", "millilitres"], "es": ["mililitro", "mililitros"],
+            "fr": ["millilitres"], "de": ["Milliliter"], "it": ["millilitri"], "pt": ["mililitro", "mililitros"], "ja": ["ミリリットル"],
+        ]
+        XCTAssertEqual(Set(LanguageWords.shipped), Set(names.keys))
+        for (language, spelled) in names {
+            let words = try XCTUnwrap(LanguageWords.forTag(language))
+            for name in spelled { XCTAssertEqual(MeasureUnit.fromText(name, words: words), .ml, "\(language): \(name)") }
+            XCTAssertNotNil(JRegex(UnitPatterns.of(words).captured).find("250 \(spelled.last!)"), language)
+        }
+        XCTAssertEqual(MeasureUnit.fromText("litros", words: try XCTUnwrap(LanguageWords.forTag("es"))), .l)
+    }
+
     func testTheCodeReadsTheTables() {
         XCTAssertNotNil(IngredientDensities.find("1 cup flour"))
         XCTAssertEqual(MeasureUnit.fromText("Tbsp."), .tbsp)

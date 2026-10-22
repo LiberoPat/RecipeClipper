@@ -98,6 +98,23 @@ class SharedTablesTest {
         }
     }
 
+    /** The spelled-out millilitre names ML in every language: es and pt once looked for "millil". */
+    @Test
+    fun theSpelledOutMillilitreIsMlInEveryLanguage() {
+        val names = mapOf(
+            "en" to listOf("milliliters", "millilitres"), "es" to listOf("mililitro", "mililitros"),
+            "fr" to listOf("millilitres"), "de" to listOf("Milliliter"), "it" to listOf("millilitri"),
+            "pt" to listOf("mililitro", "mililitros"), "ja" to listOf("ミリリットル")
+        )
+        assertEquals(LanguageWords.SHIPPED.toSet(), names.keys)
+        for ((language, spelled) in names) {
+            val words = LanguageWords.forTag(language)!!
+            for (name in spelled) assertEquals("$language: $name", MeasureUnit.ML, MeasureUnit.fromText(name, words))
+            assertTrue(language, Regex(UnitPatterns.of(words).captured).containsMatchIn("250 ${spelled.last()}"))
+        }
+        assertEquals(MeasureUnit.L, MeasureUnit.fromText("litros", LanguageWords.forTag("es")!!))
+    }
+
     @Test
     fun theCodeReadsTheTables() {
         assertNotNull(IngredientDensities.find("1 cup flour"))
