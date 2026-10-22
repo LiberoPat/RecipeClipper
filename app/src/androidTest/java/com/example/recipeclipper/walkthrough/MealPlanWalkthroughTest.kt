@@ -153,7 +153,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
     @Test
     fun test12_groceriesJunkHidden() {
         start("aiDecisions")
-        tapScrolling("Banana Bread") // below the fold on Home (a lazy list)
+        openFromRecipes("Banana Bread")
         // The answers land in the background; then the line shows without its junk.
         waitFor(hasText("2 eggs"))
         pause(2500)
@@ -174,7 +174,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
     @Test
     fun test22_recipeJunkHidden() {
         start("aiDecisions")
-        tapScrolling("Banana Bread") // below the fold on Home (a lazy list)
+        openFromRecipes("Banana Bread")
         // The answers land in the background; then the line shows without its junk.
         waitFor(hasText("2 eggs"))
         pause(3000)

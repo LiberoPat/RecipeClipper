@@ -16,7 +16,6 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
@@ -101,8 +100,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
     @Test
     fun test13_iMadeThis() {
         start()
-        tapScrolling(hasText("Recipes") and !isSelectable()) // Home's row, not the tab
-        tapScrolling("Chocolate Chip Cookies")
+        openFromRecipes("Chocolate Chip Cookies")
         repeat(3) { swipeUp() }
         press(hasText("I made this"))
         val picker = object : Instrumentation.ActivityMonitor() {
