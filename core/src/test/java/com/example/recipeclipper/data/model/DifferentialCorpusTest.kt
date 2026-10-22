@@ -39,6 +39,10 @@ import java.io.File
  * one in-stock pantry item with that quantity and name, as not listed, asked, used up or the new
  * quantity; write only those (optionally `, lang: "de"`).
  *
+ * `Entry("text")` rows (#302) pin [PantryEntry.split]: what was typed into "Add to the pantry",
+ * as the item's name and its quantity (nil: kept whole); write only the text (optionally
+ * `, lang: "de"`).
+ *
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
  *
@@ -139,6 +143,8 @@ class DifferentialCorpusTest {
     private val useUpRow = Regex(
         """^(\s*)UseUp\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
     )
+    // A pantry-entry row (#302): the text typed into "Add to the pantry", optionally its language.
+    private val entryRow = Regex("""^(\s*)Entry\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A calendar-file row (#52): one summary's text.
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
@@ -241,6 +247,7 @@ class DifferentialCorpusTest {
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         useUpRow.find(line)?.let { m -> return useUpRow(m) }
+        entryRow.find(line)?.let { m -> return entryRow(m) }
         countRow.find(line)?.let { m -> return countRow(m) }
         cardRow.find(line)?.let { m ->
             val (kind, html) = m.groupValues[2] to unescape(m.groupValues[3])
@@ -463,6 +470,15 @@ class DifferentialCorpusTest {
             is UseUpChange.Subtract -> change.after?.let { ".subtract(${q(it)})" } ?: ".usedUp"
         }
         return m.groupValues[1] + "UseUp(${q(quantity)}, ${q(name)}, ${list(lines)}$lang, $result),"
+    }
+
+    /** `Entry(text, lang:, name, quantity)`: [PantryEntry.split] of what was typed, nil for no quantity. */
+    private fun entryRow(m: MatchResult): String {
+        val text = unescape(m.groupValues[2])
+        val language = m.groupValues[3].ifEmpty { "en" }
+        val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+        val entry = PantryEntry.split(text, LanguageWords.forTag(language))
+        return m.groupValues[1] + "Entry(${q(text)}$lang, ${q(entry.name)}, ${entry.quantity?.let(::q) ?: "nil"}),"
     }
 
     /** `Step(step, [lines], lang:, as given, doubled in Metric)`: [StepAmounts.annotate], marked. */
