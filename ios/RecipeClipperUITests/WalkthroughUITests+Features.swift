@@ -30,13 +30,14 @@ extension WalkthroughUITests {
         back()
         require(app.buttons["Settings"]).tap()
         pause()
-        scrollTo(app.buttons["settings.showTips"], "Show tips again")
+        require(settingsRow("help"), "Settings' Help row").tap() // the index (#286): Help's own page
         let settingsTip = app.buttons["tooltip.settings_show_tips"]
-        if settingsTip.waitForExistence(timeout: 4) { gotIt("settings_show_tips", "Settings' tooltip, once on screen") }
+        if settingsTip.waitForExistence(timeout: 4) { gotIt("settings_show_tips", "Settings' tooltip, on Help's page") }
         pause()
         app.buttons["settings.showTips"].tap()
         pause(1.5)
-        back()
+        back() // to the index
+        back() // to Home
         require(app.buttons["tooltip.home_link"], "Home's first tooltip, again")
         pause(3)
     }

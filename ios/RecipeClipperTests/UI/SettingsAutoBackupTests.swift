@@ -27,6 +27,7 @@ final class SettingsAutoBackupTests: XCTestCase {
         XCTAssertEqual(row?.destination, .ready)
         XCTAssertNil(row?.lastBackupAt)
         XCTAssertEqual(row?.canBackUpNow, true)
+        XCTAssertEqual(row?.needsAttention, false, "the index's value in the muted colour (#286)")
     }
 
     func testWithoutICloudDriveItSaysSoAndOffersNoBackUpNow() async {
@@ -36,6 +37,7 @@ final class SettingsAutoBackupTests: XCTestCase {
         await settleMain { vm.uiState.autoBackup?.destination == .unavailable }
         XCTAssertEqual(vm.uiState.autoBackup?.destination, .unavailable)
         XCTAssertEqual(vm.uiState.autoBackup?.canBackUpNow, false)
+        XCTAssertEqual(vm.uiState.autoBackup?.needsAttention, true, "the index's value in the error colour (#286)")
     }
 
     func testBackUpNowWritesACopyAndShowsItsDate() async {
@@ -61,6 +63,7 @@ final class SettingsAutoBackupTests: XCTestCase {
         let f = AutoBackupFixture(AutoBackupRecord(enabled: false, lastBackupAt: now - AutoBackupPolicy.nudgeAfterMs - 1))
         let vm = settings(f)
         XCTAssertEqual(vm.uiState.autoBackup?.nudge, true)
+        XCTAssertEqual(vm.uiState.autoBackup?.needsAttention, true)
 
         vm.onAutoBackupChange(true)
         XCTAssertEqual(vm.uiState.autoBackup?.nudge, false, "copying again: no nudge")

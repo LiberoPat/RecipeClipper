@@ -650,6 +650,13 @@
     <string name="settings_section_help">Help</string>
     <string name="settings_show_tips">Show tips again</string>
     <string name="settings_show_tips_description">Each tip shows once more, one at a time.</string>
+    <!-- Settings' index (#286): each section's current value, beside its name. -->
+    <string name="settings_value_system_theme">System theme</string>
+    <string name="settings_value_amounts_on">Amounts on</string>
+    <string name="settings_value_amounts_off">Amounts off</string>
+    <string name="settings_value_reminders_on">Reminders on</string>
+    <string name="settings_value_reminders_off">Reminders off</string>
+    <string name="settings_value_unlocked">Unlocked</string>
     <string name="clip_hint_start">Tap Name below, then tap the recipe\'s name on the page.</string>
     <string name="clip_confirm_name">Use as the name</string>
     <string name="clip_step">Step %1$d of %2$d · %3$s</string>

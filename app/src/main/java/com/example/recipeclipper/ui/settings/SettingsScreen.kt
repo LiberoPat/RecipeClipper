@@ -1,15 +1,8 @@
 package com.example.recipeclipper.ui.settings
 
-import android.Manifest
-import android.content.ActivityNotFoundException
-import android.content.ClipData
-import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.text.format.DateUtils
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,572 +12,171 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.ChefSupport
-import com.example.recipeclipper.data.HISTORY_LIMIT
-import com.example.recipeclipper.data.backup.BackupDestination
-import com.example.recipeclipper.data.backup.BackupError
-import com.example.recipeclipper.data.backup.ImportSummary
-import com.example.recipeclipper.data.model.TemperatureUnit
-import com.example.recipeclipper.data.model.Tooltip
-import com.example.recipeclipper.data.model.TooltipScreen
-import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
-import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
-import com.example.recipeclipper.ui.tour.TooltipHost
-import com.example.recipeclipper.ui.tour.tooltipAnchor
-import java.text.DateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
- * The app's one settings surface. Everything here is a global default, applied to every
- * recipe, injected straight from [AppPreferences][com.example.recipeclipper.data.local.AppPreferences]
- * via [SettingsViewModel] rather than through the repository.
- *
- * Every control signals its own behaviour: exclusive choices are [RadioButton] rows, toggles
- * are [Switch] rows — never a bare checkmark for either, which is the whole reason this
- * screen exists (see CLAUDE.md). The sections: Units (the three [UnitSystem] options, plus
- * "Also convert liquids" for Ounces only), Oven temperature (the three [TemperatureUnit]
- * options, independent of Units), Appearance ("Dark while cooking"), Steps ("Amounts in
- * steps", #101, and Chef mode), Pantry ("Expiry reminders", #52), Your recipes (Export and Import,
- * #26: actions, so plain rows), and Help ("Show tips again", #190, an action too).
+ * Settings' index (#286): one row per section, in order, each with its icon, its current value
+ * (muted, on the right) and a chevron; a row opens its section's own page
+ * ([SettingsSectionScreen]). Everything set there is a global default, applied to every recipe,
+ * injected straight from [AppPreferences][com.example.recipeclipper.data.local.AppPreferences]
+ * via [SettingsViewModel], which this collects, so a value is never stale. The version sits
+ * quietly at the foot; seven taps on it open Developer settings (#87).
  */
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenSection: (SettingsSection) -> Unit = {},
     onOpenDeveloperSettings: () -> Unit = {},
-    onShowTips: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { viewModel.onImportPicked(it.toString()) }
-    }
-    // The automatic backup copy's folder (#150): the system's folder picker, kept by permission.
-    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        viewModel.onBackupFolderPicked(uri?.toString())
-    }
-    val notificationPrompt = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        viewModel.onExpiryRemindersPermission(granted)
-    }
-    val shareTitle = stringResource(R.string.backup_share_title)
-    val backup = state.backup
-    if (backup is BackupStatus.ReadyToShare) {
-        // The share sheet is a platform effect, so it lives here; the ViewModel only says when.
-        LaunchedEffect(backup.uri) {
-            shareExport(context, backup.uri, shareTitle)
-            viewModel.onExportShared()
-        }
-    }
-
     RecipeClipperTheme {
-        TooltipHost(TooltipScreen.SETTINGS) {
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                LazyColumn(
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                    modifier = Modifier.fillMaxSize()
-                        // Edge-to-edge: the background fills behind the bars, the rows stay clear
-                        // of them, the display cutout and the keyboard.
-                        .safeDrawingPadding()
-                ) {
-                    item {
-                        BackButton(onBack)
-                        Text(
-                            stringResource(R.string.settings_title),
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        SectionHeading(stringResource(R.string.settings_section_units))
-                        Spacer(Modifier.height(4.dp))
-                    }
-
-                    items(UnitSystem.values().toList()) { option ->
-                        RadioRow(
-                            title = option.settingsLabel(),
-                            description = option.settingsDescription(),
-                            selected = option == state.unitSystem,
-                            onClick = { viewModel.onUnitSystemChange(option) }
-                        )
-                    }
-
-                    if (state.unitSystem == UnitSystem.OUNCES) {
-                        item {
-                            SwitchRow(
-                                title = stringResource(R.string.convert_liquids_title),
-                                description = stringResource(R.string.convert_liquids_description),
-                                checked = state.convertLiquids,
-                                onCheckedChange = viewModel::onConvertLiquidsChange
-                            )
-                        }
-                    }
-
-                    item {
-                        Spacer(Modifier.height(16.dp))
-                        Hairline()
-                        Spacer(Modifier.height(16.dp))
-                        SectionHeading(stringResource(R.string.settings_section_oven_temperature))
-                        Spacer(Modifier.height(4.dp))
-                    }
-
-                    items(TemperatureUnit.values().toList()) { option ->
-                        RadioRow(
-                            title = option.settingsLabel(),
-                            description = option.settingsDescription(),
-                            selected = option == state.temperatureUnit,
-                            onClick = { viewModel.onTemperatureUnitChange(option) }
-                        )
-                    }
-
-                    item {
-                        Spacer(Modifier.height(16.dp))
-                        Hairline()
-                        Spacer(Modifier.height(16.dp))
-                        SectionHeading(stringResource(R.string.settings_section_appearance))
-                        Spacer(Modifier.height(4.dp))
-                        SwitchRow(
-                            title = stringResource(R.string.dark_while_cooking_title),
-                            description = stringResource(R.string.dark_while_cooking_description),
-                            checked = state.darkWhileCooking,
-                            onCheckedChange = viewModel::onDarkWhileCookingChange
-                        )
-                    }
-
-                    item {
-                        Spacer(Modifier.height(16.dp))
-                        Hairline()
-                        Spacer(Modifier.height(16.dp))
-                        SectionHeading(stringResource(R.string.settings_section_steps))
-                        Spacer(Modifier.height(4.dp))
-                        SwitchRow(
-                            title = stringResource(R.string.amounts_in_steps_title),
-                            description = stringResource(R.string.amounts_in_steps_description),
-                            checked = state.amountsInSteps,
-                            onCheckedChange = viewModel::onAmountsInStepsChange
-                        )
-                        if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
-                    }
-
-                    item {
-                        Spacer(Modifier.height(16.dp))
-                        Hairline()
-                        Spacer(Modifier.height(16.dp))
-                        SectionHeading(stringResource(R.string.settings_section_pantry))
-                        Spacer(Modifier.height(4.dp))
-                        SwitchRow(
-                            title = stringResource(R.string.expiry_reminders_title),
-                            description = stringResource(R.string.expiry_reminders_description),
-                            checked = state.expiryReminders,
-                            onCheckedChange = { on ->
-                                // Asking is a platform effect, so it lives here: only when the cook
-                                // turns reminders on, never on launch (#52).
-                                when {
-                                    !on -> viewModel.onExpiryRemindersOff()
-                                    NotificationManagerCompat.from(context).areNotificationsEnabled() ->
-                                        viewModel.onExpiryRemindersPermission(true)
-                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                                        PackageManager.PERMISSION_GRANTED ->
-                                        notificationPrompt.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    // Allowed, but switched off for the app in system settings.
-                                    else -> viewModel.onExpiryRemindersPermission(false)
-                                }
-                            }
-                        )
-                        if (state.expiryRemindersDenied && !state.expiryReminders) {
-                            Text(
-                                stringResource(R.string.expiry_reminders_denied),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                            )
-                        }
-                    }
-
-                    item {
-                        Spacer(Modifier.height(16.dp))
-                        Hairline()
-                        Spacer(Modifier.height(16.dp))
-                        SectionHeading(stringResource(R.string.settings_section_your_recipes))
-                        Spacer(Modifier.height(4.dp))
-                        state.autoBackup?.let { auto ->
-                            AutoBackupRows(
-                                auto,
-                                onEnabledChange = viewModel::onAutoBackupChange,
-                                onChooseFolder = { folderPicker.launch(null) },
-                                onBackUpNow = viewModel::onBackUpNow
-                            )
-                        }
-                        // Actions, not choices: plain rows, no radio or switch.
-                        ActionRow(
-                            title = stringResource(R.string.backup_export_title),
-                            description = stringResource(R.string.backup_export_description),
-                            enabled = !backup.isBusy,
-                            onClick = viewModel::onExport
-                        )
-                        ActionRow(
-                            title = stringResource(R.string.backup_import_title),
-                            description = stringResource(R.string.backup_import_description),
-                            enabled = !backup.isBusy,
-                            onClick = { importPicker.launch(IMPORT_MIME_TYPES) }
-                        )
-                        BackupStatusText(backup)
-                    }
-
-                    item {
-                        Spacer(Modifier.height(16.dp))
-                        Hairline()
-                        Spacer(Modifier.height(16.dp))
-                        SectionHeading(stringResource(R.string.settings_section_help))
-                        Spacer(Modifier.height(4.dp))
-                        ActionRow(
-                            title = stringResource(R.string.settings_show_tips),
-                            description = stringResource(R.string.settings_show_tips_description),
-                            enabled = true,
-                            onClick = onShowTips,
-                            modifier = Modifier.tooltipAnchor(Tooltip.SETTINGS_SHOW_TIPS)
-                        )
-                    }
-
-                    state.unlock?.let { row ->
-                        item {
-                            UnlockSection(row, state.unlockNotice, viewModel::onUnlock, viewModel::onRestore)
-                        }
-                    }
-
-                    item {
-                        // The version, quietly at the foot. Seven taps open Developer settings (#87);
-                        // the count is the ViewModel's, so it survives a rotation.
-                        Text(
-                            stringResource(R.string.settings_version, state.appVersion),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .padding(top = 24.dp)
-                                .clickable { if (viewModel.onVersionTapped()) onOpenDeveloperSettings() }
-                                .padding(vertical = 8.dp)
-                        )
-                    }
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            LazyColumn(
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
+                modifier = Modifier.fillMaxSize()
+                    // Edge-to-edge: the background fills behind the bars, the rows stay clear of
+                    // them and the display cutout.
+                    .safeDrawingPadding()
+            ) {
+                item(key = "title") {
+                    BackButton(onBack)
+                    Text(
+                        stringResource(R.string.settings_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+                items(state.sections, key = { "section-${it.route}" }) { section ->
+                    IndexRow(
+                        section,
+                        value = sectionValue(section, state),
+                        alert = section == SettingsSection.YOUR_RECIPES && state.autoBackup?.needsAttention == true,
+                        onClick = { onOpenSection(section) }
+                    )
+                }
+                item(key = "version") {
+                    // The version, quietly at the foot. Seven taps open Developer settings (#87);
+                    // the count is the ViewModel's, so it survives a rotation.
+                    Text(
+                        stringResource(R.string.settings_version, state.appVersion),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(top = 24.dp)
+                            .clickable { if (viewModel.onVersionTapped()) onOpenDeveloperSettings() }
+                            .padding(vertical = 8.dp)
+                    )
                 }
             }
         }
     }
 }
 
-/** An exclusive-choice row: a title, a one-line description, and a [RadioButton] that shows
- *  it against its siblings rather than a bare checkmark. The whole row is the tap target. */
-@Composable
-private fun RadioRow(title: String, description: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .padding(vertical = 10.dp)
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-/** A row that does something when tapped: a title and, usually, a one-line description. */
-@Composable
-internal fun ActionRow(
-    title: String,
-    description: String?,
-    enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(vertical = 10.dp)
-    ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
-        if (description != null) {
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-/** Progress, or the outcome of the last export or import, until the next one. Home's Restore
- *  (#150) shows its outcome with it too. */
-@Composable
-internal fun BackupStatusText(status: BackupStatus) {
-    val resources = LocalResources.current
-    val text = when (status) {
-        BackupStatus.Idle, is BackupStatus.ReadyToShare -> null
-        BackupStatus.Exporting -> stringResource(R.string.backup_exporting)
-        BackupStatus.Importing -> stringResource(R.string.backup_importing)
-        is BackupStatus.Imported -> importSummaryText(resources, status.summary)
-        is BackupStatus.Failed -> when (val error = status.error) {
-            BackupError.NotABackup -> stringResource(R.string.backup_error_not_a_backup)
-            is BackupError.NewerVersion -> stringResource(R.string.backup_error_newer_version, error.found)
-            is BackupError.Malformed -> stringResource(R.string.backup_error_malformed, error.detail)
-            BackupError.ReadFailed -> stringResource(R.string.backup_error_read_failed)
-            BackupError.SaveFailed -> stringResource(R.string.backup_error_save_failed)
-            BackupError.ExportFailed -> stringResource(R.string.backup_error_export_failed)
-        }
-    } ?: return
-    Text(
-        text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = if (status is BackupStatus.Failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier
-            .padding(top = 8.dp)
-            .semantics { liveRegion = LiveRegionMode.Polite }
-    )
-}
-
-private fun importSummaryText(resources: android.content.res.Resources, summary: ImportSummary): String {
-    val recipes = resources.getQuantityString(R.plurals.backup_recipes, summary.recipesAdded, summary.recipesAdded)
-    val lists = resources.getQuantityString(R.plurals.backup_lists, summary.listsAdded, summary.listsAdded)
-    val parts = mutableListOf(
-        when {
-            summary.recipesAdded == 0 && summary.listsAdded == 0 -> resources.getString(R.string.backup_imported_nothing)
-            summary.listsAdded == 0 -> resources.getString(R.string.backup_imported_recipes, recipes)
-            else -> resources.getString(R.string.backup_imported, recipes, lists)
-        }
-    )
-    if (summary.recipesAlreadyHere > 0 && (summary.recipesAdded > 0 || summary.listsAdded > 0)) {
-        parts += resources.getQuantityString(
-            R.plurals.backup_already_here, summary.recipesAlreadyHere, summary.recipesAlreadyHere
-        )
-    }
-    if (summary.recipesSkipped > 0) {
-        val freeLimit = summary.freeLimit
-        parts += if (freeLimit != null) {
-            resources.getQuantityString(
-                R.plurals.backup_skipped_free, summary.recipesSkipped, summary.recipesSkipped, freeLimit
-            )
-        } else {
-            resources.getQuantityString(
-                R.plurals.backup_skipped, summary.recipesSkipped, summary.recipesSkipped, HISTORY_LIMIT
-            )
-        }
-    }
-    return parts.joinToString(" ")
-}
-
 /**
- * The automatic backup copy (#150): the switch, the folder, when the last copy was written (and
- * whether something is wrong), and "Back up now". Quiet lines, in the error colour only when
- * the copy has stopped working.
+ * One section on the index: its icon, its name, its value and a chevron, the whole row one
+ * button. The value takes at most half the row and wraps, so it never runs into the name; at the
+ * largest text sizes it moves under the name instead.
  */
 @Composable
-private fun AutoBackupRows(
-    row: AutoBackupRow,
-    onEnabledChange: (Boolean) -> Unit,
-    onChooseFolder: () -> Unit,
-    onBackUpNow: () -> Unit
-) {
-    SwitchRow(
-        title = stringResource(R.string.auto_backup_title),
-        description = stringResource(R.string.auto_backup_description),
-        checked = row.enabled,
-        onCheckedChange = onEnabledChange
+private fun IndexRow(section: SettingsSection, value: String?, alert: Boolean, onClick: () -> Unit) {
+    val valueColor = if (alert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    val stacked = LocalDensity.current.fontScale > 1.3f
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val valueMax = maxWidth * 0.5f
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("settingsSection-${section.route}")
+                .clickable(role = Role.Button, onClick = onClick)
+                .padding(vertical = 14.dp)
+        ) {
+            Icon(
+                painterResource(section.icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(section.title), style = MaterialTheme.typography.bodyLarge)
+                if (stacked && value != null) {
+                    Text(value, style = MaterialTheme.typography.bodyMedium, color = valueColor)
+                }
+            }
+            if (!stacked && value != null) {
+                Text(
+                    value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = valueColor,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.padding(start = 12.dp).widthIn(max = valueMax)
+                )
+            }
+            Text(
+                "›",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 10.dp).clearAndSetSemantics {}
+            )
+        }
+    }
+    Hairline()
+}
+
+/** A section's current value as the index shows it, from the settings themselves; Help has none. */
+@Composable
+private fun sectionValue(section: SettingsSection, state: SettingsUiState): String? = when (section) {
+    SettingsSection.UNITS -> state.unitSystem.settingsLabel()
+    SettingsSection.OVEN_TEMPERATURE -> state.temperatureUnit.settingsLabel()
+    // Dark mode is the system's call: the one choice here is cook mode's.
+    SettingsSection.APPEARANCE -> stringResource(
+        if (state.darkWhileCooking) R.string.dark_while_cooking_title else R.string.settings_value_system_theme
     )
-    ActionRow(
-        title = stringResource(R.string.auto_backup_folder_title),
-        description = when (row.destination) {
-            BackupDestination.NOT_CHOSEN -> stringResource(R.string.auto_backup_folder_not_chosen)
-            else -> row.folderName?.takeIf { it.isNotEmpty() }
-        },
-        enabled = true,
-        onClick = onChooseFolder
+    SettingsSection.STEPS -> stringResource(
+        if (state.amountsInSteps) R.string.settings_value_amounts_on else R.string.settings_value_amounts_off
     )
-    val lines = buildList {
-        if (row.destination == BackupDestination.LOST) add(stringResource(R.string.auto_backup_folder_lost) to true)
-        if (row.folderRefused) add(stringResource(R.string.auto_backup_folder_refused) to true)
-        val last = row.lastBackupAt?.let {
-            val locale = LocalConfiguration.current.locales[0]
+    SettingsSection.PANTRY -> stringResource(
+        if (state.expiryReminders) R.string.settings_value_reminders_on else R.string.settings_value_reminders_off
+    )
+    // The automatic copy's "Last backed up", as its page says it, but how long ago.
+    SettingsSection.YOUR_RECIPES -> state.autoBackup?.let { row ->
+        row.lastBackupAt?.let { at ->
+            val now = System.currentTimeMillis()
             stringResource(
                 R.string.auto_backup_last,
-                DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, locale).format(Date(it))
+                DateUtils.getRelativeTimeSpanString(minOf(at, now), now, DateUtils.MINUTE_IN_MILLIS).toString()
             )
         } ?: stringResource(R.string.auto_backup_never)
-        add(last to false)
-        if (row.lastFailed && row.destination == BackupDestination.READY) add(stringResource(R.string.auto_backup_failed) to true)
-        if (row.nudge) add(stringResource(R.string.auto_backup_nudge) to true)
     }
-    lines.forEach { (text, alert) ->
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall,
-            color = if (alert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp)
-        )
-    }
-    ActionRow(
-        title = stringResource(if (row.running) R.string.auto_backup_running else R.string.auto_backup_now),
-        description = null,
-        enabled = row.canBackUpNow,
-        onClick = onBackUpNow
-    )
+    SettingsSection.HELP -> null
+    SettingsSection.UNLIMITED -> if (state.unlock?.unlocked == true) stringResource(R.string.settings_value_unlocked) else null
 }
-
-/** Opens the share sheet on an export file, letting only the chosen app read it. */
-private fun shareExport(context: Context, uriString: String, title: String) {
-    val uri = uriString.toUri()
-    val send = Intent(Intent.ACTION_SEND).apply {
-        // With photos (#116) the export is a zip.
-        type = if (uriString.endsWith(".zip")) "application/zip" else "application/json"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        clipData = ClipData.newRawUri(null, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    try {
-        context.startActivity(Intent.createChooser(send, title))
-    } catch (e: ActivityNotFoundException) {
-        // Nothing can receive a file: nothing to do, and the export is still in the cache.
-    }
-}
-
-/** What the file picker offers. Some file managers label .json as a generic binary. */
-internal val IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "application/octet-stream", "application/zip")
-
-/** An independent toggle: a title, a one-line description, and a [Switch] — never a
- *  checkmark, which would read as an exclusive choice among its siblings. */
-@Composable
-internal fun SwitchRow(
-    title: String,
-    description: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
-            .padding(vertical = 10.dp)
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
-    }
-}
-
-/**
- * Chef mode (#100): one switch. Where the phone can't write short steps it is disabled, with one
- * line saying why (naming the phones it needs, #144, so it doesn't read like a bug); where it can,
- * a line names the recipe languages it writes.
- */
-@Composable
-private fun ChefModeRow(state: SettingsUiState, onChefModeChange: (Boolean) -> Unit) {
-    SwitchRow(
-        title = stringResource(R.string.chef_mode_title),
-        description = stringResource(R.string.chef_mode_description),
-        checked = state.chefMode && state.chefModeAvailable,
-        onCheckedChange = onChefModeChange,
-        enabled = state.chefModeAvailable
-    )
-    val support = state.chefSupport ?: return
-    val locale = LocalConfiguration.current.locales[0]
-    val note = when (support) {
-        is ChefSupport.Available -> stringResource(
-            R.string.chef_mode_languages,
-            support.languages.map { Locale.forLanguageTag(it).getDisplayLanguage(locale) }.sorted().joinToString(", ")
-        )
-        ChefSupport.NotReady -> stringResource(R.string.chef_mode_not_ready)
-        // NotEnabled is Apple Intelligence switched off: iOS only, as ML Kit has no such state.
-        ChefSupport.Unsupported, ChefSupport.NotEnabled -> stringResource(R.string.chef_mode_unsupported)
-    }
-    Text(
-        note,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-    )
-}
-
-@Composable
-private fun UnitSystem.settingsLabel(): String = stringResource(
-    when (this) {
-        UnitSystem.AS_WRITTEN -> R.string.unit_as_written
-        UnitSystem.OUNCES -> R.string.unit_ounces
-        UnitSystem.METRIC -> R.string.unit_metric
-    }
-)
-
-@Composable
-private fun UnitSystem.settingsDescription(): String = stringResource(
-    when (this) {
-        UnitSystem.AS_WRITTEN -> R.string.unit_as_written_description
-        UnitSystem.OUNCES -> R.string.unit_ounces_description
-        UnitSystem.METRIC -> R.string.unit_metric_description
-    }
-)
-
-@Composable
-private fun TemperatureUnit.settingsLabel(): String = stringResource(
-    when (this) {
-        TemperatureUnit.AS_WRITTEN -> R.string.temperature_as_written
-        TemperatureUnit.CELSIUS -> R.string.temperature_celsius
-        TemperatureUnit.FAHRENHEIT -> R.string.temperature_fahrenheit
-    }
-)
-
-@Composable
-private fun TemperatureUnit.settingsDescription(): String = stringResource(
-    when (this) {
-        TemperatureUnit.AS_WRITTEN -> R.string.temperature_as_written_description
-        TemperatureUnit.CELSIUS -> R.string.temperature_celsius_description
-        TemperatureUnit.FAHRENHEIT -> R.string.temperature_fahrenheit_description
-    }
-)

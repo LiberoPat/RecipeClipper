@@ -13,12 +13,12 @@ final class AmountsInStepsUITests: RecipeUITestCase {
 
     func testTheSwitchPutsTheAmountInsideTheStep() {
         launch(.cook)
-        openSettings()
-        app.swipeUp()
+        openSettings("steps") // Settings' index (#286): Steps' own page
         requireState(require(amountsSwitch, "the Amounts in steps switch"), "value == '0'", "off by default")
         amountsSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
         requireState(amountsSwitch, "value == '1'", "on")
-        back()
+        back() // to the index
+        back() // to Home
 
         openRecipe("Weeknight Chili")
         require(textContaining("Brown 1 lb beef in a large pot."), "the amount inside the step")

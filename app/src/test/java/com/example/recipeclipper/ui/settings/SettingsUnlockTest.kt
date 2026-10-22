@@ -40,6 +40,8 @@ class SettingsUnlockTest {
         val vm = settings()
         advanceUntilIdle()
         assertNull(vm.uiState.value.unlock)
+        // The index (#286) has no Unlimited recipes row either.
+        assertFalse(SettingsSection.UNLIMITED in vm.uiState.value.sections)
     }
 
     @Test fun `the row offers the store's price, and unlocks`() = runTest(mainDispatcherRule.dispatcher) {
@@ -47,6 +49,7 @@ class SettingsUnlockTest {
         val vm = settings()
         advanceUntilIdle()
         assertEquals(UnlockRow(unlocked = false, price = "€2.99"), vm.uiState.value.unlock)
+        assertEquals(SettingsSection.entries.toList(), vm.uiState.value.sections)
 
         vm.onUnlock()
         advanceUntilIdle()

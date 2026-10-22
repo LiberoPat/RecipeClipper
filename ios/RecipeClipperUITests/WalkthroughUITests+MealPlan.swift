@@ -107,9 +107,8 @@ extension WalkthroughUITests {
     func test05_expiryReminders() {
         startAsShipped()
         require(app.buttons["Settings"]).tap()
+        require(settingsRow("pantry"), "Settings' Pantry row").tap() // the index (#286)
         pause()
-        // To the foot of Settings, so the switch sits clear of the tab bar.
-        for _ in 0..<3 { app.swipeUp(); pause(0.6) }
         flipSwitch("Expiry reminders")
         pause()
     }

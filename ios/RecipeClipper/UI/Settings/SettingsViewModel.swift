@@ -45,6 +45,9 @@ struct AutoBackupRow: Equatable {
     /// "Back up now" needs somewhere to write.
     var canBackUpNow: Bool { destination == .ready && !running }
 
+    /// One of the page's warning lines shows, so the index's value is in the error colour too (#286).
+    var needsAttention: Bool { destination == .unavailable || nudge || (lastFailed && destination == .ready) }
+
     static func of(_ state: AutoBackupState, now: Int64, running: Bool) -> AutoBackupRow {
         AutoBackupRow(
             enabled: state.record.enabled,
@@ -191,6 +194,11 @@ final class SettingsViewModel {
             amountsInSteps: settings.amountsInSteps,
             chefMode: settings.chefMode
         )
+    }
+
+    /// The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag.
+    var sections: [SettingsSection] {
+        SettingsSection.allCases.filter { $0 != .unlimited || unlockRow != nil }
     }
 
     /// The Steps section's "Chef mode" (#100): only with the `chefMode` flag on.

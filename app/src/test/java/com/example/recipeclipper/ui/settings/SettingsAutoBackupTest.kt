@@ -43,7 +43,7 @@ class SettingsAutoBackupTest {
             FakeAppPreferences(), fixture.repository, FakeBackupFiles(), FakeAppInfo(),
             autoBackup = fixture.autoBackup, clock = fixture.clock
         )
-        compose.setContent { SettingsScreen(onBack = {}, viewModel = viewModel) }
+        compose.setContent { SettingsSectionScreen(SettingsSection.YOUR_RECIPES, onBack = {}, viewModel = viewModel) }
         return viewModel
     }
 
@@ -136,5 +136,48 @@ class SettingsAutoBackupTest {
         assertTrue(fixture.store.record.value.folderPromptDone)
         compose.onNodeWithText("can't be used for backups", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Drive").assertIsDisplayed()
+    }
+
+    // --- The index (#286): Your recipes' value is the page's "Last backed up" ---
+
+    private fun showIndex(fixture: AutoBackupFixture): SettingsViewModel {
+        val viewModel = SettingsViewModel(
+            FakeAppPreferences(), fixture.repository, FakeBackupFiles(), FakeAppInfo(),
+            autoBackup = fixture.autoBackup, clock = fixture.clock
+        )
+        compose.setContent { SettingsScreen(onBack = {}, viewModel = viewModel) }
+        scrollTo("Your recipes")
+        return viewModel
+    }
+
+    @Test
+    fun theIndexSaysNoCopyYet() {
+        val viewModel = showIndex(AutoBackupFixture())
+
+        compose.onNode(hasText("Your recipes") and hasText("Not backed up yet")).assertIsDisplayed()
+        assertFalse(viewModel.uiState.value.autoBackup!!.needsAttention)
+    }
+
+    @Test
+    fun theIndexSaysWhenTheLastCopyWasWritten() {
+        val fixture = AutoBackupFixture().withFolder()
+        fixture.store.update { it.copy(lastBackupAt = fixture.time - 60 * 60 * 1000L) }
+        showIndex(fixture)
+
+        compose.onNode(hasText("Your recipes") and hasText("Last backed up", substring = true)).assertIsDisplayed()
+    }
+
+    @Test
+    fun aLostFolderNeedsAttentionOnTheIndex() {
+        val lost = AutoBackupFixture().withFolder()
+        lost.folder.granted.clear()
+        assertTrue(showIndex(lost).uiState.value.autoBackup!!.needsAttention)
+    }
+
+    @Test
+    fun anOldCopyNeedsAttentionOnTheIndex() {
+        val old = AutoBackupFixture(AutoBackupRecord(enabled = false))
+        old.store.update { it.copy(lastBackupAt = old.time - AutoBackupPolicy.NUDGE_AFTER_MS - 1) }
+        assertTrue(showIndex(old).uiState.value.autoBackup!!.needsAttention)
     }
 }

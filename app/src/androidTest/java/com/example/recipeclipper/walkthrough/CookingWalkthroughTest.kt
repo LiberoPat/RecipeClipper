@@ -242,14 +242,13 @@ class CookingWalkthroughTest : WalkthroughBase() {
         tap("Got it", 1500)
         back()
         tapDescription("Settings")
-        // To the foot of Settings (longer since the backup rows), so the row is wholly on screen.
-        show("Show tips again", 500)
-        swipeUp()
-        waitFor(hasTestTag("tooltip-settings_show_tips")) // Settings' one, once on screen
+        tapTag("settingsSection-help") // Settings' index (#286): "Show tips again" is on Help's page
+        waitFor(hasTestTag("tooltip-settings_show_tips")) // Settings' one
         pause(2500)
         tap("Got it", 1500)
-        press(hasText("Show tips again"), 2000) // by semantics: the row can sit under the tab bar
-        back()
+        press(hasText("Show tips again"), 2000)
+        back() // to the index
+        back() // to Home
         waitFor(hasTestTag("tooltip-home_link"))
         pause(2500)
     }
@@ -380,6 +379,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
     fun test21_chefModeUnsupportedSimulated() {
         start("chefMode")
         tapDescription("Settings")
+        tapTag("settingsSection-steps")
         show("Needs a phone with Google's on-device AI", 3500)
     }
 

@@ -19,6 +19,7 @@ import androidx.navigation.navArgument
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.ui.listdetail.ListDetailViewModel
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
+import com.example.recipeclipper.ui.settings.SettingsSection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -43,6 +44,7 @@ class AppShellTest {
         composable(Routes.HOME) { Text("stub:home") }
         composable(Routes.RECIPES) { Text("stub:recipes") }
         composable(Routes.SETTINGS) { Text("stub:settings") }
+        composable(Routes.settingsSection(SettingsSection.UNITS)) { Text("stub:settings units") }
         composable(Routes.LISTS) { Text("stub:lists") }
         composable(
             Routes.LIST_DETAIL,
@@ -114,7 +116,7 @@ class AppShellTest {
     fun theBarShowsOnTheRecipesListScreensAndHidesOnARecipe() {
         show()
 
-        for (route in listOf(Routes.RECIPES, Routes.LISTS, Routes.list(4), Routes.SETTINGS)) {
+        for (route in listOf(Routes.RECIPES, Routes.LISTS, Routes.list(4), Routes.SETTINGS, Routes.settingsSection(SettingsSection.UNITS))) {
             onNav { navigate(route) }
             bar().assertIsDisplayed()
         }

@@ -23,6 +23,7 @@ extension WalkthroughUITests {
         if cancel.waitForExistence(timeout: 5) { cancel.tap() } else { app.swipeDown(velocity: .fast) }
         pause()
         require(app.buttons["Settings"]).tap()
+        require(settingsRow("your-recipes"), "Settings' Your recipes row").tap() // the index (#286)
         pause()
         scrollTo(app.buttons["settings.backUpNow"], "Back up now")
         pause(2.5)

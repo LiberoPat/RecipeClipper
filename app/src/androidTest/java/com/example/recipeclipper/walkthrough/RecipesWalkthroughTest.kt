@@ -214,9 +214,10 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     fun test07_amountsInSteps() {
         start()
         tapDescription("Settings")
-        swipeUp()
+        tapTag("settingsSection-steps") // Settings' index (#286)
         tap("Amounts in steps")
-        back()
+        back() // to the index
+        back() // to Home
         openRecipes()
         tapScrolling(WalkthroughSeed.SALMON)
         show("Melt the", 2500)
@@ -251,9 +252,10 @@ class RecipesWalkthroughTest : WalkthroughBase() {
     fun test08_chefModeStubModel() {
         start("chefMode")
         tapDescription("Settings")
-        swipeUp()
+        tapTag("settingsSection-steps") // Settings' index (#286)
         tap("Chef mode")
-        back()
+        back() // to the index
+        back() // to Home
         tap("Sponge Cake")
         swipeUp()
         pause(1000)

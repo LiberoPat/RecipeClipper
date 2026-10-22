@@ -86,7 +86,8 @@ with `local/` and `remote/`'s fetching; `ui/` a package per screen; `di/`,
 (#238). `shared/` holds the tables, flags and fixtures. The annotated map, and what each route does, are in
 `docs/decisions.md` ("Code map and routes").
 
-Routes: `home`, `recipes`, `settings` (+ hidden `settings/developer`),
+Routes: `home`, `recipes`, `settings` (an index; each section's page is
+`settings/<section>`, #286; + hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
 membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `edit/scan?pages=…` (#226), `clip?url={url}&blocked=…&check=…`; with the tab

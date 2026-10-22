@@ -52,7 +52,7 @@ class ExpiryRemindersSettingsTest {
 
     private fun show() {
         viewModel = SettingsViewModel(preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo(), flags)
-        compose.setContent { SettingsScreen(onBack = {}, viewModel = viewModel) }
+        compose.setContent { SettingsSectionScreen(SettingsSection.PANTRY, onBack = {}, viewModel = viewModel) }
     }
 
     private fun scrollTo(text: String) {

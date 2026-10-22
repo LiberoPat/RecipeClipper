@@ -752,4 +752,11 @@ enum Strings {
     static var settingsSectionHelp: String { String(localized: "settings_section_help") }
     static var settingsShowTips: String { String(localized: "settings_show_tips") }
     static var settingsShowTipsDescription: String { String(localized: "settings_show_tips_description") }
+    // Settings' index (#286): each section's current value, beside its name.
+    static var settingsValueSystemTheme: String { String(localized: "settings_value_system_theme") }
+    static var settingsValueAmountsOn: String { String(localized: "settings_value_amounts_on") }
+    static var settingsValueAmountsOff: String { String(localized: "settings_value_amounts_off") }
+    static var settingsValueRemindersOn: String { String(localized: "settings_value_reminders_on") }
+    static var settingsValueRemindersOff: String { String(localized: "settings_value_reminders_off") }
+    static var settingsValueUnlocked: String { String(localized: "settings_value_unlocked") }
 }

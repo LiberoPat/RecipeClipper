@@ -13,23 +13,17 @@ final class ExpiryRemindersUITests: RecipeUITestCase {
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
     }
 
-    /// To the foot of Settings, so the switch sits clear of the tab bar.
-    private func scrollToReminders() {
-        for _ in 0..<3 { app.swipeUp() }
-    }
-
     func testTurnsOnAndStaysOn() {
         launch()
-        openSettings()
-        scrollToReminders()
+        openSettings("pantry") // Settings' index (#286): Pantry's own page
         requireState(require(reminders, "the Expiry reminders switch"), "value == '0'", "off by default")
 
         flip(reminders)
         requireState(reminders, "value == '1'", "on once notifications are allowed")
 
         back()
-        openSettings()
-        scrollToReminders()
+        requireState(settingsRow("pantry"), "label CONTAINS 'Reminders on'", "the index's value")
+        settingsRow("pantry").tap()
         requireState(reminders, "value == '1'", "still on after revisiting")
     }
 }

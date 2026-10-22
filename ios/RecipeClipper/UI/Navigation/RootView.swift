@@ -213,9 +213,14 @@ struct RootView: View {
             ScreenHost(container.makeSettingsViewModel) { vm in
                 SettingsScreen(
                     vm: vm,
-                    onOpenDeveloperSettings: { push(.developerSettings) },
-                    onShowTips: container.tooltips.onReplay
+                    onOpenSection: { push(.settingsSection($0)) },
+                    onOpenDeveloperSettings: { push(.developerSettings) }
                 )
+            }
+        case .settingsSection(let section):
+            // Each section's page (#286); Back returns to the index.
+            ScreenHost(container.makeSettingsViewModel) { vm in
+                SettingsSectionScreen(section: section, vm: vm, onShowTips: container.tooltips.onReplay)
             }
         case .developerSettings:
             ScreenHost(container.makeDeveloperSettingsViewModel) { vm in DeveloperSettingsScreen(vm: vm) }

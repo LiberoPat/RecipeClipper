@@ -33,6 +33,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navigation
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.recipe.Hairline
+import com.example.recipeclipper.ui.settings.SettingsSection
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -60,7 +61,7 @@ enum class Tab(
 private val tabBarRoutes = setOf(
     Routes.HOME, Routes.RECIPES, Routes.SETTINGS, Routes.DEVELOPER_SETTINGS, Routes.LISTS, Routes.LIST_DETAIL,
     Routes.WEEK, Routes.MEAL_TYPES, Routes.WHAT_I_NEED, Routes.GROCERIES, Routes.PANTRY
-)
+) + SettingsSection.entries.map(Routes::settingsSection)
 
 internal fun NavDestination?.showsTabBar(): Boolean = this?.route in tabBarRoutes
 

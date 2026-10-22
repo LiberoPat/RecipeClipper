@@ -1,8 +1,9 @@
 import XCTest
 
-/// Settings end to end — untested on Android (docs/testing.md). Exclusive choices
-/// are radio rows (one selected at a time), independent toggles are switches, and "Also
-/// convert liquids" only exists for Ounces.
+/// Settings end to end — untested on Android (docs/testing.md). An index of the sections with
+/// their values, each opening its own page (#286). Exclusive choices are radio rows (one
+/// selected at a time), independent toggles are switches, and "Also convert liquids" only
+/// exists for Ounces.
 final class SettingsUITests: RecipeUITestCase {
 
     /// A radio row; its label is "Title, description".
@@ -36,34 +37,74 @@ final class SettingsUITests: RecipeUITestCase {
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
     }
 
-    func testDefaultsAreAsWrittenWithNoLiquidsToggle() {
+    /// The index row's value (#286): its label is "Name, value".
+    private func assertValue(_ section: String, _ value: String, _ what: String,
+                             file: StaticString = #filePath, line: UInt = #line) {
+        requireState(settingsRow(section), "label ENDSWITH \(quoted(", \(value)"))", what, file: file, line: line)
+    }
+
+    private func quoted(_ text: String) -> String { "'\(text)'" }
+
+    func testTheIndexShowsEachSectionWithItsValue() {
         launch()
         openSettings()
 
+        assertValue("units", "As written", "Units")
+        assertValue("oven-temperature", "As written", "Oven temperature")
+        // Dark mode is the system's call; Appearance's one choice is cook mode's.
+        assertValue("appearance", "System theme", "Appearance")
+        assertValue("steps", "Amounts off", "Steps")
+        assertValue("pantry", "Reminders off", "Pantry")
+        require(settingsRow("your-recipes"), "Your recipes")
+        requireState(settingsRow("help"), "label == 'Help'", "Help, with no value")
+        assertAbsent(settingsRow("unlimited"), "Unlimited recipes (the free tier is off)")
+    }
+
+    /// Seven taps on the version at the foot of the index open Developer settings (#87).
+    func testSevenTapsOnTheVersionOpenDeveloperSettings() {
+        launch()
+        openSettings()
+        let version = require(app.descendants(matching: .any)["settings.version"], "the version")
+        for _ in 0..<6 { version.tap() }
+        assertAbsent(text("Developer settings"), "Developer settings after six taps")
+        version.tap()
+        require(text("Developer settings"), "Developer settings after the seventh")
+    }
+
+    func testDefaultsAreAsWrittenWithNoLiquidsToggle() {
+        launch()
+        openSettings("units")
+
         assertSelected(unitAsWritten, true, "units As written")
         assertSelected(option("Metric"), false, "Metric")
-        assertSelected(temperatureAsWritten, true, "temperature As written")
         assertAbsent(liquids, "the liquids toggle")
         assertAbsent(option("Grams"), "a Grams option (dropped in #17)")
-        requireState(darkWhileCooking, "value == '0'", "Dark while cooking off by default")
+        back()
+        settingsRow("oven-temperature").tap()
+        assertSelected(temperatureAsWritten, true, "temperature As written")
+        back()
+        settingsRow("appearance").tap()
+        requireState(require(darkWhileCooking), "value == '0'", "Dark while cooking off by default")
     }
 
     func testChoosingAUnitSelectsOnlyThatOne() {
         launch()
-        openSettings()
+        openSettings("units")
 
         option("Metric").tap()
 
         assertSelected(option("Metric"), true, "Metric")
         assertSelected(unitAsWritten, false, "As written")
         assertSelected(option("Ounces"), false, "Ounces")
-        // Temperature is independent of units.
-        assertSelected(temperatureAsWritten, true, "temperature As written")
+        // The index follows; temperature is independent of units.
+        back()
+        assertValue("units", "Metric", "the index's Units")
+        assertValue("oven-temperature", "As written", "the index's Oven temperature")
     }
 
     func testTheLiquidsToggleAppearsOnlyForOunces() {
         launch()
-        openSettings()
+        openSettings("units")
 
         option("Ounces").tap()
         require(liquids, "liquids toggle for Ounces")
@@ -79,7 +120,7 @@ final class SettingsUITests: RecipeUITestCase {
 
     func testTemperatureIsItsOwnExclusiveChoice() {
         launch()
-        openSettings()
+        openSettings("oven-temperature")
 
         option("Celsius (°C)").tap()
         assertSelected(option("Celsius (°C)"), true, "Celsius")
@@ -89,45 +130,55 @@ final class SettingsUITests: RecipeUITestCase {
         assertSelected(option("Fahrenheit (°F)"), true, "Fahrenheit")
         assertSelected(option("Celsius (°C)"), false, "Celsius")
         // Units untouched.
-        assertSelected(unitAsWritten, true, "units As written")
+        back()
+        assertValue("oven-temperature", "Fahrenheit (°F)", "the index's Oven temperature")
+        assertValue("units", "As written", "the index's Units")
     }
 
-    /// Settings writes through: leave and come back (a fresh ViewModel), then relaunch.
+    /// Settings writes through: leave a page and come back (a fresh ViewModel), then relaunch.
     func testChoicesPersistAcrossVisitsAndRelaunch() {
         launch()
-        openSettings()
-
+        openSettings("units")
         option("Ounces").tap()
-        option("Celsius (°C)").tap()
         flip(require(liquids))
         requireState(liquids, "value == '1'", "liquids on")
-        flip(darkWhileCooking)
-        requireState(darkWhileCooking, "value == '1'", "dark while cooking on")
-
         back()
-        openSettings()
+        settingsRow("oven-temperature").tap()
+        option("Celsius (°C)").tap()
+        back()
+        settingsRow("appearance").tap()
+        flip(require(darkWhileCooking))
+        requireState(darkWhileCooking, "value == '1'", "dark while cooking on")
+        back()
+
+        assertValue("units", "Ounces", "the index's Units")
+        assertValue("oven-temperature", "Celsius (°C)", "the index's Oven temperature")
+        assertValue("appearance", "Dark while cooking", "the index's Appearance")
+        settingsRow("units").tap()
         assertSelected(option("Ounces"), true, "Ounces after revisiting")
-        assertSelected(option("Celsius (°C)"), true, "Celsius after revisiting")
         requireState(liquids, "value == '1'", "liquids after revisiting")
-        requireState(darkWhileCooking, "value == '1'", "dark while cooking after revisiting")
 
         app.terminate()
         launch(keepPrefs: true)
         openSettings()
-        assertSelected(option("Ounces"), true, "Ounces after relaunch")
-        assertSelected(option("Celsius (°C)"), true, "Celsius after relaunch")
-        requireState(liquids, "value == '1'", "liquids after relaunch")
+        assertValue("units", "Ounces", "Units after relaunch")
+        assertValue("oven-temperature", "Celsius (°C)", "Oven temperature after relaunch")
+        assertValue("appearance", "Dark while cooking", "Appearance after relaunch")
+        settingsRow("units").tap()
+        requireState(require(liquids), "value == '1'", "liquids after relaunch")
     }
 
     /// Units are a global default: the recipe screen's menu shows what Settings chose.
     func testTheRecipeScreenPicksUpTheUnitChosenInSettings() {
         launch()
-        openSettings()
+        openSettings("units")
         option("Metric").tap()
         assertSelected(option("Metric"), true, "Metric")
-        back()
+        back() // to the index
+        back() // to Home
 
         openRecipe("Banana Bread")
         requireState(app.buttons["Change units"], "value == 'Metric'", "the units control reading Metric")
     }
 }
+

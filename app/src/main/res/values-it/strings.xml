@@ -615,6 +615,13 @@
     <string name="settings_section_help">Aiuto</string>
     <string name="settings_show_tips">Mostra di nuovo i suggerimenti</string>
     <string name="settings_show_tips_description">Ogni suggerimento compare ancora una volta, uno alla volta.</string>
+    <!-- Settings' index (#286) -->
+    <string name="settings_value_system_theme">Tema di sistema</string>
+    <string name="settings_value_amounts_on">Quantità: sì</string>
+    <string name="settings_value_amounts_off">Quantità: no</string>
+    <string name="settings_value_reminders_on">Promemoria: sì</string>
+    <string name="settings_value_reminders_off">Promemoria: no</string>
+    <string name="settings_value_unlocked">Sbloccato</string>
     <string name="clip_hint_start">Tocca Nome qui sotto, poi il nome della ricetta nella pagina.</string>
     <string name="clip_confirm_name">Usa come nome</string>
     <string name="clip_step">Passo %1$d di %2$d · %3$s</string>
