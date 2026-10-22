@@ -4,6 +4,16 @@ The UI is in English, Spanish (`es`), French (`fr`), German (`de`), Italian (`it
 Brazilian Portuguese (`pt-BR`) (#13). **The five translations are drafts: a native speaker
 should review each one before release,** starting with the terms listed below.
 
+## Review, 2026-10-22
+
+Claude reviewed all five languages, as a careful translator would, not as a native speaker:
+every UI string on both platforms, the tour's sample recipe and the terms table. The first
+pass found 296 things: its 37 errors and 176 improvements it was sure of are applied, on
+Android and iOS alike. A second, closer pass decided the 83 it wasn't sure of: 76 are
+applied, with the other strings a changed term touches, and the 7 it kept or doubted are
+under "Proposals for a native speaker" below, with the questions still open. None of this
+replaces a native speaker's review.
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,
@@ -39,6 +49,8 @@ Counts go through the platform's plural rules (Android `<plurals>`, catalog plur
 variations), never `n == 1`. French treats 0 as singular ("0 recette"), which the rules
 handle. Spanish, French, Italian and Portuguese also have a `many` form for round
 millions ("1 000 000 de recettes"); it's filled in so lint's `MissingQuantity` is quiet.
+A message with two numbers ("3 recipes weren't added: the free app keeps 20") is one plural
+on both platforms, chosen by its count, the first number; `LocalizationTests` checks it.
 The Lists screen still says "Empty" rather than a zero count, in every language.
 
 ## Choices made
@@ -110,6 +122,42 @@ Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and
 (Annulla), as the platforms themselves have it; "Delete" is *Excluir* in Portuguese
 (the platform word) rather than *Apagar*.
 
+## Proposals for a native speaker (2026-10-22 review)
+
+What the review kept or wasn't sure enough to change. Each is a matter of taste or needs a
+native ear; the reason is the second pass's.
+
+**Spanish**
+
+| Key | Current | Proposed | Reason |
+|---|---|---|---|
+| `tab_groceries` | Compras | Compra | Spain says "la compra", as the app does elsewhere ("lista de la compra"), but a bare "Compra" on a tab can read as "buy!" or one purchase. Kept. |
+| `aisle_spices` | Especias | Hierbas y especias | Spanish supermarkets label the aisle "Especias", dried herbs included; fr, de and it name only the spices too. Kept. |
+
+**Italian**
+
+| Key | Current | Proposed | Reason |
+|---|---|---|---|
+| `time_just_now` | Proprio ora | Adesso | Both are used for timestamps in Italian apps. Kept. |
+| `action_add_to_plan`, `action_remove_from_plan`, `snackbar_removed_from_plan` | Aggiungi al piano / Rimuovi dal piano | Aggiungi al programma / Rimuovi dal programma | "piano" alone is ambiguous, but beside "Aggiungi alla spesa" it's understood, and "programma" is no less bare. Kept; `delete_menu_body`'s "piano dei pasti" can stay either way. |
+
+**Portuguese**
+
+| Key | Current | Proposed | Reason |
+|---|---|---|---|
+| `home_type_hint` | Digite você mesmo | Escreva do zero | The generic masculine is normal ("Faça você mesmo"), and "do zero" means "from scratch". Kept. |
+| `aisle_baking` | Confeitaria | Farinhas e confeitaria | The aisle holds flour, sugar and yeast first; "Confeitaria" is a real supermarket category, the longer label isn't one shops use. Kept. |
+| `action_choose_photos` (iOS) | Escolher da galeria | Escolher da Fototeca | iOS in Portuguese calls the photo library "Fototeca" ("Galeria" is Android's word), but check the name on a pt-BR iPhone's picker first. |
+
+**Open questions**
+
+- Italian: "piano" or "programma" for the meal plan (above).
+- Spanish: the Groceries tab, "Compras" or "Compra" (above).
+- Portuguese: `aisle_baking`, and the iOS photo library's name (above).
+- The sample recipe's beans: the Spanish, French, Italian and Portuguese samples say 800 g of
+  cooked beans, drained, which is about three tins against the English two cans. German now
+  writes "2 Dosen weiße Bohnen (je 400 g)", as German recipes do.
+
 ## Long words
 
 German was checked on iOS at the default size and the largest accessibility size. Text
@@ -122,6 +170,10 @@ Exit above "Schritt 1 von 2" at the accessibility sizes, and a one-word screen t
 - **The seeded list names** (Favorites, Lunch, Dinner, Desserts, Breakfast, Snacks) are
   rows in the database, written in English when it's created, and a user can rename them.
   Showing them translated needs a rule for "not renamed yet"; it's left for a follow-up.
+  The seeded meal types (Breakfast, Lunch, Dinner, Snack) are the same. So a message never
+  names one in the UI language: deleting a meal type says its meals move to Dinner by the
+  name the Week shows (`delete_meal_type_body` takes it as a placeholder), not "Cena" or
+  "Abendessen".
 - **Times from the recipe** ("1h 30m") are built by the parser with English unit letters,
   and the recipe text itself is shown as the site wrote it. Reading recipes written in
   other languages is #12 and #14–#16.
