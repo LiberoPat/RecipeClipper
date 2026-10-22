@@ -95,6 +95,7 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Update the pantry (after cooking, #147) | Actualizar la despensa | Mettre à jour le garde-manger | Vorrat aktualisieren | Aggiorna la dispensa | Atualizar a despensa |
 | Keep / Running low / Out (#147) | Dejar igual / Queda poco / Agotado | Garder / Presque fini / Épuisé | Behalten / Wird knapp / Leer | Lascia / Sta finendo / Finito | Manter / Acabando / Acabou |
 | “In your pantry” means you have some, not enough (#51) | «En tu despensa» significa que tienes algo… | « Dans votre garde-manger » signifie que vous en avez… | „In deinem Vorrat“ heißt, dass du etwas davon hast… | «Nella tua dispensa» vuol dire che ne hai… | “Na sua despensa” quer dizer que você tem um pouco… |
+| “e.g. 3 onions” (the Pantry field's example, #302: an amount the language's own tables split) | p. ej., 3 cebollas | p. ex. 3 oignons | z. B. 3 Zwiebeln | es. 3 cipolle | ex.: 3 cebolas |
 | Google's on-device AI (Chef mode on an unsupported phone, #144) | la IA en el dispositivo de Google | l'IA embarquée de Google | Googles On-Device-KI | l'IA sul dispositivo di Google | a IA no dispositivo do Google |
 | Your cooks (heading, #116) | Lo que has cocinado | Vos réalisations | Selbst gekocht | I tuoi piatti | O que você fez |
 | I made this (#116) | Lo he hecho | Je l'ai fait | Hab ich gekocht | L'ho fatto | Eu fiz |
