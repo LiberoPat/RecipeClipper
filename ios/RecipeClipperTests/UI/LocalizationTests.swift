@@ -5,6 +5,8 @@ import XCTest
 /// their forms, and the placeholders survive translation (#13).
 final class LocalizationTests: XCTestCase {
     private static let languages = ["es", "fr", "de", "it", "pt-BR"]
+    /// The languages with a `many` form for round millions, filled in as on Android.
+    private static let withMany: Set = ["es", "fr", "it", "pt-BR"]
 
     private func bundle(_ language: String) throws -> Bundle {
         let path = try XCTUnwrap(
@@ -53,6 +55,9 @@ final class LocalizationTests: XCTestCase {
                     entry.values.compactMap { $0 as? [String: Any] }.first, "\(language): \(key) has no rule")
                 XCTAssertNotNil(rule["one"], "\(language): \(key) has no one form")
                 XCTAssertNotNil(rule["other"], "\(language): \(key) has no other form")
+                if Self.withMany.contains(language) {
+                    XCTAssertNotNil(rule["many"], "\(language): \(key) has no many form")
+                }
             }
         }
     }
@@ -65,5 +70,22 @@ final class LocalizationTests: XCTestCase {
         let two = String(format: format, locale: Locale(identifier: "fr"), 2)
         XCTAssertEqual(zero.replacingOccurrences(of: "0", with: "1"), one)
         XCTAssertNotEqual(two.replacingOccurrences(of: "2", with: "1"), one)
+    }
+
+    /// The strings with two numbers (once picked by `n == 1`) are plurals too, chosen by the
+    /// count, the first number: French reads 0 as one, and a limit of 1 doesn't make it singular.
+    func testTwoNumberPluralsGoByTheirCount() throws {
+        let french = try bundle("fr")
+        for key in ["backup_skipped %lld %lld", "backup_skipped_free %lld %lld", "receive_file_skipped_free %lld %lld"] {
+            let format = french.localizedString(forKey: key, value: nil, table: nil)
+            XCTAssertNotEqual(format, key, "fr is missing \(key)")
+            let text = { (count: Int, limit: Int) -> String in
+                String(format: format, locale: Locale(identifier: "fr"), count, limit)
+            }
+            let asOne = { (s: String) in s.replacingOccurrences(of: "^\\d+", with: "1", options: .regularExpression) }
+            XCTAssertEqual(asOne(text(0, 25)), text(1, 25), key)
+            XCTAssertNotEqual(asOne(text(2, 25)), text(1, 25), key)
+            XCTAssertNotEqual(asOne(text(2, 1)), text(1, 1), key)
+        }
     }
 }

@@ -2503,166 +2503,276 @@
         }
       }
     },
-    "backup_skipped_free_one %lld" : {
+    "backup_skipped_free %lld %lld" : {
       "extractionState" : "manual",
       "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 älteres Rezept ohne Liste wurde nicht hinzugefügt: Die kostenlose App behält %lld Rezepte."
-          }
-        },
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 older recipe in no list wasn't added: the free app keeps %lld recipes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld older recipe in no list wasn't added: the free app keeps %2$lld recipes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld older recipes in no list weren't added: the free app keeps %2$lld recipes."
+                }
+              }
+            }
           }
         },
         "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receta antigua sin lista no se añadió: la app gratuita guarda %lld recetas."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receta antigua sin lista no se añadió: la app gratuita guarda %2$lld recetas."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$lld recetas."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$lld recetas."
+                }
+              }
+            }
           }
         },
         "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 ancienne recette sans liste n'a pas été ajoutée : la version gratuite conserve %lld recettes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ancienne recette sans liste n'a pas été ajoutée : la version gratuite conserve %2$lld recettes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld d'anciennes recettes sans liste n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld älteres Rezept ohne Liste wurde nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                }
+              }
+            }
           }
         },
         "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 ricetta meno recente senza lista non è stata aggiunta: l'app gratuita conserva %lld ricette."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricetta meno recente senza lista non è stata aggiunta: l'app gratuita conserva %2$lld ricette."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld di ricette meno recenti senza lista non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricette meno recenti senza lista non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receita antiga sem lista não foi adicionada: o app gratuito guarda %lld receitas."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receita antiga sem lista não foi adicionada: o app gratuito guarda %2$lld receitas."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                }
+              }
+            }
           }
         }
       }
     },
-    "backup_skipped_free_other %lld %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld older recipes in no list weren't added: the free app keeps %2$lld recipes."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$lld recetas."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld ricette meno recenti senza lista non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$lld receitas."
-          }
-        }
-      }
-    },
-    "backup_skipped_one %lld" : {
+    "backup_skipped %lld %lld" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 older recipe in no list wasn't added: history keeps the %lld most recent."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld older recipe in no list wasn't added: history keeps the %2$lld most recent."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld older recipes in no list weren't added: history keeps the %2$lld most recent."
+                }
+              }
+            }
           }
         },
         "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receta antigua sin lista no se añadió: el historial conserva las %lld más recientes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receta antigua sin lista no se añadió: el historial conserva las %2$lld más recientes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de recetas antiguas sin lista no se añadieron: el historial conserva las %2$lld más recientes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recetas antiguas sin lista no se añadieron: el historial conserva las %2$lld más recientes."
+                }
+              }
+            }
           }
         },
         "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 ancienne recette sans liste n'a pas été ajoutée : l'historique garde les %lld plus récentes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ancienne recette sans liste n'a pas été ajoutée : l'historique garde les %2$lld plus récentes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld d'anciennes recettes sans liste n'ont pas été ajoutées : l'historique garde les %2$lld plus récentes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : l'historique garde les %2$lld plus récentes."
+                }
+              }
+            }
           }
         },
         "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 älteres Rezept ohne Liste wurde nicht hinzugefügt: Der Verlauf behält die %lld zuletzt angesehenen."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld älteres Rezept ohne Liste wurde nicht hinzugefügt: Der Verlauf behält die %2$lld zuletzt angesehenen."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Der Verlauf behält die %2$lld zuletzt angesehenen."
+                }
+              }
+            }
           }
         },
         "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 ricetta meno recente senza lista non è stata aggiunta: la cronologia conserva le %lld più recenti."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricetta meno recente senza lista non è stata aggiunta: la cronologia conserva le %2$lld più recenti."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld di ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$lld più recenti."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$lld più recenti."
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receita antiga sem lista não foi adicionada: o histórico mantém as %lld mais recentes."
-          }
-        }
-      }
-    },
-    "backup_skipped_other %lld %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld older recipes in no list weren't added: history keeps the %2$lld most recent."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recetas antiguas sin lista no se añadieron: el historial conserva las %2$lld más recientes."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : l'historique garde les %2$lld plus récentes."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Der Verlauf behält die %2$lld zuletzt angesehenen."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$lld più recenti."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$lld mais recentes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receita antiga sem lista não foi adicionada: o histórico mantém as %2$lld mais recentes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$lld mais recentes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$lld mais recentes."
+                }
+              }
+            }
           }
         }
       }
@@ -20249,84 +20359,139 @@
         }
       }
     },
-    "receive_file_skipped_free_one %lld" : {
+    "receive_file_skipped_free %lld %lld" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 recipe wasn't added: the free app keeps %lld recipes."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 Rezept wurde nicht hinzugefügt: Die kostenlose App behält %lld Rezepte."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receta no se añadió: la app gratuita guarda %lld recetas."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 recette n'a pas été ajoutée : la version gratuite conserve %lld recettes."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 ricetta non è stata aggiunta: l'app gratuita conserva %lld ricette."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 receita não foi adicionada: o app gratuito guarda %lld receitas."
-          }
-        }
-      }
-    },
-    "receive_file_skipped_free_other %lld %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recipes weren't added: the free app keeps %2$lld recipes."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld Rezepte wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recipe wasn't added: the free app keeps %2$lld recipes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recipes weren't added: the free app keeps %2$lld recipes."
+                }
+              }
+            }
           }
         },
         "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recetas no se añadieron: la app gratuita guarda %2$lld recetas."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receta no se añadió: la app gratuita guarda %2$lld recetas."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de recetas no se añadieron: la app gratuita guarda %2$lld recetas."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recetas no se añadieron: la app gratuita guarda %2$lld recetas."
+                }
+              }
+            }
           }
         },
         "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld recettes n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recette n'a pas été ajoutée : la version gratuite conserve %2$lld recettes."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de recettes n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld recettes n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld Rezept wurde nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld Rezepte wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                }
+              }
+            }
           }
         },
         "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld ricette non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricetta non è stata aggiunta: l'app gratuita conserva %2$lld ricette."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld di ricette non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld ricette non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld receitas não foram adicionadas: o app gratuito guarda %2$lld receitas."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receita não foi adicionada: o app gratuito guarda %2$lld receitas."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld de receitas não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld receitas não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                }
+              }
+            }
           }
         }
       }
