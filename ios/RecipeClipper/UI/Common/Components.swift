@@ -216,11 +216,14 @@ struct OutlinedField: View {
     var errorText: String? = nil
     var keyboard: UIKeyboardType = .default
     var onSubmit: () -> Void = {}
+    /// An example shown as the placeholder while the field is focused, with `label` then on the
+    /// outline above it, as Android's outlined field shows a label and a placeholder (#302).
+    var example: String? = nil
     @FocusState private var focused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            TextField(label, text: $text)
+            input
                 .textStyle(Typography.bodyLarge)
                 .foregroundStyle(Palette.onBackground)
                 .keyboardType(keyboard)
@@ -239,12 +242,34 @@ struct OutlinedField: View {
                             lineWidth: focused || isError ? 2 : 1
                         )
                 )
+                .overlay(alignment: .topLeading) { floatingLabel }
             if isError, let errorText {
                 Text(errorText)
                     .textStyle(Typography.bodySmall)
                     .foregroundStyle(Palette.error)
                     .padding(.horizontal, 14)
             }
+        }
+    }
+
+    @ViewBuilder private var input: some View {
+        if let example {
+            TextField(label, text: $text, prompt: Text(focused ? example : label))
+        } else {
+            TextField(label, text: $text)
+        }
+    }
+
+    /// The label on the outline while a field with an example is focused or filled.
+    @ViewBuilder private var floatingLabel: some View {
+        if example != nil, focused || !text.isEmpty {
+            Text(label)
+                .textStyle(Typography.bodySmall)
+                .foregroundStyle(focused ? Palette.primary : Palette.muted)
+                .padding(.horizontal, 4)
+                .background(Palette.background)
+                .offset(x: 10, y: -8)
+                .accessibilityHidden(true)
         }
     }
 }

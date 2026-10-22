@@ -62,6 +62,48 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertEqual(pantry.items.value.first?.inStock, true)
     }
 
+    // #302: an amount typed with the name.
+    private func added(_ typed: String, _ pantry: FakePantryRepository = FakePantryRepository()) async -> PantryItem? {
+        let vm = await viewModel(pantry)
+        vm.onDraftChange(typed)
+        vm.onAddTyped()
+        await settleMain()
+        XCTAssertEqual(vm.uiState.draft, "")
+        XCTAssertEqual(pantry.items.value.count, 1)
+        return pantry.items.value.first
+    }
+
+    func testAnAmountTypedBeforeTheNameIsTheNewItemsQuantity() async {
+        let onions = await added(" 3 onions ")
+        XCTAssertEqual(onions?.name, "onions")
+        XCTAssertEqual(onions?.quantity, "3")
+        XCTAssertEqual(onions?.aisle, .produce)
+        let rice = await added("2 cups rice")
+        XCTAssertEqual(rice?.quantity, "2 cups")
+    }
+
+    func testANameAloneOrOneThatOnlyLooksLikeAnAmountIsAddedWholeWithNoQuantity() async {
+        for typed in ["rice", "00 flour", "7up", "2-3 onions"] {
+            let item = await added(typed)
+            XCTAssertEqual(item?.name, typed)
+            XCTAssertNil(item?.quantity, typed)
+        }
+    }
+
+    func testRestockingWithAnAmountTakesItWithoutOneKeepsTheOld() async {
+        var out = item(1, "Onions", inStock: false, alwaysHave: true, expires: 9)
+        out.quantity = "1"
+        var expected = out
+        expected.inStock = true
+        expected.purchasedDay = calendar.today()
+        let kept = await added("onions", FakePantryRepository([out]))
+        XCTAssertEqual(kept, expected)
+
+        expected.quantity = "4"
+        let restocked = await added("4 onions", FakePantryRepository([out]))
+        XCTAssertEqual(restocked, expected)
+    }
+
     /// #149: "Send list" sends what's in stock, as the sort arranges it, whatever the search.
     func testSendListIsWhatsInStockByTheScreensSortWhateverTheSearch() async {
         let pantry = FakePantryRepository([
