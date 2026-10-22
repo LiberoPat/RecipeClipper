@@ -170,14 +170,11 @@ enum Strings {
         if s.recipesAlreadyHere > 0 && (s.recipesAdded > 0 || s.listsAdded > 0) {
             parts.append(String(localized: "backup_already_here \(s.recipesAlreadyHere)"))
         }
+        // Plural variations chosen by the first number, as Android's <plurals> (French counts 0 as one).
         if s.recipesSkipped > 0, let free = s.freeLimit {
-            parts.append(s.recipesSkipped == 1
-                ? String(localized: "backup_skipped_free_one \(free)")
-                : String(localized: "backup_skipped_free_other \(s.recipesSkipped) \(free)"))
+            parts.append(String(localized: "backup_skipped_free \(s.recipesSkipped) \(free)"))
         } else if s.recipesSkipped > 0 {
-            parts.append(s.recipesSkipped == 1
-                ? String(localized: "backup_skipped_one \(historyLimit)")
-                : String(localized: "backup_skipped_other \(s.recipesSkipped) \(historyLimit)"))
+            parts.append(String(localized: "backup_skipped \(s.recipesSkipped) \(historyLimit)"))
         }
         return parts.joined(separator: " ")
     }
@@ -529,7 +526,7 @@ enum Strings {
     static var newMealType: String { String(localized: "action_new_meal_type") }
     static var renameMealTypeTitle: String { String(localized: "rename_meal_type_title") }
     static func deleteMealTypeTitle(_ name: String) -> String { String(localized: "delete_meal_type_title \(name)") }
-    static var deleteMealTypeBody: String { String(localized: "delete_meal_type_body") }
+    static func deleteMealTypeBody(_ movesTo: String) -> String { String(localized: "delete_meal_type_body \(movesTo)") }
     static var moveUp: String { String(localized: "action_move_up") }
     static var moveDown: String { String(localized: "action_move_down") }
     static var mealTypeName: String { String(localized: "label_meal_type_name") }
@@ -586,9 +583,7 @@ enum Strings {
     static var receiveFileToGroceries: String { String(localized: "receive_file_to_groceries") }
     /// How many recipes the free library (#107) left out of a received file, and its size.
     static func receiveFileSkippedFree(_ skipped: Int, limit: Int) -> String {
-        skipped == 1
-            ? String(localized: "receive_file_skipped_free_one \(limit)")
-            : String(localized: "receive_file_skipped_free_other \(skipped) \(limit)")
+        String(localized: "receive_file_skipped_free \(skipped) \(limit)")
     }
     static var moveToAisle: String { String(localized: "action_move_to_aisle") }
     static var moveToAisleTitle: String { String(localized: "move_to_aisle_title") }

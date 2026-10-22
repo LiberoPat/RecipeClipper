@@ -58,7 +58,7 @@ struct MealTypesScreen: View {
             Button(Strings.delete, role: .destructive, action: vm.onDeleteConfirm)
             Button(Strings.cancel, role: .cancel, action: vm.onDeleteDismissed)
         } message: {
-            Text(Strings.deleteMealTypeBody)
+            Text(Strings.deleteMealTypeBody(state.movesTo))
         }
     }
 }

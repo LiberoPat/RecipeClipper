@@ -23,7 +23,13 @@ data class MealTypesUiState(
     val renaming: MealType? = null,
     val renameText: String = "",
     val deleting: MealType? = null
-)
+) {
+    /**
+     * Where a deleted type's meals go: Dinner, under the name it has now (the seeded names are
+     * stored in English, and it may have been renamed), for the delete confirmation to name.
+     */
+    val movesTo: String get() = types.firstOrNull { it.builtInKey == MealType.DINNER }?.name.orEmpty()
+}
 
 /**
  * The Week menu's "Meal types" screen (#49): add, rename and reorder any, delete the user's

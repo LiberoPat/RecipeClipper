@@ -31,7 +31,7 @@
     <string name="error_no_transcription">Não encontramos o texto da receita neste post. No Reddit, as receitas muitas vezes estão só na foto, e ninguém a transcreveu nos comentários ainda.</string>
     <string name="error_fetch_failed">Não foi possível carregar a página (%1$s).</string>
     <string name="error_blocked">O site bloqueou o app (HTTP %1$d). Isso costuma passar rápido: tente de novo em um minuto.</string>
-    <string name="error_human_check">Este site quer confirmar que você é humano antes de deixar o app entrar. Abra o original, marque a caixa e tente de novo.</string>
+    <string name="error_human_check">Este site quer confirmar que você não é um robô antes de deixar o app entrar. Abra o original, marque a caixa e tente de novo.</string>
     <string name="error_offline">Você está offline. A receita será carregada quando você voltar a ficar online.</string>
     <string name="error_fetch_failed_unknown_detail">erro desconhecido</string>
     <string name="error_save_failed">Não foi possível salvar a receita.</string>
@@ -61,8 +61,8 @@
     </plurals>
     <string name="cook_step_label">PASSO %1$d</string>
     <string name="cook_position">Passo %1$d de %2$d</string>
-    <string name="cook_done_next">Feito — próximo passo</string>
-    <string name="cook_done_finish">Feito — concluir</string>
+    <string name="cook_done_next">Pronto — próximo passo</string>
+    <string name="cook_done_finish">Pronto — concluir</string>
     <string name="cd_hide_ingredients">Ocultar ingredientes</string>
     <string name="cd_show_ingredients">Mostrar ingredientes</string>
     <!-- The ingredients bar's groups in cook mode (#286) -->
@@ -78,13 +78,13 @@
     </plurals>
     <string name="timer_start">⏱  Timer de %1$s</string>
     <string name="timers_up">O tempo acabou</string>
-    <string name="label_recipe_url">URL da receita</string>
+    <string name="label_recipe_url">Link da receita</string>
     <string name="section_continue_cooking">Continuar cozinhando</string>
     <string name="section_recently_viewed">Vistas recentemente</string>
     <string name="home_empty_hint">As receitas que você abrir vão aparecer aqui.</string>
     <!-- Home (#286): the resume card and the Add a recipe tiles -->
     <string name="home_paste_link_hint">De qualquer site ou do Reddit</string>
-    <string name="home_scan_hint">Um cartão ou a página de um livro</string>
+    <string name="home_scan_hint">Um caderno ou livro de receitas</string>
     <string name="home_type_hint">Digite você mesmo</string>
     <string name="home_share_hint">Ou compartilhe um link com o Recipe Clipper de qualquer app.</string>
     <string name="home_resume_cooking">Retomar a receita</string>
@@ -92,7 +92,7 @@
     <string name="home_timer_left">Faltam %1$s</string>
     <string name="recipes_title">Receitas</string>
     <string name="recipes_empty">Nada por aqui ainda. As receitas que você abrir ficam guardadas aqui, e com + você adiciona uma à mão ou por um link.</string>
-    <string name="recipes_no_results">Nenhuma receita corresponde a “%1$s”.</string>
+    <string name="recipes_no_results">Nenhuma receita encontrada para “%1$s”.</string>
     <string name="label_search_recipes">Buscar títulos e ingredientes</string>
     <string name="cd_add_recipe">Adicionar uma receita</string>
     <string name="action_type_recipe">Digitar uma receita</string>
@@ -134,7 +134,7 @@
         <item quantity="other">há %d dias</item>
     </plurals>
     <string name="dark_while_cooking_title">Escuro ao cozinhar</string>
-    <string name="dark_while_cooking_description">Modo cozinhar com fundo escuro mesmo no modo claro</string>
+    <string name="dark_while_cooking_description">Modo cozinha com fundo escuro mesmo no modo claro</string>
     <string name="settings_section_steps">Passos</string>
     <string name="amounts_in_steps_title">Quantidades nos passos</string>
     <string name="amounts_in_steps_description">Mostra a quantidade de cada ingrediente onde um passo o menciona</string>
@@ -228,11 +228,11 @@
 
     <!-- Editing a recipe, or typing one in (#29) -->
     <string name="action_edit">Editar</string>
-    <string name="action_update_from_source">Atualizar da fonte</string>
+    <string name="action_update_from_source">Atualizar do site</string>
     <string name="action_update">Atualizar</string>
     <string name="update_from_source_title">Substituir sua versão?</string>
-    <string name="update_from_source_body">A receita será buscada de novo no site e substituirá sua versão. Suas alterações serão perdidas; sua nota e suas listas continuam.</string>
-    <string name="update_from_source_failed">Não foi possível atualizar da fonte. %1$s</string>
+    <string name="update_from_source_body">A receita será buscada de novo no site e substituirá sua versão. Suas alterações serão perdidas; sua anotação e suas listas continuam.</string>
+    <string name="update_from_source_failed">Não foi possível atualizar do site. %1$s</string>
     <string name="edit_title_new">Nova receita</string>
     <string name="edit_title_edit">Editar receita</string>
     <string name="edit_label_name">Nome</string>
@@ -251,7 +251,7 @@
     <string name="photo_read">Lido da foto. Compare cada linha com ela, principalmente as quantidades, antes de salvar.</string>
     <string name="photo_not_sorted">Não foi possível ler uma receita na foto: termine à mão.</string>
     <string name="photo_failed">Não foi possível carregar a foto. Verifique a conexão e tente de novo.</string>
-    <string name="photo_not_ready">O leitor de fotos ainda não está pronto neste celular: o Google Play Services faz o download uma vez, pela internet. Tente de novo em alguns minutos ou termine a receita à mão abaixo.</string>
+    <string name="photo_not_ready">O leitor de fotos ainda não está pronto neste celular: os Serviços do Google Play fazem o download uma vez, pela internet. Tente de novo em alguns minutos ou termine a receita à mão abaixo.</string>
     <string name="photo_check_heading">Confira estas linhas: ali a foto estava difícil de ler</string>
     <string name="photo_check_large">Essa quantidade parece grande: confira</string>
     <string name="photo_fraction_prompt">Uma fração? Toque na que está na foto:</string>
@@ -283,9 +283,9 @@
 
     <!-- Week meal plan (#49) -->
     <string name="action_add_to_plan">Adicionar ao plano</string>
-    <string name="action_add_to_day">Adicionar em %1$s</string>
+    <string name="action_add_to_day">Adicionar para %1$s</string>
     <string name="label_meal">Refeição</string>
-    <string name="snackbar_removed_from_plan">%1$s removido do plano</string>
+    <string name="snackbar_removed_from_plan">Removido do plano: %1$s</string>
     <string name="cd_previous_week">Semana anterior</string>
     <string name="cd_next_week">Próxima semana</string>
     <string name="meal_types_title">Tipos de refeição</string>
@@ -293,7 +293,7 @@
     <string name="action_add_meal">+ Adicionar</string>
     <string name="action_move">Mover…</string>
     <string name="action_remove_from_plan">Remover do plano</string>
-    <string name="add_to_day_title">Adicionar em %1$s</string>
+    <string name="add_to_day_title">Adicionar para %1$s</string>
     <string name="label_search_or_note">Busque suas receitas ou escreva uma nota</string>
     <string name="action_add_as_note">Adicionar “%1$s” como nota</string>
     <string name="move_meal_title">Mover %1$s</string>
@@ -301,7 +301,7 @@
     <string name="action_new_meal_type">+ Novo tipo de refeição</string>
     <string name="rename_meal_type_title">Renomear tipo de refeição</string>
     <string name="delete_meal_type_title">Excluir “%1$s”?</string>
-    <string name="delete_meal_type_body">As refeições planejadas com este tipo passam para Jantar. Elas não são excluídas.</string>
+    <string name="delete_meal_type_body">As refeições planejadas com este tipo passam para “%1$s”. Elas não são excluídas.</string>
     <string name="action_move_up">Mover para cima</string>
     <string name="action_move_down">Mover para baixo</string>
     <string name="label_meal_type_name">Nome do tipo de refeição</string>
@@ -319,7 +319,7 @@
     <string name="clip_field_steps">Passos</string>
     <string name="clip_field_photo">Foto</string>
     <string name="clip_reddit_blocked_note">O Reddit não deixou o app ler este post, então ele está aberto aqui: selecione a receita.</string>
-    <string name="clip_human_check_note">Este site quer confirmar que você é humano. Marque a caixa e a receita vai abrir.</string>
+    <string name="clip_human_check_note">Este site quer confirmar que você não é um robô. Marque a caixa e a receita vai abrir.</string>
     <string name="clip_human_check_no_recipe_note">A verificação passou, mas esta página não tem uma receita que o app consiga ler, então ela está aberta aqui: selecione a receita.</string>
     <string name="clip_skip_photo">Pular</string>
     <string name="clip_photo_unreadable">Não foi possível ler uma imagem ali. A foto é opcional.</string>
@@ -349,10 +349,10 @@
     <string name="cd_clip_remove_line">Remover a linha %1$d</string>
     <string name="clip_save">Salvar receita</string>
     <string name="update_from_source_clip_title">Substituir seu recorte?</string>
-    <string name="update_from_source_clip_body">Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. Ela continua nas suas listas e no histórico.</string>
+    <string name="update_from_source_clip_body">Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. A receita continua nas suas listas e no histórico.</string>
     <string name="clipped_by_you">Recortada por você</string>
     <string name="clipped_by_you_on">Recortada por você · %1$s</string>
-    <string name="extracted_from_page">Tirada do texto da página: confira com a fonte</string>
+    <string name="extracted_from_page">Extraída do texto da página: confira com o original</string>
     <plurals name="clip_lines_selected">
         <item quantity="one">%1$d linha selecionada</item>
         <item quantity="many">%1$d de linhas selecionadas</item>
@@ -403,8 +403,8 @@
         <item quantity="many">%1$d de receitas não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
         <item quantity="other">%1$d receitas não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
     </plurals>
-    <string name="action_move_to_aisle">Mover para outro corredor…</string>
-    <string name="move_to_aisle_title">Corredor</string>
+    <string name="action_move_to_aisle">Mover para outra seção…</string>
+    <string name="move_to_aisle_title">Seção</string>
     <string name="snackbar_grocery_deleted">Excluído: %1$s</string>
     <string name="snackbar_checked_cleared">Itens marcados removidos</string>
     <string name="snackbar_done_shopping">Despensa atualizada, itens marcados removidos</string>
@@ -429,7 +429,7 @@
     <string name="action_use_up">Atualizar despensa</string>
     <string name="snackbar_pantry_used_up">Despensa atualizada</string>
     <string name="cd_use_up_change">%1$s, de %2$s para %3$s</string>
-    <string name="cd_use_up_used_up">%1$s, de %2$s para acabou; vai para a lista de compras</string>
+    <string name="cd_use_up_used_up">%1$s: tinha %2$s, acabou; vai para a lista de compras</string>
     <string name="cd_use_up_choice">%1$s: %2$s</string>
     <string name="aisle_produce">Hortifrúti</string>
     <string name="aisle_meat">Carnes</string>
@@ -438,7 +438,7 @@
     <string name="aisle_bakery">Padaria</string>
     <string name="aisle_baking">Confeitaria</string>
     <string name="aisle_grains">Massas, arroz e grãos</string>
-    <string name="aisle_canned">Enlatados</string>
+    <string name="aisle_canned">Enlatados e conservas</string>
     <string name="aisle_condiments">Óleos, molhos e condimentos</string>
     <string name="aisle_spices">Temperos</string>
     <string name="aisle_frozen">Congelados</string>
@@ -448,10 +448,10 @@
 
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Adicione à despensa</string>
-    <string name="pantry_search_hint">Pesquise na despensa</string>
+    <string name="pantry_search_hint">Buscar na despensa</string>
     <string name="pantry_empty">Nada na despensa ainda. Digite acima o que tem nos seus armários, ou guarde as compras quando terminar.</string>
-    <string name="pantry_no_results">Nada corresponde a “%1$s”.</string>
-    <string name="pantry_sort_aisle">Ordenar por corredor</string>
+    <string name="pantry_no_results">Nada encontrado para “%1$s”.</string>
+    <string name="pantry_sort_aisle">Ordenar por seção</string>
     <string name="pantry_sort_expiry">Ordenar por validade</string>
     <string name="pantry_in_stock">Em estoque</string>
     <string name="pantry_out">Acabou</string>
@@ -459,7 +459,7 @@
     <string name="pantry_ran_out">Acabou</string>
     <string name="pantry_restock">Repor</string>
     <string name="pantry_running_low">Acabando</string>
-    <string name="pantry_low">Pouco</string>
+    <string name="pantry_low">Acabando</string>
     <string name="pantry_take_off_list">Remover da lista de compras</string>
     <string name="snackbar_taken_off_list">Removido da lista de compras</string>
     <plurals name="snackbar_taken_off_list_count">
@@ -470,7 +470,7 @@
     <string name="pantry_always_have">Sempre tenho</string>
     <string name="pantry_always_have_detail">Itens básicos nunca aparecem em “Para comprar”.</string>
     <string name="pantry_expired">Vencido</string>
-    <string name="pantry_use_by">Consumir até %1$s</string>
+    <string name="pantry_use_by">Vence em %1$s</string>
     <string name="pantry_bought">Comprado em %1$s</string>
     <string name="pantry_edit_title">Editar item</string>
     <string name="pantry_label_name">Nome</string>
@@ -507,12 +507,12 @@
     <string name="settings_section_pantry">Despensa</string>
     <string name="expiry_reminders_title">Lembretes de validade</string>
     <string name="expiry_reminders_description">Uma notificação às 9 da manhã quando algo em estoque vence hoje ou amanhã</string>
-    <string name="expiry_reminders_denied">As notificações estão desativadas para o Recipe Clipper. Permita-as nos ajustes do sistema para receber lembretes.</string>
+    <string name="expiry_reminders_denied">As notificações estão desativadas para o Recipe Clipper. Permita-as nas configurações do sistema para receber lembretes.</string>
     <!-- Chef mode (#100) -->
     <string name="chef_mode_title">Modo chef</string>
     <string name="chef_mode_description">Passos curtos, escritos neste celular. Toque em um para vê-lo como na receita.</string>
     <string name="chef_mode_languages">Para receitas em %1$s.</string>
-    <string name="chef_mode_unsupported">Requer um celular com a IA no dispositivo do Google, como um Pixel 9 ou mais recente ou um Galaxy S25 ou mais recente.</string>
+    <string name="chef_mode_unsupported">Requer um celular com a IA do Google no dispositivo, como um Pixel 9 ou mais recente ou um Galaxy S25 ou mais recente.</string>
     <string name="chef_mode_not_ready">O modelo do celular ainda não está pronto. Tente mais tarde.</string>
     <string name="step_show_as_written">Como na receita</string>
     <string name="step_show_short">Versão curta</string>
@@ -589,7 +589,7 @@
     <string name="cooked_photo_deleted">Foto excluída</string>
     <string name="cooked_add_failed">Não foi possível adicionar a foto.</string>
     <string name="camera_unavailable">Nenhum app de câmera disponível.</string>
-    <string name="cooked_photo_missing">Foto não está neste celular</string>
+    <string name="cooked_photo_missing">A foto não está neste celular</string>
     <string name="action_mark_cooked">Marcar como feita</string>
     <string name="cooked_mark">Feita</string>
     <string name="cd_cooked_mark">Feita, sem foto, %1$s</string>
@@ -619,13 +619,13 @@
     <!-- The tooltips (#190): one small bubble at a time, pointing at a control -->
     <string name="tooltip_got_it">Entendi</string>
     <string name="tooltip_home_link">Compartilhe o link de uma receita com este app, ou toque aqui para colá-lo.</string>
-    <string name="tooltip_recipe_units">Como na receita mostra cada quantidade exatamente como a receita dá. Toque para ver todas as receitas em Métrico ou Onças; o que não puder ser convertido com exatidão fica como na receita.</string>
-    <string name="tooltip_recipe_start_cooking">Modo cozinhar: um passo de cada vez, com timers, e a tela fica ligada.</string>
-    <string name="tooltip_recipe_made_this">Fez a receita? Adicione uma foto e uma nota, ou Marcar como feita.</string>
+    <string name="tooltip_recipe_units">“Como na receita” mostra cada quantidade exatamente como está na receita. Toque para ver todas as receitas em “Métrico” ou “Onças”; o que não puder ser convertido com exatidão fica como na receita.</string>
+    <string name="tooltip_recipe_start_cooking">Modo cozinha: um passo de cada vez, com timers, e a tela fica ligada.</string>
+    <string name="tooltip_recipe_made_this">Fez a receita? Adicione uma foto e uma nota, ou toque em “Marcar como feita”.</string>
     <string name="tooltip_cook_done_next">Quando terminar um passo, toque aqui para ir ao próximo.</string>
     <string name="tooltip_cook_tap_step">Toque em qualquer passo para torná-lo o atual.</string>
     <string name="tooltip_cook_timer">O timer deste passo. Ele toca mesmo se você sair do app.</string>
-    <string name="tooltip_groceries_long_press">Toque e segure um item para movê-lo para outro corredor, ou excluí-lo.</string>
+    <string name="tooltip_groceries_long_press">Toque e segure um item para movê-lo para outra seção, ou excluí-lo.</string>
     <string name="tooltip_groceries_done_shopping">De volta em casa? Guarde o que marcou na despensa e tire da lista.</string>
     <string name="tooltip_pantry_in_stock">Toque em um item para mudar o estoque ou a quantidade; deslize para a esquerda quando acabar. A etiqueta da cesta indica que está na sua lista de compras.</string>
     <string name="tooltip_settings_show_tips">Veja cada dica de novo, uma de cada vez.</string>
@@ -635,10 +635,10 @@
     <string name="settings_show_tips_description">Cada dica aparece mais uma vez, uma de cada vez.</string>
     <!-- Settings' index (#286) -->
     <string name="settings_value_system_theme">Tema do sistema</string>
-    <string name="settings_value_amounts_on">Quantidades: sim</string>
-    <string name="settings_value_amounts_off">Quantidades: não</string>
-    <string name="settings_value_reminders_on">Lembretes: sim</string>
-    <string name="settings_value_reminders_off">Lembretes: não</string>
+    <string name="settings_value_amounts_on">Com quantidades</string>
+    <string name="settings_value_amounts_off">Sem quantidades</string>
+    <string name="settings_value_reminders_on">Com lembretes</string>
+    <string name="settings_value_reminders_off">Sem lembretes</string>
     <string name="settings_value_unlocked">Desbloqueado</string>
     <string name="clip_hint_start">Toque em Nome abaixo e depois no nome da receita na página.</string>
     <string name="clip_confirm_name">Usar como nome</string>
@@ -652,7 +652,7 @@
     <string name="clip_next_steps">Agora: toque em Passos.</string>
     <string name="clip_next_photo">Agora: toque em Foto, ou Concluído.</string>
     <string name="clip_ready">Toque em Concluído para revisar e salvar.</string>
-    <string name="clip_selected_hint">toque no campo onde eles vão</string>
+    <string name="clip_selected_hint">toque no campo de destino</string>
     <plurals name="clip_confirm_ingredients">
         <item quantity="one">Adicionar %1$d linha a Ingredientes</item>
         <item quantity="many">Adicionar %1$d de linhas a Ingredientes</item>
@@ -674,13 +674,13 @@
         <item quantity="other">%1$d passos removidos</item>
     </plurals>
     <!-- The ⋮ menus' second lines (#260). -->
-    <string name="menu_desc_send_file">Uma cópia para abrir no Recipe Clipper</string>
+    <string name="menu_desc_send_file">Uma cópia para alguém abrir no Recipe Clipper</string>
     <string name="menu_desc_update_from_source">Troca suas edições pela versão atual do site</string>
     <string name="menu_desc_what_i_need">O que as receitas da semana pedem e a despensa não tem</string>
     <string name="menu_desc_add_week_to_groceries">Na sua lista de compras, menos o que você já tem</string>
     <string name="menu_desc_save_week_as_menu">Guarda as refeições da semana para repetir depois</string>
     <string name="menu_desc_apply_menu">Adiciona as refeições de um cardápio salvo a esta semana</string>
-    <string name="menu_desc_meal_types">Adicione, renomeie ou reordene as refeições do dia</string>
+    <string name="menu_desc_meal_types">Adiciona, renomeia ou reordena as refeições do dia</string>
     <string name="menu_desc_paste_list">Adiciona itens de um texto que você copiou</string>
     <string name="menu_desc_clear_ticked">Remove os itens marcados sem repor a despensa</string>
     <string name="menu_desc_pantry_send_list">O que você tem em casa, como texto</string>
@@ -702,8 +702,8 @@
         <item quantity="other">%1$d itens removidos</item>
     </plurals>
     <plurals name="snackbar_pantry_marked_run_out">
-        <item quantity="one">%1$d item marcado que acabou</item>
-        <item quantity="many">%1$d de itens marcados que acabaram</item>
-        <item quantity="other">%1$d itens marcados que acabaram</item>
+        <item quantity="one">%1$d item marcado como Acabou</item>
+        <item quantity="many">%1$d de itens marcados como Acabou</item>
+        <item quantity="other">%1$d itens marcados como Acabou</item>
     </plurals>
 </resources>
