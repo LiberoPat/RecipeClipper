@@ -76,7 +76,7 @@
         <item quantity="many">%1$d di ingredienti corrispondenti</item>
         <item quantity="other">%1$d ingredienti corrispondenti</item>
     </plurals>
-    <string name="timer_start">⏱  Avvia timer di %1$s</string>
+    <string name="timer_start">⏱  Avvia timer da %1$s</string>
     <string name="timers_up">Tempo scaduto</string>
     <string name="label_recipe_url">URL della ricetta</string>
     <string name="section_continue_cooking">Continua a cucinare</string>
@@ -84,7 +84,7 @@
     <string name="home_empty_hint">Le ricette che apri compariranno qui.</string>
     <!-- Home (#286): the resume card and the Add a recipe tiles -->
     <string name="home_paste_link_hint">Da qualsiasi sito o da Reddit</string>
-    <string name="home_scan_hint">Una scheda o la pagina di un libro</string>
+    <string name="home_scan_hint">Una scheda o la pagina di un ricettario</string>
     <string name="home_type_hint">Scrivila tu</string>
     <string name="home_share_hint">Oppure condividi un link con Recipe Clipper da qualsiasi app.</string>
     <string name="home_resume_cooking">Riprendi a cucinare</string>
@@ -137,7 +137,7 @@
     <string name="dark_while_cooking_description">Modalità cucina su sfondo scuro anche in modalità chiara</string>
     <string name="settings_section_steps">Passaggi</string>
     <string name="amounts_in_steps_title">Quantità nei passaggi</string>
-    <string name="amounts_in_steps_description">Mostra la quantità di ogni ingrediente dove un passaggio lo nomina</string>
+    <string name="amounts_in_steps_description">Mostra la quantità di ogni ingrediente dove un passaggio lo cita</string>
     <string name="nav_settings">Impostazioni</string>
     <string name="settings_title">Impostazioni</string>
     <string name="settings_section_units">Unità</string>
@@ -146,9 +146,9 @@
     <string name="settings_section_your_recipes">Le tue ricette</string>
 
     <string name="backup_export_title">Esporta ricette</string>
-    <string name="backup_export_description">Salvare tutte le ricette e le liste in un file, da conservare o trasferire su un altro telefono</string>
+    <string name="backup_export_description">Salva tutte le ricette e le liste in un file, da conservare o da trasferire su un altro telefono</string>
     <string name="backup_import_title">Importa ricette</string>
-    <string name="backup_import_description">Aggiungere le ricette e le liste da un file di esportazione. Qui non viene sostituito né eliminato nulla.</string>
+    <string name="backup_import_description">Aggiunge le ricette e le liste di un file di esportazione. Niente di ciò che c\'è già viene sostituito o eliminato.</string>
     <string name="backup_share_title">Esporta ricette</string>
     <string name="backup_exporting">Preparazione del file…</string>
     <string name="backup_importing">Importazione…</string>
@@ -171,9 +171,9 @@
         <item quantity="other">%d ricette erano già qui.</item>
     </plurals>
     <plurals name="backup_skipped">
-        <item quantity="one">%1$d vecchia ricetta senza lista non è stata aggiunta: la cronologia conserva le %2$d più recenti.</item>
-        <item quantity="many">%1$d di vecchie ricette senza lista non sono state aggiunte: la cronologia conserva le %2$d più recenti.</item>
-        <item quantity="other">%1$d vecchie ricette senza lista non sono state aggiunte: la cronologia conserva le %2$d più recenti.</item>
+        <item quantity="one">%1$d ricetta meno recente senza lista non è stata aggiunta: la cronologia conserva le %2$d più recenti.</item>
+        <item quantity="many">%1$d di ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$d più recenti.</item>
+        <item quantity="other">%1$d ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$d più recenti.</item>
     </plurals>
     <string name="backup_error_not_a_backup">Quel file non è un\'esportazione di Recipe Clipper.</string>
     <string name="backup_error_newer_version">Quel file è stato creato con una versione più recente di Recipe Clipper (formato %1$d). Aggiorna l\'app per importarlo.</string>
@@ -253,7 +253,7 @@
     <string name="photo_failed">Impossibile caricare la foto. Controlla la connessione e riprova.</string>
     <string name="photo_not_ready">Il lettore di foto non è ancora pronto su questo telefono: i servizi Google Play lo scaricano una volta, via internet. Riprova tra qualche minuto o completa la ricetta a mano qui sotto.</string>
     <string name="photo_check_heading">Controlla queste righe: lì la foto era difficile da leggere</string>
-    <string name="photo_check_large">Questa quantità sembra grande: controllala</string>
+    <string name="photo_check_large">Questa quantità sembra alta: controllala</string>
     <string name="photo_fraction_prompt">Una frazione? Tocca quella nella foto:</string>
     <string name="photo_fraction_chip">Usa %1$s in %2$s</string>
     <string name="photo_image_description">Foto di %1$s</string>
@@ -285,7 +285,7 @@
     <string name="action_add_to_plan">Aggiungi al piano</string>
     <string name="action_add_to_day">Aggiungi a %1$s</string>
     <string name="label_meal">Pasto</string>
-    <string name="snackbar_removed_from_plan">%1$s rimosso dal piano</string>
+    <string name="snackbar_removed_from_plan">Rimosso dal piano: %1$s</string>
     <string name="cd_previous_week">Settimana precedente</string>
     <string name="cd_next_week">Settimana successiva</string>
     <string name="meal_types_title">Tipi di pasto</string>
@@ -322,7 +322,7 @@
     <string name="clip_human_check_note">Questo sito vuole verificare che tu sia una persona. Spunta la casella e la ricetta si aprirà.</string>
     <string name="clip_human_check_no_recipe_note">Verifica superata, ma questa pagina non ha una ricetta che l\'app sappia leggere, quindi è aperta qui: seleziona la ricetta.</string>
     <string name="clip_skip_photo">Salta</string>
-    <string name="clip_photo_unreadable">Impossibile leggere un\'immagine lì. La foto è facoltativa.</string>
+    <string name="clip_photo_unreadable">Nessuna immagine leggibile in quel punto. La foto è facoltativa.</string>
     <string name="clip_review">Rivedi</string>
     <string name="clip_added_name">Nome aggiunto</string>
     <string name="clip_added_photo">Foto aggiunta</string>
@@ -333,7 +333,7 @@
     <string name="clip_needs_name">Scrivi il nome della ricetta per salvarla, oppure tocca Nome e poi il nome nella pagina.</string>
     <string name="clip_needs_lines">Per salvare, tocca Ingredienti o Passaggi, poi sceglili nella pagina.</string>
     <string name="clip_needs_name_and_lines">Per salvare, tocca Nome, poi Ingredienti o Passaggi, e scegli ciascuno nella pagina.</string>
-    <string name="clip_text_unreadable">Il post non è ancora caricato. Attendi un momento, poi tocca di nuovo Testo.</string>
+    <string name="clip_text_unreadable">Il post non si è ancora caricato. Attendi un momento, poi tocca di nuovo Testo.</string>
     <string name="clip_show_text">Testo</string>
     <string name="clip_show_page">Pagina</string>
     <string name="clip_text_comments">Commenti</string>
@@ -349,7 +349,7 @@
     <string name="cd_clip_remove_line">Rimuovi la riga %1$d</string>
     <string name="clip_save">Salva ricetta</string>
     <string name="update_from_source_clip_title">Sostituire il tuo ritaglio?</string>
-    <string name="update_from_source_clip_body">La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nei tuoi elenchi e nella cronologia.</string>
+    <string name="update_from_source_clip_body">La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nelle tue liste e nella cronologia.</string>
     <string name="clipped_by_you">Ritagliata da te</string>
     <string name="clipped_by_you_on">Ritagliata da te · %1$s</string>
     <string name="extracted_from_page">Presa dal testo della pagina: verificala con la fonte</string>
@@ -379,9 +379,9 @@
     <string name="groceries_week_empty">Nessuna ricetta in programma questa settimana.</string>
     <string name="action_share_groceries">Invia la lista</string>
     <string name="action_paste_list">Incolla una lista</string>
-    <string name="action_clear_ticked">Rimuovi articoli spuntati</string>
+    <string name="action_clear_ticked">Rimuovi gli articoli spuntati</string>
     <string name="action_clear_groceries">Svuota tutta la lista</string>
-    <string name="action_clear">Svuota</string>
+    <string name="action_clear">Rimuovi</string>
     <string name="snackbar_groceries_cleared">Lista della spesa svuotata</string>
     <plurals name="clear_groceries_title">
         <item quantity="one">Rimuovere %1$d articolo?</item>
@@ -415,11 +415,11 @@
         <item quantity="many">Spesa fatta · %1$d spuntati</item>
         <item quantity="other">Spesa fatta · %1$d spuntati</item>
     </plurals>
-    <string name="put_away_intro">Spunta cosa va in dispensa. Tutto ciò che è spuntato esce dalla lista.</string>
+    <string name="put_away_intro">Spunta cosa va in dispensa. Tutto ciò che è spuntato viene tolto dalla lista.</string>
     <string name="action_put_away">Metti via e rimuovi</string>
     <!-- Using up the pantry when cook mode is finished (#147). -->
     <string name="use_up_title">Aggiorna la dispensa</string>
-    <string name="use_up_intro">Cosa hai usato, dagli ingredienti spuntati. Togli la spunta a ciò che non va.</string>
+    <string name="use_up_intro">Ecco cosa hai usato, in base agli ingredienti spuntati. Togli la spunta a ciò che non va.</string>
     <string name="use_up_change">%1$s → %2$s</string>
     <string name="use_up_used_up">%1$s → finito, nella lista della spesa</string>
     <string name="use_up_cant_work_out">Impossibile calcolare quanto è stato usato</string>
@@ -440,7 +440,7 @@
     <string name="aisle_grains">Pasta, riso e cereali</string>
     <string name="aisle_canned">Scatolame</string>
     <string name="aisle_condiments">Oli, salse e condimenti</string>
-    <string name="aisle_spices">Spezie</string>
+    <string name="aisle_spices">Erbe e spezie</string>
     <string name="aisle_frozen">Surgelati</string>
     <string name="aisle_snacks">Frutta secca</string>
     <string name="aisle_drinks">Bevande</string>
@@ -468,7 +468,7 @@
         <item quantity="other">%1$d articoli rimossi dalla lista della spesa</item>
     </plurals>
     <string name="pantry_always_have">Sempre in casa</string>
-    <string name="pantry_always_have_detail">Gli essenziali non sono mai in «Da comprare».</string>
+    <string name="pantry_always_have_detail">I prodotti di base non finiscono mai in «Da comprare».</string>
     <string name="pantry_expired">Scaduto</string>
     <string name="pantry_use_by">Da consumare entro il %1$s</string>
     <string name="pantry_bought">Comprato il %1$s</string>
@@ -491,7 +491,7 @@
     <string name="what_i_need_buy">Da comprare</string>
     <string name="what_i_need_have">Nella tua dispensa</string>
     <string name="what_i_need_note">«Nella tua dispensa» vuol dire che ne hai, non che ne hai abbastanza.</string>
-    <string name="what_i_need_nothing_to_buy">Niente da comprare: ogni ingrediente è nella tua dispensa.</string>
+    <string name="what_i_need_nothing_to_buy">Niente da comprare: tutti gli ingredienti sono nella tua dispensa.</string>
     <string name="what_i_need_you_have">Hai %1$s</string>
     <string name="what_i_need_added">Aggiunto alla spesa</string>
     <string name="action_add_to_pantry">Aggiungi alla dispensa</string>
@@ -512,8 +512,8 @@
     <string name="chef_mode_title">Modalità chef</string>
     <string name="chef_mode_description">Passaggi brevi, scritti su questo telefono. Toccane uno per vederlo come nella ricetta.</string>
     <string name="chef_mode_languages">Per ricette in %1$s.</string>
-    <string name="chef_mode_unsupported">Richiede un telefono con l\'IA sul dispositivo di Google, come un Pixel 9 o successivo o un Galaxy S25 o successivo.</string>
-    <string name="chef_mode_not_ready">Il modello del telefono non è ancora pronto. Riprova più tardi.</string>
+    <string name="chef_mode_unsupported">Richiede un telefono con l\'IA di Google sul dispositivo, come un Pixel 9 o successivo, o un Galaxy S25 o successivo.</string>
+    <string name="chef_mode_not_ready">Il modello sul dispositivo non è ancora pronto. Riprova più tardi.</string>
     <string name="step_show_as_written">Come nella ricetta</string>
     <string name="step_show_short">Versione breve</string>
     <string name="expiry_channel_name">Promemoria della dispensa</string>
@@ -562,21 +562,21 @@
     <string name="unlimited_pending">Acquisto in sospeso: si sblocca appena il pagamento va a buon fine.</string>
     <string name="unlock_failed">Impossibile raggiungere lo store. Riprova più tardi.</string>
     <string name="unlock_nothing">Nessun acquisto da ripristinare su questo account.</string>
-    <string name="recipe_not_kept">Non salvata: le tue %1$d ricette sono tutte in liste, piani o scritte a mano.</string>
+    <string name="recipe_not_kept">Non salvata: le tue %1$d ricette sono tutte in liste, pianificate o scritte da te.</string>
     <string name="library_full_title">La tua raccolta è piena</string>
-    <string name="library_full_body">L\'app gratuita conserva %1$d ricette, e le tue sono tutte in liste, piani o scritte a mano. Sblocca le ricette illimitate o eliminane una per fare spazio.</string>
+    <string name="library_full_body">L\'app gratuita conserva %1$d ricette, e le tue sono tutte in liste, pianificate o scritte da te. Sblocca le ricette illimitate o eliminane una per fare spazio.</string>
     <string name="recipes_count">%1$d di %2$d ricette</string>
     <string name="recipes_count_over">%1$d ricette, più delle %2$d gratuite</string>
     <plurals name="backup_skipped_free">
-        <item quantity="one">%1$d vecchia ricetta senza lista non è stata aggiunta: l\'app gratuita conserva %2$d ricette.</item>
-        <item quantity="many">%1$d di vecchie ricette senza lista non sono state aggiunte: l\'app gratuita conserva %2$d ricette.</item>
-        <item quantity="other">%1$d vecchie ricette senza lista non sono state aggiunte: l\'app gratuita conserva %2$d ricette.</item>
+        <item quantity="one">%1$d ricetta meno recente senza lista non è stata aggiunta: l\'app gratuita conserva %2$d ricette.</item>
+        <item quantity="many">%1$d di ricette meno recenti senza lista non sono state aggiunte: l\'app gratuita conserva %2$d ricette.</item>
+        <item quantity="other">%1$d ricette meno recenti senza lista non sono state aggiunte: l\'app gratuita conserva %2$d ricette.</item>
     </plurals>
     <!-- "I made this" (#116) -->
     <string name="sort_recently_cooked">Cucinate di recente</string>
     <string name="heading_your_cooks">I tuoi piatti</string>
     <string name="cooked_empty">L\'hai preparata? Salva una foto e una breve nota.</string>
-    <string name="action_i_made_this">L\'ho fatto</string>
+    <string name="action_i_made_this">L\'ho preparata</string>
     <string name="action_add_photo">Aggiungi una foto</string>
     <string name="action_take_photo">Scatta una foto</string>
     <string name="action_choose_photos">Scegli dalla galleria</string>
@@ -605,12 +605,12 @@
     <string name="auto_backup_folder_lost">Recipe Clipper non riesce più ad accedere a questa cartella. Tocca per sceglierla di nuovo.</string>
     <string name="auto_backup_folder_refused">Quella cartella non può essere usata per i backup. Scegline un\'altra.</string>
     <string name="auto_backup_last">Ultimo backup: %1$s</string>
-    <string name="auto_backup_never">Nessun backup ancora</string>
+    <string name="auto_backup_never">Ancora nessun backup</string>
     <string name="auto_backup_failed">Non è stato possibile scrivere l\'ultima copia. Prova «Esegui backup ora».</string>
     <string name="auto_backup_nudge">Il tuo ultimo backup ha più di 30 giorni e nessuna copia viene fatta automaticamente.</string>
     <string name="auto_backup_now">Esegui backup ora</string>
     <string name="auto_backup_running">Backup in corso…</string>
-    <string name="backup_prompt_title">Tenere una copia di backup?</string>
+    <string name="backup_prompt_title">Vuoi tenere una copia di backup?</string>
     <string name="backup_prompt_body">Scegli una cartella, come Google Drive, e Recipe Clipper ci terrà una copia delle tue ricette e foto.</string>
     <string name="backup_prompt_choose">Scegli una cartella</string>
     <string name="backup_prompt_not_now">Non ora</string>
@@ -619,14 +619,14 @@
     <!-- The tooltips (#190): one small bubble at a time, pointing at a control -->
     <string name="tooltip_got_it">Ho capito</string>
     <string name="tooltip_home_link">Condividi il link di una ricetta con questa app, oppure tocca qui per incollarlo.</string>
-    <string name="tooltip_recipe_units">Come nella ricetta mostra ogni quantità esattamente come la dà la ricetta. Tocca per vedere ogni ricetta in Metrico o Once; ciò che non si può convertire con precisione resta come nella ricetta.</string>
+    <string name="tooltip_recipe_units">«Come nella ricetta» mostra ogni quantità esattamente come la dà la ricetta. Tocca per vedere ogni ricetta in «Metrico» o «Once»; ciò che non si può convertire con precisione resta come nella ricetta.</string>
     <string name="tooltip_recipe_start_cooking">Modalità cucina: un passaggio alla volta, con i timer, e lo schermo resta acceso.</string>
-    <string name="tooltip_recipe_made_this">L\'hai fatta? Aggiungi una foto e una nota, oppure Segna come cucinata.</string>
+    <string name="tooltip_recipe_made_this">L\'hai preparata? Aggiungi una foto e una nota, oppure Segna come cucinata.</string>
     <string name="tooltip_cook_done_next">Finito un passaggio, tocca qui per andare al successivo.</string>
     <string name="tooltip_cook_tap_step">Tocca un passaggio qualsiasi per renderlo quello attuale.</string>
     <string name="tooltip_cook_timer">Il timer di questo passaggio. Suona anche se esci dall\'app.</string>
     <string name="tooltip_groceries_long_press">Tieni premuto un articolo per spostarlo in un altro reparto, o eliminarlo.</string>
-    <string name="tooltip_groceries_done_shopping">Tornato a casa? Metti in dispensa quello che hai spuntato e toglilo dalla lista.</string>
+    <string name="tooltip_groceries_done_shopping">Di ritorno dalla spesa? Metti in dispensa quello che hai spuntato e toglilo dalla lista.</string>
     <string name="tooltip_pantry_in_stock">Tocca un articolo per cambiarne la scorta o la quantità; scorri a sinistra quando finisce. L\'etichetta col cestino indica che è nella tua lista della spesa.</string>
     <string name="tooltip_settings_show_tips">Rivedi ogni suggerimento, uno alla volta.</string>
     <string name="cd_dismiss_tip">Chiudi suggerimento</string>

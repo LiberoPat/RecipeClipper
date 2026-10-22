@@ -71,7 +71,7 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Start cooking | Empezar a cocinar | Commencer à cuisiner | Jetzt kochen | Inizia a cucinare | Começar a cozinhar |
 | Continue cooking | Seguir cocinando | Reprendre la recette | Weiterkochen | Continua a cucinare | Continuar cozinhando |
 | Done — next step | Hecho — siguiente paso | Terminé — étape suivante | Fertig – nächster Schritt | Fatto — passaggio successivo | Feito — próximo passo |
-| Start 10 min timer | Temporizador de 10 min | Minuteur de 10 min | Timer für 10 min starten | Avvia timer di 10 min | Timer de 10 min |
+| Start 10 min timer | Temporizador de 10 min | Minuteur de 10 min | Timer für 10 min starten | Avvia timer da 10 min | Timer de 10 min |
 | Reset (timer) | Reiniciar | Réinitialiser | Zurücksetzen | Azzera | Zerar |
 | Time's up | Se acabó el tiempo | Temps écoulé | Zeit ist um | Tempo scaduto | O tempo acabou |
 | Dark while cooking | Oscuro al cocinar | Sombre en cuisine | Dunkel beim Kochen | Scuro in cucina | Escuro ao cozinhar |
@@ -95,14 +95,14 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Update the pantry (after cooking, #147) | Actualizar la despensa | Mettre à jour le garde-manger | Vorrat aktualisieren | Aggiorna la dispensa | Atualizar a despensa |
 | Keep / Running low / Out (#147) | Dejar igual / Queda poco / Agotado | Garder / Presque fini / Épuisé | Behalten / Wird knapp / Leer | Lascia / Sta finendo / Finito | Manter / Acabando / Acabou |
 | “In your pantry” means you have some, not enough (#51) | «En tu despensa» significa que tienes algo… | « Dans votre garde-manger » signifie que vous en avez… | „In deinem Vorrat“ heißt, dass du etwas davon hast… | «Nella tua dispensa» vuol dire che ne hai… | “Na sua despensa” quer dizer que você tem um pouco… |
-| Google's on-device AI (Chef mode on an unsupported phone, #144) | la IA en el dispositivo de Google | l'IA embarquée de Google | Googles On-Device-KI | l'IA sul dispositivo di Google | a IA no dispositivo do Google |
+| Google's on-device AI (Chef mode on an unsupported phone, #144) | la IA de Google en el dispositivo | l'IA embarquée de Google | Googles On-Device-KI | l'IA di Google sul dispositivo | a IA do Google no dispositivo |
 | Your cooks (heading, #116) | Lo que has cocinado | Vos réalisations | Selbst gekocht | I tuoi piatti | O que você fez |
-| I made this (#116) | Lo he hecho | Je l'ai fait | Hab ich gekocht | L'ho fatto | Eu fiz |
+| I made this (#116) | Lo he hecho | Je l'ai faite | Hab ich gekocht | L'ho preparata | Eu fiz |
 | Mark as cooked / Cooked (no photo, #173) | Marcar como cocinada / Cocinada | Marquer comme cuisinée / Cuisinée | Als gekocht markieren / Gekocht | Segna come cucinata / Cucinata | Marcar como feita / Feita |
-| Read the photo / Check the recipe (#198) | Leer la foto / Revisa la receta | Lire la photo / Vérifiez la recette | Foto lesen / Rezept prüfen | Leggi la foto / Controlla la ricetta | Ler a foto / Confira a receita |
+| Read the photo / Check the recipe (#198) | Leer la foto / Revisa la receta | Lire la photo / Vérifier la recette | Foto lesen / Rezept prüfen | Leggi la foto / Controlla la ricetta | Ler a foto / Confira a receita |
 | Scan a recipe / Page 1 of 2 (#226) | Escanear una receta / Página 1 de 2 | Scanner une recette / Page 1 sur 2 | Rezept scannen / Seite 1 von 2 | Scansiona una ricetta / Pagina 1 di 2 | Escanear uma receita / Página 1 de 2 |
 | Check these lines: the photo was hard to read there (#198) | Revisa estas líneas: ahí la foto se leía mal | Vérifiez ces lignes : la photo y était difficile à lire | Prüfe diese Zeilen: Dort war das Foto schwer zu lesen | Controlla queste righe: lì la foto era difficile da leggere | Confira estas linhas: ali a foto estava difícil de ler |
-| In this step / Later (cook mode's ingredients bar, #286) | En este paso / Después | Pour cette étape / Plus tard | In diesem Schritt / Später | In questo passaggio / Più tardi | Neste passo / Depois |
+| In this step / Later (cook mode's ingredients bar, #286) | En este paso / Después | Pour cette étape / Pour la suite | In diesem Schritt / Später | In questo passaggio / Più tardi | Neste passo / Depois |
 
 Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and Italian
 (Annulla), as the platforms themselves have it; "Delete" is *Excluir* in Portuguese
