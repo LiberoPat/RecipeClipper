@@ -6469,43 +6469,43 @@
         }
       }
     },
-    "delete_meal_type_body" : {
+    "delete_meal_type_body %@" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die hier geplanten Mahlzeiten werden zu „Dinner“ verschoben, nicht gelöscht."
+            "value" : "Die hier geplanten Mahlzeiten werden zu „%@“ verschoben, nicht gelöscht."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Meals planned as this move to Dinner. They are not deleted."
+            "value" : "Meals planned as this move to “%@”. They are not deleted."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las comidas planificadas con este tipo pasan a Cena. No se eliminan."
+            "value" : "Las comidas planificadas con este tipo pasan a «%@». No se eliminan."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les repas prévus avec ce type passent en Dîner. Ils ne sont pas supprimés."
+            "value" : "Les repas prévus avec ce type sont déplacés vers « %@ ». Ils ne sont pas supprimés."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I pasti pianificati con questo tipo passano a Cena. Non vengono eliminati."
+            "value" : "I pasti pianificati con questo tipo passano a «%@». Non vengono eliminati."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As refeições planejadas com este tipo passam para Jantar. Elas não são excluídas."
+            "value" : "As refeições planejadas com este tipo passam para “%@”. Elas não são excluídas."
           }
         }
       }

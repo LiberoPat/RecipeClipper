@@ -286,7 +286,7 @@
     <string name="action_new_meal_type">+ Neue Mahlzeit</string>
     <string name="rename_meal_type_title">Mahlzeit umbenennen</string>
     <string name="delete_meal_type_title">„%1$s“ löschen?</string>
-    <string name="delete_meal_type_body">Die hier geplanten Mahlzeiten werden zu „Dinner“ verschoben, nicht gelöscht.</string>
+    <string name="delete_meal_type_body">Die hier geplanten Mahlzeiten werden zu „%1$s“ verschoben, nicht gelöscht.</string>
     <string name="action_move_up">Nach oben</string>
     <string name="action_move_down">Nach unten</string>
     <string name="label_meal_type_name">Name der Mahlzeit</string>

@@ -301,7 +301,7 @@
     <string name="action_new_meal_type">+ Novo tipo de refeição</string>
     <string name="rename_meal_type_title">Renomear tipo de refeição</string>
     <string name="delete_meal_type_title">Excluir “%1$s”?</string>
-    <string name="delete_meal_type_body">As refeições planejadas com este tipo passam para Jantar. Elas não são excluídas.</string>
+    <string name="delete_meal_type_body">As refeições planejadas com este tipo passam para “%1$s”. Elas não são excluídas.</string>
     <string name="action_move_up">Mover para cima</string>
     <string name="action_move_down">Mover para baixo</string>
     <string name="label_meal_type_name">Nome do tipo de refeição</string>

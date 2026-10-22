@@ -301,7 +301,7 @@
     <string name="action_new_meal_type">+ Nouveau type de repas</string>
     <string name="rename_meal_type_title">Renommer le type de repas</string>
     <string name="delete_meal_type_title">Supprimer « %1$s » ?</string>
-    <string name="delete_meal_type_body">Les repas prévus avec ce type passent en Dîner. Ils ne sont pas supprimés.</string>
+    <string name="delete_meal_type_body">Les repas prévus avec ce type sont déplacés vers « %1$s ». Ils ne sont pas supprimés.</string>
     <string name="action_move_up">Monter</string>
     <string name="action_move_down">Descendre</string>
     <string name="label_meal_type_name">Nom du type de repas</string>

@@ -529,7 +529,7 @@ enum Strings {
     static var newMealType: String { String(localized: "action_new_meal_type") }
     static var renameMealTypeTitle: String { String(localized: "rename_meal_type_title") }
     static func deleteMealTypeTitle(_ name: String) -> String { String(localized: "delete_meal_type_title \(name)") }
-    static var deleteMealTypeBody: String { String(localized: "delete_meal_type_body") }
+    static func deleteMealTypeBody(_ movesTo: String) -> String { String(localized: "delete_meal_type_body \(movesTo)") }
     static var moveUp: String { String(localized: "action_move_up") }
     static var moveDown: String { String(localized: "action_move_down") }
     static var mealTypeName: String { String(localized: "label_meal_type_name") }

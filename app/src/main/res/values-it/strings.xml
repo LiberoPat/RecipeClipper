@@ -301,7 +301,7 @@
     <string name="action_new_meal_type">+ Nuovo tipo di pasto</string>
     <string name="rename_meal_type_title">Rinomina il tipo di pasto</string>
     <string name="delete_meal_type_title">Eliminare «%1$s»?</string>
-    <string name="delete_meal_type_body">I pasti pianificati con questo tipo passano a Cena. Non vengono eliminati.</string>
+    <string name="delete_meal_type_body">I pasti pianificati con questo tipo passano a «%1$s». Non vengono eliminati.</string>
     <string name="action_move_up">Sposta su</string>
     <string name="action_move_down">Sposta giù</string>
     <string name="label_meal_type_name">Nome del tipo di pasto</string>
