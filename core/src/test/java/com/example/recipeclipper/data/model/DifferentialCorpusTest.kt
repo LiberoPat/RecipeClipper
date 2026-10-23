@@ -42,6 +42,10 @@ import java.io.File
  * `Entry("text")` rows (#302) pin [PantryEntry.split]: what was typed into "Add to the pantry",
  * as the item's name and its quantity (nil: kept whole); write only the text (optionally
  * `, lang: "de"`).
+ * `Need("quantity", "name", [lines])` rows (#302) pin What I need's amounts
+ * ([PantryMatch.weekNeeds]): the lines, each its own recipe, against one in-stock pantry item
+ * with that quantity and name, as the Have row's pantry amount and the week's total (nil: none);
+ * write only those (optionally `, lang: "de"`).
  *
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
@@ -145,6 +149,10 @@ class DifferentialCorpusTest {
     )
     // A pantry-entry row (#302): the text typed into "Add to the pantry", optionally its language.
     private val entryRow = Regex("""^(\s*)Entry\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A What I need amounts row (#302): a pantry item's quantity and name, the week's lines, optionally their language.
+    private val needRow = Regex(
+        """^(\s*)Need\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
+    )
     // A calendar-file row (#52): one summary's text.
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
@@ -248,6 +256,7 @@ class DifferentialCorpusTest {
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         useUpRow.find(line)?.let { m -> return useUpRow(m) }
         entryRow.find(line)?.let { m -> return entryRow(m) }
+        needRow.find(line)?.let { m -> return needRow(m) }
         countRow.find(line)?.let { m -> return countRow(m) }
         cardRow.find(line)?.let { m ->
             val (kind, html) = m.groupValues[2] to unescape(m.groupValues[3])
@@ -479,6 +488,25 @@ class DifferentialCorpusTest {
         val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
         val entry = PantryEntry.split(text, LanguageWords.forTag(language))
         return m.groupValues[1] + "Entry(${q(text)}$lang, ${q(entry.name)}, ${entry.quantity?.let(::q) ?: "nil"}),"
+    }
+
+    /**
+     * `Need(quantity, name, [lines], lang:, have, total)` (#302): [PantryMatch.weekNeeds] for the
+     * lines, each its own recipe, against one in-stock item: the first Have row's pantry amount
+     * and the week's total, each nil when there's none.
+     */
+    private fun needRow(m: MatchResult): String {
+        val quantity = unescape(m.groupValues[2])
+        val name = unescape(m.groupValues[3])
+        val lines = literal.findAll(m.groupValues[4]).map { unescape(it.groupValues[1]) }.toList()
+        val language = m.groupValues[5].ifEmpty { "en" }
+        val lang = if (m.groupValues[5].isEmpty()) "" else ", lang: ${q(language)}"
+        val item = PantryItem(1, name, quantity, language, Aisle.OTHER, inStock = true, alwaysHave = false, purchasedDay = null, expiresDay = null)
+        val sources = lines.mapIndexed { i, line -> GrocerySource("s$i", i.toLong(), "r$i", null, language, listOf(line)) }
+        val row = PantryMatch.weekNeeds(sources, listOf(item)).have.firstOrNull()
+        val have = row?.pantryQuantity?.let { q(it) } ?: "nil"
+        val total = row?.weekTotal?.let { q(it) } ?: "nil"
+        return m.groupValues[1] + "Need(${q(quantity)}, ${q(name)}, ${list(lines)}$lang, $have, $total),"
     }
 
     /** `Step(step, [lines], lang:, as given, doubled in Metric)`: [StepAmounts.annotate], marked. */

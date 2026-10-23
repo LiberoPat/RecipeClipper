@@ -196,11 +196,18 @@ struct NeedLine: Equatable {
 /// pair's number aside, in the same language), and whether the pantry has it. `name` is the first
 /// line's; it is nil for a line the app can't name: it stands alone and is always Buy.
 /// `pantryName` is the matched pantry item's name.
+///
+/// Amounts side by side, never compared (#302), on a Have row only (a staple keeps none):
+/// `pantryQuantity` is the item's quantity as written ("3 lb", "half a bag"), nil when it has
+/// none; `weekTotal` is what the lines use in all (`GroceryCombiner.total`, in the units they
+/// were rendered in), only beside a `pantryQuantity` and only when the lines add up exactly.
 struct NeedRow: Equatable {
     let name: String?
     let lines: [NeedLine]
     let status: NeedStatus
     let pantryName: String?
+    var pantryQuantity: String? = nil
+    var weekTotal: String? = nil
 }
 
 struct WeekNeeds: Equatable {
@@ -246,7 +253,8 @@ enum PantryMatch {
 
     /// The week's "What I need": every planned recipe's lines (`sources`, already rendered),
     /// grouped by ingredient in the order first met, split into Buy and Have. Staples are with
-    /// Have, never Buy.
+    /// Have, never Buy. A Have row carries the pantry's amount and the week's total (`NeedRow`),
+    /// which change nothing here: Have stays presence only.
     static func weekNeeds(_ sources: [GrocerySource], pantry: [PantryItem], decisions: Decisions = .none) -> WeekNeeds {
         var keys: [String] = []
         var groups: [String: [NeedLine]] = [:]
@@ -274,7 +282,15 @@ enum PantryMatch {
             let lines = groups[key]!
             let name = names[key]
             let item = name.flatMap { find($0, language: lines[0].language, pantry: pantry, decisions: decisions) }
-            return NeedRow(name: name, lines: lines, status: status(item), pantryName: item?.name)
+            let need = status(item)
+            let quantity = item?.quantity?.kTrimmed
+            let shown = need == .have && quantity?.isEmpty == false ? quantity : nil
+            let total = shown.flatMap { _ in
+                LanguageWords.forTag(lines[0].language).flatMap { GroceryCombiner.total(lines.map(\.text), words: $0) }
+            }
+            return NeedRow(
+                name: name, lines: lines, status: need, pantryName: item?.name, pantryQuantity: shown, weekTotal: total
+            )
         }
         return WeekNeeds(buy: rows.filter { $0.status == .buy }, have: rows.filter { $0.status != .buy })
     }

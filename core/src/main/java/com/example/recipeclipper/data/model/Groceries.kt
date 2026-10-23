@@ -334,11 +334,25 @@ object GroceryCombiner {
     fun combine(lines: List<String>, words: LanguageWords): String? = sum(lines, words) ?: repeated(lines)
 
     /**
+     * What the lines use in all, as an amount (#302): the figure and its unit ("4 lb"; "1 cup" and
+     * "2 tbsp" are "1 1/8 cup"), or a count with its words ("5 eggs"), by [combine]'s exact rules.
+     * One line counts when it is one exact amount. Null when they don't add up exactly, or don't
+     * all name the same ingredient: then no total is shown, never an estimate.
+     */
+    fun total(lines: List<String>, words: LanguageWords): String? =
+        if (lines.isEmpty()) null else addUp(lines, words, requireSameName = true)?.amount
+
+    /** A total: [amount] is the figure with its unit or a count's words, [text] the whole line. */
+    private class Total(val amount: String, val text: String)
+
+    /**
      * The lines added up, or null. [requireSameName] false skips the same-name check: the model
      * decided the names are the same (#99); the amounts' rules are unchanged.
      */
-    private fun sum(lines: List<String>, words: LanguageWords, requireSameName: Boolean = true): String? {
-        if (lines.size < 2) return null
+    private fun sum(lines: List<String>, words: LanguageWords, requireSameName: Boolean = true): String? =
+        if (lines.size < 2) null else addUp(lines, words, requireSameName)?.text
+
+    private fun addUp(lines: List<String>, words: LanguageWords, requireSameName: Boolean): Total? {
         if (requireSameName) {
             val names = lines.map { line -> IngredientName.of(line, words)?.let { IngredientName.key(it, words) } ?: return null }
             if (names.any { it != names.first() }) return null
@@ -355,7 +369,8 @@ object GroceryCombiner {
             val same = IngredientName.key(normalize(rest), words)
             if (amounts.any { IngredientName.key(normalize(it.rest), words) != same }) return null
             val text = exactly(total, metric = false, comma = comma) ?: return null
-            return "$text ${IngredientName.counted(rest, total, words)}"
+            val counted = "$text ${IngredientName.counted(rest, total, words)}"
+            return Total(counted, counted)
         }
 
         // The largest unit the lines used that shows the total exactly.
@@ -364,7 +379,8 @@ object GroceryCombiner {
         for (unit in units) {
             val value = total / sizeOf(unit)!!.second
             val text = exactly(value, unit.metric, comma) ?: continue
-            return "$text ${unitText(amounts, unit, value)} $rest"
+            val amount = "$text ${unitText(amounts, unit, value)}"
+            return Total(amount, "$amount $rest")
         }
         return null
     }

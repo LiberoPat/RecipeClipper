@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.NeedStatus
+import com.example.recipeclipper.data.model.PantryEdit
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.PlannedIngredients
@@ -40,8 +41,8 @@ class WhatINeedViewModelTest {
         )
     }
 
-    private fun item(id: Long, name: String, inStock: Boolean = true, alwaysHave: Boolean = false) =
-        PantryItem(id, name, null, "en", Aisle.OTHER, inStock, alwaysHave, null, null)
+    private fun item(id: Long, name: String, inStock: Boolean = true, alwaysHave: Boolean = false, quantity: String? = null) =
+        PantryItem(id, name, quantity, "en", Aisle.OTHER, inStock, alwaysHave, null, null)
 
     private fun viewModel(pantry: FakePantryRepository, system: UnitSystem = UnitSystem.AS_WRITTEN) = WhatINeedViewModel(
         SavedStateHandle(mapOf(WhatINeedViewModel.WEEK_START_ARG to 100L)), groceries, pantry, FakeAppPreferences(unitSystem = system),
@@ -96,6 +97,38 @@ class WhatINeedViewModelTest {
         pantry.setStock(listOf(1), PantryStock.RUNNING_LOW) // running low still counts as having it (#194)
         advanceUntilIdle()
         assertTrue(vm.uiState.value.needs!!.have.any { it.name == "eggs" })
+    }
+
+    // #302: the amounts side by side, the week's summed in the user's units; never a verdict.
+    @Test
+    fun `a Have row carries the pantry's amount and the week's exact total, following the pantry`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val pantry = FakePantryRepository(listOf(item(1, "flour", quantity = "1 kg"), item(2, "eggs"), item(3, "salt", alwaysHave = true, quantity = "1 kg")))
+            val vm = viewModel(pantry, UnitSystem.METRIC)
+            advanceUntilIdle()
+
+            val have = vm.uiState.value.needs!!.have
+            val flour = have.first { it.name == "flour" }
+            assertEquals(listOf("480 g flour", "500 g flour"), flour.lines.map { it.text })
+            assertEquals("1 kg" to "980 g", flour.pantryQuantity to flour.weekTotal) // still Have: no verdict
+            assertEquals(NeedStatus.HAVE, flour.status)
+            assertEquals(null to null, have.first { it.name == "eggs" }.let { it.pantryQuantity to it.weekTotal })
+            assertEquals(null to null, have.first { it.name == "salt" }.let { it.pantryQuantity to it.weekTotal }) // a staple
+
+            pantry.edit(1, PantryEdit("flour", "half a bag", alwaysHave = false, expiresDay = null))
+            pantry.edit(2, PantryEdit("eggs", "6", alwaysHave = false, expiresDay = null))
+            advanceUntilIdle()
+            val after = vm.uiState.value.needs!!.have
+            assertEquals("half a bag" to "980 g", after.first { it.name == "flour" }.let { it.pantryQuantity to it.weekTotal })
+            assertEquals("6" to "4 eggs", after.first { it.name == "eggs" }.let { it.pantryQuantity to it.weekTotal })
+        }
+
+    @Test
+    fun `as written, cups and grams don't add up, so only the pantry's amount`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel(FakePantryRepository(listOf(item(1, "flour", quantity = "1 kg"))))
+        advanceUntilIdle()
+        val flour = vm.uiState.value.needs!!.have.single()
+        assertEquals("1 kg" to null, flour.pantryQuantity to flour.weekTotal)
     }
 
     @Test

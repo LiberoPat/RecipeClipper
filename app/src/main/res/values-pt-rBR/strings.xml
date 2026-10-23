@@ -496,6 +496,9 @@
     <string name="what_i_need_nothing_to_buy">Nada para comprar: todos os ingredientes estão na sua despensa.</string>
     <string name="what_i_need_you_have">Você tem %1$s</string>
     <string name="what_i_need_added">Adicionado às compras</string>
+    <!-- What I need (#302): the pantry's amount beside the week's, never compared -->
+    <string name="what_i_need_pantry_amount">Você tem %1$s</string>
+    <string name="what_i_need_pantry_and_week">Você tem %1$s · as receitas desta semana usam %2$s</string>
     <string name="action_add_to_pantry">Adicionar à despensa</string>
     <!-- Developer settings (#87): hidden, 7 taps on the version in Settings -->
     <string name="settings_version">Versão %1$s</string>

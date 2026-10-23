@@ -194,12 +194,19 @@ data class NeedLine(
  * line's; it is null for a line the app can't name
  * (a heading, "salt and pepper"): it stands alone and is always Buy, since nothing is guessed.
  * [pantryName] is the matched pantry item's name.
+ *
+ * Amounts side by side, never compared (#302), on a Have row only (a staple keeps none):
+ * [pantryQuantity] is the item's quantity as written ("3 lb", "half a bag"), null when it has
+ * none; [weekTotal] is what the lines use in all ([GroceryCombiner.total], in the units they were
+ * rendered in), only beside a [pantryQuantity] and only when the lines add up exactly.
  */
 data class NeedRow(
     val name: String?,
     val lines: List<NeedLine>,
     val status: NeedStatus,
-    val pantryName: String?
+    val pantryName: String?,
+    val pantryQuantity: String? = null,
+    val weekTotal: String? = null
 )
 
 data class WeekNeeds(val buy: List<NeedRow>, val have: List<NeedRow>) {
@@ -250,7 +257,8 @@ object PantryMatch {
     /**
      * The week's "What I need": every planned recipe's lines ([sources], already rendered),
      * grouped by ingredient in the order first met, split into Buy and Have. Staples are with
-     * Have, never Buy.
+     * Have, never Buy. A Have row carries the pantry's amount and the week's total ([NeedRow]),
+     * which change nothing here: Have stays presence only.
      */
     fun weekNeeds(sources: List<GrocerySource>, pantry: List<PantryItem>, decisions: Decisions = Decisions.NONE): WeekNeeds {
         val groups = LinkedHashMap<Any, MutableList<NeedLine>>()
@@ -270,7 +278,12 @@ object PantryMatch {
         val rows = groups.map { (key, lines) ->
             val name = names[key]
             val item = name?.let { find(it, lines.first().language, pantry, decisions) }
-            NeedRow(name, lines, status(item), item?.name)
+            val status = status(item)
+            val quantity = item?.quantity?.trim()?.takeIf { status == NeedStatus.HAVE && it.isNotEmpty() }
+            val total = quantity?.let {
+                LanguageWords.forTag(lines.first().language)?.let { words -> GroceryCombiner.total(lines.map { it.text }, words) }
+            }
+            NeedRow(name, lines, status, item?.name, quantity, total)
         }
         return WeekNeeds(
             buy = rows.filter { it.status == NeedStatus.BUY },

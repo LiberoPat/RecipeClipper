@@ -319,7 +319,7 @@ restock and running out, edits, a delete restored whole, unique uids.
 `BackupDaoTest` round-trips the pantry, the grocery list and the meal plan (with a user's meal type) through an export; iOS's `BackupDaoTests` do the same.
 `PantryScreenTest`, `WhatINeedScreenTest` and the updated `AppShellTest` cover
 the screens. Have/Buy is JVM-tested (`PantryTest`, the ViewModel tests) and
-pinned for iOS by the corpus's `Pant` rows. iOS mirrors the rest in
+pinned for iOS by the corpus's `Pant` rows; What I need's amounts (#302) by its `Need` rows. iOS mirrors the rest in
 `PantryDaoTests` (with the user_version 8 → 9 step), `PantryTests`,
 `PantryViewModelTests` and `PantryUITests`.
 

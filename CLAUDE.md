@@ -247,7 +247,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   matches ingredients as stored, not as converted.
 - **Grocery lines add up only when exact** (`GroceryCombiner`); otherwise
   they sit together, each as written. **Pantry Have/Buy is presence only**
-  (`PantryMatch`), never "enough", and "rice flour" is never "flour".
+  (`PantryMatch`), never "enough" (What I need shows the pantry's amount beside
+  the week's exact total, never compared, #302), and "rice flour" is never "flour".
 - Settings live in the SharedPreferences file `unit_preferences` (never
   rename it, or users' choices are stranded) and in `UserDefaults` on iOS,
   under the same keys (listed in `docs/decisions.md`), each enum stored by
