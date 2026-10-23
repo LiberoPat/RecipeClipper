@@ -9,9 +9,10 @@ struct PantryEntry: Equatable {
 
     /// `text`, trimmed, split into an amount and a name only when it starts with one real amount
     /// that `words` read: a positive number or fraction, then a unit the tables know or a space,
-    /// then a name that starts with a letter ("3 onions", "2 cups rice", "500 g Mehl"). A word
-    /// joining the unit to the name ("2 cups of rice", amounts.json `unitLinks`) belongs to
-    /// neither. Anything else stays whole as the name, so no number is guessed: "00 flour",
+    /// then a name that starts with a letter ("3 onions", "2 cups rice", "500 g Mehl"). A
+    /// container word belongs to the amount as a unit does ("2 cans tomatoes", amounts.json
+    /// `containers`). A word joining the unit or container to the name ("2 cups of rice",
+    /// amounts.json `unitLinks`) belongs to neither. Anything else stays whole as the name, so no number is guessed: "00 flour",
     /// "7up", "5-spice", "1/2", "2-3 onions", "2 eggs plus 3 yolks", "180 C", and every text in a
     /// language with no tables, or whose amounts follow the name.
     static func split(_ text: String, words: LanguageWords?) -> PantryEntry {
@@ -40,6 +41,11 @@ struct PantryEntry: Equatable {
             nameStart = end + (links(words).find(after)?.end ?? 0)
         } else if rest.first?.isWhitespace != true {
             return whole // "7up", "5-spice"
+        } else if let container = p.containerFirst.find(rest) {
+            // "2 cans tomatoes", "1 Dose Tomaten": a container (amounts.json `containers`)
+            // belongs to the amount, as a unit does, so the name is just "tomatoes".
+            end = afterNumber + container.end
+            nameStart = end + (links(words).find(typed.u16Substring(from: end))?.end ?? 0)
         }
         let name = typed.u16Substring(from: nameStart).kTrimmed
         guard name.first?.isLetter == true, !name.contains(where: { digits.contains($0) || fractions.contains($0) }) else {

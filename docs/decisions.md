@@ -1916,7 +1916,10 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   ("2-3 onions"), two amounts ("2 eggs plus 3 yolks", "1 cup plus 2 tbsp flour", "2 cups rice
   (400 g)", "1 kg 00 flour"), a size ("2-inch ginger", "2% milk"), a temperature ("180 C
   water", "350°F"), "1,500 g" (thousands or a decimal?), and Japanese, whose amounts follow the
-  name. A container isn't a unit, so "2 cans tomatoes" is "cans tomatoes" with 2, as typed.
+  name. A container belongs to the amount as a unit does (amounts.json `containers`, the
+  list the scaler already reads package sizes by), so "2 cans tomatoes" is tomatoes with
+  "2 cans" and "1 boîte de tomates" is tomates with "1 boîte" (owner's call: "cans tomatoes"
+  would not match "tomatoes" in What I need).
   - **Restocking:** a name already here (`PantryList.sameName`, on the split name) is put back
     in stock as before; a typed amount replaces its quantity, and with none the old one stays.
   - **The hint:** the field shows "e.g. 3 onions" (`pantry_add_example`, drafts in the five

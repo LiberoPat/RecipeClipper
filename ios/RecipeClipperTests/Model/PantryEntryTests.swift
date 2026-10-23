@@ -17,6 +17,17 @@ final class PantryEntryTests: XCTestCase {
         XCTAssertEqual(split(text, language), PantryEntry(name: text.kTrimmed, quantity: nil), text, line: line)
     }
 
+    func testAContainerBelongsToTheAmountSoTheNameIsTheIngredient() {
+        assertSplit("2 cans tomatoes", "2 cans", "tomatoes")
+        assertSplit("2 cans of tomatoes", "2 cans", "tomatoes")
+        assertSplit("1 jar honey", "1 jar", "honey")
+        assertSplit("1 Dose Tomaten", "1 Dose", "Tomaten", "de")
+        assertSplit("1 boîte de tomates", "1 boîte", "tomates", "fr")
+        assertSplit("2 latas de tomate", "2 latas", "tomate", "es")
+        assertWhole("2 cans")
+        assertSplit("2 canned tomatoes", "2", "canned tomatoes")
+    }
+
     func testACountAUnitAFractionAndAMixedNumberSplit() {
         assertSplit("3 onions", "3", "onions")
         assertSplit("  3 onions ", "3", "onions")

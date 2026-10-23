@@ -12,8 +12,10 @@ data class PantryEntry(val name: String, val quantity: String?) {
          * [text], trimmed, split into an amount and a name only when it starts with one real
          * amount that [words] read: a positive number or fraction, then a unit the tables know or
          * a space, then a name that starts with a letter ("3 onions", "2 cups rice", "500 g
-         * Mehl"). A word joining the unit to the name ("2 cups of rice", "200 g de farine",
-         * amounts.json `unitLinks`) belongs to neither. The name is otherwise the rest as typed.
+         * Mehl"). A container word belongs to the amount as a unit does ("2 cans tomatoes",
+         * amounts.json `containers`). A word joining the unit or container to the name ("2 cups
+         * of rice", "200 g de farine", amounts.json `unitLinks`) belongs to neither. The name is
+         * otherwise the rest as typed.
          *
          * Anything else stays whole as the name, so no number is guessed: "00 flour", "7up",
          * "5-spice", "five-spice powder", a number alone ("1/2"), a range ("2-3 onions"), two
@@ -48,6 +50,13 @@ data class PantryEntry(val name: String, val quantity: String?) {
                 nameStart = end + (links(words).find(after)?.let { it.range.last + 1 } ?: 0)
             } else if (rest.firstOrNull()?.isWhitespace() != true) {
                 return whole // "7up", "5-spice"
+            } else {
+                // "2 cans tomatoes", "1 Dose Tomaten": a container (amounts.json `containers`)
+                // belongs to the amount, as a unit does, so the name is just "tomatoes".
+                p.containerFirst.find(rest)?.let { container ->
+                    end = afterNumber + container.range.last + 1
+                    nameStart = end + (links(words).find(typed.substring(end))?.let { it.range.last + 1 } ?: 0)
+                }
             }
             val name = typed.substring(nameStart).trim()
             if (name.firstOrNull()?.isLetter() != true || name.any { it in DIGITS || it in FRACTIONS }) return whole

@@ -32,6 +32,17 @@ class PantryEntryTest {
         assertSplit("0.5 kg rice", "0.5 kg", "rice")
     }
 
+    @Test fun `a container belongs to the amount, so the name is the ingredient`() {
+        assertSplit("2 cans tomatoes", "2 cans", "tomatoes")
+        assertSplit("2 cans of tomatoes", "2 cans", "tomatoes")
+        assertSplit("1 jar honey", "1 jar", "honey")
+        assertSplit("1 Dose Tomaten", "1 Dose", "Tomaten", "de")
+        assertSplit("1 boîte de tomates", "1 boîte", "tomates", "fr")
+        assertSplit("2 latas de tomate", "2 latas", "tomate", "es")
+        assertWhole("2 cans")
+        assertSplit("2 canned tomatoes", "2", "canned tomatoes")
+    }
+
     @Test fun `the name stays as typed`() {
         assertSplit("6 large Eggs", "6", "large Eggs")
         assertSplit("3 red onions, small", "3", "red onions, small")
