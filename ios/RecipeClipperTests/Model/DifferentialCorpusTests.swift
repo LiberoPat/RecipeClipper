@@ -28,6 +28,9 @@ import XCTest
 // Use-up rows (#147): a pantry item's quantity and name, the ticked lines, then PantryUseUp.rows
 // against that one item (.none, .ask, .usedUp or .subtract(new quantity)). Write only
 // `UseUp("2 lb", "chicken", ["1 lb chicken"]),`.
+// What I need amount rows (#302): a pantry item's quantity and name, the week's lines (each its own
+// recipe), then PantryMatch.weekNeeds' Have row: the pantry's amount and the week's total (nil:
+// none). Write only `Need("2 lb", "chicken", ["1 lb chicken", "8 oz chicken"]),`.
 // Count-bracket rows (#104): a line, whether it asks the model (needsCountDecision), then the
 // line doubled when unsure, total and each. Write only `Count("4 Apfel (ca. 800g)", lang: "de"),`.
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
@@ -121,6 +124,15 @@ final class DifferentialCorpusTests: XCTestCase {
         let quantity: String; let name: String; let lines: [String]; let language: String; let result: UseUpResult
         init(_ quantity: String, _ name: String, _ lines: [String], lang: String = "en", _ result: UseUpResult) {
             self.quantity = quantity; self.name = name; self.lines = lines; self.language = lang; self.result = result
+        }
+    }
+
+    private struct Need {
+        let quantity: String; let name: String; let lines: [String]; let language: String
+        let have: String?; let total: String?
+        init(_ quantity: String, _ name: String, _ lines: [String], lang: String = "en", _ have: String?, _ total: String?) {
+            self.quantity = quantity; self.name = name; self.lines = lines; self.language = lang
+            self.have = have; self.total = total
         }
     }
 
@@ -1517,6 +1529,28 @@ final class DifferentialCorpusTests: XCTestCase {
         UseUp("3 Zwiebeln", "Zwiebeln", ["2 Zwiebeln"], lang: "de", .subtract("1 Zwiebel")),
     ]
 
+    private static let needs: [Need] = [
+        Need("2 lb", "chicken thighs", ["1 lb chicken thighs", "24 oz chicken thighs"], "2 lb", "2 1/2 lb"),
+        Need("3 lb", "chicken", ["2 lb chicken"], "3 lb", "2 lb"),
+        Need("2 lb", "chicken", ["1 lb chicken", "salt to taste"], "2 lb", "1 lb"),
+        Need("1 kg", "flour", ["200 g flour", "1 kg flour"], "1 kg", "1.2 kg"),
+        Need("1 kg", "flour", ["1 cup flour", "1 cup flour"], "1 kg", "2 cup"),
+        Need("1 kg", "flour", ["2 cups flour", "100 g flour"], "1 kg", nil),
+        Need("1 kg", "flour", ["1 cup (120 g) flour"], "1 kg", nil),
+        Need("  1 kg ", "flour", ["2-3 cups flour"], "1 kg", nil),
+        Need("", "flour", ["200 g flour", "100 g flour"], nil, nil),
+        Need("2 lb", "rice flour", ["2 cups flour"], nil, nil),
+        Need("half a carton", "milk", ["1 cup milk", "2 tbsp milk"], "half a carton", "1 1/8 cup"),
+        Need("1 kg", "butter", ["200 g butter, softened", "100 g butter"], "1 kg", "300 g"),
+        Need("6", "eggs", ["2 eggs", "3 eggs"], "6", "5 eggs"),
+        Need("6", "eggs", ["2 large eggs", "3 eggs"], "6", nil),
+        Need("2", "onions", ["1 onion", "2 onions"], "2", "3 onions"),
+        Need("2", "tomatoes", ["1 (14 oz) can tomatoes", "1 (14 oz) can tomatoes"], "2", nil),
+        Need("1 kg", "Mehl", ["1,5 kg Mehl", "250 g Mehl"], lang: "de", "1 kg", "1750 g"),
+        Need("1 l", "lait", ["250 ml de lait", "10 cl de lait"], lang: "fr", "1 l", "35 cl"),
+        Need("200 g", "醤油", ["醤油 大さじ1", "醤油 大さじ2"], lang: "ja", "200 g", nil),
+    ]
+
     private static let counts: [Count] = [
         Count("4 Apfel (ca. 800g)", lang: "de", true, ["4 Apfel (ca. 800g)", "8 Apfel (ca. 1600g)", "8 Apfel (ca. 800g)"]),
         Count("1 patate douce (300-400 g)", lang: "fr", true, ["1 patate douce (300-400 g)", "2 patate douce (600-800 g)", "2 patate douce (300-400 g)"]),
@@ -2400,6 +2434,21 @@ final class DifferentialCorpusTests: XCTestCase {
             case .subtract(_, nil): result = .usedUp
             }
             XCTAssertEqual(result, row.result, "\(row.quantity) \(row.name) / \(row.lines)")
+        }
+    }
+
+    func testWhatINeedAmountsMatchKotlin() {
+        for row in Self.needs {
+            let item = PantryItem(
+                id: 1, name: row.name, quantity: row.quantity, language: row.language, aisle: .other, inStock: true,
+                alwaysHave: false, purchasedDay: nil, expiresDay: nil
+            )
+            let sources = row.lines.enumerated().map { i, line in
+                GrocerySource(key: "s\(i)", recipeId: Int64(i), title: "r\(i)", day: nil, language: row.language, lines: [line])
+            }
+            let have = PantryMatch.weekNeeds(sources, pantry: [item]).have.first
+            XCTAssertEqual(have?.pantryQuantity, row.have, "\(row.quantity) \(row.name) / \(row.lines)")
+            XCTAssertEqual(have?.weekTotal, row.total, "\(row.quantity) \(row.name) / \(row.lines)")
         }
     }
 
