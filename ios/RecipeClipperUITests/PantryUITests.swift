@@ -56,6 +56,20 @@ final class PantryUITests: RecipeUITestCase {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "\(name), ", ", \(state)")).firstMatch
     }
 
+    /// An amount typed before the name (#302): the field's example shows once it's focused, and
+    /// "3 onions" is a row for onions with 3 on the right, read after the name.
+    func testAnAmountTypedWithTheNameShowsOnTheRight() {
+        launch(.empty)
+        require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
+        let field = require(app.textFields["Add to the pantry"], "Add to the pantry")
+        field.tap()
+        XCTAssertEqual(field.placeholderValue, "e.g. 3 onions")
+        field.typeText("3 onions\n")
+
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "onions, 3, ")).firstMatch
+        require(row, "onions, with 3")
+    }
+
     /// Every state is reachable from something visible: tapping the row opens its sheet, whose
     /// stock control applies at once (#194).
     func testTheEditSheetMarksItRunningLow() {

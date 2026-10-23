@@ -140,6 +140,21 @@ class PantryScreenTest {
         compose.runOnIdle { assertTrue(pantry.items.value.single().inStock) }
     }
 
+    // #302: the field's example, and an amount typed before the name shown on the right at once.
+    @Test
+    fun anAmountTypedWithTheNameShowsOnTheRight() {
+        val pantry = show()
+        compose.onNodeWithTag("pantryDraft").performClick()
+        compose.onNodeWithText("e.g. 3 onions").assertIsDisplayed()
+        compose.onNodeWithTag("pantryDraft").performTextInput("3 onions")
+        compose.onNodeWithTag("pantryDraft").performImeAction()
+
+        val id = compose.runOnIdle { pantry.items.value.single().id }
+        compose.onNodeWithText("onions").assertIsDisplayed()
+        compose.onNodeWithTag("quantity-$id", useUnmergedTree = true).assertIsDisplayed().assertTextEquals("3")
+        compose.onNode(hasContentDescription("onions, 3, In stock")).assertIsDisplayed()
+    }
+
     // Owner, 2026-09-29: no per-row button; the quantity as written sits on the right instead of
     // under the name, and TalkBack reads it after the name.
     @Test

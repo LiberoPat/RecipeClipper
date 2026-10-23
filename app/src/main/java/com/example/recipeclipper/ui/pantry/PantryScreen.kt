@@ -192,6 +192,8 @@ fun PantryScreen(
                                 value = state.draft,
                                 onValueChange = viewModel::onDraftChange,
                                 label = { Text(stringResource(R.string.pantry_add_hint)) },
+                                // An amount may come first (#302), and the field says so.
+                                placeholder = { Text(stringResource(R.string.pantry_add_example)) },
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),

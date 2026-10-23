@@ -479,6 +479,8 @@
 
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Add to the pantry</string>
+    <!-- #302: an amount typed with the name. -->
+    <string name="pantry_add_example">e.g. 3 onions</string>
     <string name="pantry_search_hint">Search the pantry</string>
     <string name="pantry_empty">Nothing in the pantry yet. Type what\'s in your cupboards above, or put things away when you\'re done shopping.</string>
     <string name="pantry_no_results">Nothing matches “%1$s”.</string>

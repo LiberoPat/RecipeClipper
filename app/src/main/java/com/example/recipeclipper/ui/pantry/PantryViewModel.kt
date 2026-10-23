@@ -7,9 +7,11 @@ import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryItem
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.NewPantryItem
 import com.example.recipeclipper.data.model.PantryEdit
+import com.example.recipeclipper.data.model.PantryEntry
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryList
 import com.example.recipeclipper.data.model.PantrySection
@@ -186,17 +188,26 @@ class PantryViewModel @Inject constructor(
 
     fun onDraftChange(text: String) = _uiState.update { it.copy(draft = text) }
 
-    /** Adds what was typed, in stock; a name already here is put back in stock instead. */
+    /**
+     * Adds what was typed, in stock, with the amount it starts with as its quantity ("3 onions",
+     * [PantryEntry.split], #302). A name already here is put back in stock instead, taking a
+     * typed amount; with none, it keeps its own.
+     */
     fun onAddTyped() {
-        val name = _uiState.value.draft.trim()
-        if (name.isEmpty()) return
+        val typed = _uiState.value.draft.trim()
+        if (typed.isEmpty()) return
         _uiState.update { it.copy(draft = "") }
         val language = typedLanguage()
+        val entry = PantryEntry.split(typed, LanguageWords.forTag(language))
         val today = calendar.today()
         viewModelScope.launch {
-            val existing = PantryList.sameName(items, name, language)
-            if (existing != null) pantry.restock(listOf(existing.id), today)
-            else pantry.add(NewPantryItem(name, language, purchasedDay = today))
+            val existing = PantryList.sameName(items, entry.name, language)
+            if (existing == null) {
+                pantry.add(NewPantryItem(entry.name, language, quantity = entry.quantity, purchasedDay = today))
+                return@launch
+            }
+            entry.quantity?.let { pantry.edit(existing.id, PantryEdit(existing.name, it, existing.alwaysHave, existing.expiresDay)) }
+            pantry.restock(listOf(existing.id), today)
         }
     }
 

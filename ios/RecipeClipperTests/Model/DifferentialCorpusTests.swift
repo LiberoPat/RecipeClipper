@@ -28,6 +28,8 @@ import XCTest
 // Use-up rows (#147): a pantry item's quantity and name, the ticked lines, then PantryUseUp.rows
 // against that one item (.none, .ask, .usedUp or .subtract(new quantity)). Write only
 // `UseUp("2 lb", "chicken", ["1 lb chicken"]),`.
+// Pantry-entry rows (#302): what was typed into "Add to the pantry", then PantryEntry.split's name
+// and quantity (nil: kept whole). Write only `Entry("3 onions"),` (optionally `, lang: "de"`).
 // What I need amount rows (#302): a pantry item's quantity and name, the week's lines (each its own
 // recipe), then PantryMatch.weekNeeds' Have row: the pantry's amount and the week's total (nil:
 // none). Write only `Need("2 lb", "chicken", ["1 lb chicken", "8 oz chicken"]),`.
@@ -124,6 +126,13 @@ final class DifferentialCorpusTests: XCTestCase {
         let quantity: String; let name: String; let lines: [String]; let language: String; let result: UseUpResult
         init(_ quantity: String, _ name: String, _ lines: [String], lang: String = "en", _ result: UseUpResult) {
             self.quantity = quantity; self.name = name; self.lines = lines; self.language = lang; self.result = result
+        }
+    }
+
+    private struct Entry {
+        let text: String; let language: String; let name: String; let quantity: String?
+        init(_ text: String, lang: String = "en", _ name: String, _ quantity: String?) {
+            self.text = text; self.language = lang; self.name = name; self.quantity = quantity
         }
     }
 
@@ -1529,6 +1538,48 @@ final class DifferentialCorpusTests: XCTestCase {
         UseUp("3 Zwiebeln", "Zwiebeln", ["2 Zwiebeln"], lang: "de", .subtract("1 Zwiebel")),
     ]
 
+    private static let entries: [Entry] = [
+        Entry("3 onions", "onions", "3"),
+        Entry("2 cups rice", "rice", "2 cups"),
+        Entry("1½ lb chicken", "chicken", "1½ lb"),
+        Entry("1/2 cup sugar", "sugar", "1/2 cup"),
+        Entry("1 1/2 cups flour", "flour", "1 1/2 cups"),
+        Entry("500g butter", "butter", "500g"),
+        Entry("6 large eggs", "large eggs", "6"),
+        Entry("2 cups of rice", "rice", "2 cups"),
+        Entry("2 cans tomatoes", "tomatoes", "2 cans"),
+        Entry("1 Dose Tomaten", lang: "de", "Tomaten", "1 Dose"),
+        Entry("1 boîte de tomates", lang: "fr", "tomates", "1 boîte"),
+        Entry("00 flour", "00 flour", nil),
+        Entry("7up", "7up", nil),
+        Entry("5-spice", "5-spice", nil),
+        Entry("five-spice powder", "five-spice powder", nil),
+        Entry("1/2", "1/2", nil),
+        Entry("2-3 onions", "2-3 onions", nil),
+        Entry("2 or 3 onions", "2 or 3 onions", nil),
+        Entry("2 eggs plus 3 yolks", "2 eggs plus 3 yolks", nil),
+        Entry("1 cup plus 2 tbsp flour", "1 cup plus 2 tbsp flour", nil),
+        Entry("2 cups rice (400 g)", "2 cups rice (400 g)", nil),
+        Entry("1 kg 00 flour", "1 kg 00 flour", nil),
+        Entry("2-inch piece ginger", "2-inch piece ginger", nil),
+        Entry("2% milk", "2% milk", nil),
+        Entry("180 C water", "180 C water", nil),
+        Entry("350°F", "350°F", nil),
+        Entry("1,500 g flour", "1,500 g flour", nil),
+        Entry("0 eggs", "0 eggs", nil),
+        Entry("500 g Mehl", lang: "de", "Mehl", "500 g"),
+        Entry("1,5 kg Kartoffeln", lang: "de", "Kartoffeln", "1,5 kg"),
+        Entry("2 EL Öl", lang: "de", "Öl", "2 EL"),
+        Entry("2-3 Zwiebeln", lang: "de", "2-3 Zwiebeln", nil),
+        Entry("200 g de farine", lang: "fr", "farine", "200 g"),
+        Entry("2 c. à soupe d'huile d'olive", lang: "fr", "huile d'olive", "2 c. à soupe"),
+        Entry("2 à 3 oignons", lang: "fr", "2 à 3 oignons", nil),
+        Entry("¾ de taza de arroz", lang: "es", "arroz", "¾ de taza"),
+        Entry("200 g di farina", lang: "it", "farina", "200 g"),
+        Entry("2 xícaras de arroz", lang: "pt", "arroz", "2 xícaras"),
+        Entry("3 玉ねぎ", lang: "ja", "3 玉ねぎ", nil),
+    ]
+
     private static let needs: [Need] = [
         Need("2 lb", "chicken thighs", ["1 lb chicken thighs", "24 oz chicken thighs"], "2 lb", "2 1/2 lb"),
         Need("3 lb", "chicken", ["2 lb chicken"], "3 lb", "2 lb"),
@@ -2434,6 +2485,13 @@ final class DifferentialCorpusTests: XCTestCase {
             case .subtract(_, nil): result = .usedUp
             }
             XCTAssertEqual(result, row.result, "\(row.quantity) \(row.name) / \(row.lines)")
+        }
+    }
+
+    func testPantryEntriesMatchKotlin() {
+        for row in Self.entries {
+            let entry = PantryEntry.split(row.text, words: LanguageWords.forTag(row.language))
+            XCTAssertEqual(entry, PantryEntry(name: row.name, quantity: row.quantity), row.text)
         }
     }
 

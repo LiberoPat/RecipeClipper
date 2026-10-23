@@ -662,6 +662,7 @@ enum Strings {
 
     // Pantry, What I need and grocery check-off (#51)
     static var pantryAddHint: String { String(localized: "pantry_add_hint") }
+    static var pantryAddExample: String { String(localized: "pantry_add_example") }
     static var pantrySearchHint: String { String(localized: "pantry_search_hint") }
     static var pantryEmpty: String { String(localized: "pantry_empty") }
     static func pantryNoResults(_ query: String) -> String { String(localized: "pantry_no_results \(query)") }

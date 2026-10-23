@@ -10,6 +10,7 @@ import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -68,6 +69,46 @@ class PantryViewModelTest {
         advanceUntilIdle()
         assertEquals(1, pantry.items.value.size)
         assertTrue(pantry.items.value.single().inStock)
+    }
+
+    // #302: an amount typed with the name.
+    private fun TestScope.added(typed: String, pantry: FakePantryRepository = FakePantryRepository()): PantryItem {
+        val vm = PantryViewModel(pantry, groceries, calendar)
+        advanceUntilIdle()
+        vm.onDraftChange(typed)
+        vm.onAddTyped()
+        advanceUntilIdle()
+        assertEquals("", vm.uiState.value.draft)
+        return pantry.items.value.single()
+    }
+
+    @Test
+    fun `an amount typed before the name is the new item's quantity`() = runTest(mainDispatcherRule.dispatcher) {
+        val onions = added(" 3 onions ")
+        assertEquals("onions", onions.name)
+        assertEquals("3", onions.quantity)
+        assertEquals(Aisle.PRODUCE, onions.aisle)
+        assertEquals("2 cups", added("2 cups rice").quantity)
+    }
+
+    @Test
+    fun `a name alone, or one that only looks like an amount, is added whole with no quantity`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            for (typed in listOf("rice", "00 flour", "7up", "2-3 onions")) {
+                val item = added(typed)
+                assertEquals(typed, item.name)
+                assertNull(typed, item.quantity)
+            }
+        }
+
+    @Test
+    fun `restocking with an amount takes it, without one keeps the old`() = runTest(mainDispatcherRule.dispatcher) {
+        val out = item(1, "Onions", inStock = false).copy(quantity = "1", alwaysHave = true, expiresDay = 9)
+        val restocked = added("4 onions", FakePantryRepository(listOf(out)))
+        assertEquals(out.copy(quantity = "4", inStock = true, purchasedDay = calendar.today()), restocked)
+
+        val kept = added("onions", FakePantryRepository(listOf(out)))
+        assertEquals(out.copy(inStock = true, purchasedDay = calendar.today()), kept)
     }
 
     // #149: "Send list" sends what's in stock, as the sort arranges it, whatever the search.

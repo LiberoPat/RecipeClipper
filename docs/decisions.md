@@ -1901,6 +1901,32 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   selecting. The colours are the theme's: In stock ink, Running low the Low tag's paprika text
   (the mockup's amber isn't a theme token), Run out muted like its section, on the
   `surfaceContainer` fill. The add and search fields and the list are unchanged.
+- **An amount typed with the name** (#302, the owner's choice, 2026-10-22; both platforms).
+  "Add to the pantry" stays one field and an amount is optional: "3 onions" adds onions with 3,
+  "2 cups rice" rice with 2 cups, shown on the right at once (a tap opens the sheet to fix it;
+  no confirmation). `PantryEntry.split` (pure, `:core` and Swift, pinned by the corpus's `Entry`
+  rows) splits only when the text starts with one real amount that the typed language's tables
+  (`typedLanguage()`) read: a positive number, fraction or unicode fraction, then a unit the
+  tables know or a space, then a name that starts with a letter and holds no other number. It
+  reuses the scaler's and converter's patterns, so it refuses what they refuse. The quantity is
+  the amount as typed ("1½ lb"); the name is the rest as typed, never singularised or cut,
+  except that a word joining a unit to it ("2 cups of rice", "200 g de farine", "2 c. à soupe
+  d'huile") belongs to neither (amounts.json `unitLinks`, per language). Anything else stays
+  whole as the name, as before: "00 flour", "7up", "5-spice", "1/2" or "2 kg" alone, a range
+  ("2-3 onions"), two amounts ("2 eggs plus 3 yolks", "1 cup plus 2 tbsp flour", "2 cups rice
+  (400 g)", "1 kg 00 flour"), a size ("2-inch ginger", "2% milk"), a temperature ("180 C
+  water", "350°F"), "1,500 g" (thousands or a decimal?), and Japanese, whose amounts follow the
+  name. A container belongs to the amount as a unit does (amounts.json `containers`, the
+  list the scaler already reads package sizes by), so "2 cans tomatoes" is tomatoes with
+  "2 cans" and "1 boîte de tomates" is tomates with "1 boîte" (owner's call: "cans tomatoes"
+  would not match "tomatoes" in What I need).
+  - **Restocking:** a name already here (`PantryList.sameName`, on the split name) is put back
+    in stock as before; a typed amount replaces its quantity, and with none the old one stays.
+  - **The hint:** the field shows "e.g. 3 onions" (`pantry_add_example`, drafts in the five
+    other languages, each an amount its own tables split) under its label: Android's
+    placeholder; on iOS `OutlinedField`'s `example`, the placeholder while it's focused, with
+    the label then on the outline and still the field's accessibility name.
+  - **Not done:** "Done shopping" carrying a grocery line's amount into the pantry.
 
 ## Clip it yourself (#37)
 

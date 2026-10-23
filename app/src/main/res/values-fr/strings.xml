@@ -448,6 +448,8 @@
 
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Ajouter au garde-manger</string>
+    <!-- #302: an amount typed with the name. -->
+    <string name="pantry_add_example">p. ex. 3 oignons</string>
     <string name="pantry_search_hint">Rechercher dans le garde-manger</string>
     <string name="pantry_empty">Rien dans le garde-manger pour l\'instant. Saisissez ci-dessus ce qu\'il y a dans vos placards, ou rangez vos achats une fois les courses terminées.</string>
     <string name="pantry_no_results">Aucun résultat pour « %1$s ».</string>

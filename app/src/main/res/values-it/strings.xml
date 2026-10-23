@@ -448,6 +448,8 @@
 
     <!-- Pantry, What I need and grocery check-off (#51) -->
     <string name="pantry_add_hint">Aggiungi alla dispensa</string>
+    <!-- #302: an amount typed with the name. -->
+    <string name="pantry_add_example">es. 3 cipolle</string>
     <string name="pantry_search_hint">Cerca nella dispensa</string>
     <string name="pantry_empty">La dispensa è ancora vuota. Scrivi qui sopra cosa c\'è nei tuoi armadietti, o metti via le cose quando hai finito la spesa.</string>
     <string name="pantry_no_results">Nessun risultato per «%1$s».</string>
