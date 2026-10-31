@@ -21,6 +21,7 @@ import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoReading
 import com.example.recipeclipper.data.remote.PhotoTextSorter
 import com.example.recipeclipper.data.remote.RecipeTextSplitter
+import com.example.recipeclipper.data.remote.SharedText
 import com.example.recipeclipper.di.DefaultDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -95,7 +96,12 @@ data class EditRecipeUiState(
     val checks: List<LineToCheck> = emptyList(),
     val fractions: List<String> = PhotoTextSorter.FRACTIONS,
     /** The picture shown large under the thumbnails, tapped open (#286); null when none is. */
-    val openPage: Int? = null
+    val openPage: Int? = null,
+    /** This editor is the review of text shared in (#306): "Check the recipe", saved as typed in. */
+    val shared: Boolean = false,
+    /** Shared text split into a recipe (true), or is all in the steps to finish by hand (false);
+     *  null when this isn't shared text, or while it is being split. */
+    val sharedSorted: Boolean? = null
 ) {
     /** The [checks]' lines, each with why. */
     val flags: List<LineFlag> get() = checks.map { it.flag }
@@ -121,6 +127,10 @@ data class EditRecipeUiState(
  * With pages ([SCAN_PAGES_ARG], #226) it is the review of a scan: photos the cook took, picked
  * or shared in, read the same way, in order. Saved as a typed-in recipe (MANUAL, `manual:<uuid>`)
  * in the language its words say, with no picture: the pages aren't kept.
+ *
+ * With text ([SHARED_TEXT_ARG], #306) it is the review of text shared in: split by the same
+ * splitter, in the text's language ([SharedText.read]), or, when it doesn't split, every line as
+ * a step to finish by hand. Saved as a typed-in recipe, like a scan; nothing until Save.
  */
 @HiltViewModel
 class EditRecipeViewModel @Inject constructor(
@@ -149,12 +159,19 @@ class EditRecipeViewModel @Inject constructor(
         savedStateHandle.get<String>(SCAN_PAGES_ARG)?.split('\n')?.map { it.trim() }?.filter { it.isNotEmpty() }
             ?.takeIf { it.isNotEmpty() && photo == null && recipeId == null }
 
+    /** Text shared in (#306); null when this isn't its review. */
+    private val sharedText: String? = savedStateHandle.get<String>(SHARED_TEXT_ARG)
+        ?.takeIf { it.isNotBlank() && recipeId == null && scanPages == null && photo == null }
+
     /** What is read: the post's pictures, or the scan's pages. */
     private val pictures: PhotoPost? =
         photo ?: scanPages?.let { PhotoPost(url = "", title = "", imageUrls = it) }
 
     private val _uiState = MutableStateFlow(
-        EditRecipeUiState(isNew = recipeId == null, photo = pictures, scan = scanPages != null)
+        EditRecipeUiState(
+            isNew = recipeId == null, loading = recipeId != null || sharedText != null,
+            photo = pictures, scan = scanPages != null, shared = sharedText != null
+        )
     )
     val uiState: StateFlow<EditRecipeUiState> = _uiState.asStateFlow()
 
@@ -174,6 +191,31 @@ class EditRecipeViewModel @Inject constructor(
             }
         } else if (pictures != null) {
             readPhoto(pictures)
+        } else if (sharedText != null) {
+            readText(sharedText)
+        }
+    }
+
+    /** Shared text (#306), split off the main thread (it may be long), into the fields. */
+    private fun readText(text: String) {
+        viewModelScope.launch {
+            val reading = withContext(sorting) { SharedText.read(text) }
+            photoLanguage = reading.recipe.language
+            val recipe = reading.recipe
+            _uiState.update {
+                it.copy(
+                    loading = false,
+                    sharedSorted = reading.sorted,
+                    draft = RecipeDraft(
+                        yield = recipe.yield.orEmpty(),
+                        prepTime = recipe.prepTime.orEmpty(),
+                        cookTime = recipe.cookTime.orEmpty(),
+                        totalTime = recipe.totalTime.orEmpty(),
+                        ingredientsText = recipe.ingredients.joinToString("\n"),
+                        instructionsText = recipe.instructions.joinToString("\n")
+                    )
+                )
+            }
         }
     }
 
@@ -306,7 +348,7 @@ class EditRecipeViewModel @Inject constructor(
                 savePhoto(post, state.draft)
                 return@launch
             }
-            val saved = if (scanPages != null) {
+            val saved = if (scanPages != null || sharedText != null) {
                 repository.addManual(state.draft, scannedLanguage(state.draft))
             } else if (recipeId == null) {
                 repository.addManual(state.draft)
@@ -385,6 +427,9 @@ class EditRecipeViewModel @Inject constructor(
 
         /** "Scan a recipe" (#226): the pages, local URIs one per line, in order. */
         const val SCAN_PAGES_ARG = "pages"
+
+        /** Text shared in (#306), as shared. */
+        const val SHARED_TEXT_ARG = "text"
     }
 }
 
