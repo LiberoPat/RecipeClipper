@@ -15,6 +15,7 @@ import android.print.PrintManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,13 +34,11 @@ import java.io.IOException
 fun PrintEffect(viewModel: PrintViewModel, onFailed: suspend () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val printer = LocalPrinter.current
     LaunchedEffect(state.job) {
         val job = state.job ?: return@LaunchedEffect
         val ok = try {
-            when (job) {
-                is PrintJob.Recipe -> printRecipe(context, job)
-                is PrintJob.Cookbook -> shareCookbook(context, job)
-            }
+            printer.print(context, job)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -53,6 +52,24 @@ fun PrintEffect(viewModel: PrintViewModel, onFailed: suspend () -> Unit) {
         onFailed()
     }
 }
+
+/**
+ * Draws a [PrintJob] and hands it on: the print dialog or the share sheet. True once handed on.
+ * A screen test provides its own through [LocalPrinter], since a JVM test has no PDF engine.
+ */
+fun interface Printer {
+    suspend fun print(context: Context, job: PrintJob): Boolean
+}
+
+/** The system's: [PrintPdf], then the print dialog or the share sheet. */
+val SystemPrinter = Printer { context, job ->
+    when (job) {
+        is PrintJob.Recipe -> printRecipe(context, job)
+        is PrintJob.Cookbook -> shareCookbook(context, job)
+    }
+}
+
+val LocalPrinter = staticCompositionLocalOf { SystemPrinter }
 
 private suspend fun printRecipe(context: Context, job: PrintJob.Recipe): Boolean {
     val file = File(File(context.cacheDir, PRINT_DIR).apply { deleteRecursively() }, ShareFile.fileName(job.title, "pdf"))
