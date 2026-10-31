@@ -529,6 +529,18 @@
     <string name="expiry_one_tomorrow">%1$s caduca mañana.</string>
     <string name="expiry_many_tomorrow">%1$s caducan mañana.</string>
     <string name="expiry_names_and">%1$s y %2$s</string>
+    <!-- Use it up (#305) -->
+    <string name="use_it_up_title">Aprovéchalo</string>
+    <plurals name="use_it_up_count">
+        <item quantity="one">Está en %1$d receta guardada</item>
+        <item quantity="many">Está en %1$d de recetas guardadas</item>
+        <item quantity="other">Está en %1$d recetas guardadas</item>
+    </plurals>
+    <string name="use_it_up_note">De tus recetas guardadas. Un toque la añade al plan como cena.</string>
+    <string name="use_it_up_plan_today">Para hoy</string>
+    <string name="use_it_up_plan_tomorrow">Para mañana</string>
+    <string name="use_it_up_planned_today">En el plan hoy</string>
+    <string name="use_it_up_planned_tomorrow">En el plan mañana</string>
     <string name="action_month_view">Mes</string>
     <string name="action_week_view">Semana</string>
     <string name="action_this_month">Este mes</string>

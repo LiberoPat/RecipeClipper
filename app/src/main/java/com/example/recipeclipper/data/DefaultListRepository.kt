@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.SavedRecipe
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -37,6 +38,10 @@ class DefaultListRepository @Inject constructor(
     override fun observeCoverPhotos(): Flow<Map<Long, List<String>>> =
         listDao.observeCoverPhotos().orEmptyOnError(log, "observeCoverPhotos")
             .map { rows -> rows.groupBy({ it.listId }, { it.imageUrl }) }
+
+    override fun observeSavedRecipes(): Flow<List<SavedRecipe>> =
+        listDao.observeSavedRecipes().orEmptyOnError(log, "observeSavedRecipes")
+            .map { rows -> rows.map { SavedRecipe(it.id, it.title, it.imageUrl, it.language, it.ingredients) } }
 
     override suspend fun setMembership(recipeId: Long, listId: Long, inList: Boolean) =
         log.guard("setMembership", Unit) {
