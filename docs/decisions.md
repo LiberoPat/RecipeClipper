@@ -1928,6 +1928,35 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     the label then on the outline and still the field's accessibility name.
   - **Not done:** "Done shopping" carrying a grocery line's amount into the pantry.
 
+## Use it up (#305)
+
+Saved recipes for a pantry item about to expire, behind the `useItUp` flag (on).
+
+- **Where it shows: the Pantry row and the expiry reminder,** both opening one sheet. The row
+  is where the use-by date already is, so the line ("3 saved recipes use it", paprika, under
+  the date) sits beside what it explains and costs nothing when there's no match. The
+  reminder is where the cook learns something expires, so its tap opens the Pantry with the
+  sheet on everything due (Android `UseItUpInbox`, iOS `Router.useItUpPending`); with no
+  saved recipe for any of it, the Pantry opens as before. The Week's ⋮ was the issue's third
+  idea: left out, since planning from the Pantry already lands on the Week.
+- **Soon is the reminder's window** (`ExpiryReminders.due`): in stock, not a staple, expiring
+  today or tomorrow. Not the paprika badge's three days: the line and the morning note then
+  name the same items. An item past its date isn't offered.
+- **Only saved recipes** (in at least one list, `ListDao.observeSavedRecipes`). Not history:
+  a recipe merely opened isn't one the cook chose to keep, and the issue rules out anything
+  not chosen (#165 is where new ones would come from).
+- **Matching is What I need's** (`UseItUp.uses`: each line's `IngredientName` against the item
+  by `PantryMatch.find`, same language, headings skipped). Presence only; "rice flour" is
+  never "flour", "butter beans" never "butter". No model decisions (#104): a name match or
+  nothing. Lines are read as stored (only names matter, so scaling changes nothing). Pure, in
+  `core` (`UseItUp`), ported to Swift and pinned by the corpus's `UseIt` rows.
+- **The sheet:** a heading per item in the reminder's words ("Spinach expires tomorrow."),
+  soonest first, its recipes A–Z, each with one tap per day: "Plan today" and, when the
+  use-by day is tomorrow, "Plan tomorrow". A tap plans it as Dinner at its own yield (as "Add
+  to plan" starts) and the button turns to "Planned …" (any recipe already on the plan that
+  day, from anywhere, shows so). The note under the title says the tap plans dinner.
+- **Strings:** `use_it_up_*` in all six languages, drafts (`docs/translations.md`).
+
 ## Clip it yourself (#37)
 
 A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or
