@@ -10,7 +10,8 @@ final class UseItUpUITests: RecipeUITestCase {
     }
 
     func testTheRowOpensItsSavedRecipesAndOneTapPlansOne() {
-        launch(.useItUp)
+        // UI tests start with every flag off (UITestSeeding): turn this one on.
+        launch(.useItUp, flags: ["useItUp"])
         require(app.tabBars.firstMatch.buttons["Pantry"], "the Pantry tab").tap()
         let line = require(lines.firstMatch, "the Use it up line")
         XCTAssertEqual(line.label, "1 saved recipe uses it")

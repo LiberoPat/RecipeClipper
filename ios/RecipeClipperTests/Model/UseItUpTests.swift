@@ -25,6 +25,12 @@ final class UseItUpTests: XCTestCase {
         XCTAssertFalse(UseItUp.soon(item("spinach", today, alwaysHave: true), today: today))
     }
 
+    func testARecipeStoredWithNoLanguageIsDetected() {
+        let adobo = SavedRecipe(id: 1, title: "Chicken Adobo", imageUrl: nil, language: nil,
+                                lines: ["2 lb chicken thighs", "1/2 cup soy sauce"])
+        XCTAssertTrue(UseItUp.uses(adobo, item("chicken thighs", today)))
+    }
+
     func testGroupsListSoonItemsWithRecipesSoonestFirstRecipesAToZ() {
         let spinach = item("spinach", today + 1, id: 1)
         let milk = item("milk", today, id: 2)

@@ -34,7 +34,9 @@ object UseItUp {
 
     /** Whether one of [recipe]'s lines (a heading aside) names [item]. */
     fun uses(recipe: SavedRecipe, item: PantryItem): Boolean {
-        val words = LanguageWords.forTag(recipe.language) ?: return false
+        // A recipe stored with no language (before #14) is detected, as What I need's are.
+        val tag = recipe.language ?: LanguageWords.resolve(null, null) { LanguageWords.detectionText(recipe.title, recipe.lines) }
+        val words = LanguageWords.forTag(tag) ?: return false
         return recipe.lines.any { line ->
             GrocerySources.buyable(line) &&
                 IngredientName.of(line, words)?.let { PantryMatch.find(it, words.language, listOf(item)) } != null

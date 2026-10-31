@@ -1946,7 +1946,8 @@ Saved recipes for a pantry item about to expire, behind the `useItUp` flag (on).
   a recipe merely opened isn't one the cook chose to keep, and the issue rules out anything
   not chosen (#165 is where new ones would come from).
 - **Matching is What I need's** (`UseItUp.uses`: each line's `IngredientName` against the item
-  by `PantryMatch.find`, same language, headings skipped). Presence only; "rice flour" is
+  by `PantryMatch.find`, same language, headings skipped; a recipe stored with no language,
+  from before #14, is detected first, as What I need's are). Presence only; "rice flour" is
   never "flour", "butter beans" never "butter". No model decisions (#104): a name match or
   nothing. Lines are read as stored (only names matter, so scaling changes nothing). Pure, in
   `core` (`UseItUp`), ported to Swift and pinned by the corpus's `UseIt` rows.

@@ -45,6 +45,11 @@ class UseItUpTest {
         assertFalse(UseItUp.uses(recipe(1, "Pie", "For the spinach:"), item("spinach", today)))
     }
 
+    @Test fun `a recipe stored with no language is detected`() {
+        val adobo = SavedRecipe(1, "Chicken Adobo", null, null, listOf("2 lb chicken thighs", "1/2 cup soy sauce"))
+        assertTrue(UseItUp.uses(adobo, item("chicken thighs", today)))
+    }
+
     @Test fun `groups list soon items with recipes, soonest first, recipes A-Z`() {
         val spinach = item("spinach", today + 1)
         val milk = item("milk", today)

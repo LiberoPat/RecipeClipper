@@ -28,7 +28,11 @@ enum UseItUp {
 
     /// Whether one of `recipe`'s lines (a heading aside) names `item`.
     static func uses(_ recipe: SavedRecipe, _ item: PantryItem) -> Bool {
-        guard let words = LanguageWords.forTag(recipe.language) else { return false }
+        // A recipe stored with no language (before #14) is detected, as What I need's are.
+        let tag = recipe.language ?? LanguageWords.resolve(declared: nil, page: nil) {
+            LanguageWords.detectionText(name: recipe.title, ingredients: recipe.lines)
+        }
+        guard let words = LanguageWords.forTag(tag) else { return false }
         return recipe.lines.contains { line in
             guard GrocerySources.buyable(line), let name = IngredientName.of(line, words: words) else { return false }
             return PantryMatch.find(name, language: words.language, pantry: [item]) != nil
