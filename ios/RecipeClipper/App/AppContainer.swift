@@ -300,6 +300,13 @@ final class AppContainer {
         mirror.store(on)
     }
 
+    /// Makes "Print or save as PDF" and the cookbook's ViewModel (#318); nil with the `print` flag off.
+    var makePrintViewModel: (() -> PrintViewModel)? {
+        guard featureFlags.isOn(.print) else { return nil }
+        let recipes = recipeRepository, preferences = preferences, decisions = decisionRepository
+        return { PrintViewModel(recipes: recipes, preferences: preferences, decisions: decisions) }
+    }
+
     /// Makes "Send as file"'s ViewModel (#149); nil without a share file repository.
     var makeSendFileViewModel: (() -> SendFileViewModel)? {
         guard let share = shareFileRepository else { return nil }

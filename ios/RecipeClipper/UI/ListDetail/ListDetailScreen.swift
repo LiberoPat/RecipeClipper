@@ -6,8 +6,11 @@ import SwiftUI
 struct ListDetailScreen: View {
     let vm: ListDetailViewModel
     let onOpenRecipe: (Int64) -> Void
+    /// Makes "Make a cookbook" (#318); nil (the flag off, or tests) leaves it out. Made on first use.
+    var makePrintVM: (() -> PrintViewModel)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @State private var printVM: PrintViewModel?
     @State private var confirmingDelete = false
     @State private var now = currentMillis()
 
@@ -41,6 +44,20 @@ struct ListDetailScreen: View {
                         Button(action: vm.onStartRenaming) {
                             Label(Strings.rename, systemImage: "pencil")
                         }
+                        // A cookbook (#318): every recipe here in one PDF, for the share sheet.
+                        if let makePrintVM, !state.recipes.isEmpty {
+                            Button {
+                                let print = printVM ?? makePrintVM()
+                                printVM = print
+                                print.makeCookbook(
+                                    title: list.name, recipeIds: state.recipes.map(\.id),
+                                    labels: Strings.printLabels, contents: Strings.cookbookContents
+                                )
+                            } label: {
+                                Text(Strings.cookbook); Text(Strings.menuDescCookbook); Image(systemName: "book")
+                            }
+                            .accessibilityIdentifier("list.cookbook")
+                        }
                         // Favorites is the only list that can't be deleted — "saved" is built
                         // around it. The other seeded lists delete like any other.
                         if !list.isFavorites {
@@ -71,6 +88,7 @@ struct ListDetailScreen: View {
         .onChange(of: state.deleted) { _, deleted in
             if deleted { dismiss() }
         }
+        .modifier(PrintEffect(vm: printVM))
         .onAppear { now = currentMillis() }
         #if DEBUG
         .onChange(of: state.list?.id) { _, id in

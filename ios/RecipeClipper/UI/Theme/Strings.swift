@@ -460,6 +460,13 @@ enum Strings {
         )
     }
 
+    // The printed card's headings (#318), as the reading view words them.
+    static var printLabels: RecipePrint.Labels {
+        RecipePrint.Labels(
+            share: shareTextLabels, ingredients: headingIngredients, instructions: headingInstructions, notes: headingNotes
+        )
+    }
+
     // Step timer notifications (#10)
     static func timerNotificationTitle(step: Int) -> String { String(localized: "timer_notification_title \(step)") }
 
