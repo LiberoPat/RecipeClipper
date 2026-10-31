@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.print
 
+import androidx.core.graphics.withTranslation
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -42,10 +43,7 @@ internal suspend fun measure(blocks: List<Block>, style: PrintStyle, cached: sus
 
 private fun text(layout: StaticLayout, space: Float, keep: Boolean, style: PrintStyle) =
     LaidBlock(space, layout.height.toFloat(), keep) { canvas, top, _ ->
-        canvas.save()
-        canvas.translate(style.margin, top)
-        layout.draw(canvas)
-        canvas.restore()
+        canvas.withTranslation(style.margin, top) { layout.draw(this) }
     }
 
 /** A line with a marker in the margin ("•" or "3."), the text indented by [indent]. */
@@ -53,10 +51,7 @@ private fun hanging(marker: String, layout: StaticLayout, indent: Float, space: 
     LaidBlock(space, layout.height.toFloat(), keep = false) { canvas, top, _ ->
         val paint = if (numbered) style.stepNumber else style.muted
         canvas.drawText(marker, style.margin, top + layout.getLineBaseline(0), paint)
-        canvas.save()
-        canvas.translate(style.margin + indent, top)
-        layout.draw(canvas)
-        canvas.restore()
+        canvas.withTranslation(style.margin + indent, top) { layout.draw(this) }
     }
 
 /** The photo across the page, cropped from its centre to a band at most [MAX_PHOTO] tall. */

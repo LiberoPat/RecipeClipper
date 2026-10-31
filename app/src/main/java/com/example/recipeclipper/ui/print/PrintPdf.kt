@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.print
 
+import androidx.core.graphics.withTranslation
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Paint
@@ -41,10 +42,7 @@ internal class PrintPdf(private val context: Context) {
 
         val page = doc.startPage(PdfDocument.PageInfo.Builder(style.pageWidth, style.pageHeight, 1).create())
         val name = style.layout(title, style.bookTitle, centre = true)
-        page.canvas.save()
-        page.canvas.translate(style.margin, (style.pageHeight - name.height) / 2f)
-        name.draw(page.canvas)
-        page.canvas.restore()
+        page.canvas.withTranslation(style.margin, (style.pageHeight - name.height) / 2f) { name.draw(this) }
         doc.finishPage(page)
         var number = 2
         contentsPages.forEach { drawPage(doc, number, it, footer = number++.toString()) }
@@ -53,13 +51,13 @@ internal class PrintPdf(private val context: Context) {
 
     private fun heading(text: String) = style.layout(text, style.title).let { layout ->
         LaidBlock(0f, layout.height + 12f, keep = true) { canvas, top, _ ->
-            canvas.save(); canvas.translate(style.margin, top); layout.draw(canvas); canvas.restore()
+            canvas.withTranslation(style.margin, top) { layout.draw(this) }
         }
     }
 
     private fun contentsRow(name: String, page: () -> Int) = style.layout(name, style.text, style.contentWidth - 40f).let { layout ->
         LaidBlock(8f, layout.height.toFloat(), keep = false) { canvas, top, _ ->
-            canvas.save(); canvas.translate(style.margin, top); layout.draw(canvas); canvas.restore()
+            canvas.withTranslation(style.margin, top) { layout.draw(this) }
             val number = Paint(style.muted).apply { textAlign = Paint.Align.RIGHT }
             canvas.drawText(page().toString(), style.margin + style.contentWidth, top + layout.getLineBaseline(0), number)
         }

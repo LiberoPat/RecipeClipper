@@ -1,7 +1,7 @@
 package com.example.recipeclipper.ui.print
 
+import androidx.core.graphics.toColorInt
 import android.content.Context
-import android.graphics.Color
 import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
@@ -56,10 +56,9 @@ internal class PrintStyle(context: Context, locale: Locale = Locale.getDefault()
         }
 
     companion object {
-        val INK = Color.parseColor("#1C1917")
-        val MUTED = Color.parseColor("#6B6259")
-        val PAPRIKA = Color.parseColor("#BF4A2B")
-        val HAIRLINE = Color.parseColor("#E7E1D9")
+        val INK = "#1C1917".toColorInt()
+        val MUTED = "#6B6259".toColorInt()
+        val PAPRIKA = "#BF4A2B".toColorInt()
         private val LETTER_COUNTRIES = setOf("US", "CA", "MX", "PH")
     }
 }
