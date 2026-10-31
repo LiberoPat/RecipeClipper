@@ -22,6 +22,8 @@ final class AppContainer {
     let notificationPermission: NotificationPermission
     /// Keeps the pantry's expiry reminders scheduled (#52); the live app only.
     private(set) var expiryReminders: ExpiryReminderCoordinator?
+    /// The home-screen widgets' redraws (#309); the live app only.
+    private(set) var widgetRefresher: WidgetRefresher?
     /// Where the share extension leaves a Reddit post it was blocked from reading (#213); nil
     /// under test.
     var pendingClip: PendingClip?
@@ -236,6 +238,7 @@ final class AppContainer {
         // copies) go once the process is past them.
         if let photos = container.cookedPhotoRepository { Task { await photos.sweep() } }
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
+        if !testing { container.startWidgets(WidgetRefresher(switchStore: DefaultsWidgetsSwitch(defaults: defaults))) }
         storeKit?.start()
         container.libraryPolicy.startMirroring()
         container.startRedditMirroring(DefaultsRedditSwitch(defaults: defaults))
@@ -298,6 +301,21 @@ final class AppContainer {
             Task { @MainActor in self?.startRedditMirroring(mirror) }
         }
         mirror.store(on)
+    }
+
+    /// The home-screen widgets (#309): redrawn when the plan, the list or the `widgets` flag
+    /// changes, the flag mirrored for the widget extension as above. The live app only.
+    func startWidgets(_ refresher: WidgetRefresher) {
+        widgetRefresher = refresher
+        refresher.start(mealPlan: mealPlanRepository, groceries: groceryRepository, today: planCalendar.today())
+        followWidgetsFlag()
+    }
+
+    private func followWidgetsFlag() {
+        let on = withObservationTracking { featureFlags.isOn(.widgets) } onChange: { [weak self] in
+            Task { @MainActor in self?.followWidgetsFlag() }
+        }
+        widgetRefresher?.flag(on: on)
     }
 
     /// Keeps the share extension's copy of the `photoText` flag (#226) current, as above.

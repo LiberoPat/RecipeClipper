@@ -10,19 +10,15 @@ import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.flags.FlagRegistry
-import com.example.recipeclipper.data.model.DecisionQuestion
-import com.example.recipeclipper.data.model.Decisions
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -40,12 +36,8 @@ class HomeWidgetsTest {
     private val groceries = FakeGroceryRepository()
     private val calendar = FakePlanCalendar()
     private val store = FakeFeatureFlagStore()
-    private val noDecisions = object : DecisionRepository {
-        override fun observe() = flowOf(Decisions.NONE)
-        override suspend fun decide(questions: Collection<DecisionQuestion>) {}
-    }
     private val widgets = HomeWidgets(
-        app, plan, groceries, noDecisions, calendar, FeatureFlags(store, FlagRegistry.definitions, isDebug = true)
+        app, plan, groceries, calendar, FeatureFlags(store, FlagRegistry.definitions, isDebug = true)
     )
     private var tonight = 0
     private var list = 0

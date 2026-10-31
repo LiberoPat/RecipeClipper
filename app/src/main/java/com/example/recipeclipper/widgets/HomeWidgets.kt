@@ -9,7 +9,6 @@ import android.view.View
 import android.widget.RemoteViews
 import com.example.recipeclipper.MainActivity
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.PlanCalendar
@@ -30,7 +29,9 @@ import javax.inject.Singleton
  * The home-screen widgets (#309): Tonight (today's planned meals) and the grocery list (what's
  * left to buy), as RemoteViews: Glance isn't in the Compose BOM (it is versioned on its own and
  * brings WorkManager in), and two short lists don't need it. The content is
- * [WidgetContent]'s; this only reads the repositories and draws. A tap opens the Week or
+ * [WidgetContent]'s; this only reads the repositories and draws. The list's lines are as
+ * stored, without the on-device model's decisions (#104), as the iOS widget, which runs
+ * apart from the app, has them. A tap opens the Week or
  * Groceries tab. With the `widgets` flag off, a placed widget shows only the app's name.
  */
 @Singleton
@@ -38,7 +39,6 @@ class HomeWidgets @Inject constructor(
     @ApplicationContext private val context: Context,
     private val mealPlan: MealPlanRepository,
     private val groceries: GroceryRepository,
-    private val decisions: DecisionRepository,
     private val calendar: PlanCalendar,
     private val flags: FeatureFlags
 ) {
@@ -75,7 +75,7 @@ class HomeWidgets @Inject constructor(
         }
         if (groceryIds.isNotEmpty()) {
             val lines = if (on) {
-                WidgetContent.groceries(GroceryCombiner.sections(groceries.observeItems().first(), decisions.current()))
+                WidgetContent.groceries(GroceryCombiner.sections(groceries.observeItems().first()))
             } else null
             for (id in groceryIds) manager.updateAppWidget(id, groceryList(lines, maxRows(manager, id, LINE_ROW_DP)))
         }

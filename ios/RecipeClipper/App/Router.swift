@@ -69,6 +69,11 @@ final class Router {
             openInRecipes(.cookRecipe(id: id))
             return
         }
+        // A home-screen widget (#309) opens its tab.
+        if let tab = AppLinks.tabName(from: url).flatMap(AppTab.init(rawValue:)) {
+            select(tab)
+            return
+        }
         guard let shared = DeepLink.sharedUrl(from: url) else { return }
         openInRecipes(.importUrl(shared))
     }
