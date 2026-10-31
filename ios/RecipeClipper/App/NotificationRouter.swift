@@ -26,7 +26,8 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
         let tab = (response.notification.request.content.userInfo[Self.openTabKey] as? String).flatMap(AppTab.init)
         Task { @MainActor in
             if let id { self.router?.openInRecipes(.cookRecipe(id: id)) }
-            if let tab { self.router?.select(tab) }
+            // An expiry reminder's tab opens on Use it up (#305), which shows only when the flag is on.
+            if tab == .pantry { self.router?.requestUseItUp() } else if let tab { self.router?.select(tab) }
             completionHandler()
         }
     }

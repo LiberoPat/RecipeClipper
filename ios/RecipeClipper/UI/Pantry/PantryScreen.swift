@@ -15,6 +15,11 @@ struct PantryScreen: View {
     /// Makes "Send as file" (#149, phase 2); nil leaves it out. Made on first use.
     var makeSendFileVM: (() -> SendFileViewModel)? = nil
     @State private var sendFileVM: SendFileViewModel?
+    /// "Use it up" (#305); nil leaves it out. `useItUpPending` is an expiry reminder's tap
+    /// waiting, which `takeUseItUp` clears once the sheet opens on it.
+    var useItUpVM: UseItUpViewModel? = nil
+    var useItUpPending = false
+    var takeUseItUp: () -> Bool = { false }
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
     @State private var sideInset = ReadableWidth.gutter
     /// Touch and hold, and drag to select (#258).
@@ -77,6 +82,15 @@ struct PantryScreen: View {
             Button(Strings.cancel, role: .cancel, action: vm.onClearRunOutDismissed)
         }
         .modifier(SendFileEffect(vm: sendFileVM))
+        .sheet(isPresented: Binding(
+            get: { useItUpVM?.uiState.sheet != nil && state.editing == nil },
+            set: { if !$0 { useItUpVM?.onDismiss() } }
+        )) {
+            if let useItUpVM { UseItUpSheet(vm: useItUpVM) }
+        }
+        .onChange(of: useItUpPending, initial: true) {
+            if takeUseItUp() { useItUpVM?.onOpenAll() }
+        }
     }
 
     private func list(_ state: PantryUiState, _ proxy: ScrollViewProxy) -> some View {
@@ -188,7 +202,9 @@ struct PantryScreen: View {
             item: item, today: state.today, onList: state.onList.contains(item.id),
             first: item.id == state.sections?.first?.items.first?.id, vm: vm,
             selecting: state.selection != nil, selected: state.selection?.ids.contains(item.id) == true,
-            ignoresTap: { [drag] in drag.ignoresTap }
+            ignoresTap: { [drag] in drag.ignoresTap },
+            useItUp: useItUpVM?.uiState.counts[item.id] ?? 0,
+            onUseItUp: { [useItUpVM] in useItUpVM?.onOpen(itemId: item.id) }
         )
         .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { frame in
             drag.frames[item.id] = frame

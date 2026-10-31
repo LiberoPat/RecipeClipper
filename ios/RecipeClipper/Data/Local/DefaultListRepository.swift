@@ -37,6 +37,10 @@ final class DefaultListRepository: ListRepository {
         }
     }
 
+    func observeSavedRecipes() -> AnyPublisher<[SavedRecipe], Never> {
+        db.observe { conn in try ListDao(db: conn).savedRecipes() }
+    }
+
     func setMembership(recipeId: Int64, listId: Int64, inList: Bool) async {
         let now = clock.now()
         await perform("setMembership") { dao in
