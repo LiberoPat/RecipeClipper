@@ -47,6 +47,10 @@ import java.io.File
  * with that quantity and name, as the Have row's pantry amount and the week's total (nil: none);
  * write only those (optionally `, lang: "de"`).
  *
+ * `UseIt("name", [lines])` rows (#305) pin "Use it up" ([UseItUp.groups]): the lines, each its
+ * own saved recipe, against one in-stock pantry item of that name expiring today, as the indices
+ * of the recipes that use it; write only those (optionally `, lang: "de"`).
+ *
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
  *
@@ -153,6 +157,10 @@ class DifferentialCorpusTest {
     private val needRow = Regex(
         """^(\s*)Need\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
     )
+    // A Use it up row (#305): a pantry item's name, the saved recipes' lines, optionally their language.
+    private val useItRow = Regex(
+        """^(\s*)UseIt\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
+    )
     // A calendar-file row (#52): one summary's text.
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
@@ -257,6 +265,7 @@ class DifferentialCorpusTest {
         useUpRow.find(line)?.let { m -> return useUpRow(m) }
         entryRow.find(line)?.let { m -> return entryRow(m) }
         needRow.find(line)?.let { m -> return needRow(m) }
+        useItRow.find(line)?.let { m -> return useItRow(m) }
         countRow.find(line)?.let { m -> return countRow(m) }
         cardRow.find(line)?.let { m ->
             val (kind, html) = m.groupValues[2] to unescape(m.groupValues[3])
@@ -507,6 +516,21 @@ class DifferentialCorpusTest {
         val have = row?.pantryQuantity?.let { q(it) } ?: "nil"
         val total = row?.weekTotal?.let { q(it) } ?: "nil"
         return m.groupValues[1] + "Need(${q(quantity)}, ${q(name)}, ${list(lines)}$lang, $have, $total),"
+    }
+
+    /**
+     * `UseIt(name, [lines], lang:, [used])` (#305): [UseItUp.groups] for the lines, each its own
+     * saved recipe, against one in-stock item expiring today: the indices of the recipes using it.
+     */
+    private fun useItRow(m: MatchResult): String {
+        val name = unescape(m.groupValues[2])
+        val lines = literal.findAll(m.groupValues[3]).map { unescape(it.groupValues[1]) }.toList()
+        val language = m.groupValues[4].ifEmpty { "en" }
+        val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
+        val item = PantryItem(1, name, null, language, Aisle.OTHER, inStock = true, alwaysHave = false, purchasedDay = null, expiresDay = 0)
+        val saved = lines.mapIndexed { i, line -> SavedRecipe(i.toLong(), "r$i", null, language, listOf(line)) }
+        val used = UseItUp.groups(listOf(item), saved, 0).firstOrNull()?.recipes.orEmpty().map { it.id }.sorted()
+        return m.groupValues[1] + "UseIt(${q(name)}, ${list(lines)}$lang, ${used.joinToString(", ", "[", "]")}),"
     }
 
     /** `Step(step, [lines], lang:, as given, doubled in Metric)`: [StepAmounts.annotate], marked. */
