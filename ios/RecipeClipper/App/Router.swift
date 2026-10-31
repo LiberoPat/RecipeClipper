@@ -64,6 +64,11 @@ final class Router {
     }
 
     func handle(_ url: URL) {
+        // A running timer's Live Activity (#309) opens its recipe in cook mode.
+        if let id = AppLinks.cookRecipeId(from: url) {
+            openInRecipes(.cookRecipe(id: id))
+            return
+        }
         guard let shared = DeepLink.sharedUrl(from: url) else { return }
         openInRecipes(.importUrl(shared))
     }

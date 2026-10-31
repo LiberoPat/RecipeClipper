@@ -41,6 +41,9 @@ targets:
     dependencies:
       - target: RecipeClipperShare
         embed: true
+      # Running timers' Live Activities (#309).
+      - target: RecipeClipperWidgets
+        embed: true
     # The App Group holds the database and settings the share extension also uses. Keep the
     # identifier in step with AppGroup.identifier and the extension's entitlements, and
     # register it on both App IDs (docs/release.md).
@@ -98,6 +101,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UIBackgroundModes: [audio]
+        # A running cook-mode timer as a Live Activity (#309), drawn by RecipeClipperWidgets.
+        NSSupportsLiveActivities: true
         # "I made this" (#116): asked the first time the camera is chosen, never before.
         NSCameraUsageDescription: Take a photo of what you cooked, to keep with the recipe.
         # HTTPS only, which is exempt; saves answering the question on every upload.
@@ -166,6 +171,40 @@ targets:
       base:
         # Must stay prefixed by the app's identifier.
         PRODUCT_BUNDLE_IDENTIFIER: com.liberopat.recipeclipper.share
+        TARGETED_DEVICE_FAMILY: "1,2"
+  RecipeClipperWidgets:
+    type: app-extension
+    platform: iOS
+    # #309: a running timer's Live Activity. Only what it draws comes along: the shared
+    # attributes and links, the theme with its fonts, and the string catalog (Bundle.main is
+    # this extension's bundle, as in the share extension).
+    sources:
+      - path: RecipeClipperWidgets
+      - path: RecipeClipper/Shared
+      - path: RecipeClipper/UI/Theme/Theme.swift
+      - path: RecipeClipper/Resources/Localizable.xcstrings
+      - path: RecipeClipper/Resources/Fonts
+        buildPhase: resources
+    # The same App Group as the app and the share extension; register it on this App ID too
+    # (docs/release.md).
+    entitlements:
+      path: RecipeClipperWidgets/RecipeClipperWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.liberopat.recipeclipper]
+    info:
+      path: RecipeClipperWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Recipe Clipper
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        UIAppFonts:
+          - fraunces.ttf
+          - karla.ttf
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        # Must stay prefixed by the app's identifier.
+        PRODUCT_BUNDLE_IDENTIFIER: com.liberopat.recipeclipper.widgets
         TARGETED_DEVICE_FAMILY: "1,2"
   RecipeClipperTests:
     type: bundle.unit-test

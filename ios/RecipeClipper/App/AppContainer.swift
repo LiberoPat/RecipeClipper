@@ -202,7 +202,15 @@ final class AppContainer {
             connectivity: PathConnectivity(),
             // Under XCTest nothing is scheduled, so a test run never raises the notification
             // prompt (UI-test seeding above takes the default, which is the same no-op).
-            alarms: testing ? NoOpTimerAlarmScheduler() : NotificationTimerScheduler(clock: clock),
+            // Outside XCTest (where featureFlags is nil), each running timer also counts down in
+            // a Live Activity (#309).
+            alarms: featureFlags.map { flags in
+                LiveActivityTimerScheduler(
+                    wrapping: NotificationTimerScheduler(clock: clock),
+                    display: ActivityKitTimerDisplay(clock: clock),
+                    flags: flags
+                )
+            } ?? NoOpTimerAlarmScheduler(),
             sharedDatabase: testing ? nil : database,
             featureFlags: featureFlags,
             notificationPermission: testing ? FixedNotificationPermission(granted: true) : SystemNotificationPermission(),
