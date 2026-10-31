@@ -21,6 +21,8 @@ enum Flag: String, CaseIterable {
     /// Reading a Reddit post's photo with on-device text recognition, checked by the cook (#198),
     /// and scanning the cook's own photos the same way (#226).
     case photoText
+    /// Print or save a recipe as PDF, and a list as a cookbook PDF (#318).
+    case print
 }
 
 /// One flag as `shared/flags.json` declares it.

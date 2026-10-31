@@ -41,6 +41,12 @@
       "description": "Read the photo: on a Reddit post with no recipe text, a button reads the post's photo (each picture of a gallery, in order) with on-device text recognition (ML Kit's bundled Latin model on Android, Vision on iOS). The lines are sorted by the Reddit splitter into the recipe editor for the cook to check (unsure lines are marked); nothing is saved without that. When nothing sorts, the editor opens with the title, photo and any lines read. Also Scan a recipe (#226): the cook's own photos, taken, picked or shared in, read the same way and saved as a typed-in recipe.",
       "defaults": { "debug": true, "release": true },
       "issue": 198
+    },
+    {
+      "key": "print",
+      "description": "Print or save as PDF: the recipe screen's menu prints the recipe as shown (scaled and converted, with its photo if cached, the note last) through the system print dialog, which can also save a PDF; a list's menu makes the whole list a cookbook PDF (a title page, contents, each recipe on its own page) for the share sheet.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 318
     }
   ]
 }

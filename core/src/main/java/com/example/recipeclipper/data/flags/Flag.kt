@@ -26,7 +26,10 @@ enum class Flag(val key: String) {
 
     /** Reading a Reddit post's photo with on-device text recognition, checked by the cook (#198),
      *  and scanning the cook's own photos the same way (#226). */
-    PHOTO_TEXT("photoText");
+    PHOTO_TEXT("photoText"),
+
+    /** Print or save a recipe as PDF, and a list as a cookbook PDF (#318). */
+    PRINT("print");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
