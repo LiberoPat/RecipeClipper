@@ -96,12 +96,13 @@ object ShareFile {
         )
     }
 
-    /** "Sheet-pan chicken.recipeclipper": the title, safe as a file name on any phone. */
-    fun fileName(title: String): String {
+    /** "Sheet-pan chicken.recipeclipper": the title, safe as a file name on any phone; a printed
+     *  recipe or cookbook (#318) takes [extension] "pdf". */
+    fun fileName(title: String, extension: String = EXTENSION): String {
         val safe = title.map { c -> if (c in UNSAFE || c.isISOControl()) ' ' else c }.joinToString("")
             .replace(Regex("\\s+"), " ")
             .trim().trimStart('.').take(MAX_NAME).trim()
-        return safe.ifEmpty { "Recipe Clipper" } + "." + EXTENSION
+        return safe.ifEmpty { "Recipe Clipper" } + "." + extension
     }
 
     private const val UNSAFE = "/\\:*?\"<>|"

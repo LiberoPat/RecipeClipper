@@ -708,6 +708,13 @@
     </plurals>
     <!-- The ⋮ menus' second lines (#260). -->
     <string name="menu_desc_send_file">A copy someone can open in Recipe Clipper</string>
+    <!-- Print or save as PDF, and a list as a cookbook (#318). -->
+    <string name="action_print">Print or save as PDF</string>
+    <string name="menu_desc_print">This recipe as shown, ready for paper</string>
+    <string name="action_cookbook">Make a cookbook</string>
+    <string name="menu_desc_cookbook">Every recipe here in one PDF</string>
+    <string name="cookbook_contents">Contents</string>
+    <string name="print_failed">Couldn\'t make the PDF.</string>
     <string name="menu_desc_update_from_source">Replace your edits with the website\'s latest</string>
     <string name="menu_desc_what_i_need">What this week\'s recipes need that your pantry doesn\'t have</string>
     <string name="menu_desc_add_week_to_groceries">Onto your grocery list, except what you have</string>
