@@ -22,6 +22,7 @@ import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.ReceivedList
 import com.example.recipeclipper.reminders.ExpiryNotifications
 import com.example.recipeclipper.timers.TimerNotifications
+import com.example.recipeclipper.widgets.HomeWidgets
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.groceries.ReceivedListInbox
 import com.example.recipeclipper.ui.navigation.AppShell
@@ -173,6 +174,9 @@ class MainActivity : ComponentActivity() {
             ScanIntent.pages(intent)?.let { return Routes.scan(it) }
         }
         if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) return Tab.PANTRY.route
+        // The home-screen widgets (#309): Tonight opens the Week, the list opens Groceries.
+        if (intent?.action == HomeWidgets.ACTION_OPEN_WEEK) return Tab.WEEK.route
+        if (intent?.action == HomeWidgets.ACTION_OPEN_GROCERIES) return Tab.GROCERIES.route
         if (intent?.action == TimerNotifications.ACTION_OPEN_COOK) {
             val id = intent.getLongExtra(TimerNotifications.EXTRA_RECIPE_ID, -1)
             return if (id > 0) Routes.cookRecipe(id) else null

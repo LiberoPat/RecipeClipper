@@ -23,6 +23,8 @@ enum Flag: String, CaseIterable {
     case photoText
     /// Running cook-mode timers outside the app (#309): a Live Activity, an ongoing notification.
     case liveTimers
+    /// The home-screen widgets (#309): Tonight and Groceries.
+    case widgets
 }
 
 /// One flag as `shared/flags.json` declares it.

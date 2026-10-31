@@ -47,6 +47,12 @@
       "description": "Running cook-mode timers outside the app: on Android an ongoing notification counting down to the saved deadline (a Live Update on Android 16), on iOS a Live Activity on the lock screen and in the Dynamic Island. A tap opens the recipe in cook mode. Off, only the time's-up alert remains.",
       "defaults": { "debug": true, "release": true },
       "issue": 309
+    },
+    {
+      "key": "widgets",
+      "description": "Home-screen widgets: Tonight (today's planned meals; a tap opens the Week) and Groceries (what's left to buy; a tap opens Groceries). They refresh when the plan or the list changes. Off, a widget already placed shows only the app's name.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 309
     }
   ]
 }

@@ -3,4 +3,9 @@
     <!-- Ink ground for system dark mode; also the window background so there is no light
          flash before Compose draws (see ui/theme/Theme.kt DarkScheme). -->
     <color name="ground">#1C1917</color>
+    <!-- The home-screen widgets (#309): the theme's tokens, on-ink at night. -->
+    <color name="widget_ground">#1C1917</color>
+    <color name="widget_ink">#FBF9F6</color>
+    <color name="widget_muted">#A39A90</color>
+    <color name="widget_accent">#E2735A</color>
 </resources>

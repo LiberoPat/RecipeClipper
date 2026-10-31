@@ -228,6 +228,16 @@
     <string name="timer_running_title">Temporizador: paso %1$d</string>
     <string name="timer_running_channel_name">Temporizadores en marcha</string>
     <string name="timer_running_channel_description">La cuenta atrás de un temporizador mientras corre</string>
+    <string name="widget_tonight_name">Esta noche</string>
+    <string name="widget_tonight_description">Las comidas planeadas para hoy</string>
+    <string name="widget_tonight_empty">Nada planeado para hoy</string>
+    <string name="widget_groceries_description">Lo que queda por comprar</string>
+    <string name="widget_groceries_empty">No queda nada por comprar</string>
+    <plurals name="widget_more">
+        <item quantity="one">+%1$d más</item>
+        <item quantity="many">+%1$d más</item>
+        <item quantity="other">+%1$d más</item>
+    </plurals>
 
     <!-- Editing a recipe, or typing one in (#29) -->
     <string name="action_edit">Editar</string>

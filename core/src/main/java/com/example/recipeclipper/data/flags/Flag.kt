@@ -29,7 +29,10 @@ enum class Flag(val key: String) {
     PHOTO_TEXT("photoText"),
 
     /** Running cook-mode timers outside the app (#309): an ongoing notification, a Live Activity. */
-    LIVE_TIMERS("liveTimers");
+    LIVE_TIMERS("liveTimers"),
+
+    /** The home-screen widgets (#309): Tonight and Groceries. */
+    WIDGETS("widgets");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

@@ -4,4 +4,9 @@
     <color name="ground">#FBF9F6</color>
     <!-- Paprika, the app's one accent. The launcher composes the mark over it. -->
     <color name="ic_launcher_background">#BF4A2B</color>
+    <!-- The home-screen widgets (#309): the theme's tokens, on-ink at night. -->
+    <color name="widget_ground">#FBF9F6</color>
+    <color name="widget_ink">#1C1917</color>
+    <color name="widget_muted">#6B6259</color>
+    <color name="widget_accent">#BF4A2B</color>
 </resources>
