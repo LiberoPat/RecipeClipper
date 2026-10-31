@@ -38,7 +38,7 @@ place rather than appending an update.
 Built on both platforms: share → parse → show; the Recipes library (#102);
 the free tier and its unlock (#107); lists; scaling and unit conversion;
 Settings; cook mode with saved progress and background timer alerts; sharing
-out as text or a file (#149); offline handling; notes; editing and typing in
+out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
 backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147); Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
