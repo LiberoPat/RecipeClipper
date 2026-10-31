@@ -442,17 +442,27 @@ enum ReceivedList {
     private static let bullets: Set<Character> = ["-", "*", "•", "◦", "▪", "·", "–", "—"]
 
     static func lines(_ text: String) -> [String] {
-        // CharacterSet.newlines is Kotlin's \r\n, \n, VT, FF, \r, NEL, LS and PS; "\r\n" is one
-        // Character in Swift, so it is split on explicitly.
-        let all = text.replacingOccurrences(of: "\r\n", with: "\n")
-            .components(separatedBy: .newlines)
-            .map(\.kTrimmed)
-            .filter { !$0.isEmpty }
+        let all = allLines(text)
         let bulleted = all.compactMap(withoutBullet)
         let items = bulleted.isEmpty ? all : bulleted
         return items.filter { line in
             GrocerySources.buyable(line) && line.contains { $0.isLetter || $0.isWholeNumber }
         }
+    }
+
+    /// Every non-blank line of `text`, trimmed (also `SharedText`'s unsorted lines, #306).
+    static func allLines(_ text: String) -> [String] {
+        // CharacterSet.newlines is Kotlin's \r\n, \n, VT, FF, \r, NEL, LS and PS; "\r\n" is one
+        // Character in Swift, so it is split on explicitly.
+        text.replacingOccurrences(of: "\r\n", with: "\n")
+            .components(separatedBy: .newlines)
+            .map(\.kTrimmed)
+            .filter { !$0.isEmpty }
+    }
+
+    /// Whether any line of `text` starts with a bullet: a list, as "Send list" writes one (#306).
+    static func bulleted(_ text: String) -> Bool {
+        allLines(text).contains { withoutBullet($0) != nil }
     }
 
     // "- 2 eggs" is "2 eggs"; a line with no bullet, or a bullet with nothing after it, is nil.

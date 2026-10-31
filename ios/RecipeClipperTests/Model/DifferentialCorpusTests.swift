@@ -67,6 +67,8 @@ import XCTest
 // Splitter rows (#208): free text (a Reddit post, or a photo's lines), then the language its words
 // say (nil: English), RecipeTextSplitter.detectAndSplit's ingredients and steps (nil: no recipe) and
 // [yield, prep, cook, total]. Write only `Split("Zutaten:\n- 2 Eier\n…"),`.
+// Shared-text rows (#306): text shared into the app, then SharedText.kind, whether it sorted, its
+// language and the editor's ingredients and steps (SharedText.read). Write only `Shared("text"),`.
 // Photo rows (#208): a photo's lines, then PhotoTextSorter.sort's language, whether they sorted, the
 // ingredients, steps, the lines to check one by one (flags: the line in the box, as listed, and
 // why) and those listed only as large. Write only `Photo(["ZUTATEN", "2 Eier", …]),`.
@@ -1973,6 +1975,28 @@ final class DifferentialCorpusTests: XCTestCase {
         Split("昨日は醤油と砂糖で鶏肉を焼きました。大さじ2のみりんを入れました。", nil, nil, nil, []),
     ]
 
+    private struct Shared {
+        let text: String; let kind: SharedText.Kind; let sorted: Bool; let language: String?
+        let ingredients: [String]; let instructions: [String]
+        init(_ text: String, _ kind: SharedText.Kind, _ sorted: Bool, _ language: String?, _ ingredients: [String], _ instructions: [String]) {
+            self.text = text; self.kind = kind; self.sorted = sorted; self.language = language
+            self.ingredients = ingredients; self.instructions = instructions
+        }
+    }
+
+    // Shared-text rows (#306): see the header. Write only the text.
+    private static let shared: [Shared] = [
+        Shared("Grandma's scones\n\nIngredients:\n- 2 cups flour\n- 1 tsp salt\n\nMethod:\n1. Mix the flour and salt.\n2. Bake for 20 minutes.", .recipe, true, "en", ["2 cups flour", "1 tsp salt"], ["Mix the flour and salt.", "Bake for 20 minutes."]),
+        Shared("Ingredients:\n- 2 cups flour\n- 1 tsp salt\nMethod:\n1. Mix.\n2. Bake.\nFrom https://example.com/scones", .recipe, true, nil, ["2 cups flour", "1 tsp salt"], ["Mix.", "Bake."]),
+        Shared("Look at this! https://example.com/scones", .link, false, nil, [], ["Look at this! https://example.com/scones"]),
+        Shared("Groceries\n- 2 lb chicken thighs\n- milk", .list, false, nil, [], ["Groceries", "- 2 lb chicken thighs", "- milk"]),
+        Shared("Hi Mum,\n  Mix two cups of flour with the butter, then bake it.  \n\nLove, Sam", .text, false, "en", [], ["Hi Mum,", "Mix two cups of flour with the butter, then bake it.", "Love, Sam"]),
+        Shared("milk\neggs\nbread", .text, false, nil, [], ["milk", "eggs", "bread"]),
+        Shared("Zutaten:\n- 500 g Mehl\n- 2 EL Zucker\n\nZubereitung:\n1. Mehl und Zucker mischen.\n2. Backen.", .recipe, true, "de", ["500 g Mehl", "2 EL Zucker"], ["Mehl und Zucker mischen.", "Backen."]),
+        Shared("Für den Teig Mehl, Zucker und Butter verkneten und eine Stunde kühlen.", .text, false, "de", [], ["Für den Teig Mehl, Zucker und Butter verkneten und eine Stunde kühlen."]),
+        Shared("Ingrédients :\n- 200 g de farine\n- 2 œufs\n\nPréparation :\n1. Mélanger.\n2. Cuire 20 minutes.", .recipe, true, nil, ["200 g de farine", "2 œufs", "Préparation :"], ["Mélanger.", "Cuire 20 minutes."]),
+    ]
+
     private struct Photo {
         let lines: [String]; let language: String?; let sorted: Bool
         let ingredients: [String]; let instructions: [String]; let flags: [LineFlag]; let large: [String]
@@ -2349,6 +2373,17 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(split?.instructions, row.instructions, row.text)
             let extras: [String?] = split.map { [$0.yield, $0.prepTime, $0.cookTime, $0.totalTime] } ?? []
             XCTAssertEqual(extras, row.extras, row.text)
+        }
+    }
+
+    func testSharedTextMatchesKotlin() {
+        for row in Self.shared {
+            let reading = SharedText.read(row.text)
+            XCTAssertEqual(SharedText.kind(row.text), row.kind, row.text)
+            XCTAssertEqual(reading.sorted, row.sorted, row.text)
+            XCTAssertEqual(reading.recipe.language, row.language, row.text)
+            XCTAssertEqual(reading.recipe.ingredients, row.ingredients, row.text)
+            XCTAssertEqual(reading.recipe.instructions, row.instructions, row.text)
         }
     }
 

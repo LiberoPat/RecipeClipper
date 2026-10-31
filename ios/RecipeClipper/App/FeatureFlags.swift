@@ -21,6 +21,8 @@ enum Flag: String, CaseIterable {
     /// Reading a Reddit post's photo with on-device text recognition, checked by the cook (#198),
     /// and scanning the cook's own photos the same way (#226).
     case photoText
+    /// Text shared in with no link (#306): split into a recipe and opened in the editor to check.
+    case shareText
 }
 
 /// One flag as `shared/flags.json` declares it.

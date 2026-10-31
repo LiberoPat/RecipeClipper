@@ -7,6 +7,7 @@ import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.data.remote.PhotoTextSorter
 import com.example.recipeclipper.data.remote.RecipeTextSplitter
+import com.example.recipeclipper.data.remote.SharedText
 import com.example.recipeclipper.data.remote.SiteRules
 import com.example.recipeclipper.data.remote.WprmIngredients
 import com.example.recipeclipper.ui.recipe.RecipeRenderer
@@ -112,6 +113,10 @@ import java.io.File
  * `\n` between lines) as the language its words say (or nil: English), then the ingredients and
  * steps (nil: no recipe) and the yield, prep, cook and total times; write only the text.
  *
+ * `Shared("text")` rows (#306) pin [SharedText]: text shared into the app, as where it goes
+ * ([SharedText.kind]), whether it sorted, its language and the editor's ingredients and steps
+ * ([SharedText.read]); write only the text.
+ *
  * `Photo(["line", ...])` rows (#208) pin [PhotoTextSorter.sort]: a photo's lines as the language
  * they were read in, whether they sorted, the ingredients, steps, the lines to check one by one
  * ([PhotoReading.flags]: the line in the box, as listed, and why) and those listed only as large;
@@ -187,6 +192,8 @@ class DifferentialCorpusTest {
     )
     // A splitter row (#208): free text, a Reddit post's or a photo's.
     private val splitRow = Regex("""^(\s*)Split\("((?:[^"\\]|\\.)*)"""")
+    // A shared-text row (#306): text shared into the app.
+    private val sharedRow = Regex("""^(\s*)Shared\("((?:[^"\\]|\\.)*)"""")
     // A photo row (#208): the lines read from a photo.
     private val photoRow = Regex("""^(\s*)Photo\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     // A placed-photo row (#286): the lines read, each with its page and box and optionally its
@@ -355,6 +362,14 @@ class DifferentialCorpusTest {
             val (ingredients, steps) = split?.let { list(it.ingredients) to list(it.instructions) } ?: ("nil" to "nil")
             val extras = split?.let { optionalList(listOf(it.yield, it.prepTime, it.cookTime, it.totalTime)) } ?: "[]"
             return m.groupValues[1] + "Split(${q(text)}, $language, $ingredients, $steps, $extras),"
+        }
+        sharedRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            val reading = SharedText.read(text)
+            val kind = "." + SharedText.kind(text).name.lowercase()
+            val language = reading.recipe.language?.let { q(it) } ?: "nil"
+            return m.groupValues[1] + "Shared(${q(text)}, $kind, ${reading.sorted}, $language, " +
+                "${list(reading.recipe.ingredients)}, ${list(reading.recipe.instructions)}),"
         }
         photoRow.find(line)?.let { m ->
             val lines = literal.findAll(m.groupValues[2]).map { unescape(it.groupValues[1]) }.toList()
