@@ -225,6 +225,9 @@
     <string name="timer_channel_name">Minuteurs de cuisine</string>
     <string name="timer_channel_description">Quand le minuteur d\'une étape se termine alors que l\'appli est fermée ou en arrière-plan</string>
     <string name="timer_notification_title">Temps écoulé : étape %1$d</string>
+    <string name="timer_running_title">Minuteur de l\'étape %1$d</string>
+    <string name="timer_running_channel_name">Minuteurs en cours</string>
+    <string name="timer_running_channel_description">Le compte à rebours d\'un minuteur en cours</string>
 
     <!-- Editing a recipe, or typing one in (#29) -->
     <string name="action_edit">Modifier</string>

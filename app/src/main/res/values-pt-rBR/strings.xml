@@ -225,6 +225,9 @@
     <string name="timer_channel_name">Timers de cozinha</string>
     <string name="timer_channel_description">Quando o timer de um passo termina com o app fechado ou em segundo plano</string>
     <string name="timer_notification_title">O tempo acabou: passo %1$d</string>
+    <string name="timer_running_title">Timer do passo %1$d</string>
+    <string name="timer_running_channel_name">Timers em andamento</string>
+    <string name="timer_running_channel_description">A contagem regressiva de um timer em andamento</string>
 
     <!-- Editing a recipe, or typing one in (#29) -->
     <string name="action_edit">Editar</string>
