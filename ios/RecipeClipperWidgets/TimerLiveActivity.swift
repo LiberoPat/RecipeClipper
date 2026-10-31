@@ -50,7 +50,7 @@ private struct LockScreenTimer: View {
     }
 }
 
-/// "Step 3 timer" over the recipe's name; "Time's up: step 3" once the deadline has passed.
+/// "Timer: step 3" over the recipe's name; "Time's up: step 3" once the deadline has passed.
 private struct TimerLabels: View {
     let context: ActivityViewContext<TimerActivityAttributes>
     /// The Dynamic Island is always dark.

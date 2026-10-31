@@ -322,7 +322,7 @@
     <string name="timer_channel_name">Cook timers</string>
     <string name="timer_channel_description">When a step timer ends while the app is closed or in the background</string>
     <string name="timer_notification_title">Time\'s up: step %1$d</string>
-    <string name="timer_running_title">Step %1$d timer</string>
+    <string name="timer_running_title">Timer: step %1$d</string>
     <string name="timer_running_channel_name">Running timers</string>
     <string name="timer_running_channel_description">A step timer counting down while it runs</string>
 

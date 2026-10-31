@@ -51,7 +51,7 @@ class RunningTimerNotificationTest {
         assertTrue(notification.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER))
         assertTrue(notification.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN))
         assertEquals(90_000L, notification.timeoutAfter)
-        assertEquals("Step 3 timer", notification.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals("Timer: step 3", notification.extras.getString(Notification.EXTRA_TITLE))
         assertEquals("Focaccia", notification.extras.getString(Notification.EXTRA_TEXT))
     }
 
