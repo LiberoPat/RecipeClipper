@@ -27,6 +27,8 @@ final class AppContainer {
     var pendingClip: PendingClip?
     /// Where the share extension leaves images shared in (#226); nil under test.
     var pendingScan: PendingScan?
+    /// Where the share extension leaves text for the editor (#306); nil under test.
+    var pendingText: PendingText?
     /// A scan's pages while they are read and checked (#226), in the App Group container.
     let scanPages = ScanPages.shared()
     /// The feature flags (#87), read by the root view and Developer settings.
@@ -240,6 +242,9 @@ final class AppContainer {
             let pages = container.scanPages
             Task.detached(priority: .utility) { pages.sweep(olderThan: 60 * 60) }
         }
+        // Shared text (#306): the extension's copy of the flag, and the hand-off.
+        container.startShareTextMirroring(DefaultsShareTextSwitch(defaults: defaults))
+        if !testing { container.pendingText = PendingText(defaults: defaults) }
         return container
     }
 
@@ -296,6 +301,14 @@ final class AppContainer {
     func startPhotoTextMirroring(_ mirror: DefaultsPhotoTextSwitch) {
         let on = withObservationTracking { featureFlags.isOn(.photoText) } onChange: { [weak self] in
             Task { @MainActor in self?.startPhotoTextMirroring(mirror) }
+        }
+        mirror.store(on)
+    }
+
+    /// Keeps the share extension's copy of the `shareText` flag (#306) current, as above.
+    func startShareTextMirroring(_ mirror: DefaultsShareTextSwitch) {
+        let on = withObservationTracking { featureFlags.isOn(.shareText) } onChange: { [weak self] in
+            Task { @MainActor in self?.startShareTextMirroring(mirror) }
         }
         mirror.store(on)
     }
@@ -367,6 +380,20 @@ final class AppContainer {
         EditRecipeViewModel(
             recipeId: nil, repository: recipeRepository, entitlements: entitlements,
             photoReader: photoTextReader, scanPages: scanPages
+        )
+    }
+
+    /// The text the share extension left (#306), if it did so within `PendingText.window`, and
+    /// only while the shareText flag is on.
+    func takePendingText() -> String? {
+        guard let text = pendingText?.take(now: clock.now()) else { return nil }
+        return featureFlags.isOn(.shareText) ? text : nil
+    }
+
+    /// Text shared in (#306): the editor over it, split or as written.
+    func makeEditRecipeViewModel(sharedText: String) -> EditRecipeViewModel {
+        EditRecipeViewModel(
+            recipeId: nil, repository: recipeRepository, entitlements: entitlements, sharedText: sharedText
         )
     }
 

@@ -23,6 +23,9 @@ enum ShareImportUiState: Equatable {
     /// Images shared in (#226): left for the app (`PendingScan`), whose review reads them and
     /// the cook checks (never saved unchecked); the card says to open the app.
     case scanInApp
+    /// Text holding a recipe, or neither a link nor a list (#306): left for the app
+    /// (`PendingText`), whose editor the cook checks it in (never saved unchecked).
+    case textInApp
 }
 
 /// The share extension's one screen. The import itself is `RecipeRepository.importFromUrl`, the
@@ -43,6 +46,10 @@ final class ShareImportViewModel {
     @ObservationIgnored private let pendingClip: PendingClip?
     /// Where images shared in are left for the app (#226); nil leaves nothing.
     @ObservationIgnored private let pendingScan: PendingScan?
+    /// The `shareText` flag as the app mirrors it (#306), and where text is left for the app;
+    /// nil leaves nothing.
+    @ObservationIgnored private let shareTextOn: () -> Bool
+    @ObservationIgnored private let pendingText: PendingText?
     /// The images a share carried, staged as a scan's pages (#226), when it had no link.
     @ObservationIgnored private var scanPages: [String] = []
     @ObservationIgnored private let clock: Clock
@@ -62,7 +69,8 @@ final class ShareImportViewModel {
         repository: RecipeRepository?, connectivity: Connectivity = StaticConnectivity(),
         makeReceiveList: (@MainActor () -> ReceiveListViewModel?)? = nil,
         redditOn: @escaping () -> Bool = { true }, pendingClip: PendingClip? = nil,
-        pendingScan: PendingScan? = nil, clock: Clock = SystemClock()
+        pendingScan: PendingScan? = nil, shareTextOn: @escaping () -> Bool = { false },
+        pendingText: PendingText? = nil, clock: Clock = SystemClock()
     ) {
         self.repository = repository
         self.connectivity = connectivity
@@ -70,6 +78,8 @@ final class ShareImportViewModel {
         self.redditOn = redditOn
         self.pendingClip = pendingClip
         self.pendingScan = pendingScan
+        self.shareTextOn = shareTextOn
+        self.pendingText = pendingText
         self.clock = clock
     }
 
@@ -78,8 +88,8 @@ final class ShareImportViewModel {
         reconnectTask?.cancel()
     }
 
-    /// Called once, with whatever the share carried (nil: no web link in it) and, when it had
-    /// no link, its images staged as a scan's pages (#226) or else its plain `text`.
+    /// Called once, with whatever the share carried (nil: no web link in it), its images staged
+    /// as a scan's pages (#226) when it had no link, and its plain `text` when it had no images.
     func start(with input: SharedInput?, text: String? = nil, scanPages: [String] = []) {
         self.input = input
         self.text = text
@@ -102,14 +112,18 @@ final class ShareImportViewModel {
         loadTask?.cancel()
         reconnectTask?.cancel()
         reconnectTask = nil
+        // Text (#306): a recipe in it goes to the app's editor, even beside a link.
+        if let text, scanPages.isEmpty, leavesText(text) { return }
         guard let input else {
             // Images (#226): the app reads them, and the cook checks what it read.
             if !scanPages.isEmpty, let pendingScan {
                 pendingClip?.clear()
+                pendingText?.clear()
                 pendingScan.put(scanPages, at: clock.now())
                 uiState = .scanInApp
                 return
             }
+            if let text, leavesText(text, orOther: true) { return }
             if let text, !ReceivedList.lines(text).isEmpty,
                let list = receiveList ?? makeReceiveList?() {
                 receiveList = list
@@ -125,9 +139,10 @@ final class ShareImportViewModel {
             return
         }
         uiState = .loading
-        // A new share moves on from any post or images left for the app before.
+        // A new share moves on from any post, images or text left for the app before.
         pendingClip?.clear()
         pendingScan?.clear()
+        pendingText?.clear()
         loadTask = Task { [weak self, repository, input] in
             let result = await repository.importFromUrl(input.url, renderedPage: input.page)
             guard !Task.isCancelled, let self else { return }
@@ -147,6 +162,22 @@ final class ShareImportViewModel {
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
         }
+    }
+
+    /// Leaves `text` for the app's editor (#306) when the shareText flag is on and it holds a
+    /// recipe or, with `orOther` (the share had no link), is neither a link nor a list.
+    private func leavesText(_ text: String, orOther: Bool = false) -> Bool {
+        guard shareTextOn(), let pendingText else { return false }
+        switch SharedText.kind(text) {
+        case .recipe: break
+        case .text where orOther && text.utf16.count <= SharedText.maxLength: break
+        default: return false
+        }
+        pendingClip?.clear()
+        pendingScan?.clear()
+        pendingText.put(text, at: clock.now())
+        uiState = .textInApp
+        return true
     }
 
     /// As on the recipe screen: while an offline or fetch-failed error shows, a real

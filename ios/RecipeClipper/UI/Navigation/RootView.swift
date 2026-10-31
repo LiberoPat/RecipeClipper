@@ -42,6 +42,10 @@ struct RootView: View {
                 if phase == .active, let pages = container.takePendingScan() {
                     router.openInRecipes(.scanRecipe(pages))
                 }
+                // Text it left (#306) opens in the editor, to check.
+                if phase == .active, let text = container.takePendingText() {
+                    router.openInRecipes(.textRecipe(text))
+                }
             }
             // The share extension saves from its own process; catch up on coming back.
             .onChange(of: scenePhase) { _, phase in
@@ -60,6 +64,10 @@ struct RootView: View {
                 // A UI test's stand-in for a scan (#226): local pictures, read by the real reader.
                 if let pages = UITestSeeding.scanPages() {
                     router.openInRecipes(.scanRecipe(pages))
+                }
+                // A UI test's stand-in for text shared in (#306).
+                if let text = UITestSeeding.sharedText() {
+                    router.openInRecipes(.textRecipe(text))
                 }
             }
             #endif
@@ -259,6 +267,12 @@ struct RootView: View {
                     container.scanPages.clear()
                     replace(1, .recipe(id: saved))
                 })
+            }
+            .toolbar(.hidden, for: .tabBar)
+        case .textRecipe(let text):
+            // Text shared in (#306): the saved recipe replaces the review, as a scan's does.
+            ScreenHost({ container.makeEditRecipeViewModel(sharedText: text) }) { vm in
+                EditRecipeScreen(vm: vm, onSaved: { saved in replace(1, .recipe(id: saved)) })
             }
             .toolbar(.hidden, for: .tabBar)
         }

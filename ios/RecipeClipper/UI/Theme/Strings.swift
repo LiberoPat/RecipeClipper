@@ -67,6 +67,8 @@ enum Strings {
     static var photoReading: String { String(localized: "photo_reading") }
     static var photoRead: String { String(localized: "photo_read") }
     static var photoNotSorted: String { String(localized: "photo_not_sorted") }
+    static var textRead: String { String(localized: "text_read") }
+    static var textNotSorted: String { String(localized: "text_not_sorted") }
     static var photoFailed: String { String(localized: "photo_failed") }
     static var photoCheckHeading: String { String(localized: "photo_check_heading") }
     static var photoCheckLarge: String { String(localized: "photo_check_large") }
@@ -209,6 +211,7 @@ enum Strings {
     static var shareGettingRecipe: String { String(localized: "share_getting_recipe") }
     static var shareRedditBlocked: String { String(localized: "share_reddit_blocked") }
     static var shareScanInApp: String { String(localized: "share_scan_in_app") }
+    static var shareTextInApp: String { String(localized: "share_text_in_app") }
     static var shareSaved: String { String(localized: "share_saved") }
     static var shareOpenToCook: String { String(localized: "share_open_to_cook") }
     static var shareNoLink: String { String(localized: "share_no_link") }

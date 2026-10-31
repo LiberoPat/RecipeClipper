@@ -38,6 +38,9 @@ enum Route: Hashable {
     /// "Scan a recipe" (#226): the same editor, filled from the cook's own pages, file URLs in
     /// order (Android's `edit/scan?pages=`).
     case scanRecipe([String])
+    /// Text shared in (#306): the same editor, filled from the text, split or as written
+    /// (Android's `edit/text?text=`).
+    case textRecipe(String)
 }
 
 /// `recipeclipper://import?url=<percent-encoded>` opens the import screen. The share extension
