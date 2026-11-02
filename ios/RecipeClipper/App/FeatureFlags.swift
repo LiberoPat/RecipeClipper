@@ -23,6 +23,8 @@ enum Flag: String, CaseIterable {
     case photoText
     /// Text shared in with no link (#306): split into a recipe and opened in the editor to check.
     case shareText
+    /// "Use it up" (#305): the saved recipes that use a pantry item about to expire.
+    case useItUp
 }
 
 /// One flag as `shared/flags.json` declares it.

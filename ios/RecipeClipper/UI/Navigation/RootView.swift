@@ -170,8 +170,11 @@ struct RootView: View {
     /// The Pantry tab (#51): the pantry alone.
     private var pantryStack: some View {
         NavigationStack {
-            ScreenHost(container.makePantryViewModel) { vm in
-                PantryScreen(vm: vm, makeSendFileVM: container.makeSendFileViewModel)
+            ScreenHost2(makeA: container.makePantryViewModel, makeB: container.makeUseItUpViewModel) { vm, useItUpVM in
+                PantryScreen(
+                    vm: vm, makeSendFileVM: container.makeSendFileViewModel, useItUpVM: useItUpVM,
+                    useItUpPending: router.useItUpPending, takeUseItUp: router.takeUseItUp
+                )
             }
         }
         .tint(Palette.accentText)

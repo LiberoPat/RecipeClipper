@@ -31,6 +31,15 @@ data class ListCoverPhotoRow(
     val imageUrl: String
 )
 
+/** A saved recipe as "Use it up" (#305) reads it: its lines as stored. */
+data class SavedRecipeRow(
+    val id: Long,
+    val title: String,
+    val imageUrl: String?,
+    val language: String?,
+    val ingredients: List<String>
+)
+
 @Dao
 abstract class ListDao {
 
@@ -96,6 +105,20 @@ abstract class ListDao {
         """
     )
     abstract fun observeCoverPhotos(): Flow<List<ListCoverPhotoRow>>
+
+    /**
+     * Every saved recipe (in at least one list, once however many) with its ingredient lines,
+     * for "Use it up" (#305).
+     */
+    @Query(
+        """
+        SELECT r.id, r.title, r.imageUrl, r.language, r.ingredients
+        FROM recipes r
+        WHERE r.id IN (SELECT recipeId FROM recipe_list_cross_ref)
+        ORDER BY r.id
+        """
+    )
+    abstract fun observeSavedRecipes(): Flow<List<SavedRecipeRow>>
 
     /**
      * Ticking a list in the sheet. IGNORE rather than REPLACE: re-adding a recipe already in

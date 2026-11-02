@@ -345,6 +345,14 @@ final class AppContainer {
         PantryViewModel(pantry: pantryRepository, groceries: groceryRepository, calendar: planCalendar)
     }
 
+    func makeUseItUpViewModel() -> UseItUpViewModel {
+        let flags = featureFlags
+        return UseItUpViewModel(
+            pantry: pantryRepository, lists: listRepository, plan: mealPlanRepository, calendar: planCalendar,
+            isOn: { flags.isOn(.useItUp) }
+        )
+    }
+
     func makeWhatINeedViewModel(weekStart: Int64) -> WhatINeedViewModel {
         WhatINeedViewModel(
             weekStart: weekStart, groceries: groceryRepository, pantry: pantryRepository, preferences: preferences,

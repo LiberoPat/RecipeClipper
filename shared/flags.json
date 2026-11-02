@@ -47,6 +47,12 @@
       "description": "Text shared into the app (a note, an email, a message): when it splits into a recipe (the Reddit splitter, in the text's language) it opens in the recipe editor for the cook to check, even with a link in it; text that doesn't split and isn't a bulleted list opens the editor with every line as a step. Nothing is saved unchecked. Off, shared text imports its link or offers its lines as a list, as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 306
+    },
+    {
+      "key": "useItUp",
+      "description": "Use it up: a pantry item in stock that expires today or tomorrow (the expiry reminder's window) shows how many saved recipes (in at least one list) use it, matched by name as What I need matches; tapping that, or the expiry reminder, opens a sheet of those recipes, each with one tap to plan it today or on the use-by day. Off, the Pantry rows and the reminder are as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 305
     }
   ]
 }

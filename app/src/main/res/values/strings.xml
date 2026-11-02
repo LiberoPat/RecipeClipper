@@ -563,6 +563,17 @@
     <string name="expiry_one_tomorrow">%1$s expires tomorrow.</string>
     <string name="expiry_many_tomorrow">%1$s expire tomorrow.</string>
     <string name="expiry_names_and">%1$s and %2$s</string>
+    <!-- Use it up (#305) -->
+    <string name="use_it_up_title">Use it up</string>
+    <plurals name="use_it_up_count">
+        <item quantity="one">%1$d saved recipe uses it</item>
+        <item quantity="other">%1$d saved recipes use it</item>
+    </plurals>
+    <string name="use_it_up_note">From your saved recipes. A tap plans it for dinner.</string>
+    <string name="use_it_up_plan_today">Plan today</string>
+    <string name="use_it_up_plan_tomorrow">Plan tomorrow</string>
+    <string name="use_it_up_planned_today">Planned today</string>
+    <string name="use_it_up_planned_tomorrow">Planned tomorrow</string>
     <string name="action_month_view">Month</string>
     <string name="action_week_view">Week</string>
     <string name="action_this_month">This month</string>

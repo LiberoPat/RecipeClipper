@@ -244,6 +244,9 @@ enum UITestSeeding {
                     case "walkthroughPantry":
                         try UITestWalkthroughSeed.seed(conn, now: now)
                         try UITestWalkthroughSeed.seedPantry(conn, now: now)
+                    case "useItUp":
+                        try seedStandard(conn, now: now)
+                        try seedUseItUp(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
                 }
@@ -332,6 +335,19 @@ enum UITestSeeding {
         let weeknights = try lists.create(name: "Weeknights", recipeId: ListDao.noRecipe, now: now - 60 * minute)
         try lists.addToList(ListMembership(recipeId: adobo, listId: weeknights, addedAt: now - 20 * minute))
         try lists.addToList(ListMembership(recipeId: carbonara, listId: weeknights, addedAt: now - 10 * minute))
+    }
+
+    /// Use it up (#305): "chicken thighs" (in the saved Chicken Adobo) expiring tomorrow, and
+    /// "flour" (only in Banana Bread, which is in no list) today.
+    private static func seedUseItUp(_ conn: SQLiteConnection, now: Int64) throws {
+        let today = PlanDays.today(millis: now)
+        let pantry = PantryDao(db: conn)
+        for (name, aisle, expires) in [("chicken thighs", Aisle.meat.key, today + 1), ("flour", Aisle.baking.key, today)] {
+            _ = try pantry.insert(PantryItemRecord(
+                name: name, quantity: nil, language: "en", aisle: aisle, inStock: true, alwaysHave: false,
+                purchasedDay: nil, expiresDay: expires, updatedAt: now
+            ))
+        }
     }
 
     /// "Scan a recipe" under UI test (#226): `RC_UITEST_SCAN_IMAGES` holds file URLs, space

@@ -79,9 +79,12 @@ private val ListStart = 20.dp
 fun PantryScreen(
     viewModel: PantryViewModel = hiltViewModel(),
     // "Send as file" (#149, phase 2); null (screen tests) leaves it out.
-    sendFileViewModel: SendFileViewModel? = null
+    sendFileViewModel: SendFileViewModel? = null,
+    // "Use it up" (#305); null (screen tests) leaves it out.
+    useItUpViewModel: UseItUpViewModel? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val useItUpState = useItUpViewModel?.uiState?.collectAsStateWithLifecycle()?.value
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -275,7 +278,9 @@ fun PantryScreen(
                                     selecting = selection != null,
                                     selected = selection?.ids?.contains(item.id) == true,
                                     onToggle = { viewModel.onToggle(item.id) },
-                                    onSelect = { viewModel.onSelect(item.id) }
+                                    onSelect = { viewModel.onSelect(item.id) },
+                                    useItUp = useItUpState?.counts?.get(item.id) ?: 0,
+                                    onUseItUp = { useItUpViewModel?.onOpen(item.id) }
                                 )
                             }
                         }
@@ -297,6 +302,17 @@ fun PantryScreen(
 
         state.editing?.let { editing ->
             EditSheet(editing, viewModel)
+        }
+        if (useItUpViewModel != null) {
+            useItUpState?.sheet?.let { groups ->
+                UseItUpSheet(
+                    groups = groups,
+                    today = useItUpState.today,
+                    planned = useItUpState.planned,
+                    onPlan = useItUpViewModel::onPlan,
+                    onDismiss = useItUpViewModel::onDismiss
+                )
+            }
         }
         state.confirmClearRunOut?.let { count ->
             AlertDialog(

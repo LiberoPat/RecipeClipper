@@ -531,6 +531,18 @@
     <string name="expiry_one_tomorrow">%1$s se périme demain.</string>
     <string name="expiry_many_tomorrow">%1$s se périment demain.</string>
     <string name="expiry_names_and">%1$s et %2$s</string>
+    <!-- Use it up (#305) -->
+    <string name="use_it_up_title">Anti-gaspi</string>
+    <plurals name="use_it_up_count">
+        <item quantity="one">Dans %1$d recette enregistrée</item>
+        <item quantity="many">Dans %1$d de recettes enregistrées</item>
+        <item quantity="other">Dans %1$d recettes enregistrées</item>
+    </plurals>
+    <string name="use_it_up_note">Parmi vos recettes enregistrées. Un appui l\'ajoute au planning pour le dîner.</string>
+    <string name="use_it_up_plan_today">Prévoir aujourd\'hui</string>
+    <string name="use_it_up_plan_tomorrow">Prévoir demain</string>
+    <string name="use_it_up_planned_today">Prévue aujourd\'hui</string>
+    <string name="use_it_up_planned_tomorrow">Prévue demain</string>
     <string name="action_month_view">Mois</string>
     <string name="action_week_view">Semaine</string>
     <string name="action_this_month">Ce mois-ci</string>
