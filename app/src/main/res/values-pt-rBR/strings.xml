@@ -253,6 +253,8 @@
     <string name="photo_reading">Lendo a foto neste celular…</string>
     <string name="photo_read">Lido da foto. Compare cada linha com ela, principalmente as quantidades, antes de salvar.</string>
     <string name="photo_not_sorted">Não foi possível ler uma receita na foto: termine à mão.</string>
+    <string name="text_read">Organizado a partir do texto compartilhado. Confira cada linha, principalmente as quantidades, antes de salvar.</string>
+    <string name="text_not_sorted">Não foi possível encontrar ingredientes e passos no texto, então está tudo em Passos, como escrito: termine à mão.</string>
     <string name="photo_failed">Não foi possível carregar a foto. Verifique a conexão e tente de novo.</string>
     <string name="photo_not_ready">O leitor de fotos ainda não está pronto neste celular: os Serviços do Google Play fazem o download uma vez, pela internet. Tente de novo em alguns minutos ou termine a receita à mão abaixo.</string>
     <string name="photo_check_heading">Confira estas linhas: ali a foto estava difícil de ler</string>
@@ -532,6 +534,18 @@
     <string name="expiry_one_tomorrow">%1$s vence amanhã.</string>
     <string name="expiry_many_tomorrow">%1$s vencem amanhã.</string>
     <string name="expiry_names_and">%1$s e %2$s</string>
+    <!-- Use it up (#305) -->
+    <string name="use_it_up_title">Sem desperdício</string>
+    <plurals name="use_it_up_count">
+        <item quantity="one">Em %1$d receita salva</item>
+        <item quantity="many">Em %1$d de receitas salvas</item>
+        <item quantity="other">Em %1$d receitas salvas</item>
+    </plurals>
+    <string name="use_it_up_note">Das suas receitas salvas. Um toque adiciona ao plano no jantar.</string>
+    <string name="use_it_up_plan_today">Planejar hoje</string>
+    <string name="use_it_up_plan_tomorrow">Planejar amanhã</string>
+    <string name="use_it_up_planned_today">Planejada hoje</string>
+    <string name="use_it_up_planned_tomorrow">Planejada amanhã</string>
     <string name="action_month_view">Mês</string>
     <string name="action_week_view">Semana</string>
     <string name="action_this_month">Este mês</string>
@@ -683,6 +697,13 @@
     </plurals>
     <!-- The ⋮ menus' second lines (#260). -->
     <string name="menu_desc_send_file">Uma cópia para alguém abrir no Recipe Clipper</string>
+    <!-- Print or save as PDF, and a list as a cookbook (#318). -->
+    <string name="action_print">Imprimir ou salvar como PDF</string>
+    <string name="menu_desc_print">Esta receita como aparece, pronta para imprimir</string>
+    <string name="action_cookbook">Criar um livro de receitas</string>
+    <string name="menu_desc_cookbook">Todas as receitas daqui em um PDF</string>
+    <string name="cookbook_contents">Sumário</string>
+    <string name="print_failed">Não foi possível criar o PDF.</string>
     <string name="menu_desc_update_from_source">Troca suas edições pela versão atual do site</string>
     <string name="menu_desc_what_i_need">O que as receitas da semana pedem e a despensa não tem</string>
     <string name="menu_desc_add_week_to_groceries">Na sua lista de compras, menos o que você já tem</string>

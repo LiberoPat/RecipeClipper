@@ -7,6 +7,7 @@ import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.data.remote.PhotoTextSorter
 import com.example.recipeclipper.data.remote.RecipeTextSplitter
+import com.example.recipeclipper.data.remote.SharedText
 import com.example.recipeclipper.data.remote.SiteRules
 import com.example.recipeclipper.data.remote.WprmIngredients
 import com.example.recipeclipper.ui.recipe.RecipeRenderer
@@ -46,6 +47,10 @@ import java.io.File
  * ([PantryMatch.weekNeeds]): the lines, each its own recipe, against one in-stock pantry item
  * with that quantity and name, as the Have row's pantry amount and the week's total (nil: none);
  * write only those (optionally `, lang: "de"`).
+ *
+ * `UseIt("name", [lines])` rows (#305) pin "Use it up" ([UseItUp.groups]): the lines, each its
+ * own saved recipe, against one in-stock pantry item of that name expiring today, as the indices
+ * of the recipes that use it; write only those (optionally `, lang: "de"`).
  *
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
@@ -112,6 +117,10 @@ import java.io.File
  * `\n` between lines) as the language its words say (or nil: English), then the ingredients and
  * steps (nil: no recipe) and the yield, prep, cook and total times; write only the text.
  *
+ * `Shared("text")` rows (#306) pin [SharedText]: text shared into the app, as where it goes
+ * ([SharedText.kind]), whether it sorted, its language and the editor's ingredients and steps
+ * ([SharedText.read]); write only the text.
+ *
  * `Photo(["line", ...])` rows (#208) pin [PhotoTextSorter.sort]: a photo's lines as the language
  * they were read in, whether they sorted, the ingredients, steps, the lines to check one by one
  * ([PhotoReading.flags]: the line in the box, as listed, and why) and those listed only as large;
@@ -153,6 +162,10 @@ class DifferentialCorpusTest {
     private val needRow = Regex(
         """^(\s*)Need\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
     )
+    // A Use it up row (#305): a pantry item's name, the saved recipes' lines, optionally their language.
+    private val useItRow = Regex(
+        """^(\s*)UseIt\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
+    )
     // A calendar-file row (#52): one summary's text.
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
@@ -187,6 +200,8 @@ class DifferentialCorpusTest {
     )
     // A splitter row (#208): free text, a Reddit post's or a photo's.
     private val splitRow = Regex("""^(\s*)Split\("((?:[^"\\]|\\.)*)"""")
+    // A shared-text row (#306): text shared into the app.
+    private val sharedRow = Regex("""^(\s*)Shared\("((?:[^"\\]|\\.)*)"""")
     // A photo row (#208): the lines read from a photo.
     private val photoRow = Regex("""^(\s*)Photo\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     // A placed-photo row (#286): the lines read, each with its page and box and optionally its
@@ -257,6 +272,7 @@ class DifferentialCorpusTest {
         useUpRow.find(line)?.let { m -> return useUpRow(m) }
         entryRow.find(line)?.let { m -> return entryRow(m) }
         needRow.find(line)?.let { m -> return needRow(m) }
+        useItRow.find(line)?.let { m -> return useItRow(m) }
         countRow.find(line)?.let { m -> return countRow(m) }
         cardRow.find(line)?.let { m ->
             val (kind, html) = m.groupValues[2] to unescape(m.groupValues[3])
@@ -355,6 +371,14 @@ class DifferentialCorpusTest {
             val (ingredients, steps) = split?.let { list(it.ingredients) to list(it.instructions) } ?: ("nil" to "nil")
             val extras = split?.let { optionalList(listOf(it.yield, it.prepTime, it.cookTime, it.totalTime)) } ?: "[]"
             return m.groupValues[1] + "Split(${q(text)}, $language, $ingredients, $steps, $extras),"
+        }
+        sharedRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            val reading = SharedText.read(text)
+            val kind = "." + SharedText.kind(text).name.lowercase()
+            val language = reading.recipe.language?.let { q(it) } ?: "nil"
+            return m.groupValues[1] + "Shared(${q(text)}, $kind, ${reading.sorted}, $language, " +
+                "${list(reading.recipe.ingredients)}, ${list(reading.recipe.instructions)}),"
         }
         photoRow.find(line)?.let { m ->
             val lines = literal.findAll(m.groupValues[2]).map { unescape(it.groupValues[1]) }.toList()
@@ -507,6 +531,21 @@ class DifferentialCorpusTest {
         val have = row?.pantryQuantity?.let { q(it) } ?: "nil"
         val total = row?.weekTotal?.let { q(it) } ?: "nil"
         return m.groupValues[1] + "Need(${q(quantity)}, ${q(name)}, ${list(lines)}$lang, $have, $total),"
+    }
+
+    /**
+     * `UseIt(name, [lines], lang:, [used])` (#305): [UseItUp.groups] for the lines, each its own
+     * saved recipe, against one in-stock item expiring today: the indices of the recipes using it.
+     */
+    private fun useItRow(m: MatchResult): String {
+        val name = unescape(m.groupValues[2])
+        val lines = literal.findAll(m.groupValues[3]).map { unescape(it.groupValues[1]) }.toList()
+        val language = m.groupValues[4].ifEmpty { "en" }
+        val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
+        val item = PantryItem(1, name, null, language, Aisle.OTHER, inStock = true, alwaysHave = false, purchasedDay = null, expiresDay = 0)
+        val saved = lines.mapIndexed { i, line -> SavedRecipe(i.toLong(), "r$i", null, language, listOf(line)) }
+        val used = UseItUp.groups(listOf(item), saved, 0).firstOrNull()?.recipes.orEmpty().map { it.id }.sorted()
+        return m.groupValues[1] + "UseIt(${q(name)}, ${list(lines)}$lang, ${used.joinToString(", ", "[", "]")}),"
     }
 
     /** `Step(step, [lines], lang:, as given, doubled in Metric)`: [StepAmounts.annotate], marked. */

@@ -29,7 +29,13 @@ enum class Flag(val key: String) {
     PHOTO_TEXT("photoText"),
 
     /** Running cook-mode timers outside the app (#309): an ongoing notification, a Live Activity. */
-    LIVE_TIMERS("liveTimers");
+    LIVE_TIMERS("liveTimers"),
+    /** Print or save a recipe as PDF, and a list as a cookbook PDF (#318). */
+    PRINT("print"),
+    /** Text shared in with no link (#306): split into a recipe and opened in the editor to check. */
+    SHARE_TEXT("shareText"),
+    /** "Use it up" (#305): the saved recipes that use a pantry item about to expire. */
+    USE_IT_UP("useItUp");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

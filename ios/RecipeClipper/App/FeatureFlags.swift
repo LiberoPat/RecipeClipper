@@ -23,6 +23,12 @@ enum Flag: String, CaseIterable {
     case photoText
     /// Running cook-mode timers outside the app (#309): a Live Activity, an ongoing notification.
     case liveTimers
+    /// Print or save a recipe as PDF, and a list as a cookbook PDF (#318).
+    case print
+    /// Text shared in with no link (#306): split into a recipe and opened in the editor to check.
+    case shareText
+    /// "Use it up" (#305): the saved recipes that use a pantry item about to expire.
+    case useItUp
 }
 
 /// One flag as `shared/flags.json` declares it.

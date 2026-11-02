@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.listdetail
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,14 +35,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.ui.common.RecipeRow
+import com.example.recipeclipper.ui.print.PrintEffect
+import com.example.recipeclipper.ui.print.PrintViewModel
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
+import com.example.recipeclipper.ui.recipe.printLabels
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -53,9 +62,18 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 fun ListDetailScreen(
     onBack: () -> Unit,
     onOpenRecipe: (Long) -> Unit,
-    viewModel: ListDetailViewModel = hiltViewModel()
+    viewModel: ListDetailViewModel = hiltViewModel(),
+    // "Make a cookbook" (#318); null (the flag off, or a screen test without it) hides it.
+    printViewModel: PrintViewModel? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val resources = LocalResources.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val printFailedMessage = stringResource(R.string.print_failed)
+    val contentsHeading = stringResource(R.string.cookbook_contents)
+    if (printViewModel != null) {
+        PrintEffect(printViewModel) { snackbarHostState.showSnackbar(printFailedMessage) }
+    }
     val now = remember { System.currentTimeMillis() }
 
     // The list is gone the moment the delete lands, so leave rather than show an empty shell.
@@ -65,54 +83,64 @@ fun ListDetailScreen(
 
     RecipeClipperTheme {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            LazyColumn(
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                modifier = Modifier.fillMaxSize()
-                    // Edge-to-edge: the background fills behind the bars, the rows stay clear
-                    // of them, the display cutout and the keyboard.
-                    .safeDrawingPadding()
-            ) {
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        BackButton(onBack)
-                        Spacer(Modifier.weight(1f))
-                        state.list?.let { list ->
-                            ListOverflowMenu(
-                                listName = list.name,
-                                // Favorites is the only list that can't be deleted — "saved"
-                                // is built around it. Lunch, Dinner, Desserts, Breakfast and
-                                // Snacks are starting suggestions and delete like any other.
-                                canDelete = !list.isFavorites,
-                                onRename = viewModel::onStartRenaming,
-                                onDelete = viewModel::onDelete
+            Box(Modifier.fillMaxSize()) {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
+                    modifier = Modifier.fillMaxSize()
+                        // Edge-to-edge: the background fills behind the bars, the rows stay clear
+                        // of them, the display cutout and the keyboard.
+                        .safeDrawingPadding()
+                ) {
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            BackButton(onBack)
+                            Spacer(Modifier.weight(1f))
+                            state.list?.let { list ->
+                                ListOverflowMenu(
+                                    listName = list.name,
+                                    // Favorites is the only list that can't be deleted — "saved"
+                                    // is built around it. Lunch, Dinner, Desserts, Breakfast and
+                                    // Snacks are starting suggestions and delete like any other.
+                                    canDelete = !list.isFavorites,
+                                    onRename = viewModel::onStartRenaming,
+                                    onDelete = viewModel::onDelete,
+                                    onCookbook = if (printViewModel == null || state.recipes.isEmpty()) null else {
+                                        {
+                                            printViewModel.makeCookbook(
+                                                list.name, state.recipes.map { it.id }, printLabels(resources), contentsHeading
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            state.list?.name.orEmpty(),
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Hairline()
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    if (state.loaded && state.recipes.isEmpty()) {
+                        item {
+                            Spacer(Modifier.height(24.dp))
+                            Text(
+                                stringResource(R.string.list_empty),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        state.list?.name.orEmpty(),
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Hairline()
-                    Spacer(Modifier.height(4.dp))
-                }
 
-                if (state.loaded && state.recipes.isEmpty()) {
-                    item {
-                        Spacer(Modifier.height(24.dp))
-                        Text(
-                            stringResource(R.string.list_empty),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    items(state.recipes.size, key = { state.recipes[it].id }) { index ->
+                        val recipe = state.recipes[index]
+                        RecipeRow(recipe, now, onClick = { onOpenRecipe(recipe.id) })
                     }
                 }
-
-                items(state.recipes.size, key = { state.recipes[it].id }) { index ->
-                    val recipe = state.recipes[index]
-                    RecipeRow(recipe, now, onClick = { onOpenRecipe(recipe.id) })
-                }
+                SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).safeDrawingPadding())
             }
         }
 
@@ -153,7 +181,8 @@ private fun ListOverflowMenu(
     listName: String,
     canDelete: Boolean,
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onCookbook: (() -> Unit)? = null
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var confirming by rememberSaveable { mutableStateOf(false) }
@@ -170,6 +199,17 @@ private fun ListOverflowMenu(
                 onRename()
             }
         )
+        // A cookbook (#318): every recipe here in one PDF, for the share sheet.
+        if (onCookbook != null) {
+            DropdownMenuItem(
+                text = { MenuItemText(stringResource(R.string.action_cookbook), stringResource(R.string.menu_desc_cookbook)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_print), contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    onCookbook()
+                }
+            )
+        }
         if (canDelete) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_delete_list)) },

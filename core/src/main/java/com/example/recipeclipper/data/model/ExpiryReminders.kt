@@ -37,9 +37,15 @@ object ExpiryReminders {
 
     fun counts(item: PantryItem): Boolean = item.inStock && !item.alwaysHave && item.expiresDay != null
 
+    /**
+     * Whether [item] is in the reminder for the morning of [day]: it counts and expires that day
+     * or the next. The window "Use it up" (#305) calls soon.
+     */
+    fun due(item: PantryItem, day: Long): Boolean = counts(item) && item.expiresDay!! in day..day + 1
+
     /** The reminder for the morning of [day], or null when nothing expires that day or the next. */
     fun forDay(items: List<PantryItem>, day: Long): ExpiryReminder? {
-        val counted = items.filter(::counts)
+        val counted = items.filter { due(it, day) }
         val today = names(counted.filter { it.expiresDay == day })
         val tomorrow = names(counted.filter { it.expiresDay == day + 1 })
         if (today.isEmpty() && tomorrow.isEmpty()) return null

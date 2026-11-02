@@ -36,6 +36,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -81,7 +82,10 @@ internal fun PantryRow(
     selecting: Boolean = false,
     selected: Boolean = false,
     onToggle: () -> Unit = {},
-    onSelect: () -> Unit = {}
+    onSelect: () -> Unit = {},
+    // Use it up (#305): how many saved recipes use this item expiring soon; 0 shows no line.
+    useItUp: Int = 0,
+    onUseItUp: () -> Unit = {}
 ) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val stock = item.stock
@@ -193,6 +197,18 @@ internal fun PantryRow(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (badge != null) MaterialTheme.colorScheme.tertiary else muted,
                                 modifier = Modifier.testTag("expiry-${item.id}")
+                            )
+                        }
+                        if (useItUp > 0 && !selecting) {
+                            Text(
+                                pluralStringResource(R.plurals.use_it_up_count, useItUp, useItUp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .padding(top = 2.dp)
+                                    .clickable(role = Role.Button, onClick = onUseItUp)
+                                    .padding(vertical = 4.dp)
+                                    .testTag("use-it-up-${item.id}")
                             )
                         }
                     }

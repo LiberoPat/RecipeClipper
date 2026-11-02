@@ -53,6 +53,13 @@ final class FakeListRepository: ListRepository {
         coverPhotos.eraseToAnyPublisher()
     }
 
+    /// What `observeSavedRecipes` emits (#305).
+    let savedRecipes = CurrentValueSubject<[SavedRecipe], Never>([])
+
+    func observeSavedRecipes() -> AnyPublisher<[SavedRecipe], Never> {
+        savedRecipes.eraseToAnyPublisher()
+    }
+
     @MainActor func setMembership(recipeId: Int64, listId: Int64, inList: Bool) async {
         var rows = membership.value
         let row = Membership(recipeId: recipeId, listId: listId)

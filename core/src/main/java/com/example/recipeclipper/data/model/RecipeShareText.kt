@@ -59,10 +59,7 @@ object RecipeShareText {
         lines += recipe.name
         lines += ""
 
-        val meta = listOfNotNull(
-            servesLine(servings, Servings.kind(recipe.yield), labels),
-            timesLine(recipe, labels)
-        )
+        val meta = metaLines(recipe, servings, labels)
         if (meta.isNotEmpty()) {
             lines += meta
             lines += ""
@@ -77,6 +74,15 @@ object RecipeShareText {
 
         return lines.joinToString("\n")
     }
+
+    /**
+     * The serves line and the times line, each when there is one: what sits between the title
+     * and the ingredients, in the shared text and on the printed card (#318).
+     */
+    fun metaLines(recipe: Recipe, servings: ServingsScale?, labels: Labels): List<String> = listOfNotNull(
+        servesLine(servings, Servings.kind(recipe.yield), labels),
+        timesLine(recipe, labels)
+    )
 
     private fun servesLine(servings: ServingsScale?, kind: YieldKind, labels: Labels): String? {
         if (servings == null) return null

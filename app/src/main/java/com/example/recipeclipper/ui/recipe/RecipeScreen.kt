@@ -35,6 +35,8 @@ import com.example.recipeclipper.ui.plan.AddToPlanBottomSheet
 import com.example.recipeclipper.ui.plan.AddToPlanViewModel
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
+import com.example.recipeclipper.ui.print.PrintEffect
+import com.example.recipeclipper.ui.print.PrintViewModel
 import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
@@ -62,6 +64,8 @@ fun RecipeScreen(
     photosViewModel: CookedPhotosViewModel? = null,
     // "Send as file" (#149),
     sendFileViewModel: SendFileViewModel? = null,
+    // "Print or save as PDF" (#318),
+    printViewModel: PrintViewModel? = null,
     // and using up the pantry when cook mode is finished or "I made this" adds a photo (#147).
     useUpViewModel: PantryUseUpViewModel? = null
 ) {
@@ -71,7 +75,7 @@ fun RecipeScreen(
     var planSheetOpen by rememberSaveable { mutableStateOf(false) }
     var groceriesSheetOpen by rememberSaveable { mutableStateOf(false) }
     val actions = rememberRecipeActions(
-        viewModel, onBack, onEdit, planViewModel, groceriesViewModel, sendFileViewModel,
+        viewModel, onBack, onEdit, planViewModel, groceriesViewModel, sendFileViewModel, printViewModel,
         onOpenSaveSheet = { sheetOpen = true },
         onOpenPlanSheet = { planSheetOpen = true },
         onOpenGroceriesSheet = { groceriesSheetOpen = true }
@@ -122,6 +126,11 @@ fun RecipeScreen(
     val sendFailedMessage = stringResource(R.string.send_file_failed)
     if (sendFileViewModel != null) {
         SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
+    }
+    // Print (#318): the print dialog on the recipe as shown, or a line saying it failed.
+    val printFailedMessage = stringResource(R.string.print_failed)
+    if (printViewModel != null) {
+        PrintEffect(printViewModel) { snackbarHostState.showSnackbar(printFailedMessage) }
     }
 
     // Cook mode just finished with ingredients ticked (#147): they go to the pantry's use-up sheet.

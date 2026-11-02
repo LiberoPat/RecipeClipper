@@ -8,6 +8,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.recipeclipper.data.PhotoPost
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.clip.ClipScreen
 import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.edit.EditRecipeScreen
@@ -93,6 +95,11 @@ object Routes {
 
     fun scan(pages: List<String>) =
         "edit/scan?${EditRecipeViewModel.SCAN_PAGES_ARG}=${Uri.encode(pages.joinToString("\n"))}"
+
+    // Text shared in (#306): the same editor, filled from the text, split or as written.
+    const val EDIT_TEXT = "edit/text?${EditRecipeViewModel.SHARED_TEXT_ARG}={${EditRecipeViewModel.SHARED_TEXT_ARG}}"
+
+    fun editText(text: String) = "edit/text?${EditRecipeViewModel.SHARED_TEXT_ARG}=${Uri.encode(text)}"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
 }
@@ -125,7 +132,8 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     ) {
         ListDetailScreen(
             onBack = { navController.popBackStack() },
-            onOpenRecipe = { navController.navigate(Routes.recipe(it)) }
+            onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
+            printViewModel = if (LocalFlagValues.current.isOn(Flag.PRINT)) hiltViewModel() else null
         )
     }
 
@@ -184,6 +192,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             groceriesViewModel = hiltViewModel(),
             photosViewModel = hiltViewModel(),
             sendFileViewModel = hiltViewModel(),
+            printViewModel = if (LocalFlagValues.current.isOn(Flag.PRINT)) hiltViewModel() else null,
             useUpViewModel = hiltViewModel()
         )
     }
@@ -241,6 +250,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             groceriesViewModel = hiltViewModel(),
             photosViewModel = hiltViewModel(),
             sendFileViewModel = hiltViewModel(),
+            printViewModel = if (LocalFlagValues.current.isOn(Flag.PRINT)) hiltViewModel() else null,
             useUpViewModel = hiltViewModel()
         )
     }
@@ -274,6 +284,22 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         EditRecipeScreen(
             onBack = { navController.popBackStack() },
             // The saved recipe replaces the review, as a typed-in one does.
+            onSaved = { id ->
+                navController.popBackStack()
+                navController.navigate(Routes.recipe(id))
+            }
+        )
+    }
+
+    composable(
+        route = Routes.EDIT_TEXT,
+        arguments = listOf(
+            navArgument(EditRecipeViewModel.SHARED_TEXT_ARG) { type = NavType.StringType; defaultValue = "" }
+        )
+    ) {
+        EditRecipeScreen(
+            onBack = { navController.popBackStack() },
+            // As a scan's (#226): the saved recipe replaces the review.
             onSaved = { id ->
                 navController.popBackStack()
                 navController.navigate(Routes.recipe(id))

@@ -21,6 +21,21 @@ final class Router {
     var weekPath: [Route] = []
     var selectedTab: AppTab = .recipes
 
+    /// An expiry reminder was tapped (#305): the Pantry opens the Use it up sheet, once.
+    private(set) var useItUpPending = false
+
+    /// Opens the Pantry tab with the Use it up sheet waiting.
+    func requestUseItUp() {
+        useItUpPending = true
+        select(.pantry)
+    }
+
+    /// Whether the sheet was waiting, once: taking it clears it.
+    func takeUseItUp() -> Bool {
+        defer { useItUpPending = false }
+        return useItUpPending
+    }
+
     func push(_ route: Route) {
         path.append(route)
     }

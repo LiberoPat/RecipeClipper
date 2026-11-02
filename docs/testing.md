@@ -21,7 +21,8 @@ the commands; iOS test commands and the simulator rules are in
 - **Device, `./gradlew connectedDebugAndroidTest`** (not in CI): only what
   needs a real device. `MigrationTest` (its schemas are read from the test
   APK's assets), `WebViewRenderedPageSourceTest` and `ClipScreenTest` (a real
-  `WebView` running JavaScript; Robolectric's is a stub), and
+  `WebView` running JavaScript; Robolectric's is a stub), `PrintPdfTest` (the
+  printed recipe and cookbook PDFs, #318: Robolectric has no PDF engine), and
   `MainActivitySmokeTest`, the end-to-end smoke set: the real app with its
   real Hilt graph, database and network stack, launched from the launcher and
   by a shared link (an `ACTION_SEND` intent to a `.invalid` host, which must
