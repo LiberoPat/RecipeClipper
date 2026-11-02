@@ -16,10 +16,16 @@ import com.example.recipeclipper.MainActivity
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.StepAlarm
 
-/** The "time's up" notification for a step timer that ended while the app wasn't showing it. */
+/**
+ * The "time's up" notification for a step timer that ended while the app wasn't showing it,
+ * and (#309) the ongoing one that counts down while it runs.
+ */
 object TimerNotifications {
 
     const val CHANNEL_ID = "cook_timers"
+
+    /** The running timers' channel (#309): low importance, so the countdown never makes a sound. */
+    const val RUNNING_CHANNEL_ID = "running_timers"
 
     /** MainActivity opens the recipe in cook mode for an intent with this action. */
     const val ACTION_OPEN_COOK = "com.example.recipeclipper.action.OPEN_COOK"
@@ -74,5 +80,60 @@ object TimerNotifications {
         }
     }
 
+    /**
+     * The running timer's ongoing notification (#309): the system's chronometer counts down to
+     * the saved deadline, so nothing is posted per tick, and it removes itself at the deadline,
+     * where [post]'s alert takes over. On Android 16 it asks to be a Live Update (the status
+     * bar chip and the lock screen). A tap opens the recipe in cook mode. Reposting replaces it.
+     */
+    fun postRunning(context: Context, alarm: StepAlarm, now: Long) {
+        val remaining = alarm.endsAt - now
+        if (remaining <= 0 || !mayNotify(context)) return
+        ensureRunningChannel(context)
+        val notification = NotificationCompat.Builder(context, RUNNING_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_timer)
+            .setContentTitle(context.getString(R.string.timer_running_title, alarm.step + 1))
+            .setContentText(alarm.recipeTitle)
+            .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setWhen(alarm.endsAt)
+            .setShowWhen(true)
+            .setUsesChronometer(true)
+            .setChronometerCountDown(true)
+            .setTimeoutAfter(remaining)
+            .setRequestPromotedOngoing(true)
+            .setContentIntent(openCookIntent(context, alarm.recipeId))
+            .build()
+        try {
+            NotificationManagerCompat.from(context).notify(runningTag(alarm.recipeId), alarm.step, notification)
+        } catch (e: SecurityException) {
+            // Permission withdrawn between the check and the call.
+        }
+    }
+
+    /** Removes [step]'s countdown: paused, reset, stopped, or its alert has come. */
+    fun cancelRunning(context: Context, recipeId: Long, step: Int) {
+        NotificationManagerCompat.from(context).cancel(runningTag(recipeId), step)
+    }
+
+    private fun mayNotify(context: Context): Boolean =
+        (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED) &&
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+    private fun ensureRunningChannel(context: Context) {
+        val channel = NotificationChannel(
+            RUNNING_CHANNEL_ID,
+            context.getString(R.string.timer_running_channel_name),
+            NotificationManager.IMPORTANCE_LOW
+        ).apply { description = context.getString(R.string.timer_running_channel_description) }
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+    }
+
     private fun tag(recipeId: Long) = "timer:$recipeId"
+
+    fun runningTag(recipeId: Long) = "running:$recipeId"
 }

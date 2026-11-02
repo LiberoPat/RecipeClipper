@@ -21,6 +21,8 @@ enum Flag: String, CaseIterable {
     /// Reading a Reddit post's photo with on-device text recognition, checked by the cook (#198),
     /// and scanning the cook's own photos the same way (#226).
     case photoText
+    /// Running cook-mode timers outside the app (#309): a Live Activity, an ongoing notification.
+    case liveTimers
     /// Print or save a recipe as PDF, and a list as a cookbook PDF (#318).
     case print
     /// Text shared in with no link (#306): split into a recipe and opened in the editor to check.

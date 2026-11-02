@@ -6,7 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.net.toUri
+import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.TimerAlarmScheduler
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.StepAlarm
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -27,16 +30,22 @@ import javax.inject.Singleton
  *
  * Each timer's PendingIntent is identified by a `recipeclipper://timer/<recipe>/<step>` data
  * URI, so rescheduling replaces it and cancelling finds it.
+ *
+ * With `liveTimers` on (#309) it also shows the timer counting down, in an ongoing notification
+ * ([TimerNotifications.postRunning]) that goes when the timer is cancelled or its alert comes.
  */
 @Singleton
 class AndroidTimerAlarmScheduler @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val flags: FeatureFlags,
+    private val clock: Clock
 ) : TimerAlarmScheduler {
 
     private val alarmManager: AlarmManager?
         get() = context.getSystemService(AlarmManager::class.java)
 
     override fun schedule(alarm: StepAlarm) {
+        if (flags.isOn(Flag.LIVE_TIMERS)) TimerNotifications.postRunning(context, alarm, clock.now())
         val manager = alarmManager ?: return
         val operation = PendingIntent.getBroadcast(
             context,
@@ -63,6 +72,7 @@ class AndroidTimerAlarmScheduler @Inject constructor(
     }
 
     override fun cancel(recipeId: Long, step: Int) {
+        TimerNotifications.cancelRunning(context, recipeId, step)
         val existing = PendingIntent.getBroadcast(
             context,
             0,

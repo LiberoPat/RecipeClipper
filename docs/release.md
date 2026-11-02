@@ -2,7 +2,7 @@
 
 The steps only the owner can do: accounts, keys and store listings. The code
 and config side is done: the IDs are `com.liberopat.recipeclipper` on both
-platforms (iOS extension `.share`, UI tests `.uitests`), release signing reads
+platforms (iOS extensions `.share` and `.widgets`, UI tests `.uitests`), release signing reads
 its keys from outside the repo, the iOS privacy manifest and export-compliance
 key are in place, and `docs/privacy-policy.md` is drafted. The rest of the
 plan is in issues #18 (iOS), #22 (Android), #20–#21 and #23.
@@ -14,14 +14,15 @@ plan is in issues #18 (iOS), #22 (Android), #20–#21 and #23.
 2. **Set the Team ID.** It's the 10-character ID under Account → Membership
    details. Put it in `ios/project.yml`, `settings: base: DEVELOPMENT_TEAM`
    (the one place; every target inherits it), then `cd ios && xcodegen
-   generate`. Signing is Automatic, so Xcode registers the two bundle IDs
-   (`com.liberopat.recipeclipper` and `.share`) on first build to a device.
-3. **Register the App Group.** The app and the share extension share their
+   generate`. Signing is Automatic, so Xcode registers the three bundle IDs
+   (`com.liberopat.recipeclipper`, `.share` and `.widgets`, #309) on first
+   build to a device.
+3. **Register the App Group.** The app and its two extensions share their
    database and settings through `group.com.liberopat.recipeclipper`; without
    it, sharing to Recipe Clipper on a device can't save anything the app
    sees. On developer.apple.com → Certificates, Identifiers & Profiles →
    Identifiers → App Groups, add `group.com.liberopat.recipeclipper`, then
-   enable the App Groups capability on both App IDs and tick that group.
+   enable the App Groups capability on all three App IDs and tick that group.
    (Xcode's automatic signing usually does this on the first device build, as
    the entitlements already name it; check it did.) Then share a recipe from
    Safari on a device and confirm it appears in the app, and read the

@@ -27,6 +27,10 @@ extension: no `UIApplication.shared`. `Resources/Localizable.xcstrings` and `../
 are in both targets' sources too: `Strings.swift`'s `String(localized:)` and
 `SharedTables.read` both resolve against `Bundle.main`, which inside the extension is its own
 bundle, so the catalog and the word tables have to be compiled into both, not just the app's.
+`RecipeClipperWidgets` (widget extension, embedded too, #309) draws the running timers' Live
+Activities from `RecipeClipper/Shared/`, `UI/Theme/Theme.swift`, the fonts and the catalog;
+its text uses `WidgetFont` and `WidgetStrings`, never `AppFont`'s UIFonts (WidgetKit can't
+encode a variable-axis UIFont, and the extension crashes).
 `RecipeClipperTests` bundles `../shared/fixtures` (the export files the Android tests read
 too), found at `fixtures/backup/<name>.json` in the test bundle.
 

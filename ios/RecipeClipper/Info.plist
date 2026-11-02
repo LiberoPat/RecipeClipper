@@ -61,6 +61,8 @@
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo of what you cooked, to keep with the recipe.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.com.liberopat.recipeclipper</key>

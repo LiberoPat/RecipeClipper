@@ -1106,6 +1106,44 @@ did there was nothing to tap.
   Known gap: deleting a recipe from History with a timer running leaves its
   pending notification.
 
+## Timers outside the app (#309)
+
+Behind `liveTimers`. A running cook-mode timer shows outside the app, counted
+down by the system from the deadline cook progress already saves, so nothing
+writes or posts per tick. A tap opens the recipe in cook mode. The time's-up
+alert and `TimerAlarmReceiver`'s check of the database are unchanged.
+
+- **Android: an ongoing notification**, posted by
+  `AndroidTimerAlarmScheduler.schedule` beside the alarm and removed by
+  `cancel` (`TimerNotifications.postRunning`). Its own channel, "Running
+  timers", at low importance, so it never makes a sound; the chronometer counts
+  down to `endsAt` (`setUsesChronometer` + `setChronometerCountDown`), and
+  `setTimeoutAfter` removes it at the deadline, where the alert takes over. No
+  foreground service (rejected in #10): a plain notification survives the
+  process, and a reboot reposts it through `TimerBootReceiver`'s reschedule.
+  One per timer (tag `running:<recipe>`, id the step). It asks to be promoted
+  (`setRequestPromotedOngoing`, `POST_PROMOTED_NOTIFICATIONS`, a normal
+  permission), which on Android 16 makes it a Live Update: the status bar chip
+  and the lock screen. Without the notification permission it isn't shown.
+- **iOS: a Live Activity** per timer, on the lock screen and in the Dynamic
+  Island, drawn by the new widget extension `RecipeClipperWidgets`
+  (`TimerLiveActivity`, `TimerActivityAttributes` shared with the app under
+  `RecipeClipper/Shared`). `LiveActivityTimerScheduler` wraps
+  `NotificationTimerScheduler` and drives `ActivityKitTimerDisplay`, whose
+  operations are chained like the notifications', since ending is
+  asynchronous. The activity's stale date is the deadline: past it, it reads
+  "Time's up: step N" until the app ends it, which opening the recipe does
+  (`replaceAll` keeps only running timers). The link is
+  `recipeclipper://cook?id=N` (`AppLinks`, compiled into both targets). The
+  extension can't use `Strings.swift` (it formats the app's types), so
+  `WidgetStrings` reads the same catalog keys, compiled into its bundle. Its
+  text is Fraunces and Karla by name (`WidgetFont`): a `Font` made from
+  `AppFont`'s variable-axis UIFont crashed the extension, which WidgetKit
+  can't encode. The system asks once, on the first activity, whether to allow
+  Live Activities.
+- **The flag off** shows nothing new, and ending never checks the flag, so
+  turning it off mid-cook leaves no countdown behind.
+
 ## iOS: importing inside the share extension (#19)
 
 The extension used to find the link and open the app with

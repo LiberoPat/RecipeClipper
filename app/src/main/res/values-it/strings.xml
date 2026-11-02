@@ -225,6 +225,9 @@
     <string name="timer_channel_name">Timer di cucina</string>
     <string name="timer_channel_description">Quando il timer di un passaggio finisce mentre l\'app è chiusa o in background</string>
     <string name="timer_notification_title">Tempo scaduto: passaggio %1$d</string>
+    <string name="timer_running_title">Timer: passaggio %1$d</string>
+    <string name="timer_running_channel_name">Timer in corso</string>
+    <string name="timer_running_channel_description">Il conto alla rovescia di un timer in corso</string>
 
     <!-- Editing a recipe, or typing one in (#29) -->
     <string name="action_edit">Modifica</string>

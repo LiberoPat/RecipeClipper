@@ -213,6 +213,9 @@
     <string name="timer_channel_name">Koch-Timer</string>
     <string name="timer_channel_description">Wenn der Timer eines Schritts abläuft, während die App geschlossen ist oder im Hintergrund läuft</string>
     <string name="timer_notification_title">Zeit ist um: Schritt %1$d</string>
+    <string name="timer_running_title">Timer: Schritt %1$d</string>
+    <string name="timer_running_channel_name">Laufende Timer</string>
+    <string name="timer_running_channel_description">Der Countdown eines laufenden Schritt-Timers</string>
 
     <!-- Editing a recipe, or typing one in (#29) -->
     <string name="action_edit">Bearbeiten</string>
