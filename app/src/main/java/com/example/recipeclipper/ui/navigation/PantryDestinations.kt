@@ -8,6 +8,6 @@ import com.example.recipeclipper.ui.pantry.PantryScreen
 /** The Pantry tab's stack (#51): the pantry alone. */
 fun NavGraphBuilder.pantryDestinations() {
     composable(Routes.PANTRY) {
-        PantryScreen(sendFileViewModel = hiltViewModel())
+        PantryScreen(sendFileViewModel = hiltViewModel(), useItUpViewModel = hiltViewModel())
     }
 }

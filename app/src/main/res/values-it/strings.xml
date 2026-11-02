@@ -529,6 +529,18 @@
     <string name="expiry_one_tomorrow">%1$s scade domani.</string>
     <string name="expiry_many_tomorrow">%1$s scadono domani.</string>
     <string name="expiry_names_and">%1$s e %2$s</string>
+    <!-- Use it up (#305) -->
+    <string name="use_it_up_title">Antispreco</string>
+    <plurals name="use_it_up_count">
+        <item quantity="one">In %1$d ricetta salvata</item>
+        <item quantity="many">In %1$d di ricette salvate</item>
+        <item quantity="other">In %1$d ricette salvate</item>
+    </plurals>
+    <string name="use_it_up_note">Dalle tue ricette salvate. Un tocco la aggiunge al piano per cena.</string>
+    <string name="use_it_up_plan_today">Pianifica per oggi</string>
+    <string name="use_it_up_plan_tomorrow">Pianifica per domani</string>
+    <string name="use_it_up_planned_today">Pianificata per oggi</string>
+    <string name="use_it_up_planned_tomorrow">Pianificata per domani</string>
     <string name="action_month_view">Mese</string>
     <string name="action_week_view">Settimana</string>
     <string name="action_this_month">Questo mese</string>

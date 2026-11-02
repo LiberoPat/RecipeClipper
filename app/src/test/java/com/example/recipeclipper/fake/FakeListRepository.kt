@@ -3,6 +3,7 @@ package com.example.recipeclipper.fake
 import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.SavedRecipe
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -59,6 +60,11 @@ class FakeListRepository : ListRepository {
     }
 
     override fun observeCoverPhotos(): Flow<Map<Long, List<String>>> = coverPhotos
+
+    /** What [observeSavedRecipes] emits (#305). */
+    val savedRecipes = MutableStateFlow<List<SavedRecipe>>(emptyList())
+
+    override fun observeSavedRecipes(): Flow<List<SavedRecipe>> = savedRecipes
 
     override suspend fun setMembership(recipeId: Long, listId: Long, inList: Boolean) {
         membership.value = if (inList) {

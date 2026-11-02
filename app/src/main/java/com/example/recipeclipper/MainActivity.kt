@@ -24,6 +24,7 @@ import com.example.recipeclipper.reminders.ExpiryNotifications
 import com.example.recipeclipper.timers.TimerNotifications
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.groceries.ReceivedListInbox
+import com.example.recipeclipper.ui.pantry.UseItUpInbox
 import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
 import com.example.recipeclipper.ui.navigation.Tab
@@ -49,6 +50,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var receivedLists: ReceivedListInbox
+
+    @Inject
+    lateinit var useItUp: UseItUpInbox
 
     @Inject
     lateinit var autoBackup: AutoBackup
@@ -172,7 +176,11 @@ class MainActivity : ComponentActivity() {
         if (featureFlags.current.isOn(Flag.PHOTO_TEXT)) {
             ScanIntent.pages(intent)?.let { return Routes.scan(it) }
         }
-        if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) return Tab.PANTRY.route
+        if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) {
+            // Use it up (#305): the Pantry opens on the saved recipes for what's expiring, if any.
+            useItUp.offer()
+            return Tab.PANTRY.route
+        }
         if (intent?.action == TimerNotifications.ACTION_OPEN_COOK) {
             val id = intent.getLongExtra(TimerNotifications.EXTRA_RECIPE_ID, -1)
             return if (id > 0) Routes.cookRecipe(id) else null

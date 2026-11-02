@@ -68,6 +68,25 @@ struct ListDao {
         )
     }
 
+    /// Every saved recipe (in at least one list, once however many) with its ingredient lines,
+    /// for "Use it up" (#305).
+    func savedRecipes() throws -> [SavedRecipe] {
+        try db.query(
+            """
+            SELECT r.id, r.title, r.imageUrl, r.language, r.ingredients
+            FROM recipes r
+            WHERE r.id IN (SELECT recipeId FROM recipe_list_cross_ref)
+            ORDER BY r.id
+            """,
+            map: { row in
+                SavedRecipe(
+                    id: row.int64(0), title: row.string(1), imageUrl: row.optionalString(2),
+                    language: row.optionalString(3), lines: JSONColumns.decodeStrings(row.string(4))
+                )
+            }
+        )
+    }
+
     /// IGNORE, never REPLACE: re-adding a recipe already in the list must not rewrite
     /// `addedAt`, which is what orders the list. (A missing recipe or list still fails: OR
     /// IGNORE does not cover foreign-key violations.)
