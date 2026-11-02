@@ -250,6 +250,8 @@
     <string name="photo_reading">Lettura della foto su questo telefono…</string>
     <string name="photo_read">Ricetta letta dalla foto. Confronta ogni riga con la foto, soprattutto le quantità, prima di salvare.</string>
     <string name="photo_not_sorted">Non è stato possibile leggere una ricetta dalla foto: completala a mano.</string>
+    <string name="text_read">Ricetta ordinata dal testo condiviso. Controlla ogni riga, soprattutto le quantità, prima di salvare.</string>
+    <string name="text_not_sorted">Non è stato possibile trovare ingredienti e passaggi nel testo, quindi è tutto in Passaggi, così com\'è: completala a mano.</string>
     <string name="photo_failed">Impossibile caricare la foto. Controlla la connessione e riprova.</string>
     <string name="photo_not_ready">Il lettore di foto non è ancora pronto su questo telefono: i servizi Google Play lo scaricano una volta, via internet. Riprova tra qualche minuto o completa la ricetta a mano qui sotto.</string>
     <string name="photo_check_heading">Controlla queste righe: in quei punti la foto era poco leggibile</string>
@@ -529,6 +531,18 @@
     <string name="expiry_one_tomorrow">%1$s scade domani.</string>
     <string name="expiry_many_tomorrow">%1$s scadono domani.</string>
     <string name="expiry_names_and">%1$s e %2$s</string>
+    <!-- Use it up (#305) -->
+    <string name="use_it_up_title">Antispreco</string>
+    <plurals name="use_it_up_count">
+        <item quantity="one">In %1$d ricetta salvata</item>
+        <item quantity="many">In %1$d di ricette salvate</item>
+        <item quantity="other">In %1$d ricette salvate</item>
+    </plurals>
+    <string name="use_it_up_note">Dalle tue ricette salvate. Un tocco la aggiunge al piano per cena.</string>
+    <string name="use_it_up_plan_today">Pianifica per oggi</string>
+    <string name="use_it_up_plan_tomorrow">Pianifica per domani</string>
+    <string name="use_it_up_planned_today">Pianificata per oggi</string>
+    <string name="use_it_up_planned_tomorrow">Pianificata per domani</string>
     <string name="action_month_view">Mese</string>
     <string name="action_week_view">Settimana</string>
     <string name="action_this_month">Questo mese</string>

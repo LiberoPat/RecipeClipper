@@ -362,6 +362,9 @@ protocol ListRepository: AnyObject {
     /// it, most recently added first. A list with no photo is absent.
     func observeCoverPhotos() -> AnyPublisher<[Int64: [String]], Never>
 
+    /// Every saved recipe (in at least one list) with its ingredient lines, for "Use it up" (#305).
+    func observeSavedRecipes() -> AnyPublisher<[SavedRecipe], Never>
+
     /// Writes immediately. Adding is insert-or-ignore: re-adding never rewrites addedAt.
     func setMembership(recipeId: Int64, listId: Int64, inList: Bool) async
 

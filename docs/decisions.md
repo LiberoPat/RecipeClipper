@@ -1928,6 +1928,36 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
     the label then on the outline and still the field's accessibility name.
   - **Not done:** "Done shopping" carrying a grocery line's amount into the pantry.
 
+## Use it up (#305)
+
+Saved recipes for a pantry item about to expire, behind the `useItUp` flag (on).
+
+- **Where it shows: the Pantry row and the expiry reminder,** both opening one sheet. The row
+  is where the use-by date already is, so the line ("3 saved recipes use it", paprika, under
+  the date) sits beside what it explains and costs nothing when there's no match. The
+  reminder is where the cook learns something expires, so its tap opens the Pantry with the
+  sheet on everything due (Android `UseItUpInbox`, iOS `Router.useItUpPending`); with no
+  saved recipe for any of it, the Pantry opens as before. The Week's ⋮ was the issue's third
+  idea: left out, since planning from the Pantry already lands on the Week.
+- **Soon is the reminder's window** (`ExpiryReminders.due`): in stock, not a staple, expiring
+  today or tomorrow. Not the paprika badge's three days: the line and the morning note then
+  name the same items. An item past its date isn't offered.
+- **Only saved recipes** (in at least one list, `ListDao.observeSavedRecipes`). Not history:
+  a recipe merely opened isn't one the cook chose to keep, and the issue rules out anything
+  not chosen (#165 is where new ones would come from).
+- **Matching is What I need's** (`UseItUp.uses`: each line's `IngredientName` against the item
+  by `PantryMatch.find`, same language, headings skipped; a recipe stored with no language,
+  from before #14, is detected first, as What I need's are). Presence only; "rice flour" is
+  never "flour", "butter beans" never "butter". No model decisions (#104): a name match or
+  nothing. Lines are read as stored (only names matter, so scaling changes nothing). Pure, in
+  `core` (`UseItUp`), ported to Swift and pinned by the corpus's `UseIt` rows.
+- **The sheet:** a heading per item in the reminder's words ("Spinach expires tomorrow."),
+  soonest first, its recipes A–Z, each with one tap per day: "Plan today" and, when the
+  use-by day is tomorrow, "Plan tomorrow". A tap plans it as Dinner at its own yield (as "Add
+  to plan" starts) and the button turns to "Planned …" (any recipe already on the plan that
+  day, from anywhere, shows so). The note under the title says the tap plans dinner.
+- **Strings:** `use_it_up_*` in all six languages, drafts (`docs/translations.md`).
+
 ## Clip it yourself (#37)
 
 A page with no recipe data (`NoRecipeFound` from a shared link, never Blocked, Offline or
@@ -3474,7 +3504,8 @@ works either way.
 - **Where a list comes in.** "Paste a list" in the Groceries menu reads the clipboard when
   tapped (an empty one shows the sheet with a sentence saying so). On Android, shared text
   with a link still imports the link, exactly as before; text with no link but with lines
-  opens the Groceries tab on the sheet (through `ReceivedListInbox`, in memory). The iOS share extension can't open the app (#19), so it shows the same
+  (bulleted lines since #306, whose other text opens the recipe editor; a recipe beside a link
+  too) opens the Groceries tab on the sheet (through `ReceivedListInbox`, in memory). The iOS share extension can't open the app (#19), so it shows the same
   sheet in its card and writes to the App Group database itself; the app catches up when it
   becomes active, like a shared recipe.
 - **The Pantry's "Send list" sends what's in stock** (owner's decision, 2026-09-26): what's at
@@ -4460,6 +4491,56 @@ shares into the app. Behind the existing `photoText` flag, on both platforms.
 - **Needs a phone:** the camera itself, the picker's order, sharing from Photos or a gallery,
   ML Kit's model through Play services, and real cards and cookbook pages (docs/testing.md).
 
+## Share text, not just links (#306, 2026-10-30)
+
+A recipe in a note, an email from a relative or a message is shared into the app as text, split
+into a recipe and opened in the editor for the cook to check, as "Read the photo" (#198) and a
+scan (#226) are. Behind the `shareText` flag, on both platforms.
+
+- **Where shared text goes** (`SharedText.kind`, pure, in `:core` with its Swift port, pinned by
+  the corpus's `Shared(…)` rows), in order:
+  1. **A recipe:** the text splits (`RecipeTextSplitter`, in the language its words say, #208).
+     **It wins over a link in it.** The cook chose this text; a link beside a recipe (an email
+     signature, "see also", the highlight link Chrome adds to a shared selection) may lead
+     anywhere, and importing it could open a different recipe. A browser shares a link with at
+     most a title, which never splits, so a shared page still imports as before.
+  2. **A link:** today's import of its first http(s) link.
+  3. **A bulleted list** ("- ", "• ", …): #149's "Add this list", as before, so a list sent from
+     Groceries or the Pantry still arrives as one (it never splits: it has no steps).
+  4. **Anything else** (prose, unbulleted lines): the editor, as written. Before #306 unbulleted
+     lines were offered as a list; a bulleted list is what the app itself sends, and text that is
+     neither is likelier a recipe told in prose than a list.
+- **What the editor opens with** (`SharedText.read`): split, its ingredients, steps, yield and
+  times. Not split: **every non-blank line, trimmed and otherwise as written, as a step**, with
+  "Couldn't find ingredients and steps in the text, so it's all under Steps, as written: finish
+  it by hand." Steps rather than ingredients (the photo's fallback) because a step is never
+  scaled, converted, bought or used up, so an unsorted line can never become a confident wrong
+  number; prose reads as steps, and the cook moves the ingredient lines. **No name either way**:
+  the first line might be "Hi Mum," or "Fwd:", and the splitter drops the lines before the first
+  section, so Save points out the rule, as a scan's does. Nothing is corrected, and no lines are
+  listed to check: typed text has no recogniser to doubt.
+- **Saved as the cook's own** (`addManual` with the text's language, then the checked recipe's
+  words, else English), like a scan: `MANUAL`, `manual:<uuid>`, no source credit. The link a
+  recipe won over is not kept (a follow-up could keep it as the credit). Nothing is saved until
+  Save; Back discards.
+- **Android:** `ACTION_SEND` text/plain as before, now read as a `CharSequence` (some apps send
+  styled text), and **`ACTION_PROCESS_TEXT`**: "Recipe Clipper" in any app's text-selection menu,
+  read the same way (with the flag off the app just opens). `TextIntent` decides; the route is
+  `edit/text?text=…`, the text in the route, so it survives process death; longer than
+  50,000 characters it isn't offered to the editor (the saved state's limit), and falls back to a
+  link or a list.
+- **iOS:** the share extension reads the shared text (also beside a link while the flag is on)
+  and **hands off rather than opens** (#19), as a scan does: `PendingText` (`pending_text`,
+  `pending_text_at`) and "Open Recipe Clipper to check the recipe from this text…"; the app,
+  becoming active within 10 minutes, opens the editor in Recipes, once. Each new share replaces
+  or clears what an earlier one left. The flag is mirrored as `share_text_on`.
+- **Not built:** shared PDFs (a PDF's text through PDFKit or `PdfRenderer` plus OCR would feed
+  the same editor; a follow-up issue).
+- **Tests:** `SharedTextTest`, `TextIntentTest`, `EditRecipeTextViewModelTest` and
+  `EditRecipeTextScreenTest` (Android); `TextHandOffTests`, `EditRecipeTextTests` and
+  `ShareTextUITests` (iOS, with `RC_UITEST_SHARED_TEXT` standing in for the hand-off, since the
+  share sheet can't be driven). Sharing from Notes, Mail, Messages or a selection needs a phone.
+
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
 The owner's report: a card's fraction symbol came out as "%". Measured first, on two cards drawn
@@ -4924,7 +5005,9 @@ saving replaces it and the error screen under it, if any, with `recipe/{id}`), a
 `edit/photo?url={url}&title={title}&images={images}` (Read the photo, #198: the editor filled
 from a Reddit post's pictures, one address per line in `images`; saving replaces it and the
 error screen like a clip), and `edit/scan?pages={pages}` (Scan a recipe, #226: the same editor
-over the cook's own pages, local URIs one per line; saving replaces it with `recipe/{id}`). A bottom tab bar (#47) nests this graph under a Recipes tab
+over the cook's own pages, local URIs one per line; saving replaces it with `recipe/{id}`), and
+`edit/text?text={text}` (text shared in, #306: the same editor, split or as written; saving
+replaces it with `recipe/{id}`). A bottom tab bar (#47) nests this graph under a Recipes tab
 alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and
 `week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry` (#51)
 (`AppShell`/iOS `RootView`'s `tabs`). Hidden on the recipe reading view and in cook

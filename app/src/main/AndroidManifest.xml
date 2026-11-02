@@ -41,6 +41,14 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
 
+            <!-- Text selected in any app (#306): "Recipe Clipper" in the selection menu, read as
+                 shared text (behind the shareText flag; off, it opens the app) -->
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
             <!-- "Scan a recipe" (#226): a photo or screenshot of a recipe, or several pages,
                  shared in from the gallery or another app, read on the device -->
             <intent-filter>

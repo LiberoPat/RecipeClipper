@@ -35,11 +35,14 @@ final class ShareViewController: UIViewController {
         let defaults = UserDefaults(suiteName: AppGroup.identifier)
         let reddit = defaults.map(DefaultsRedditSwitch.init)
         // Images shared in are left for the app's scan review too (#226).
+        // Text holding a recipe is left for the app's editor too (#306).
+        let shareText = defaults.map(DefaultsShareTextSwitch.init)
         let viewModel = ShareImportViewModel(
             repository: repository, connectivity: PathConnectivity(),
             makeReceiveList: { db.flatMap(makeReceiveList) },
             redditOn: { reddit?.isOn ?? true }, pendingClip: defaults.map(PendingClip.init),
-            pendingScan: defaults.map { PendingScan(defaults: $0, pages: ScanPages.shared()) }
+            pendingScan: defaults.map { PendingScan(defaults: $0, pages: ScanPages.shared()) },
+            shareTextOn: { shareText?.isOn ?? true }, pendingText: defaults.map(PendingText.init)
         )
         return (viewModel, repository)
     }
@@ -127,9 +130,12 @@ final class ShareViewController: UIViewController {
             let input = await SharedItems.read(from: providers)
             // No link: perhaps pictures of a recipe to scan (#226, while the app's photoText
             // flag is on), copied for the app to read, or else a list sent from another phone (#149).
-            let scanOn = UserDefaults(suiteName: AppGroup.identifier).map { DefaultsPhotoTextSwitch(defaults: $0).isOn } ?? false
+            // Text is read with a link too while shareText is on (#306): a recipe in it wins.
+            let suite = UserDefaults(suiteName: AppGroup.identifier)
+            let scanOn = suite.map { DefaultsPhotoTextSwitch(defaults: $0).isOn } ?? false
+            let textOn = suite.map { DefaultsShareTextSwitch(defaults: $0).isOn } ?? false
             let pages = input == nil && scanOn ? await SharedItems.images(from: providers, into: ScanPages.shared()) : []
-            let text = input == nil && pages.isEmpty ? await SharedItems.text(from: providers) : nil
+            let text = (input == nil || textOn) && pages.isEmpty ? await SharedItems.text(from: providers) : nil
             MemoryFootprint.log("read the shared items")
             viewModel.start(with: input, text: text, scanPages: pages)
             await viewModel.currentLoad?.value

@@ -2,6 +2,7 @@ package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.SavedRecipe
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -33,6 +34,9 @@ interface ListRepository {
      * it, most recently added first. A list with no photo is absent.
      */
     fun observeCoverPhotos(): Flow<Map<Long, List<String>>>
+
+    /** Every saved recipe (in at least one list) with its ingredient lines, for "Use it up" (#305). */
+    fun observeSavedRecipes(): Flow<List<SavedRecipe>>
 
     /**
      * Ticks or unticks one list for one recipe. Writes immediately — the sheet is dismissed,

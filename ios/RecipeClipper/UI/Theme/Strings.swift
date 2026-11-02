@@ -67,6 +67,8 @@ enum Strings {
     static var photoReading: String { String(localized: "photo_reading") }
     static var photoRead: String { String(localized: "photo_read") }
     static var photoNotSorted: String { String(localized: "photo_not_sorted") }
+    static var textRead: String { String(localized: "text_read") }
+    static var textNotSorted: String { String(localized: "text_not_sorted") }
     static var photoFailed: String { String(localized: "photo_failed") }
     static var photoCheckHeading: String { String(localized: "photo_check_heading") }
     static var photoCheckLarge: String { String(localized: "photo_check_large") }
@@ -209,6 +211,7 @@ enum Strings {
     static var shareGettingRecipe: String { String(localized: "share_getting_recipe") }
     static var shareRedditBlocked: String { String(localized: "share_reddit_blocked") }
     static var shareScanInApp: String { String(localized: "share_scan_in_app") }
+    static var shareTextInApp: String { String(localized: "share_text_in_app") }
     static var shareSaved: String { String(localized: "share_saved") }
     static var shareOpenToCook: String { String(localized: "share_open_to_cook") }
     static var shareNoLink: String { String(localized: "share_no_link") }
@@ -478,6 +481,20 @@ enum Strings {
     static var expiryNotificationTitle: String { String(localized: "expiry_notification_title") }
 
     /// "Milk and yogurt expire tomorrow.", or both sentences when some expire today.
+    // Use it up (#305)
+    static var useItUpTitle: String { String(localized: "use_it_up_title") }
+    static func useItUpCount(_ n: Int) -> String { String(localized: "use_it_up_count \(n)") }
+    static var useItUpNote: String { String(localized: "use_it_up_note") }
+    static var useItUpPlanToday: String { String(localized: "use_it_up_plan_today") }
+    static var useItUpPlanTomorrow: String { String(localized: "use_it_up_plan_tomorrow") }
+    static var useItUpPlannedToday: String { String(localized: "use_it_up_planned_today") }
+    static var useItUpPlannedTomorrow: String { String(localized: "use_it_up_planned_tomorrow") }
+    /// "Spinach expires today." / "… tomorrow.", as the reminder words one item.
+    static func useItUpExpires(_ name: String, today: Bool) -> String {
+        let sentence = today ? String(localized: "expiry_one_today \(name)") : String(localized: "expiry_one_tomorrow \(name)")
+        return ExpiryReminders.capitalized(sentence, locale: .current)
+    }
+
     static func expiryNotificationBody(_ reminder: ExpiryReminder) -> String {
         func sentence(_ names: [String], one: (String) -> String, many: (String) -> String) -> String {
             let joined = ExpiryReminders.joinNames(names) { String(localized: "expiry_names_and \($0) \($1)") }

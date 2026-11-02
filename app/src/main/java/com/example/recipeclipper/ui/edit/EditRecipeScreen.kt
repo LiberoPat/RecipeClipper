@@ -86,7 +86,7 @@ fun EditRecipeScreen(
                 Text(
                     stringResource(
                         when {
-                            state.photo != null -> R.string.photo_title
+                            state.photo != null || state.shared -> R.string.photo_title
                             state.isNew -> R.string.edit_title_new
                             else -> R.string.edit_title_edit
                         }
@@ -97,6 +97,12 @@ fun EditRecipeScreen(
                 Spacer(Modifier.height(16.dp))
                 state.photo?.let {
                     PhotoReview(it, state, viewModel::onReadAgain, viewModel::onPage, viewModel::onCheckLine, viewModel::onFraction)
+                }
+                // Text shared in (#306): how the split went.
+                when (state.sharedSorted) {
+                    true -> Note(stringResource(R.string.text_read))
+                    false -> Note(stringResource(R.string.text_not_sorted))
+                    null -> Unit
                 }
                 when {
                     state.loading -> CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)

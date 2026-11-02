@@ -244,6 +244,9 @@ enum UITestSeeding {
                     case "walkthroughPantry":
                         try UITestWalkthroughSeed.seed(conn, now: now)
                         try UITestWalkthroughSeed.seedPantry(conn, now: now)
+                    case "useItUp":
+                        try seedStandard(conn, now: now)
+                        try seedUseItUp(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
                 }
@@ -334,6 +337,19 @@ enum UITestSeeding {
         try lists.addToList(ListMembership(recipeId: carbonara, listId: weeknights, addedAt: now - 10 * minute))
     }
 
+    /// Use it up (#305): "chicken thighs" (in the saved Chicken Adobo) expiring tomorrow, and
+    /// "flour" (only in Banana Bread, which is in no list) today.
+    private static func seedUseItUp(_ conn: SQLiteConnection, now: Int64) throws {
+        let today = PlanDays.today(millis: now)
+        let pantry = PantryDao(db: conn)
+        for (name, aisle, expires) in [("chicken thighs", Aisle.meat.key, today + 1), ("flour", Aisle.baking.key, today)] {
+            _ = try pantry.insert(PantryItemRecord(
+                name: name, quantity: nil, language: "en", aisle: aisle, inStock: true, alwaysHave: false,
+                purchasedDay: nil, expiresDay: expires, updatedAt: now
+            ))
+        }
+    }
+
     /// "Scan a recipe" under UI test (#226): `RC_UITEST_SCAN_IMAGES` holds file URLs, space
     /// separated, opened once at launch as a scan's pages (a UI test can't drive the camera or
     /// the photo picker). With `RC_UITEST_PHOTO_VISION=1` the real Vision reader reads them.
@@ -345,6 +361,17 @@ enum UITestSeeding {
         scanOpened = true
         let pages = spec.split(separator: " ").map(String.init)
         return pages.isEmpty ? nil : pages
+    }
+
+    /// Text shared in (#306), opened once in the editor as the share extension's hand-off would
+    /// (the system share sheet can't be driven): `RC_UITEST_SHARED_TEXT`, with `\n` between lines.
+    @MainActor private static var sharedTextOpened = false
+    @MainActor
+    static func sharedText() -> String? {
+        guard scenario != nil, !sharedTextOpened,
+              let text = ProcessInfo.processInfo.environment["RC_UITEST_SHARED_TEXT"], !text.isEmpty else { return nil }
+        sharedTextOpened = true
+        return text.replacingOccurrences(of: "\\n", with: "\n")
     }
 }
 
