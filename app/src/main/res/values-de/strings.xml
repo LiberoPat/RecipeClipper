@@ -216,6 +216,15 @@
     <string name="timer_running_title">Timer: Schritt %1$d</string>
     <string name="timer_running_channel_name">Laufende Timer</string>
     <string name="timer_running_channel_description">Der Countdown eines laufenden Schritt-Timers</string>
+    <string name="widget_tonight_name">Heute Abend</string>
+    <string name="widget_tonight_description">Die geplanten Mahlzeiten für heute</string>
+    <string name="widget_tonight_empty">Für heute ist nichts geplant</string>
+    <string name="widget_groceries_description">Was noch zu kaufen ist</string>
+    <string name="widget_groceries_empty">Nichts mehr zu kaufen</string>
+    <plurals name="widget_more">
+        <item quantity="one">+%1$d weiterer</item>
+        <item quantity="other">+%1$d weitere</item>
+    </plurals>
 
     <!-- Editing a recipe, or typing one in (#29) -->
     <string name="action_edit">Bearbeiten</string>

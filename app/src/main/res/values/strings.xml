@@ -325,6 +325,15 @@
     <string name="timer_running_title">Timer: step %1$d</string>
     <string name="timer_running_channel_name">Running timers</string>
     <string name="timer_running_channel_description">A step timer counting down while it runs</string>
+    <string name="widget_tonight_name">Tonight</string>
+    <string name="widget_tonight_description">Today\'s planned meals</string>
+    <string name="widget_tonight_empty">Nothing planned for today</string>
+    <string name="widget_groceries_description">What\'s left to buy</string>
+    <string name="widget_groceries_empty">Nothing left to buy</string>
+    <plurals name="widget_more">
+        <item quantity="one">+%1$d more</item>
+        <item quantity="other">+%1$d more</item>
+    </plurals>
 
     <!-- Editing a recipe, or typing one in (#29) -->
     <string name="action_edit">Edit</string>

@@ -49,6 +49,12 @@
       "issue": 309
     },
     {
+      "key": "widgets",
+      "description": "Home-screen widgets: Tonight (today's planned meals; a tap opens the Week) and Groceries (what's left to buy; a tap opens Groceries). They refresh when the plan or the list changes. Off, a widget already placed shows only the app's name.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 309
+    },
+    {
       "key": "print",
       "description": "Print or save as PDF: the recipe screen's menu prints the recipe as shown (scaled and converted, with its photo if cached, the note last) through the system print dialog, which can also save a PDF; a list's menu makes the whole list a cookbook PDF (a title page, contents, each recipe on its own page) for the share sheet.",
       "defaults": { "debug": true, "release": true },

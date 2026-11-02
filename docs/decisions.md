@@ -1144,6 +1144,37 @@ alert and `TimerAlarmReceiver`'s check of the database are unchanged.
 - **The flag off** shows nothing new, and ending never checks the flag, so
   turning it off mid-cook leaves no countdown behind.
 
+### Home-screen widgets
+
+Behind `widgets`. Two, on both platforms: **Tonight**, today's planned meals
+under their meal type (Mela's next-meal widget is the model; a tap opens the
+Week), and **Groceries**, what's left to buy (a tap opens Groceries). What they
+show is `WidgetContent` (core, with its Swift port, pinned by matching unit
+tests rather than corpus rows): today's meals in meal type order, a meal with
+no title or note left out; the list's unticked rows as the screen shows them
+(a combined row is its total, lines kept together each listed, a row with a
+ticked line in the basket, as "Send list" has it). The list's lines are as
+stored, without the on-device model's decisions (#104): the iOS widget runs
+apart from the app and its model, and Android matches it. As many rows as fit
+the widget's height, then "+N more"; an empty plan or list says so. With the
+flag off a placed widget shows only the app's name.
+
+- **Android: RemoteViews** (`widgets/HomeWidgets`, two `AppWidgetProvider`s).
+  Glance isn't in the Compose BOM (it's versioned on its own and brings
+  WorkManager), and two short lists don't need it. System fonts (serif title):
+  a font resource in RemoteViews depends on the launcher. `HomeWidgets.start`
+  (from `RecipeApp`) redraws when the plan, the list or the flags change while
+  the process lives; `updatePeriodMillis` (30 minutes, the least allowed)
+  covers the rest, midnight included. The tap is an intent action MainActivity
+  routes to the tab, like the expiry reminder's.
+- **iOS: WidgetKit**, in the same extension as the Live Activity. It opens the
+  App Group database itself and reads it through the app's own DAOs (the data
+  layer is compiled in, as in the share extension), and asks to be redrawn at
+  midnight. The app's `WidgetRefresher` calls `reloadAllTimelines` when the
+  plan or the list changes, and mirrors the flag into the App Group suite
+  (`widgets_on`, like `reddit_on`), since the extension never sees the flags.
+  The link is `recipeclipper://tab?name=week` (`AppLinks`).
+
 ## iOS: importing inside the share extension (#19)
 
 The extension used to find the link and open the app with

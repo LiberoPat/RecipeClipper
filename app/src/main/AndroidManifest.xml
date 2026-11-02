@@ -118,5 +118,29 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- The home-screen widgets (#309): exported, as the launcher must reach them. -->
+        <receiver
+            android:name=".widgets.TonightWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_tonight_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_tonight_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.GroceriesWidgetProvider"
+            android:exported="true"
+            android:label="@string/tab_groceries">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_groceries_info" />
+        </receiver>
     </application>
 </manifest>

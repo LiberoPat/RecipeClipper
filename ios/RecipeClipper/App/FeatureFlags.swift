@@ -23,6 +23,8 @@ enum Flag: String, CaseIterable {
     case photoText
     /// Running cook-mode timers outside the app (#309): a Live Activity, an ongoing notification.
     case liveTimers
+    /// The home-screen widgets (#309): Tonight and Groceries.
+    case widgets
     /// Print or save a recipe as PDF, and a list as a cookbook PDF (#318).
     case print
     /// Text shared in with no link (#306): split into a recipe and opened in the editor to check.

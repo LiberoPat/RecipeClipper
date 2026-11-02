@@ -228,6 +228,16 @@
     <string name="timer_running_title">Minuteur : étape %1$d</string>
     <string name="timer_running_channel_name">Minuteurs en cours</string>
     <string name="timer_running_channel_description">Le compte à rebours d\'un minuteur en cours</string>
+    <string name="widget_tonight_name">Ce soir</string>
+    <string name="widget_tonight_description">Les repas prévus aujourd\'hui</string>
+    <string name="widget_tonight_empty">Rien de prévu aujourd\'hui</string>
+    <string name="widget_groceries_description">Ce qu\'il reste à acheter</string>
+    <string name="widget_groceries_empty">Plus rien à acheter</string>
+    <plurals name="widget_more">
+        <item quantity="one">+%1$d autre</item>
+        <item quantity="many">+%1$d autres</item>
+        <item quantity="other">+%1$d autres</item>
+    </plurals>
 
     <!-- Editing a recipe, or typing one in (#29) -->
     <string name="action_edit">Modifier</string>

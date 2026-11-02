@@ -175,15 +175,28 @@ targets:
   RecipeClipperWidgets:
     type: app-extension
     platform: iOS
-    # #309: a running timer's Live Activity. Only what it draws comes along: the shared
-    # attributes and links, the theme with its fonts, and the string catalog (Bundle.main is
-    # this extension's bundle, as in the share extension).
+    # #309: a running timer's Live Activity, and the Tonight and grocery list widgets, which
+    # read the App Group database through the app's own data layer (as the share extension
+    # does, with the same two files left out). Also the shared attributes and links, the theme
+    # with its fonts, the string catalog and the word tables (Bundle.main is this extension's
+    # bundle, as in the share extension).
     sources:
       - path: RecipeClipperWidgets
       - path: RecipeClipper/Shared
+      - path: RecipeClipper/Data
+        excludes:
+          - Local/UserDefaultsAppPreferences.swift
+          - Remote/WebViewRenderedPageSource.swift
+      - path: ../shared/tables
+        type: folder
+        buildPhase: resources
       - path: RecipeClipper/UI/Theme/Theme.swift
       - path: RecipeClipper/Resources/Localizable.xcstrings
       - path: RecipeClipper/Resources/Fonts
+        buildPhase: resources
+      # The widgets read the `widgets` flag's mirror from the App Group suite (UserDefaults,
+      # reason 1C8F.1), which the app's privacy manifest already declares.
+      - path: RecipeClipper/Resources/PrivacyInfo.xcprivacy
         buildPhase: resources
     # The same App Group as the app and the share extension; register it on this App ID too
     # (docs/release.md).
