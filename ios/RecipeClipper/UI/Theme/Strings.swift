@@ -463,6 +463,13 @@ enum Strings {
         )
     }
 
+    // The printed card's headings (#318), as the reading view words them.
+    static var printLabels: RecipePrint.Labels {
+        RecipePrint.Labels(
+            share: shareTextLabels, ingredients: headingIngredients, instructions: headingInstructions, notes: headingNotes
+        )
+    }
+
     // Step timer notifications (#10)
     static func timerNotificationTitle(step: Int) -> String { String(localized: "timer_notification_title \(step)") }
 
@@ -594,6 +601,13 @@ enum Strings {
     // A file sent to someone else's Recipe Clipper (#149, phase 2).
     static var sendFile: String { String(localized: "action_send_file") }
     static var sendFileFailed: String { String(localized: "send_file_failed") }
+    // Print or save as PDF, and a list as a cookbook (#318).
+    static var print: String { String(localized: "action_print") }
+    static var menuDescPrint: String { String(localized: "menu_desc_print") }
+    static var cookbook: String { String(localized: "action_cookbook") }
+    static var menuDescCookbook: String { String(localized: "menu_desc_cookbook") }
+    static var cookbookContents: String { String(localized: "cookbook_contents") }
+    static var printFailed: String { String(localized: "print_failed") }
     static var receiveFileTitle: String { String(localized: "receive_file_title") }
     static var receiveFileEmpty: String { String(localized: "receive_file_empty") }
     static var receiveFileToPantry: String { String(localized: "receive_file_to_pantry") }

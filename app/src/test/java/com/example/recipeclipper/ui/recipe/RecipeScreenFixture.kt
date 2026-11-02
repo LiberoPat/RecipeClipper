@@ -53,7 +53,10 @@ class RecipeScreenFixture(
     /** Set to use up this pantry when cook mode is finished (#147). */
     val pantry: FakePantryRepository? = null,
     /** Set to give the screen the on-device model's decisions (#104, #174). */
-    val decisions: com.example.recipeclipper.fake.FakeDecisionRepository? = null
+    val decisions: com.example.recipeclipper.fake.FakeDecisionRepository? = null,
+    /** Set to show "Print or save as PDF" (#318), handing what it prints to [printer]. */
+    val print: com.example.recipeclipper.ui.print.PrintViewModel? = null,
+    val printer: com.example.recipeclipper.ui.print.Printer = com.example.recipeclipper.ui.print.SystemPrinter
 ) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
@@ -112,6 +115,7 @@ class RecipeScreenFixture(
                 null
             }
         compose.setContent {
+          androidx.compose.runtime.CompositionLocalProvider(com.example.recipeclipper.ui.print.LocalPrinter provides printer) {
             RecipeScreen(
                 onBack = { backs++ },
                 viewModel = viewModel,
@@ -120,8 +124,10 @@ class RecipeScreenFixture(
                 groceriesViewModel = groceriesViewModel,
                 photosViewModel = photosViewModel,
                 sendFileViewModel = sendFile,
-                useUpViewModel = useUpViewModel
+                useUpViewModel = useUpViewModel,
+                printViewModel = print
             )
+          }
         }
         compose.waitForIdle()
     }

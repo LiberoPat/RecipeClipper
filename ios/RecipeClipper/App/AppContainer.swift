@@ -305,6 +305,13 @@ final class AppContainer {
         mirror.store(on)
     }
 
+    /// Makes "Print or save as PDF" and the cookbook's ViewModel (#318); nil with the `print` flag off.
+    var makePrintViewModel: (() -> PrintViewModel)? {
+        guard featureFlags.isOn(.print) else { return nil }
+        let recipes = recipeRepository, preferences = preferences, decisions = decisionRepository
+        return { PrintViewModel(recipes: recipes, preferences: preferences, decisions: decisions) }
+    }
+
     /// Keeps the share extension's copy of the `shareText` flag (#306) current, as above.
     func startShareTextMirroring(_ mirror: DefaultsShareTextSwitch) {
         let on = withObservationTracking { featureFlags.isOn(.shareText) } onChange: { [weak self] in

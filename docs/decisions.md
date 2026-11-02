@@ -3594,6 +3594,49 @@ opening it from each on the other phone (Android: which apps pass the type or th
 app is offered; iOS: "Open in Recipe Clipper" from Files and Messages), in both directions
 between Android and iOS.
 
+## Printing a recipe, and a list as a cookbook (#318)
+
+Cooks print recipes for the kitchen and make family cookbooks as gifts. Behind the `print`
+flag, on by default.
+
+- **A recipe: "Print or save as PDF"** in the recipe screen's ⋮ menu, after Send as file, with
+  the muted line "This recipe as shown, ready for paper" (#260). It opens the system print
+  dialog (Android `PrintManager`; iOS `UIPrintInteractionController`), which also saves a PDF
+  (Android's "Save as PDF" printer; iOS's share button in the print options).
+- **What prints is what the screen shows.** The card is built by `RecipePrint.blocks` (pure,
+  `core`, ported to Swift) from the lines the reading view already rendered: scaled, converted,
+  group headings as subheadings, nothing re-parsed, the serves and times lines from
+  `RecipeShareText.metaLines`. Order: the photo (only if it is already cached: never fetched
+  for paper), the title, the site, serves, times, Ingredients, Instructions (numbered), then
+  the cook's note under Notes. Ticks print plain (no strike, no boxes). Chef mode's short
+  steps and amounts inside steps don't print: the card keeps the steps as written.
+- **The note: on the card, not in the cookbook** (a default, the owner's call). A card is for
+  the cook's own kitchen, where their "less salt" belongs; a cookbook is for giving, and Send as
+  file (#149) leaves the note out for the same reason.
+- **A list as a cookbook: "Make a cookbook"** in a list's ⋮ menu (hidden for an empty list),
+  line "Every recipe here in one PDF". One PDF: a title page with the list's name, a contents
+  page (each recipe and its page number), then each recipe from a new page, pages numbered
+  from the contents on. Each recipe renders as the reading view would open it
+  (`RecipeRenderer.content`: its chosen servings, the cook's units and temperatures, the
+  model's decisions). The file, `<list name>.pdf`, goes to the share sheet as Send as file's
+  does (Android: `cacheDir/exports/cookbook/`, through the app's FileProvider).
+- **The look:** the theme's type, Fraunces over Karla, in ink, muted and paprika on white,
+  whatever the phone's theme. US Letter in the US, Canada, Mexico and the Philippines, A4
+  elsewhere; the print dialog fits it to the paper.
+- **Where pages break is pure and shared:** the platforms measure each block, then
+  `RecipePrint.paginate` places them: a block that doesn't fit starts a page; the title,
+  headings and the lines under the title never end one (they move on with the next line); a
+  block taller than a page has its own. `RecipePrint.startPages` numbers a cookbook's recipes
+  for its contents.
+- **Drawing is the view layer's:** Android draws with `PdfDocument` and `StaticLayout`
+  (`ui/print/PrintPdf`), iOS with `UIGraphicsPDFRenderer` (`UI/Print/PrintPdf`). The
+  `PrintViewModel` (both) holds the job; `PrintEffect` draws it and opens the dialog or the
+  share sheet, or says "Couldn't make the PDF."
+- **Tests.** Pure: `RecipePrintTest` / `RecipePrintTests`. ViewModel over fakes:
+  `PrintViewModelTest(s)`. Screens: `PrintScreenTest` (Robolectric, both menus, with a printer
+  that records the job through `LocalPrinter`, since a JVM test has no PDF engine). The PDF
+  itself: `PrintPdfTest` (device) and the PDF cases of `PrintViewModelTests` (pages counted
+  with PDFKit).
 ## The first-run tour (#151, #190)
 
 Owner's decisions: first (2026-09-26, #151) welcome cards, a bundled sample recipe and one-time
@@ -4941,7 +4984,8 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
 ui/            navigation, home, recipes (the library), recipe, clip, edit, savetolist, lists, listdetail,
                settings, week (with What I need), plan (Add to plan sheet), mealtypes,
                groceries (the tab and the Add to groceries sheet), pantry, sharefile (Send as file,
-               the received file's sheet, #149), theme, common
+               the received file's sheet, #149), print (Print or save as PDF, the cookbook PDF, #318),
+               theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
 reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receiver, the notification (#52)
 ```

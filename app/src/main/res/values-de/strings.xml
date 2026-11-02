@@ -663,6 +663,13 @@
     </plurals>
     <!-- The ⋮ menus' second lines (#260). -->
     <string name="menu_desc_send_file">Eine Kopie zum Öffnen in Recipe Clipper</string>
+    <!-- Print or save as PDF, and a list as a cookbook (#318). -->
+    <string name="action_print">Drucken oder als PDF sichern</string>
+    <string name="menu_desc_print">Dieses Rezept wie angezeigt, druckfertig</string>
+    <string name="action_cookbook">Kochbuch erstellen</string>
+    <string name="menu_desc_cookbook">Alle Rezepte hier in einem PDF</string>
+    <string name="cookbook_contents">Inhalt</string>
+    <string name="print_failed">PDF konnte nicht erstellt werden.</string>
     <string name="menu_desc_update_from_source">Ersetzt deine Änderungen durch die aktuelle Fassung der Website</string>
     <string name="menu_desc_what_i_need">Was die Rezepte der Woche brauchen und dein Vorrat nicht hat</string>
     <string name="menu_desc_add_week_to_groceries">Auf deine Einkaufsliste, außer was du schon hast</string>

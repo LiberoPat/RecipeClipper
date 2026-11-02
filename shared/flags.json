@@ -43,6 +43,12 @@
       "issue": 198
     },
     {
+      "key": "print",
+      "description": "Print or save as PDF: the recipe screen's menu prints the recipe as shown (scaled and converted, with its photo if cached, the note last) through the system print dialog, which can also save a PDF; a list's menu makes the whole list a cookbook PDF (a title page, contents, each recipe on its own page) for the share sheet.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 318
+    },
+    {
       "key": "shareText",
       "description": "Text shared into the app (a note, an email, a message): when it splits into a recipe (the Reddit splitter, in the text's language) it opens in the recipe editor for the cook to check, even with a link in it; text that doesn't split and isn't a bulleted list opens the editor with every line as a step. Nothing is saved unchecked. Off, shared text imports its link or offers its lines as a list, as before.",
       "defaults": { "debug": true, "release": true },

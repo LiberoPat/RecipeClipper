@@ -694,6 +694,13 @@
     </plurals>
     <!-- The ⋮ menus' second lines (#260). -->
     <string name="menu_desc_send_file">Uma cópia para alguém abrir no Recipe Clipper</string>
+    <!-- Print or save as PDF, and a list as a cookbook (#318). -->
+    <string name="action_print">Imprimir ou salvar como PDF</string>
+    <string name="menu_desc_print">Esta receita como aparece, pronta para imprimir</string>
+    <string name="action_cookbook">Criar um livro de receitas</string>
+    <string name="menu_desc_cookbook">Todas as receitas daqui em um PDF</string>
+    <string name="cookbook_contents">Sumário</string>
+    <string name="print_failed">Não foi possível criar o PDF.</string>
     <string name="menu_desc_update_from_source">Troca suas edições pela versão atual do site</string>
     <string name="menu_desc_what_i_need">O que as receitas da semana pedem e a despensa não tem</string>
     <string name="menu_desc_add_week_to_groceries">Na sua lista de compras, menos o que você já tem</string>

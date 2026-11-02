@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.recipe
 
 import android.content.res.Resources
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.RecipePrint
 import com.example.recipeclipper.data.model.RecipeShareText
 
 /** The shared message body's words, read from `strings.xml` in the phone's language. */
@@ -14,4 +15,12 @@ fun shareLabels(resources: Resources) = RecipeShareText.Labels(
     total = resources.getString(R.string.label_total),
     ingredients = resources.getString(R.string.share_heading_ingredients),
     instructions = resources.getString(R.string.share_heading_instructions)
+)
+
+/** The printed card's headings (#318), as the reading view words them, around [shareLabels]' serves and times. */
+fun printLabels(resources: Resources) = RecipePrint.Labels(
+    share = shareLabels(resources),
+    ingredients = resources.getString(R.string.heading_ingredients),
+    instructions = resources.getString(R.string.heading_instructions),
+    notes = resources.getString(R.string.heading_notes)
 )

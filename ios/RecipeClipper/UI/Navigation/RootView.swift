@@ -250,7 +250,7 @@ struct RootView: View {
             .toolbar(.hidden, for: .tabBar)
         case .listDetail(let id):
             ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
-                ListDetailScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) })
+                ListDetailScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) }, makePrintVM: container.makePrintViewModel)
             }
         case .clip(let url, let blocked, let check):
             ScreenHost({ container.makeClipViewModel(url: url, blocked: blocked, check: check) }) { vm in
@@ -311,7 +311,8 @@ struct RootView: View {
                 photoTextEnabled: container.featureFlags.isOn(.photoText),
                 makePhotosVM: container.makeCookedPhotosViewModel,
                 makeSendFileVM: container.makeSendFileViewModel,
-                makeUseUpVM: container.makePantryUseUpViewModel
+                makeUseUpVM: container.makePantryUseUpViewModel,
+                makePrintVM: container.makePrintViewModel
             )
         }
         // The reading view and cook mode are full screen, so a recipe still opens on the recipe.
