@@ -238,6 +238,8 @@
     <string name="photo_reading">Das Foto wird auf diesem Gerät gelesen…</string>
     <string name="photo_read">Aus dem Foto gelesen. Gleiche jede Zeile damit ab, vor allem die Mengen, bevor du speicherst.</string>
     <string name="photo_not_sorted">Aus dem Foto ließ sich kein Rezept lesen: Vervollständige es von Hand.</string>
+    <string name="text_read">Aus dem geteilten Text sortiert. Prüfe jede Zeile, vor allem die Mengen, bevor du speicherst.</string>
+    <string name="text_not_sorted">Im Text waren keine Zutaten und Schritte zu finden, also steht alles unverändert unter Schritte: Vervollständige es von Hand.</string>
     <string name="photo_failed">Das Foto konnte nicht geladen werden. Prüfe die Verbindung und versuche es erneut.</string>
     <string name="photo_not_ready">Die Texterkennung ist auf diesem Gerät noch nicht bereit: Die Google Play-Dienste laden sie einmalig über das Internet herunter. Versuche es in ein paar Minuten erneut oder vervollständige das Rezept unten von Hand.</string>
     <string name="photo_check_heading">Prüfe diese Zeilen: Dort war das Foto schwer zu lesen</string>

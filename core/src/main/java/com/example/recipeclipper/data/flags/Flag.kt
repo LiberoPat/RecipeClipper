@@ -28,6 +28,8 @@ enum class Flag(val key: String) {
      *  and scanning the cook's own photos the same way (#226). */
     PHOTO_TEXT("photoText"),
 
+    /** Text shared in with no link (#306): split into a recipe and opened in the editor to check. */
+    SHARE_TEXT("shareText"),
     /** "Use it up" (#305): the saved recipes that use a pantry item about to expire. */
     USE_IT_UP("useItUp");
 

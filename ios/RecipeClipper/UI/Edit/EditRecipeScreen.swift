@@ -18,6 +18,13 @@ struct EditRecipeScreen: View {
                         onCheckLine: vm.onCheckLine, onFraction: vm.onFraction
                     )
                 }
+                // Text shared in (#306): how the split went.
+                if let sorted = state.sharedSorted {
+                    Text(sorted ? Strings.textRead : Strings.textNotSorted)
+                        .textStyle(Typography.bodyMedium)
+                        .foregroundStyle(Palette.muted)
+                        .accessibilityIdentifier("edit.sharedNote")
+                }
                 if state.loading {
                     ProgressView().tint(Palette.primary)
                 } else if state.missing {
@@ -53,7 +60,7 @@ struct EditRecipeScreen: View {
     }
 
     private func title(_ state: EditRecipeUiState) -> String {
-        if state.photo != nil { return Strings.photoTitle }
+        if state.photo != nil || state.shared { return Strings.photoTitle }
         return state.isNew ? Strings.editTitleNew : Strings.editTitleEdit
     }
 
