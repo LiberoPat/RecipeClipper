@@ -161,6 +161,20 @@ final class ListDaoTests: XCTestCase {
         XCTAssertEqual(ids, [b, c, a])
     }
 
+    /// Use it up (#305): every recipe in at least one list, once, with its lines; history isn't.
+    func testSavedRecipesAreThoseInAnyListOnceEach() async throws {
+        let favorites = try await db.favoritesId()
+        let other = try await create("Weeknights")
+        let a = try await addRecipe("https://example.com/a")
+        _ = try await addRecipe("https://example.com/b")
+        try await add(a, to: favorites, at: 1)
+        try await add(a, to: other, at: 2)
+
+        let saved = try await db.read { try ListDao(db: $0).savedRecipes() }
+        XCTAssertEqual(saved.map(\.id), [a])
+        XCTAssertEqual(saved.first?.lines, ["1 cup flour"])
+    }
+
     func testRecipesInAListAreAlwaysMarkedSaved() async throws {
         let favorites = try await db.favoritesId()
         let id = try await addRecipe("https://example.com/a")

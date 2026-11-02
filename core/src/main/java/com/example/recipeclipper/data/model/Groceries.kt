@@ -471,6 +471,10 @@ object ReceivedList {
         return items.filter { line -> GrocerySources.buyable(line) && line.any { it.isLetterOrDigit() } }
     }
 
+    /** Whether any line of [text] starts with a bullet: a list, as "Send list" writes one (#306). */
+    fun bulleted(text: String): Boolean =
+        text.split(NEWLINE).any { withoutBullet(it.trim()) != null }
+
     // "- 2 eggs" is "2 eggs"; a line with no bullet, or a bullet with nothing after it, is null.
     private fun withoutBullet(line: String): String? {
         if (line.length < 2 || line[0] !in BULLETS || !line[1].isWhitespace()) return null

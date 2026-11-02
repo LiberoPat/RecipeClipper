@@ -19,6 +19,7 @@ import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.model.RecipePrint
 import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.data.needsNotice
@@ -258,6 +259,24 @@ class RecipeViewModel @Inject constructor(
             servings = content.servings,
             ingredients = content.ingredients,
             instructions = content.instructions,
+            labels = labels
+        )
+    }
+
+    /**
+     * The recipe as currently on screen, as a printed card (#318): the same lines as [shareText],
+     * with the photo, the site and the cook's note. Null when there's nothing loaded yet.
+     */
+    fun printBlocks(labels: RecipePrint.Labels = RecipePrint.Labels.ENGLISH): List<RecipePrint.Block>? {
+        val state = _uiState.value
+        val content = state.content as? RecipeContent.Success ?: return null
+        return RecipePrint.blocks(
+            recipe = content.recipe,
+            servings = content.servings,
+            ingredients = content.ingredients,
+            instructions = content.instructions,
+            sourceDomain = content.sourceDomain,
+            note = state.notes,
             labels = labels
         )
     }

@@ -186,6 +186,21 @@ class ListDaoTest {
         assertEquals(listOf(b, c, a), lists.observeRecipesIn(favorites).first().map { it.id })
     }
 
+    /** Use it up (#305): every recipe in at least one list, once, with its lines; history isn't. */
+    @Test
+    fun savedRecipesAreThoseInAnyListOnceEach() = runBlocking {
+        val favorites = favoritesId()
+        val other = allLists().first { !it.isFavorites }.id
+        val a = addRecipe("https://example.com/a")
+        addRecipe("https://example.com/b")
+        lists.addToList(RecipeListCrossRef(a, favorites, 1))
+        lists.addToList(RecipeListCrossRef(a, other, 2))
+
+        val saved = lists.observeSavedRecipes().first()
+        assertEquals(listOf(a), saved.map { it.id })
+        assertEquals(listOf("1 cup flour"), saved.single().ingredients)
+    }
+
     @Test
     fun recipesInAListAreAlwaysMarkedSaved() = runBlocking {
         val favorites = favoritesId()

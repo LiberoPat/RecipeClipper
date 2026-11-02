@@ -86,7 +86,8 @@ internal fun ReadingTopBar(
             photoCount = photoCount,
             onAddToPlan = actions.onAddToPlan,
             onAddToGroceries = actions.onAddToGroceries,
-            onSendFile = actions.onSendFile
+            onSendFile = actions.onSendFile,
+            onPrint = actions.onPrint
         )
     }
 }

@@ -12,6 +12,7 @@ import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.dao.PlannedMealRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
+import com.example.recipeclipper.data.local.dao.SavedRecipeRow
 import com.example.recipeclipper.data.local.entity.ListEntity
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MealTypeEntity
@@ -93,6 +94,7 @@ class DatabaseErrorTest {
         override fun observeLists(recipeId: Long): Flow<List<ListRow>> = flow { throw Boom() }
         override fun observeRecipesIn(listId: Long): Flow<List<RecipeSummaryRow>> = flow { throw Boom() }
         override fun observeCoverPhotos(): Flow<List<ListCoverPhotoRow>> = flow { throw Boom() }
+        override fun observeSavedRecipes(): Flow<List<SavedRecipeRow>> = flow { throw Boom() }
         override suspend fun addToList(crossRef: RecipeListCrossRef) = throw Boom()
         override suspend fun removeFromList(recipeId: Long, listId: Long) = throw Boom()
         override suspend fun insert(list: ListEntity): Long = throw Boom()

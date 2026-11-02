@@ -40,7 +40,8 @@ internal fun RecipeOverflowMenu(
     photoCount: Int = 0,
     onAddToPlan: (() -> Unit)? = null,
     onAddToGroceries: (() -> Unit)? = null,
-    onSendFile: (() -> Unit)? = null
+    onSendFile: (() -> Unit)? = null,
+    onPrint: (() -> Unit)? = null
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var confirming by rememberSaveable { mutableStateOf(false) }
@@ -78,6 +79,17 @@ internal fun RecipeOverflowMenu(
                 onClick = {
                     expanded = false
                     onSendFile()
+                }
+            )
+        }
+        // Print or save as PDF (#318): the system print dialog, which also saves a PDF.
+        if (onPrint != null) {
+            DropdownMenuItem(
+                text = { MenuItemText(stringResource(R.string.action_print), stringResource(R.string.menu_desc_print)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_print), contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    onPrint()
                 }
             )
         }

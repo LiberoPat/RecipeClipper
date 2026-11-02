@@ -235,6 +235,21 @@ final class RecipeViewModel {
         )
     }
 
+    /// The recipe as currently on screen, as a printed card (#318): the same lines as
+    /// `shareText`, with the photo, the site and the cook's note. Nil when nothing is loaded.
+    func printBlocks(labels: RecipePrint.Labels = .english) -> [RecipePrint.Block]? {
+        guard let content = uiState.content.success else { return nil }
+        return RecipePrint.blocks(
+            recipe: content.recipe,
+            servings: content.servings,
+            ingredients: content.ingredients,
+            instructions: content.instructions,
+            sourceDomain: content.sourceDomain,
+            note: uiState.notes,
+            labels: labels
+        )
+    }
+
     /// Deletes the recipe outright, list memberships included, then sets `deleted` so the
     /// screen can pop. No undo here: the screen showing it is already gone by then.
     func onDelete() {

@@ -111,13 +111,13 @@ enum ShareFile {
     }
 
     /// "Sheet-pan chicken.recipeclipper": the title, safe as a file name on any phone.
-    static func fileName(_ title: String) -> String {
+    static func fileName(_ title: String, extension ext: String = fileExtension) -> String {
         let forbidden = Set("/\\:*?\"<>|")
         let replaced = String(title.map { forbidden.contains($0) || $0.isControl ? " " : $0 })
         var safe = replaced.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         while safe.hasPrefix(".") { safe.removeFirst() }
         safe = String(safe.prefix(maxName)).trimmingCharacters(in: .whitespaces)
-        return (safe.isEmpty ? "Recipe Clipper" : safe) + "." + fileExtension
+        return (safe.isEmpty ? "Recipe Clipper" : safe) + "." + ext
     }
 
     private static let maxName = 60

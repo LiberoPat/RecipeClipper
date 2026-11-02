@@ -33,6 +33,9 @@ import XCTest
 // What I need amount rows (#302): a pantry item's quantity and name, the week's lines (each its own
 // recipe), then PantryMatch.weekNeeds' Have row: the pantry's amount and the week's total (nil:
 // none). Write only `Need("2 lb", "chicken", ["1 lb chicken", "8 oz chicken"]),`.
+// Use it up rows (#305): a pantry item's name, the saved recipes' lines (one recipe each), then
+// the indices of the recipes UseItUp.groups says use that item, expiring today. Write only
+// `UseIt("spinach", ["1 lb spinach"]),`.
 // Count-bracket rows (#104): a line, whether it asks the model (needsCountDecision), then the
 // line doubled when unsure, total and each. Write only `Count("4 Apfel (ca. 800g)", lang: "de"),`.
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
@@ -67,6 +70,8 @@ import XCTest
 // Splitter rows (#208): free text (a Reddit post, or a photo's lines), then the language its words
 // say (nil: English), RecipeTextSplitter.detectAndSplit's ingredients and steps (nil: no recipe) and
 // [yield, prep, cook, total]. Write only `Split("Zutaten:\n- 2 Eier\n…"),`.
+// Shared-text rows (#306): text shared into the app, then SharedText.kind, whether it sorted, its
+// language and the editor's ingredients and steps (SharedText.read). Write only `Shared("text"),`.
 // Photo rows (#208): a photo's lines, then PhotoTextSorter.sort's language, whether they sorted, the
 // ingredients, steps, the lines to check one by one (flags: the line in the box, as listed, and
 // why) and those listed only as large. Write only `Photo(["ZUTATEN", "2 Eier", …]),`.
@@ -142,6 +147,13 @@ final class DifferentialCorpusTests: XCTestCase {
         init(_ quantity: String, _ name: String, _ lines: [String], lang: String = "en", _ have: String?, _ total: String?) {
             self.quantity = quantity; self.name = name; self.lines = lines; self.language = lang
             self.have = have; self.total = total
+        }
+    }
+
+    private struct UseIt {
+        let name: String; let lines: [String]; let language: String; let used: [Int64]
+        init(_ name: String, _ lines: [String], lang: String = "en", _ used: [Int64] = []) {
+            self.name = name; self.lines = lines; self.language = lang; self.used = used
         }
     }
 
@@ -1602,6 +1614,18 @@ final class DifferentialCorpusTests: XCTestCase {
         Need("200 g", "醤油", ["醤油 大さじ1", "醤油 大さじ2"], lang: "ja", "200 g", nil),
     ]
 
+    private static let useIts: [UseIt] = [
+        UseIt("spinach", ["1 lb spinach", "1 bag baby spinach", "2 cups spinach, chopped", "1 tsp salt"], [0, 2]),
+        UseIt("butter", ["2 tbsp unsalted butter, softened", "1 can butter beans", "1/2 cup butter"], [0, 2]),
+        UseIt("flour", ["2 cups rice flour", "2 cups flour", "1 cup all-purpose flour"], [1, 2]),
+        UseIt("rice flour", ["2 cups flour", "1 cup rice flour"], [1]),
+        UseIt("onion", ["2 onions, diced", "1 red onion", "3 green onions"], [0]),
+        UseIt("milk", ["For the sauce:", "1 cup milk", "1 can condensed milk", "1 cup coconut milk"], [1]),
+        UseIt("eggs", ["2 large eggs", "1 egg yolk", "3 eggs, beaten"], [0, 2]),
+        UseIt("Spinat", ["200 g Spinat", "1 Zwiebel"], lang: "de", [0]),
+        UseIt("lait", ["250 ml de lait", "2 œufs"], lang: "fr", [0]),
+    ]
+
     private static let counts: [Count] = [
         Count("4 Apfel (ca. 800g)", lang: "de", true, ["4 Apfel (ca. 800g)", "8 Apfel (ca. 1600g)", "8 Apfel (ca. 800g)"]),
         Count("1 patate douce (300-400 g)", lang: "fr", true, ["1 patate douce (300-400 g)", "2 patate douce (600-800 g)", "2 patate douce (300-400 g)"]),
@@ -1971,6 +1995,28 @@ final class DifferentialCorpusTests: XCTestCase {
         Split("¿Alguien tiene una receta de flan con leche y huevos? El mío siempre sale con agujeros, ¡gracias!", "es", nil, nil, []),
         Split("Zutaten\n2 Eier\nZubereitung\nKochen.", nil, nil, nil, []),
         Split("昨日は醤油と砂糖で鶏肉を焼きました。大さじ2のみりんを入れました。", nil, nil, nil, []),
+    ]
+
+    private struct Shared {
+        let text: String; let kind: SharedText.Kind; let sorted: Bool; let language: String?
+        let ingredients: [String]; let instructions: [String]
+        init(_ text: String, _ kind: SharedText.Kind, _ sorted: Bool, _ language: String?, _ ingredients: [String], _ instructions: [String]) {
+            self.text = text; self.kind = kind; self.sorted = sorted; self.language = language
+            self.ingredients = ingredients; self.instructions = instructions
+        }
+    }
+
+    // Shared-text rows (#306): see the header. Write only the text.
+    private static let shared: [Shared] = [
+        Shared("Grandma's scones\n\nIngredients:\n- 2 cups flour\n- 1 tsp salt\n\nMethod:\n1. Mix the flour and salt.\n2. Bake for 20 minutes.", .recipe, true, "en", ["2 cups flour", "1 tsp salt"], ["Mix the flour and salt.", "Bake for 20 minutes."]),
+        Shared("Ingredients:\n- 2 cups flour\n- 1 tsp salt\nMethod:\n1. Mix.\n2. Bake.\nFrom https://example.com/scones", .recipe, true, nil, ["2 cups flour", "1 tsp salt"], ["Mix.", "Bake."]),
+        Shared("Look at this! https://example.com/scones", .link, false, nil, [], ["Look at this! https://example.com/scones"]),
+        Shared("Groceries\n- 2 lb chicken thighs\n- milk", .list, false, nil, [], ["Groceries", "- 2 lb chicken thighs", "- milk"]),
+        Shared("Hi Mum,\n  Mix two cups of flour with the butter, then bake it.  \n\nLove, Sam", .text, false, "en", [], ["Hi Mum,", "Mix two cups of flour with the butter, then bake it.", "Love, Sam"]),
+        Shared("milk\neggs\nbread", .text, false, nil, [], ["milk", "eggs", "bread"]),
+        Shared("Zutaten:\n- 500 g Mehl\n- 2 EL Zucker\n\nZubereitung:\n1. Mehl und Zucker mischen.\n2. Backen.", .recipe, true, "de", ["500 g Mehl", "2 EL Zucker"], ["Mehl und Zucker mischen.", "Backen."]),
+        Shared("Für den Teig Mehl, Zucker und Butter verkneten und eine Stunde kühlen.", .text, false, "de", [], ["Für den Teig Mehl, Zucker und Butter verkneten und eine Stunde kühlen."]),
+        Shared("Ingrédients :\n- 200 g de farine\n- 2 œufs\n\nPréparation :\n1. Mélanger.\n2. Cuire 20 minutes.", .recipe, true, nil, ["200 g de farine", "2 œufs", "Préparation :"], ["Mélanger.", "Cuire 20 minutes."]),
     ]
 
     private struct Photo {
@@ -2352,6 +2398,17 @@ final class DifferentialCorpusTests: XCTestCase {
         }
     }
 
+    func testSharedTextMatchesKotlin() {
+        for row in Self.shared {
+            let reading = SharedText.read(row.text)
+            XCTAssertEqual(SharedText.kind(row.text), row.kind, row.text)
+            XCTAssertEqual(reading.sorted, row.sorted, row.text)
+            XCTAssertEqual(reading.recipe.language, row.language, row.text)
+            XCTAssertEqual(reading.recipe.ingredients, row.ingredients, row.text)
+            XCTAssertEqual(reading.recipe.instructions, row.instructions, row.text)
+        }
+    }
+
     func testPhotoTextSorterMatchesKotlin() {
         for row in Self.photos {
             let reading = PhotoTextSorter.sort(row.lines.map { PhotoLine(text: $0) })
@@ -2507,6 +2564,20 @@ final class DifferentialCorpusTests: XCTestCase {
             let have = PantryMatch.weekNeeds(sources, pantry: [item]).have.first
             XCTAssertEqual(have?.pantryQuantity, row.have, "\(row.quantity) \(row.name) / \(row.lines)")
             XCTAssertEqual(have?.weekTotal, row.total, "\(row.quantity) \(row.name) / \(row.lines)")
+        }
+    }
+
+    func testUseItUpMatchesKotlin() {
+        for row in Self.useIts {
+            let item = PantryItem(
+                id: 1, name: row.name, quantity: nil, language: row.language, aisle: .other, inStock: true,
+                alwaysHave: false, purchasedDay: nil, expiresDay: 0
+            )
+            let saved = row.lines.enumerated().map { i, line in
+                SavedRecipe(id: Int64(i), title: "r\(i)", imageUrl: nil, language: row.language, lines: [line])
+            }
+            let used = (UseItUp.groups([item], saved: saved, today: 0).first?.recipes ?? []).map(\.id).sorted()
+            XCTAssertEqual(used, row.used, "\(row.name) / \(row.lines)")
         }
     }
 

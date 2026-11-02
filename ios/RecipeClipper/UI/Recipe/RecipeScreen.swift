@@ -31,6 +31,8 @@ struct RecipeScreen: View {
     /// Makes the pantry's use-up sheet (#147), opened when cook mode is finished with
     /// ingredients ticked or "I made this" adds a photo; nil leaves it out.
     var makeUseUpVM: (() -> PantryUseUpViewModel)? = nil
+    /// Makes "Print or save as PDF" (#318); nil (the flag off, or tests) leaves it out.
+    var makePrintVM: (() -> PrintViewModel)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
@@ -46,6 +48,7 @@ struct RecipeScreen: View {
     @State private var confirmingUpdate = false
     @State private var sendFileVM: SendFileViewModel?
     @State private var useUpVM: PantryUseUpViewModel?
+    @State private var printVM: PrintViewModel?
 
     var body: some View {
         let state = vm.uiState
@@ -111,6 +114,8 @@ struct RecipeScreen: View {
         .timerAlerts(state.cook.timers, onAlerted: vm.onTimerAlerted)
         // "Send as file" (#149): the share sheet on the written file, or a line saying it failed.
         .modifier(SendFileEffect(vm: sendFileVM))
+        // Print (#318): the print dialog on the recipe as shown, or a line saying it failed.
+        .modifier(PrintEffect(vm: printVM))
         .task(id: recipeId) {
             if let recipeId {
                 saveVM.setRecipe(recipeId, title: recipeTitle)
@@ -313,6 +318,19 @@ struct RecipeScreen: View {
                     Text(Strings.sendFile); Text(Strings.menuDescSendFile); Image(systemName: "doc")
                 }
                 .accessibilityIdentifier("recipe.sendFile")
+            }
+            // Print or save as PDF (#318): the system print dialog, which also saves a PDF.
+            if let makePrintVM {
+                Button {
+                    let print = printVM ?? makePrintVM()
+                    printVM = print
+                    if let blocks = vm.printBlocks(labels: Strings.printLabels) {
+                        print.printRecipe(title: content.recipe.name, blocks: blocks)
+                    }
+                } label: {
+                    Text(Strings.print); Text(Strings.menuDescPrint); Image(systemName: "printer")
+                }
+                .accessibilityIdentifier("recipe.print")
             }
             Button { onEdit(content.recipe.id) } label: {
                 Label(Strings.edit, systemImage: "pencil")

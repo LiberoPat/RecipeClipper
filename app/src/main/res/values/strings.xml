@@ -359,6 +359,8 @@
     <string name="photo_reading">Reading the photo on this phone…</string>
     <string name="photo_read">Read from the photo. Check every line against it, above all the amounts, before saving.</string>
     <string name="photo_not_sorted">Couldn\'t read a recipe from the photo: finish it by hand.</string>
+    <string name="text_read">Sorted from the text you shared. Check every line, above all the amounts, before saving.</string>
+    <string name="text_not_sorted">Couldn\'t find ingredients and steps in the text, so it\'s all under Steps, as written: finish it by hand.</string>
     <string name="photo_failed">Couldn\'t load the photo. Check your connection and try again.</string>
     <string name="photo_not_ready">The photo reader isn\'t ready on this phone yet: Google Play services downloads it once, over the internet. Try again in a few minutes, or finish the recipe by hand below.</string>
     <string name="photo_check_heading">Check these lines: the photo was hard to read there</string>
@@ -573,6 +575,17 @@
     <string name="expiry_one_tomorrow">%1$s expires tomorrow.</string>
     <string name="expiry_many_tomorrow">%1$s expire tomorrow.</string>
     <string name="expiry_names_and">%1$s and %2$s</string>
+    <!-- Use it up (#305) -->
+    <string name="use_it_up_title">Use it up</string>
+    <plurals name="use_it_up_count">
+        <item quantity="one">%1$d saved recipe uses it</item>
+        <item quantity="other">%1$d saved recipes use it</item>
+    </plurals>
+    <string name="use_it_up_note">From your saved recipes. A tap plans it for dinner.</string>
+    <string name="use_it_up_plan_today">Plan today</string>
+    <string name="use_it_up_plan_tomorrow">Plan tomorrow</string>
+    <string name="use_it_up_planned_today">Planned today</string>
+    <string name="use_it_up_planned_tomorrow">Planned tomorrow</string>
     <string name="action_month_view">Month</string>
     <string name="action_week_view">Week</string>
     <string name="action_this_month">This month</string>
@@ -720,6 +733,13 @@
     </plurals>
     <!-- The ⋮ menus' second lines (#260). -->
     <string name="menu_desc_send_file">A copy someone can open in Recipe Clipper</string>
+    <!-- Print or save as PDF, and a list as a cookbook (#318). -->
+    <string name="action_print">Print or save as PDF</string>
+    <string name="menu_desc_print">This recipe as shown, ready for paper</string>
+    <string name="action_cookbook">Make a cookbook</string>
+    <string name="menu_desc_cookbook">Every recipe here in one PDF</string>
+    <string name="cookbook_contents">Contents</string>
+    <string name="print_failed">Couldn\'t make the PDF.</string>
     <string name="menu_desc_update_from_source">Replace your edits with the website\'s latest</string>
     <string name="menu_desc_what_i_need">What this week\'s recipes need that your pantry doesn\'t have</string>
     <string name="menu_desc_add_week_to_groceries">Onto your grocery list, except what you have</string>

@@ -32,7 +32,13 @@ enum class Flag(val key: String) {
     LIVE_TIMERS("liveTimers"),
 
     /** The home-screen widgets (#309): Tonight and Groceries. */
-    WIDGETS("widgets");
+    WIDGETS("widgets"),
+    /** Print or save a recipe as PDF, and a list as a cookbook PDF (#318). */
+    PRINT("print"),
+    /** Text shared in with no link (#306): split into a recipe and opened in the editor to check. */
+    SHARE_TEXT("shareText"),
+    /** "Use it up" (#305): the saved recipes that use a pantry item about to expire. */
+    USE_IT_UP("useItUp");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

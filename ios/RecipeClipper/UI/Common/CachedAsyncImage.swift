@@ -53,6 +53,13 @@ final class ImageLoader {
         cache.storeCachedResponse(CachedURLResponse(response: response, data: data), for: request)
         return data
     }
+
+    /// The image's bytes only if they are already on the phone (a local file, or the cache),
+    /// never fetched: a printed recipe (#318) prints its photo only when it is cached.
+    func cachedData(for url: URL) -> Data? {
+        if url.isFileURL { return try? Data(contentsOf: url) }
+        return cache.cachedResponse(for: URLRequest(url: url))?.data
+    }
 }
 
 /// AsyncImage's `content`/`placeholder` shape, loading through `ImageLoader.shared`. The

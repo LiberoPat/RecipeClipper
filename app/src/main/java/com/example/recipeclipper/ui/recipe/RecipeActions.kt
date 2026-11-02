@@ -12,6 +12,7 @@ import androidx.core.net.toUri
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.AddToPlanViewModel
+import com.example.recipeclipper.ui.print.PrintViewModel
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 
 /** Every event the recipe screen can raise, bundled so views take one parameter, not eighteen. */
@@ -49,7 +50,9 @@ internal class RecipeActions(
     /** "Add to groceries" (#50); null (screen tests) hides it. */
     val onAddToGroceries: (() -> Unit)? = null,
     /** "Send as file" (#149): the recipe as a small file for someone else's app; null hides it. */
-    val onSendFile: (() -> Unit)? = null
+    val onSendFile: (() -> Unit)? = null,
+    /** "Print or save as PDF" (#318): the recipe as shown, to the print dialog; null hides it. */
+    val onPrint: (() -> Unit)? = null
 )
 
 /**
@@ -65,6 +68,7 @@ internal fun rememberRecipeActions(
     planViewModel: AddToPlanViewModel?,
     groceriesViewModel: AddToGroceriesViewModel?,
     sendFileViewModel: SendFileViewModel?,
+    printViewModel: PrintViewModel?,
     onOpenSaveSheet: () -> Unit,
     onOpenPlanSheet: () -> Unit,
     onOpenGroceriesSheet: () -> Unit
@@ -77,7 +81,8 @@ internal fun rememberRecipeActions(
     // The first timer started asks for permission to post its "time's up" notification.
     val askForNotifications = rememberNotificationPrompt()
     return remember(
-        viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel, groceriesViewModel, sendFileViewModel
+        viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel, groceriesViewModel, sendFileViewModel,
+        printViewModel
     ) {
         RecipeActions(
             onBack = onBack,
@@ -165,6 +170,12 @@ internal fun rememberRecipeActions(
                     (viewModel.uiState.value.content as? RecipeContent.Success)?.let { loaded ->
                         sendFileViewModel.sendRecipe(loaded.recipe.id, loaded.recipe.name)
                     }
+                }
+            },
+            onPrint = if (printViewModel == null) null else {
+                {
+                    val name = (viewModel.uiState.value.content as? RecipeContent.Success)?.recipe?.name.orEmpty()
+                    viewModel.printBlocks(printLabels(resources))?.let { printViewModel.printRecipe(name, it) }
                 }
             }
         )

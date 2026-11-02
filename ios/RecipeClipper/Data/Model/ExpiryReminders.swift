@@ -37,9 +37,16 @@ enum ExpiryReminders {
         item.inStock && !item.alwaysHave && item.expiresDay != nil
     }
 
+    /// Whether `item` is in the reminder for the morning of `day`: it counts and expires that day
+    /// or the next. The window "Use it up" (#305) calls soon.
+    static func due(_ item: PantryItem, day: Int64) -> Bool {
+        guard counts(item), let expires = item.expiresDay else { return false }
+        return expires == day || expires == day + 1
+    }
+
     /// The reminder for the morning of `day`, or nil when nothing expires that day or the next.
     static func forDay(_ items: [PantryItem], day: Int64) -> ExpiryReminder? {
-        let counted = items.filter(counts)
+        let counted = items.filter { due($0, day: day) }
         let today = names(counted.filter { $0.expiresDay == day })
         let tomorrow = names(counted.filter { $0.expiresDay == day + 1 })
         if today.isEmpty && tomorrow.isEmpty { return nil }

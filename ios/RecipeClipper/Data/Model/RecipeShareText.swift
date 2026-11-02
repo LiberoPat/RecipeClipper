@@ -52,8 +52,7 @@ enum RecipeShareText {
         lines.append(recipe.name)
         lines.append("")
 
-        let meta = [servesLine(servings, Servings.kind(recipe.yield), labels), timesLine(recipe, labels)]
-            .compactMap { $0 }
+        let meta = metaLines(recipe, servings, labels)
         if !meta.isEmpty {
             lines += meta
             lines.append("")
@@ -67,6 +66,12 @@ enum RecipeShareText {
         lines += instructions.enumerated().map { "\($0.offset + 1). \($0.element)" }
 
         return lines.joined(separator: "\n")
+    }
+
+    /// The serves line and the times line, each when there is one: what sits between the title
+    /// and the ingredients, in the shared text and on the printed card (#318).
+    static func metaLines(_ recipe: Recipe, _ servings: ServingsScale?, _ labels: Labels) -> [String] {
+        [servesLine(servings, Servings.kind(recipe.yield), labels), timesLine(recipe, labels)].compactMap { $0 }
     }
 
     private static func servesLine(_ servings: ServingsScale?, _ kind: YieldKind, _ labels: Labels) -> String? {

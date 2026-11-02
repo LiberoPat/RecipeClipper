@@ -20,6 +20,9 @@ struct PantryRow: View {
     var selected = false
     /// True while a touch and hold is being released: the Button's tap then isn't one.
     var ignoresTap: () -> Bool = { false }
+    /// Use it up (#305): how many saved recipes use this item expiring soon; 0 shows no line.
+    var useItUp = 0
+    var onUseItUp: () -> Void = {}
 
     /// VoiceOver's actions: both other states.
     private var others: [PantryStock] { PantryStock.allCases.filter { $0 != item.stock } }
@@ -71,6 +74,13 @@ struct PantryRow: View {
                                 .foregroundStyle(expiry.badge != nil ? Palette.accentText : Palette.muted)
                                 .accessibilityIdentifier("expiry-\(item.id)")
                         }
+                        if useItUp > 0 && !selecting {
+                            Text(Strings.useItUpCount(useItUp))
+                                .textStyle(Typography.bodySmall)
+                                .foregroundStyle(Palette.accentText)
+                                .padding(.vertical, 4)
+                                .anchorPreference(key: UseItUpBounds.self, value: .bounds) { $0 }
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     // The quantity as written, in the button's old place; a long one is cut short.
@@ -119,6 +129,22 @@ struct PantryRow: View {
                     .accessibilityLabel(Strings.pantryOnList)
                     .accessibilityHint(Strings.pantryTakeOffList)
                     .accessibilityIdentifier("onList-\(item.id)")
+                }
+            }
+        }
+        // Use it up (#305): the line opens its sheet, laid over like the tag's button.
+        .overlayPreferenceValue(UseItUpBounds.self) { anchor in
+            if let anchor {
+                GeometryReader { proxy in
+                    let rect = proxy[anchor]
+                    Button(action: onUseItUp) {
+                        Color.clear.contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: rect.width, height: rect.height)
+                    .position(x: rect.midX, y: rect.midY)
+                    .accessibilityLabel(Strings.useItUpCount(useItUp))
+                    .accessibilityIdentifier("use-it-up-\(item.id)")
                 }
             }
         }
@@ -195,6 +221,15 @@ private struct OnListTag: View {
 
 /// Where the row's basket tag was drawn, for the button laid over it.
 private struct OnListTagBounds: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? { nil }
+
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = value ?? nextValue()
+    }
+}
+
+/// Where the row's Use it up line (#305) was drawn, for the button laid over it.
+private struct UseItUpBounds: PreferenceKey {
     static var defaultValue: Anchor<CGRect>? { nil }
 
     static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {

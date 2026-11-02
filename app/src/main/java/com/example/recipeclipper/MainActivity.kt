@@ -19,12 +19,12 @@ import com.example.recipeclipper.data.FirstRunTour
 import com.example.recipeclipper.data.backup.ShareFile
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
-import com.example.recipeclipper.data.model.ReceivedList
 import com.example.recipeclipper.reminders.ExpiryNotifications
 import com.example.recipeclipper.timers.TimerNotifications
 import com.example.recipeclipper.widgets.HomeWidgets
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.groceries.ReceivedListInbox
+import com.example.recipeclipper.ui.pantry.UseItUpInbox
 import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
 import com.example.recipeclipper.ui.navigation.Tab
@@ -50,6 +50,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var receivedLists: ReceivedListInbox
+
+    @Inject
+    lateinit var useItUp: UseItUpInbox
 
     @Inject
     lateinit var autoBackup: AutoBackup
@@ -166,14 +169,19 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Where an intent leads: a shared link imports, a timer notification opens cook mode, an
-     *  expiry reminder (#52) opens the Pantry tab, shared text with no link but with lines
+     *  expiry reminder (#52) opens the Pantry tab, shared text holding a recipe, or neither a
+     *  link nor a bulleted list, opens the editor to check (#306), a list
      *  (#149) opens Groceries on the "Add this list" sheet, and shared
      *  images (#226, the photoText flag) open the scan's review, read on the device. */
     private fun routeFor(intent: Intent?): String? {
         if (featureFlags.current.isOn(Flag.PHOTO_TEXT)) {
             ScanIntent.pages(intent)?.let { return Routes.scan(it) }
         }
-        if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) return Tab.PANTRY.route
+        if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) {
+            // Use it up (#305): the Pantry opens on the saved recipes for what's expiring, if any.
+            useItUp.offer()
+            return Tab.PANTRY.route
+        }
         // The home-screen widgets (#309): Tonight opens the Week, the list opens Groceries.
         if (intent?.action == HomeWidgets.ACTION_OPEN_WEEK) return Tab.WEEK.route
         if (intent?.action == HomeWidgets.ACTION_OPEN_GROCERIES) return Tab.GROCERIES.route
@@ -181,13 +189,16 @@ class MainActivity : ComponentActivity() {
             val id = intent.getLongExtra(TimerNotifications.EXTRA_RECIPE_ID, -1)
             return if (id > 0) Routes.cookRecipe(id) else null
         }
-        val text = sharedText(intent) ?: return null
-        Regex("https?://\\S+").find(text)?.let { return Routes.import(it.value) }
-        if (ReceivedList.lines(text).isNotEmpty()) {
-            receivedLists.offer(text)
-            return Tab.GROCERIES.route
+        val shareTextOn = featureFlags.current.isOn(Flag.SHARE_TEXT)
+        val text = TextIntent.text(intent, shareTextOn) ?: return null
+        return when (val target = TextIntent.target(text, shareTextOn)) {
+            is TextIntent.Target.Open -> target.route
+            is TextIntent.Target.OfferList -> {
+                receivedLists.offer(target.text)
+                Tab.GROCERIES.route
+            }
+            null -> null
         }
-        return null
     }
 
     /** A Recipe Clipper file (#149): opened (VIEW) or shared in (SEND), by its type or its name. */
@@ -199,12 +210,6 @@ class MainActivity : ComponentActivity() {
         } ?: return null
         val named = uri.lastPathSegment?.endsWith(".${ShareFile.EXTENSION}", ignoreCase = true) == true
         return uri.toString().takeIf { intent?.type == ShareFile.MIME_TYPE || named }
-    }
-
-    /** Browsers share a link, and messaging apps a message, as EXTRA_TEXT on ACTION_SEND text/plain. */
-    private fun sharedText(intent: Intent?): String? {
-        if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return null
-        return intent.getStringExtra(Intent.EXTRA_TEXT)
     }
 
     private companion object {

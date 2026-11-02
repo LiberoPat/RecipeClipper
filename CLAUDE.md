@@ -38,14 +38,14 @@ place rather than appending an update.
 Built on both platforms: share → parse → show; the Recipes library (#102);
 the free tier and its unlock (#107); lists; scaling and unit conversion;
 Settings; cook mode with saved progress and background timer alerts; sharing
-out as text or a file (#149); offline handling; notes; editing and typing in
+out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
-backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147); Chef
+backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147), with "Use it up" (#305); Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
 (`reddit` flag, #11), or the photo read on the device and checked by the cook (`photoText`,
-#198), and your own photos scanned the same way (#226); running timers outside the app
+#198), and your own photos scanned the same way (#226), or text shared in (#306); running timers outside the app
 (a Live Activity, an ongoing notification) and the Tonight and Groceries widgets (#309); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
@@ -91,7 +91,7 @@ Routes: `home`, `recipes`, `settings` (an index; each section's page is
 `settings/<section>`, #286; + hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
-membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `edit/scan?pages=…` (#226), `clip?url={url}&blocked=…&check=…`; with the tab
+membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `edit/scan?pages=…` (#226), `edit/text?text=…` (#306), `clip?url={url}&blocked=…&check=…`; with the tab
 shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
 `pantry`. A route from an intent always lands in Recipes.
 
