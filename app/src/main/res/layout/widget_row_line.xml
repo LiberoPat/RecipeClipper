@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One line in a home-screen widget (#309): a grocery line, or "+3 more" (muted, set in code). -->
+<!-- One line in a home-screen widget (#309): a grocery line. -->
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_line"
     android:layout_width="match_parent"
