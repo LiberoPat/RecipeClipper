@@ -136,26 +136,38 @@ object SharedText {
      */
     data class Reading(val recipe: SplitRecipe, val sorted: Boolean, val leftovers: List<String> = emptyList())
 
-    /** One UI language's words in the app's own shared text (`splitter.json`'s `shareText`). */
+    /** One UI language's words in the app's own shared text (`splitter.json`'s `shareText`),
+     *  compared with a no-break space ("Portions : 4") as a space: an app in between may swap it. */
     private class ShareWords(private val table: JSONObject) {
-        val ingredients: String = table.getString("ingredients")
-        val instructions: String = table.getString("instructions")
-        private fun prefix(key: String) = Regex.escape(table.getString(key).substringBefore("{n}"))
+        private fun word(key: String) = spaced(table.getString(key))
+        val ingredients: String = word("ingredients")
+        val instructions: String = word("instructions")
+        private fun prefix(key: String) = Regex.escape(word(key).substringBefore("{n}"))
 
         /** "Serves 4", "Makes 3 (originally 6)", "Portionen: 4". */
         val yieldLine = Regex("^(?:${prefix("serves")}|${prefix("makes")})\\d")
 
         /** One entry of the times line: "Prep 10m"; group 1 prep, 2 cook, 3 total, 4 the time. */
         val timeEntry = Regex(
-            "^(?:(${Regex.escape(table.getString("prep"))})|(${Regex.escape(table.getString("cook"))})|" +
-                "(${Regex.escape(table.getString("total"))}))\\s+(\\S.*)$"
+            "^(?:(${Regex.escape(word("prep"))})|(${Regex.escape(word("cook"))})|(${Regex.escape(word("total"))}))\\s+(\\S.*)$"
         )
     }
 
-    private val shareWords: List<ShareWords> by lazy {
-        LanguageWords.SHIPPED.mapNotNull { LanguageWords.forTag(it)?.table("splitter")?.optJSONObject("shareText") }
-            .map(::ShareWords)
+    private fun spaced(s: String) = s.replace(' ', ' ')
+
+    private val shareWords: List<ShareWords> by lazy { LanguageWords.SHIPPED.mapNotNull(::shareTable).map(::ShareWords) }
+
+    private fun shareTable(language: String): JSONObject? =
+        LanguageWords.forTag(language)?.table("splitter")?.optJSONObject("shareText")
+
+    /** The words the table holds for the app's own shared text in [language]'s UI ("serves" is
+     *  "Serves {n}"), for the tests that pin them to each platform's strings; null for a language
+     *  the UI doesn't speak. */
+    fun shareLabels(language: String): Map<String, String>? = shareTable(language)?.let { table ->
+        SHARE_LABEL_KEYS.associateWith { table.getString(it) }
     }
+
+    private val SHARE_LABEL_KEYS = listOf("ingredients", "instructions", "serves", "makes", "prep", "cook", "total")
 
     /** "1. Mix." as the app numbers a shared step. */
     private val STEP_NUMBER = Regex("^\\d{1,3}\\.\\s+")
@@ -169,9 +181,10 @@ object SharedText {
      */
     private fun appShared(text: String): Reading? {
         val lines = text.split('\n').map { it.trim() }
+        val compared = lines.map(::spaced)
         for (w in shareWords) {
-            val i = lines.indexOf(w.ingredients).takeIf { it >= 0 } ?: continue
-            val j = lines.withIndex().indexOfFirst { it.index > i && it.value == w.instructions }.takeIf { it > i } ?: continue
+            val i = compared.indexOf(w.ingredients).takeIf { it >= 0 } ?: continue
+            val j = compared.withIndex().indexOfFirst { it.index > i && it.value == w.instructions }.takeIf { it > i } ?: continue
             val ingredients = lines.subList(i + 1, j).filter { it.isNotEmpty() }
             val steps = lines.subList(j + 1, lines.size).filter { it.isNotEmpty() }.map { STEP_NUMBER.replace(it, "") }
             if (ingredients.isEmpty() || steps.isEmpty()) continue
@@ -179,9 +192,9 @@ object SharedText {
             var times: List<String?>? = null
             val leftovers = mutableListOf<String>()
             for (line in lines.subList(0, i).filter { it.isNotEmpty() }) {
-                val found = if (times == null) timesLine(line, w) else null
+                val found = if (times == null) timesLine(spaced(line), w) else null
                 when {
-                    yield == null && w.yieldLine.containsMatchIn(line) -> yield = line
+                    yield == null && w.yieldLine.containsMatchIn(spaced(line)) -> yield = line
                     found != null -> times = found
                     else -> leftovers += line
                 }

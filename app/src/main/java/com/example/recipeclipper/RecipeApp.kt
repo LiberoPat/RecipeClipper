@@ -31,6 +31,9 @@ class RecipeApp : Application() {
     @Inject
     lateinit var homeWidgets: HomeWidgets
 
+    @Inject
+    lateinit var processTextEntry: ProcessTextEntry
+
     override fun onCreate() {
         super.onCreate()
         // The pantry's expiry reminder (#52) follows the pantry and the setting for as
@@ -45,5 +48,7 @@ class RecipeApp : Application() {
         autoBackup.start()
         // The home-screen widgets (#309) follow the plan and the list while the process lives.
         homeWidgets.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+        // "Recipe Clipper" in other apps' selection menus (#306) follows the shareText flag (#334).
+        processTextEntry.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))
     }
 }

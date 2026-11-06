@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.core.content.IntentCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.example.recipeclipper.data.AutoBackup
 import com.example.recipeclipper.data.FirstRunTour
@@ -23,6 +24,7 @@ import com.example.recipeclipper.reminders.ExpiryNotifications
 import com.example.recipeclipper.timers.TimerNotifications
 import com.example.recipeclipper.widgets.HomeWidgets
 import com.example.recipeclipper.ui.common.LocalFlagValues
+import com.example.recipeclipper.ui.edit.SharedTextInbox
 import com.example.recipeclipper.ui.groceries.ReceivedListInbox
 import com.example.recipeclipper.ui.pantry.UseItUpInbox
 import com.example.recipeclipper.ui.navigation.AppShell
@@ -38,6 +40,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import javax.inject.Inject
@@ -50,6 +53,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var receivedLists: ReceivedListInbox
+
+    @Inject
+    lateinit var sharedTexts: SharedTextInbox
 
     @Inject
     lateinit var useItUp: UseItUpInbox
@@ -137,7 +143,7 @@ class MainActivity : ComponentActivity() {
                 receivedFiles.offer(file)
                 shareHandled = true
             } else {
-                routeFor(intent)?.let { intentRoutes.trySend(it) }
+                lifecycleScope.launch { routeFor(intent)?.let { intentRoutes.trySend(it) } }
             }
         }
     }
@@ -151,9 +157,11 @@ class MainActivity : ComponentActivity() {
             receivedFiles.offer(it)
             return
         }
-        val route = routeFor(intent) ?: return
-        shareHandled = false
-        intentRoutes.trySend(route)
+        lifecycleScope.launch {
+            val route = routeFor(intent) ?: return@launch
+            shareHandled = false
+            intentRoutes.trySend(route)
+        }
     }
 
     override fun onStop() {
@@ -170,13 +178,11 @@ class MainActivity : ComponentActivity() {
 
     /** Where an intent leads: a shared link imports, a timer notification opens cook mode, an
      *  expiry reminder (#52) opens the Pantry tab, shared text holding a recipe, or neither a
-     *  link nor a bulleted list, opens the editor to check (#306), a list
-     *  (#149) opens Groceries on the "Add this list" sheet, and shared
-     *  images (#226, the photoText flag) open the scan's review, read on the device. */
-    private fun routeFor(intent: Intent?): String? {
-        if (featureFlags.current.isOn(Flag.PHOTO_TEXT)) {
-            ScanIntent.pages(intent)?.let { return Routes.scan(it) }
-        }
+     *  link nor a bulleted list, opens the editor to check (#306; beside pictures, only a
+     *  recipe wins, #334), a list (#149) opens Groceries on the "Add this list" sheet, and
+     *  shared images (#226, the photoText flag) open the scan's review, read on the device.
+     *  Text is read once, off the main thread (it may be long), and left in [sharedTexts]. */
+    private suspend fun routeFor(intent: Intent?): String? {
         if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) {
             // Use it up (#305): the Pantry opens on the saved recipes for what's expiring, if any.
             useItUp.offer()
@@ -190,15 +196,19 @@ class MainActivity : ComponentActivity() {
             return if (id > 0) Routes.cookRecipe(id) else null
         }
         val shareTextOn = featureFlags.current.isOn(Flag.SHARE_TEXT)
-        val text = TextIntent.text(intent, shareTextOn) ?: return null
-        return when (val target = TextIntent.target(text, shareTextOn)) {
-            is TextIntent.Target.Open -> target.route
+        val pages = ScanIntent.pages(intent)
+        val text = TextIntent.text(intent, shareTextOn)
+        val target = text?.let { withContext(Dispatchers.Default) { TextIntent.target(it, shareTextOn, pages != null) } }
+        when (target) {
+            is TextIntent.Target.Review -> return Routes.editText(sharedTexts.offer(target.text, target.reading))
+            is TextIntent.Target.Open -> return target.route
             is TextIntent.Target.OfferList -> {
                 receivedLists.offer(target.text)
-                Tab.GROCERIES.route
+                return Tab.GROCERIES.route
             }
-            null -> null
+            null -> Unit
         }
+        return pages?.takeIf { featureFlags.current.isOn(Flag.PHOTO_TEXT) }?.let { Routes.scan(it) }
     }
 
     /** A Recipe Clipper file (#149): opened (VIEW) or shared in (SEND), by its type or its name. */
