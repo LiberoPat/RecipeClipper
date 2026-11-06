@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.clip
 import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
+import android.view.ActionMode
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -74,7 +75,11 @@ internal fun ClipWebPage(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            WebView(context).apply {
+            // The page's selection menu leaves the app's own entry out (#334).
+            object : WebView(context) {
+                override fun startActionMode(callback: ActionMode.Callback?, type: Int): ActionMode? =
+                    super.startActionMode(callback?.let { OwnProcessTextFilter(it, context.packageName) }, type)
+            }.apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 latest.bridgeToken = ClipBridge.attach(this) { latest.onEvent(it) }

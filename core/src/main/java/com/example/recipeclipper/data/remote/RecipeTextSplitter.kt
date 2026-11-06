@@ -197,6 +197,16 @@ object RecipeTextSplitter {
         return split(text, wordsFor(language))?.copy(language = language)
     }
 
+    /** [detectAndSplit]'s answer with each line's fate ([SplitLines]) and the language it was read
+     *  in, for the lines shared text leaves over (#306, [SharedText]). [plain]: see [line]. */
+    class Detected(val split: SplitLines, val language: String?)
+
+    fun detectAndSplitLines(text: String, plain: Boolean = false): Detected? {
+        val language = languageOf(text)
+        val split = splitLines(lines(text, wordsFor(language), plain), wordsFor(language)) ?: return null
+        return Detected(split, language)
+    }
+
     /** Whether [rest], a line after its amount, starts with one of [words]' units run into the next
      *  word ("cupraisins"), for [PhotoTextSorter.check]. */
     internal fun gluedUnit(rest: String, words: LanguageWords): Boolean = words(words).glued.containsMatchIn(rest)
@@ -306,10 +316,12 @@ object RecipeTextSplitter {
      * `text()`, which also trims and collapses whitespace), backslash escapes undone, then the
      * quote, heading, rule, list marker ("-", "*", "•", "▢", "1.", "2)", "Step 3:", in [words]'
      * language: "Schritt 3:"), link and emphasis syntax removed. A number followed by a dot and
-     * no space ("1.5 cups") is a quantity, not a list marker.
+     * no space ("1.5 cups") is a quantity, not a list marker. [plain] text (shared in, #306) is
+     * never HTML: "2 eggs <room temperature>" keeps its brackets, and only the whitespace is
+     * collapsed as `text()` would.
      */
-    fun line(raw: String, words: LanguageWords = LanguageWords.ENGLISH): Line {
-        var s = Jsoup.parse(raw).text()
+    fun line(raw: String, words: LanguageWords = LanguageWords.ENGLISH, plain: Boolean = false): Line {
+        var s = if (plain) WHITESPACE.replace(raw, " ").trim() else Jsoup.parse(raw).text()
         s = ESCAPE.replace(s) { it.groupValues[1] }.trimEnd('\\').trim()
         s = BLOCKQUOTE.replace(s, "")
         val heading = HEADING.containsMatchIn(s)
@@ -343,8 +355,11 @@ object RecipeTextSplitter {
     fun cleanLine(raw: String): String = line(raw).text
 
     /** Every line of [text], cleaned, blank ones included. */
-    fun lines(text: String, words: LanguageWords = LanguageWords.ENGLISH): List<Line> =
-        text.replace("\r\n", "\n").replace('\r', '\n').split('\n').map { line(it, words) }
+    fun lines(text: String, words: LanguageWords = LanguageWords.ENGLISH, plain: Boolean = false): List<Line> =
+        text.replace("\r\n", "\n").replace('\r', '\n').split('\n').map { line(it, words, plain) }
+
+    /** Runs of whitespace, a no-break space included, as Jsoup's `text()` collapses them. */
+    private val WHITESPACE = Regex("[\\s ]+")
 
     /** Fractions a recipe writes as one character. */
     private const val FRACTIONS = "½⅓⅔¼¾⅛⅜⅝⅞"
@@ -388,14 +403,17 @@ object RecipeTextSplitter {
      */
     class Kept(val text: String, val source: Int)
 
-    /** What [splitLines] found: [split]'s answer, each ingredient and step with its line. */
+    /** What [splitLines] found: [split]'s answer, each ingredient and step with its line, and
+     *  [leftover], the lines (by index, in order) that ended in no field: the story before the
+     *  first section, a notes header and what's under it, a link, a second yield or time. */
     class SplitLines(
         val ingredients: List<Kept>,
         val instructions: List<Kept>,
         val yield: String?,
         val prepTime: String?,
         val cookTime: String?,
-        val totalTime: String?
+        val totalTime: String?,
+        val leftover: List<Int> = emptyList()
     ) {
         val recipe: SplitRecipe
             get() = SplitRecipe(ingredients.map { it.text }, instructions.map { it.text }, yield, prepTime, cookTime, totalTime)
@@ -410,6 +428,7 @@ object RecipeTextSplitter {
         val w = words(words)
         val ingredients = mutableListOf<Kept>()
         val instructions = mutableListOf<Kept>()
+        val leftover = mutableListOf<Int>()
         var yield: String? = null
         var prep: String? = null
         var cook: String? = null
@@ -418,28 +437,35 @@ object RecipeTextSplitter {
         // The lines before any section, for an ingredients block with no header.
         val before = mutableListOf<IndexedValue<Line>>()
 
-        /** A labelled yield or time, taken; false for any other line. */
-        fun labelled(line: String): Boolean {
+        /** A labelled yield or time, taken (a second one is left over); false for any other line. */
+        fun labelled(line: String, index: Int): Boolean {
             w.yieldLine.matchEntire(line)?.let { m ->
                 if (yield == null) {
                     yield = if (w.yieldWhole.matches(m.groupValues[1])) line else m.groupValues[2].trim()
-                }
+                } else leftover += index
                 return true
             }
             if (w.yieldFor.matches(line)) {
-                if (yield == null) yield = line
+                if (yield == null) yield = line else leftover += index
                 return true
             }
             w.time.matchEntire(line)?.let { m ->
                 val value = Durations.format(m.groupValues[4], words)
-                when {
-                    m.groupValues[1].isNotEmpty() -> if (prep == null) prep = value
-                    m.groupValues[3].isNotEmpty() -> if (total == null) total = value
-                    else -> if (cook == null) cook = value
+                val taken = when {
+                    m.groupValues[1].isNotEmpty() -> (prep == null).also { if (it) prep = value }
+                    m.groupValues[3].isNotEmpty() -> (total == null).also { if (it) total = value }
+                    else -> (cook == null).also { if (it) cook = value }
                 }
+                if (!taken) leftover += index
                 return true
             }
             return false
+        }
+
+        /** The lines before a section that no section took: the story, left over. */
+        fun dropBefore() {
+            before.mapTo(leftover) { it.index }
+            before.clear()
         }
 
         /** The ingredients with no header: the lines just above the steps, read upwards until
@@ -449,7 +475,8 @@ object RecipeTextSplitter {
                 .dropWhile { !isAmount(it.value.text, words) && !it.value.listed }
             if (block.count { isAmount(it.value.text, words) } < MIN_AMOUNTS) return false
             block.mapTo(ingredients) { Kept(written(it.value, words), it.index) }
-            before.clear()
+            before.removeAll(block)
+            dropBefore()
             return true
         }
 
@@ -459,11 +486,11 @@ object RecipeTextSplitter {
             if (header != null) {
                 if (header.section == Section.INSTRUCTIONS && ingredients.isEmpty()) ingredientsAbove()
                 state = header.section
-                before.clear()
+                dropBefore()
                 when (header.section) {
                     Section.INGREDIENTS -> header.label?.let { ingredients.add(Kept(it, i)) }
                     Section.INSTRUCTIONS -> header.label?.let { instructions.add(Kept(it, i)) }
-                    Section.END -> Unit
+                    Section.END -> leftover += i // "Notes:" labels what's under it
                 }
                 continue
             }
@@ -475,15 +502,20 @@ object RecipeTextSplitter {
                     state = Section.INSTRUCTIONS
                 }
             }
-            if (line.text.isEmpty() || isPointer(line.text)) continue // a bare "Step 2", or a link
+            if (line.text.isEmpty()) continue // a bare "Step 2"
+            if (isPointer(line.text)) { // a link
+                leftover += i
+                continue
+            }
             when (state) {
-                Section.INGREDIENTS -> if (!labelled(line.text)) ingredients.add(Kept(written(line, words), i))
+                Section.INGREDIENTS -> if (!labelled(line.text, i)) ingredients.add(Kept(written(line, words), i))
                 Section.INSTRUCTIONS -> instructions.add(Kept(written(line, words), i))
-                Section.END -> Unit
-                null -> if (!labelled(line.text)) before.add(IndexedValue(i, line))
+                Section.END -> leftover += i
+                null -> if (!labelled(line.text, i)) before.add(IndexedValue(i, line))
             }
         }
         if (ingredients.none { !it.text.endsWith(":") } || instructions.none { !it.text.endsWith(":") }) return null
-        return SplitLines(ingredients, instructions, yield, prep, cook, total)
+        dropBefore()
+        return SplitLines(ingredients, instructions, yield, prep, cook, total, leftover.sorted())
     }
 }

@@ -71,7 +71,8 @@ import XCTest
 // say (nil: English), RecipeTextSplitter.detectAndSplit's ingredients and steps (nil: no recipe) and
 // [yield, prep, cook, total]. Write only `Split("Zutaten:\n- 2 Eier\n…"),`.
 // Shared-text rows (#306): text shared into the app, then SharedText.kind, whether it sorted, its
-// language and the editor's ingredients and steps (SharedText.read). Write only `Shared("text"),`.
+// language, the editor's ingredients and steps, its yield, prep, cook and total times, and the
+// lines left over (SharedText.read). Write only `Shared("text"),`.
 // Photo rows (#208): a photo's lines, then PhotoTextSorter.sort's language, whether they sorted, the
 // ingredients, steps, the lines to check one by one (flags: the line in the box, as listed, and
 // why) and those listed only as large. Write only `Photo(["ZUTATEN", "2 Eier", …]),`.
@@ -1999,24 +2000,53 @@ final class DifferentialCorpusTests: XCTestCase {
 
     private struct Shared {
         let text: String; let kind: SharedText.Kind; let sorted: Bool; let language: String?
-        let ingredients: [String]; let instructions: [String]
-        init(_ text: String, _ kind: SharedText.Kind, _ sorted: Bool, _ language: String?, _ ingredients: [String], _ instructions: [String]) {
+        let ingredients: [String]; let instructions: [String]; let extras: [String?]; let leftovers: [String]
+        init(
+            _ text: String, _ kind: SharedText.Kind, _ sorted: Bool, _ language: String?, _ ingredients: [String],
+            _ instructions: [String], _ extras: [String?], _ leftovers: [String]
+        ) {
             self.text = text; self.kind = kind; self.sorted = sorted; self.language = language
-            self.ingredients = ingredients; self.instructions = instructions
+            self.ingredients = ingredients; self.instructions = instructions; self.extras = extras; self.leftovers = leftovers
         }
     }
 
     // Shared-text rows (#306): see the header. Write only the text.
     private static let shared: [Shared] = [
-        Shared("Grandma's scones\n\nIngredients:\n- 2 cups flour\n- 1 tsp salt\n\nMethod:\n1. Mix the flour and salt.\n2. Bake for 20 minutes.", .recipe, true, "en", ["2 cups flour", "1 tsp salt"], ["Mix the flour and salt.", "Bake for 20 minutes."]),
-        Shared("Ingredients:\n- 2 cups flour\n- 1 tsp salt\nMethod:\n1. Mix.\n2. Bake.\nFrom https://example.com/scones", .recipe, true, nil, ["2 cups flour", "1 tsp salt"], ["Mix.", "Bake."]),
-        Shared("Look at this! https://example.com/scones", .link, false, nil, [], ["Look at this! https://example.com/scones"]),
-        Shared("Groceries\n- 2 lb chicken thighs\n- milk", .list, false, nil, [], ["Groceries", "- 2 lb chicken thighs", "- milk"]),
-        Shared("Hi Mum,\n  Mix two cups of flour with the butter, then bake it.  \n\nLove, Sam", .text, false, "en", [], ["Hi Mum,", "Mix two cups of flour with the butter, then bake it.", "Love, Sam"]),
-        Shared("milk\neggs\nbread", .text, false, nil, [], ["milk", "eggs", "bread"]),
-        Shared("Zutaten:\n- 500 g Mehl\n- 2 EL Zucker\n\nZubereitung:\n1. Mehl und Zucker mischen.\n2. Backen.", .recipe, true, "de", ["500 g Mehl", "2 EL Zucker"], ["Mehl und Zucker mischen.", "Backen."]),
-        Shared("Für den Teig Mehl, Zucker und Butter verkneten und eine Stunde kühlen.", .text, false, "de", [], ["Für den Teig Mehl, Zucker und Butter verkneten und eine Stunde kühlen."]),
-        Shared("Ingrédients :\n- 200 g de farine\n- 2 œufs\n\nPréparation :\n1. Mélanger.\n2. Cuire 20 minutes.", .recipe, true, nil, ["200 g de farine", "2 œufs", "Préparation :"], ["Mélanger.", "Cuire 20 minutes."]),
+        Shared("Grandma's scones\n\nIngredients:\n- 2 cups flour\n- 1 tsp salt\n\nMethod:\n1. Mix the flour and salt.\n2. Bake for 20 minutes.", .recipe, true, "en", ["2 cups flour", "1 tsp salt"], ["Mix the flour and salt.", "Bake for 20 minutes."], [nil, nil, nil, nil], ["Grandma's scones"]),
+        Shared("Ingredients:\n- 2 cups flour\n- 1 tsp salt\nMethod:\n1. Mix.\n2. Bake.\nFrom https://example.com/scones", .recipe, true, nil, ["2 cups flour", "1 tsp salt"], ["Mix.", "Bake."], [nil, nil, nil, nil], ["From https://example.com/scones"]),
+        Shared("Look at this! https://example.com/scones", .link, false, nil, [], ["Look at this! https://example.com/scones"], [nil, nil, nil, nil], []),
+        Shared("Groceries\n- 2 lb chicken thighs\n- milk", .list, false, nil, [], ["Groceries", "- 2 lb chicken thighs", "- milk"], [nil, nil, nil, nil], []),
+        Shared("Hi Mum,\n  Mix two cups of flour with the butter, then bake it.  \n\nLove, Sam", .text, false, "en", [], ["Hi Mum,", "Mix two cups of flour with the butter, then bake it.", "Love, Sam"], [nil, nil, nil, nil], []),
+        Shared("milk\neggs\nbread", .text, false, nil, [], ["milk", "eggs", "bread"], [nil, nil, nil, nil], []),
+        Shared("Zutaten:\n- 500 g Mehl\n- 2 EL Zucker\n\nZubereitung:\n1. Mehl und Zucker mischen.\n2. Backen.", .recipe, true, "de", ["500 g Mehl", "2 EL Zucker"], ["Mehl und Zucker mischen.", "Backen."], [nil, nil, nil, nil], []),
+        Shared("Für den Teig Mehl, Zucker und Butter verkneten und eine Stunde kühlen.", .text, false, "de", [], ["Für den Teig Mehl, Zucker und Butter verkneten und eine Stunde kühlen."], [nil, nil, nil, nil], []),
+        Shared("Ingrédients :\n- 200 g de farine\n- 2 œufs\n\nPréparation :\n1. Mélanger.\n2. Cuire 20 minutes.", .recipe, true, nil, ["200 g de farine", "2 œufs", "Préparation :"], ["Mélanger.", "Cuire 20 minutes."], [nil, nil, nil, nil], []),
+        Shared("Here's grandma's scones…\n- 2 cups flour\n- 1 tsp salt\nMix everything and bake 20 minutes.", .text, false, nil, [], ["Here's grandma's scones…", "- 2 cups flour", "- 1 tsp salt", "Mix everything and bake 20 minutes."], [nil, nil, nil, nil], []),
+        Shared("Mix two cups of flour with the butter and bake it for twenty minutes until golden.\nSent from https://example.com/signature", .link, false, "en", [], ["Mix two cups of flour with the butter and bake it for twenty minutes until golden.", "Sent from https://example.com/signature"], [nil, nil, nil, nil], []),
+        Shared("Brown Butter Oat Cookies\nhttps://example.com/cookies", .link, false, nil, [], ["Brown Butter Oat Cookies", "https://example.com/cookies"], [nil, nil, nil, nil], []),
+        Shared("Look!\nBrown Butter Oat Cookies\nhttps://example.com/cookies", .link, false, nil, [], ["Look!", "Brown Butter Oat Cookies", "https://example.com/cookies"], [nil, nil, nil, nil], []),
+        Shared("Look!\nBrown Butter Oat Cookies\nThe best ever\nhttps://example.com/cookies", .text, false, nil, [], ["Look!", "Brown Butter Oat Cookies", "The best ever", "https://example.com/cookies"], [nil, nil, nil, nil], []),
+        Shared("\"Mix two cups of flour with one teaspoon of salt and a stick of butter, then bake it for twenty minutes until golden, turning the tray once so the edges colour evenly and the tops stay pale.\"\nhttps://example.com/scones#:~:text=Mix", .text, false, "en", [], ["\"Mix two cups of flour with one teaspoon of salt and a stick of butter, then bake it for twenty minutes until golden, turning the tray once so the edges colour evenly and the tops stay pale.\"", "https://example.com/scones#:~:text=Mix"], [nil, nil, nil, nil], []),
+        Shared("https://example.com/cookies", .link, false, nil, [], ["https://example.com/cookies"], [nil, nil, nil, nil], []),
+        Shared("Groceries\n\nProduce\n- 2 lb chicken thighs (Sheet-pan chicken)\n- 1 lemon\n\nDairy\n- milk", .list, false, nil, [], ["Groceries", "Produce", "- 2 lb chicken thighs (Sheet-pan chicken)", "- 1 lemon", "Dairy", "- milk"], [nil, nil, nil, nil], []),
+        Shared("Pantry\n- basmati rice (half a bag)\n- olive oil", .list, false, nil, [], ["Pantry", "- basmati rice (half a bag)", "- olive oil"], [nil, nil, nil, nil], []),
+        Shared("Groceries\n- milk\n- eggs\nAnd get some bread.", .text, false, nil, [], ["Groceries", "- milk", "- eggs", "And get some bread."], [nil, nil, nil, nil], []),
+        Shared("- 2 cups flour\n- 1 tsp salt", .list, false, nil, [], ["- 2 cups flour", "- 1 tsp salt"], [nil, nil, nil, nil], []),
+        Shared("Grandma's scones\n\nServes 4\nPrep 10m · Cook 20m · Total 30m\n\nINGREDIENTS\n2 cups flour\n1 tsp salt\n\nINSTRUCTIONS\n1. Mix the flour and salt.\n2. Bake for 20 minutes.", .recipe, true, "en", ["2 cups flour", "1 tsp salt"], ["Mix the flour and salt.", "Bake for 20 minutes."], ["Serves 4", "10m", "20m", "30m"], ["Grandma's scones"]),
+        Shared("Grandma's scones\n\nMakes 3 (originally 6)\n\nINGREDIENTS\n1 cup flour\n½ tsp salt\n\nINSTRUCTIONS\n1. Mix the flour and salt.\n2. Bake for 20 minutes.", .recipe, true, "en", ["1 cup flour", "½ tsp salt"], ["Mix the flour and salt.", "Bake for 20 minutes."], ["Makes 3 (originally 6)", nil, nil, nil], ["Grandma's scones"]),
+        Shared("Grandma's scones\n\nPortionen: 4\nVorbereitung 10m · Garzeit 20m\n\nZUTATEN\n2 cups flour\n1 tsp salt\n1 stick butter\n\nZUBEREITUNG\n1. Mix the flour and salt, then rub in the butter.\n2. Bake for 20 minutes.", .recipe, true, "en", ["2 cups flour", "1 tsp salt", "1 stick butter"], ["Mix the flour and salt, then rub in the butter.", "Bake for 20 minutes."], ["Portionen: 4", "10m", "20m", nil], ["Grandma's scones"]),
+        Shared("Tarte aux pommes\n\nPortions\u{a0}: 6\nPréparation 20m · Cuisson 30m · Total 50m\n\nINGRÉDIENTS\n200 g de farine\n2 œufs\n\nPRÉPARATION\n1. Mélanger.\n2. Cuire 30 minutes.", .recipe, true, nil, ["200 g de farine", "2 œufs"], ["Mélanger.", "Cuire 30 minutes."], ["Portions\u{a0}: 6", "20m", "30m", "50m"], ["Tarte aux pommes"]),
+        Shared("Scones\n\nRaciones: 4\n\nINGREDIENTES\n2 tazas de harina\n1 cucharadita de sal\n\nELABORACIÓN\n1. Mezclar.\n2. Hornear 20 minutos.", .recipe, true, "es", ["2 tazas de harina", "1 cucharadita de sal"], ["Mezclar.", "Hornear 20 minutos."], ["Raciones: 4", nil, nil, nil], ["Scones"]),
+        Shared("Scones\n\nPorzioni: 4\n\nINGREDIENTI\n2 tazze di farina\n1 cucchiaino di sale\n\nPROCEDIMENTO\n1. Mescolare.\n2. Cuocere 20 minuti.", .recipe, true, nil, ["2 tazze di farina", "1 cucchiaino di sale"], ["Mescolare.", "Cuocere 20 minuti."], ["Porzioni: 4", nil, nil, nil], ["Scones"]),
+        Shared("Scones\n\nPorções: 4\n\nINGREDIENTES\n2 xícaras de farinha\n1 colher de chá de sal\n\nMODO DE PREPARO\n1. Misturar.\n2. Assar por 20 minutos.", .recipe, true, "pt", ["2 xícaras de farinha", "1 colher de chá de sal"], ["Misturar.", "Assar por 20 minutos."], ["Porções: 4", nil, nil, nil], ["Scones"]),
+        Shared("Hi Mum, try this one.\n\nGrandma's scones\n\nServes 4\n\nINGREDIENTS\n2 cups flour\n1 tsp salt\n\nINSTRUCTIONS\n1. Mix.\n2. Bake.", .recipe, true, nil, ["2 cups flour", "1 tsp salt"], ["Mix.", "Bake."], ["Serves 4", nil, nil, nil], ["Hi Mum, try this one.", "Grandma's scones"]),
+        Shared("INGREDIENTS\n\nINSTRUCTIONS\n1. Mix.", .text, false, nil, [], ["INGREDIENTS", "INSTRUCTIONS", "1. Mix."], [nil, nil, nil, nil], []),
+        Shared("Ingredients:\u{2028}- 2 cups flour\u{2028}- 1 tsp salt\u{2029}Method:\u{2028}1. Mix the flour and salt.\u{2028}2. Bake for 20 minutes.", .recipe, true, "en", ["2 cups flour", "1 tsp salt"], ["Mix the flour and salt.", "Bake for 20 minutes."], [nil, nil, nil, nil], []),
+        Shared("Ingredients:\u{b}- 2 cups flour\u{b}- 1 tsp salt\u{c}Method:\u{85}1. Mix.\r2. Bake.", .recipe, true, nil, ["2 cups flour", "1 tsp salt"], ["Mix.", "Bake."], [nil, nil, nil, nil], []),
+        Shared("Ingredients:\n2 eggs <room temperature>\n1 cup sugar &amp; a pinch of salt\nMethod:\n1. Beat the eggs.\n2. Add the sugar.\nNotes:\nChill before serving.\nTip: use a hand mixer.", .recipe, true, "en", ["2 eggs <room temperature>", "1 cup sugar &amp; a pinch of salt"], ["Beat the eggs.", "Add the sugar."], [nil, nil, nil, nil], ["Notes:", "Chill before serving.", "Tip: use a hand mixer."]),
+        Shared("Hi Mum, here's the recipe I promised.\nIngredients:\n- 2 cups flour\n- 1 tsp salt\nMethod:\n1. Mix.\n2. Bake.\nMore on my blog: https://example.com/blog", .recipe, true, nil, ["2 cups flour", "1 tsp salt"], ["Mix.", "Bake."], [nil, nil, nil, nil], ["Hi Mum, here's the recipe I promised.", "More on my blog: https://example.com/blog"]),
+        Shared("Serves 4\nServes 6\nIngredients:\n- 2 cups flour\n- 1 tsp salt\nPrep time: 10 min\nPrep time: 15 min\nMethod:\n1. Mix.\n2. Bake.", .recipe, true, nil, ["2 cups flour", "1 tsp salt"], ["Mix.", "Bake."], ["Serves 4", "10m", nil, nil], ["Serves 6", "Prep time: 15 min"]),
+        Shared("   \n  ", .ignored, false, nil, [], [], [nil, nil, nil, nil], []),
     ]
 
     private struct Photo {
@@ -2406,6 +2436,9 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(reading.recipe.language, row.language, row.text)
             XCTAssertEqual(reading.recipe.ingredients, row.ingredients, row.text)
             XCTAssertEqual(reading.recipe.instructions, row.instructions, row.text)
+            let r = reading.recipe
+            XCTAssertEqual([r.yield, r.prepTime, r.cookTime, r.totalTime], row.extras, row.text)
+            XCTAssertEqual(reading.leftovers, row.leftovers, row.text)
         }
     }
 
