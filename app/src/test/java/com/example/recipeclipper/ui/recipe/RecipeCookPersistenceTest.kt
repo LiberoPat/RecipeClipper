@@ -4,6 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModelStore
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.TimerCountdownSync
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.SavedTimer
@@ -11,6 +14,7 @@ import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -60,7 +64,8 @@ class RecipeCookPersistenceTest {
         recipe: Recipe,
         repository: FakeRecipeRepository = FakeRecipeRepository(),
         cookArg: Boolean = false,
-        plannedServings: Int? = null
+        plannedServings: Int? = null,
+        countdowns: TimerCountdownSync? = null
     ): RecipeViewModel {
         repository.openResult = recipe
         val args = mutableMapOf<String, Any?>(RecipeViewModel.RECIPE_ID_ARG to ID)
@@ -68,9 +73,13 @@ class RecipeCookPersistenceTest {
         if (plannedServings != null) args[RecipeViewModel.SERVINGS_ARG] = plannedServings
         return RecipeViewModel(
             SavedStateHandle(args), repository, FakeAppPreferences(), Clock { testScheduler.currentTime },
-            FakeConnectivity(), FakeAppInfo(), alarms
+            FakeConnectivity(), FakeAppInfo(), alarms, countdowns = countdowns
         )
     }
+
+    private fun countdowns(repository: FakeRecipeRepository) = TimerCountdownSync(
+        repository, alarms, FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = true)
+    )
 
     // --- Restoring ---
 
@@ -159,6 +168,36 @@ class RecipeCookPersistenceTest {
         advanceUntilIdle()
 
         assertTrue(vm.uiState.value.cook.active)
+    }
+
+    // #333: a tap on the countdown after the last step used to restart the run and stop the timer.
+    @Test fun `the cook argument on a finished run keeps its timer and the reading view`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val finished = CookProgress(
+                active = false, currentStep = 2, doneSteps = setOf(0, 1, 2),
+                timers = mapOf(2 to SavedTimer(300, 300, endsAt = 60_000L))
+            )
+            val vm = open(recipe(finished), cookArg = true)
+            runCurrent() // not until idle: the tick loop would run the timer out
+
+            val cook = vm.uiState.value.cook
+            assertFalse(cook.active)
+            assertEquals(setOf(0, 1, 2), cook.doneSteps)
+            assertTrue(cook.timers.getValue(2).running)
+            assertEquals(setOf(ID to 2), alarms.pending.keys)
+            assertTrue(alarms.cancelCalls.isEmpty())
+        }
+
+    @Test fun `deleting the recipe squares the countdowns with the database`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository()
+        val vm = open(recipe(), repository, countdowns = countdowns(repository))
+        advanceUntilIdle()
+        repository.runningTimersResult = listOf(StepAlarm(9, "Other", 0, 5_000))
+
+        vm.onDelete()
+        advanceUntilIdle()
+
+        assertEquals(listOf(listOf(StepAlarm(9, "Other", 0, 5_000))), alarms.reconcileCalls)
     }
 
     // --- Saving ---

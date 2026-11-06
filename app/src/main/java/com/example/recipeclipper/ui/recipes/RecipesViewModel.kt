@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.recipes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -67,7 +68,10 @@ data class LibraryCount(val recipes: Int, val max: Int) {
 class RecipesViewModel @Inject constructor(
     private val repository: RecipeRepository,
     private val preferences: AppPreferences,
-    library: LibraryPolicy = LibraryPolicy.HistoryOnly
+    library: LibraryPolicy = LibraryPolicy.HistoryOnly,
+    /** The countdowns outside the app (#309), squared with the database after a swipe's
+     *  delete (#333); none without it (tests that aren't about them). */
+    private val countdowns: TimerCountdownSync? = null
 ) : ViewModel() {
 
     // The query box's live value. Kept in a StateFlow, not `remember`, so it survives rotation.
@@ -138,6 +142,8 @@ class RecipesViewModel @Inject constructor(
     fun onDelete(recipe: RecipeSummary) {
         viewModelScope.launch {
             val removed = repository.delete(recipe.id) ?: return@launch
+            // Its countdown goes with it; Undo brings the timer back when the recipe is opened.
+            countdowns?.reconcile()
             captured[recipe.id] = removed
             // The first of a burst starts a new batch; the rest join it.
             pendingDeletes.update { pending ->

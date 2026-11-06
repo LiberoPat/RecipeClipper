@@ -10,6 +10,8 @@ protocol TimerActivityDisplay: AnyObject {
     func end(recipeId: Int64, step: Int)
     /// Ends every countdown of `recipeId` but `alarms`', and shows those.
     func replaceAll(recipeId: Int64, with alarms: [StepAlarm])
+    /// Ends every countdown but `alarms`' (#333), whichever recipe's; shows nothing.
+    func keepOnly(_ alarms: [StepAlarm])
 }
 
 /// The real `TimerAlarmScheduler` with `liveTimers` (#309): the time's-up alerts it wraps, plus a
