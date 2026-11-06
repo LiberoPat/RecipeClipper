@@ -43,6 +43,16 @@ final class LiveActivityTimerScheduler: TimerAlarmScheduler {
         self.alarms.replaceAll(recipeId: recipeId, with: alarms)
         display.replaceAll(recipeId: recipeId, with: flags.isOn(.liveTimers) ? alarms : [])
     }
+
+    func ended(recipeId: Int64, step: Int) {
+        alarms.ended(recipeId: recipeId, step: step)
+        display.end(recipeId: recipeId, step: step)
+    }
+
+    func reconcile(running: [StepAlarm]) {
+        alarms.reconcile(running: running)
+        display.keepOnly(flags.isOn(.liveTimers) ? running : [])
+    }
 }
 
 /// One Live Activity per running timer (`TimerActivityAttributes`). Every operation waits for
@@ -71,6 +81,16 @@ final class ActivityKitTimerDisplay: TimerActivityDisplay {
         }
     }
 
+    func keepOnly(_ alarms: [StepAlarm]) {
+        let keep = Set(alarms.map { Key(recipeId: $0.recipeId, step: $0.step) })
+        enqueue { await Self.end { !keep.contains(Key(recipeId: $0.recipeId, step: $0.step)) } }
+    }
+
+    private struct Key: Hashable {
+        let recipeId: Int64
+        let step: Int
+    }
+
     private func enqueue(_ operation: @escaping @MainActor () async -> Void) {
         let previous = last
         last = Task { @MainActor in
@@ -87,9 +107,17 @@ final class ActivityKitTimerDisplay: TimerActivityDisplay {
         guard alarm.endsAt > now else { return }
         let endsAt = Date(timeIntervalSince1970: Double(alarm.endsAt) / 1000)
         let content = ActivityContent(state: TimerActivityAttributes.ContentState(endsAt: endsAt), staleDate: endsAt)
-        if let existing = activities({ $0.recipeId == alarm.recipeId && $0.step == alarm.step }).first {
-            await existing.update(content)
-            return
+        for existing in activities({ $0.recipeId == alarm.recipeId && $0.step == alarm.step }) {
+            // Still showing (past its stale date it reads "Time's up", and moves to the new
+            // deadline). One the system ended (a timer over eight hours, #333) is no use: it
+            // is cleared and a new one requested.
+            switch existing.activityState {
+            case .active, .stale:
+                await existing.update(content)
+                return
+            default:
+                await existing.end(nil, dismissalPolicy: .immediate)
+            }
         }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let attributes = TimerActivityAttributes(recipeId: alarm.recipeId, recipeTitle: alarm.recipeTitle, step: alarm.step)
@@ -111,4 +139,5 @@ final class NoOpTimerActivityDisplay: TimerActivityDisplay {
     func show(_ alarm: StepAlarm) {}
     func end(recipeId: Int64, step: Int) {}
     func replaceAll(recipeId: Int64, with alarms: [StepAlarm]) {}
+    func keepOnly(_ alarms: [StepAlarm]) {}
 }

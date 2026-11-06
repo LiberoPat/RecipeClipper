@@ -245,6 +245,11 @@ protocol RecipeRepository: AnyObject {
     /// Saves where the cook stands. An empty `CookProgress` is stored as none.
     func setCookProgress(id: Int64, progress: CookProgress) async
 
+    /// Every timer saved as running (by its deadline, past or not), whichever recipe's: what
+    /// the countdowns outside the app (#309) are squared with (#333; Android's
+    /// `runningTimers`).
+    func runningTimers() async -> [StepAlarm]
+
     /// Saves the chosen servings; nil goes back to the recipe's own yield.
     func setServingsTarget(id: Int64, target: Int?) async
 
@@ -301,6 +306,9 @@ extension RecipeRepository {
 
     /// Test doubles that have nothing to do with Home's resume card (#286) needn't implement it.
     func observeRecipe(id: Int64) -> AnyPublisher<Recipe?, Never> { Just(nil).eraseToAnyPublisher() }
+
+    /// Test doubles that have nothing to do with the countdowns outside the app (#333) needn't implement it.
+    func runningTimers() async -> [StepAlarm] { [] }
 
     // Test doubles that have nothing to do with the tour (#151) needn't implement these.
     func sampleId() async -> Int64? { nil }

@@ -427,6 +427,20 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
+    func runningTimers() async -> [StepAlarm] {
+        do {
+            let rows = try await db.read { conn in try RecipeDao(db: conn).cookStates() }
+            return rows.flatMap { row in
+                CookStateJSON.decode(row.cookState).timers.sorted { $0.key < $1.key }.compactMap { step, timer in
+                    timer.endsAt.map { StepAlarm(recipeId: row.id, recipeTitle: row.title, step: step, endsAt: $0) }
+                }
+            }
+        } catch {
+            dataLog.error("runningTimers failed: \(String(describing: error), privacy: .public)")
+            return []
+        }
+    }
+
     func setServingsTarget(id: Int64, target: Int?) async {
         do {
             try await db.write { conn in try RecipeDao(db: conn).setServingsTarget(id, target: target) }
