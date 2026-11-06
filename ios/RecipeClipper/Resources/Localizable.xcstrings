@@ -13115,6 +13115,48 @@
         }
       }
     },
+    "app_name" : {
+      "comment" : "The app's name, the same in every language (Android's app_name, which is not translatable).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipe Clipper"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipe Clipper"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipe Clipper"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipe Clipper"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipe Clipper"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipe Clipper"
+          }
+        }
+      }
+    },
     "widget_tonight_name" : {
       "extractionState" : "manual",
       "localizations" : {

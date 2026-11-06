@@ -111,8 +111,8 @@ class HomeWidgetsTest {
         host.resize(tonight, portrait = 96)
         widgets.update()
 
-        assertEquals(listOf("Groceries", "item 1", "+19 more"), host.texts(list))
-        assertEquals(listOf("Tonight", "Breakfast", "Porridge", "+1 more"), host.texts(tonight))
+        assertEquals(listOf("Groceries", "item 1", "+19"), host.texts(list))
+        assertEquals(listOf("Tonight", "Breakfast", "Porridge", "+1"), host.texts(tonight))
     }
 
     @Test

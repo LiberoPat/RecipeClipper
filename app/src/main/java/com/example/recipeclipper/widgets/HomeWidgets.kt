@@ -181,19 +181,24 @@ class HomeWidgets @Inject constructor(
             list.take(fit.shown).forEach { item ->
                 addView(R.id.widget_rows, if (fit.inline) counted(row(item), fit.more) else row(item))
             }
-            if (fit.more > 0 && !fit.inline) addView(R.id.widget_rows, more(R.layout.widget_row_more, fit.more))
+            if (fit.more > 0 && !fit.inline) addView(R.id.widget_rows, more(fit.more))
             setTextViewText(R.id.widget_empty, context.getString(empty))
             setViewVisibility(R.id.widget_empty, if (items != null && list.isEmpty()) View.VISIBLE else View.GONE)
         }
 
     // "+N more", in a layout that colours it: a colour set here would be the one of the theme
     // at this moment, and stay when the system switches to dark (#329).
-    private fun more(layout: Int, count: Int) = RemoteViews(context.packageName, layout).apply {
+    private fun more(count: Int) = RemoteViews(context.packageName, R.layout.widget_row_more).apply {
         setTextViewText(R.id.widget_more, context.resources.getQuantityString(R.plurals.widget_more, count, count))
     }
 
+    // The one row there is room for, with a bare "+N" beside it (not words, so not a string
+    // resource): short enough to leave the item its room in a narrow widget or at a large font.
     private fun counted(row: RemoteViews, count: Int) =
-        more(R.layout.widget_row_counted, count).apply { addView(R.id.widget_counted_item, row) }
+        RemoteViews(context.packageName, R.layout.widget_row_counted).apply {
+            addView(R.id.widget_counted_item, row)
+            setTextViewText(R.id.widget_more, "+$count")
+        }
 
     private fun openTab(action: String): PendingIntent = PendingIntent.getActivity(
         context,
