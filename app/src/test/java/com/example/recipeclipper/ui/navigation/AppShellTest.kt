@@ -21,6 +21,7 @@ import com.example.recipeclipper.ui.listdetail.ListDetailViewModel
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.settings.SettingsSection
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -212,5 +213,39 @@ class AppShellTest {
         onNav { popBackStack() }
         compose.onNodeWithText("stub:lists").assertIsDisplayed()
         compose.runOnIdle { assertTrue(nav.currentDestination.showsTabBar()) }
+    }
+
+    // #333: a countdown tapped while its recipe is on top mustn't stack a second copy.
+    @Test
+    fun aCountdownTapOnTheRecipeAlreadyOnTopOpensNoSecondCopy() {
+        show()
+        onNav { navigate(Routes.recipe(5)) }
+
+        onNav { openRoute(Routes.cookRecipe(5)) }
+
+        compose.onNodeWithText("stub:recipe 5").assertIsDisplayed()
+        onNav { popBackStack() }
+        compose.onNodeWithText("stub:home").assertIsDisplayed()
+    }
+
+    @Test
+    fun aCountdownTapOnAnotherRecipeStillOpensIt() {
+        show()
+        onNav { navigate(Routes.recipe(5)) }
+
+        onNav { openRoute(Routes.cookRecipe(7)) }
+
+        compose.onNodeWithText("stub:recipe 7").assertIsDisplayed()
+        onNav { popBackStack() }
+        compose.onNodeWithText("stub:recipe 5").assertIsDisplayed()
+    }
+
+    @Test
+    fun theRecipeARouteOpensIsReadFromItAlone() {
+        assertEquals(5L, recipeIdIn(Routes.recipe(5)))
+        assertEquals(7L, recipeIdIn(Routes.cookRecipe(7)))
+        assertNull(recipeIdIn(Routes.import("https://example.com/recipe/5")))
+        assertNull(recipeIdIn(Routes.RECIPES))
+        assertNull(recipeIdIn("recipe/5/extra"))
     }
 }

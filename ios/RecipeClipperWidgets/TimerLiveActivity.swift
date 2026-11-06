@@ -27,7 +27,13 @@ struct TimerLiveActivity: Widget {
             } compactLeading: {
                 Image(systemName: "timer").foregroundStyle(Palette.accentText).environment(\.colorScheme, .dark)
             } compactTrailing: {
-                Countdown(context: context).frame(maxWidth: 56)
+                // The frame keeps the interval text from claiming the whole island, as it
+                // would unframed; a timer of an hour or more reads h:mm:ss and needs the wider
+                // one (#333). Scaling down a little is the safety net for a wide digit set.
+                Countdown(context: context)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .frame(maxWidth: context.state.endsAt.timeIntervalSinceNow >= 3600 ? 76 : 56)
             } minimal: {
                 Image(systemName: "timer").foregroundStyle(Palette.accentText).environment(\.colorScheme, .dark)
             }

@@ -21,6 +21,8 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var saveClipCalls: [Recipe] = []
     /// Per-id answers for `delete`; missing ids answer nil, same as "already gone".
     var deleteResults: [Int64: DeletedRecipe] = [:]
+    /// Staged answer for `runningTimers`.
+    var runningTimersResult: [StepAlarm] = []
 
     private(set) var setCheckedCalls: [(id: Int64, checked: Set<Int>)] = []
     private(set) var setNotesCalls: [(id: Int64, notes: String)] = []
@@ -108,6 +110,8 @@ final class FakeRecipeRepository: RecipeRepository {
         deleteCalls.append(id)
         return deleteResults[id]
     }
+
+    @MainActor func runningTimers() async -> [StepAlarm] { runningTimersResult }
 
     @MainActor func restore(_ deleted: DeletedRecipe) async {
         restoreCalls.append(deleted)

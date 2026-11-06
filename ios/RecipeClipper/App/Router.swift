@@ -50,10 +50,21 @@ final class Router {
 
     /// A route that must land in Recipes regardless of which tab is open (a share, a tapped
     /// timer notification): switch tab first, then push on top of whatever the Recipes stack
-    /// already held (Android's `openRoute`).
+    /// already held (Android's `openRoute`). A countdown tapped while its recipe is on top
+    /// (#333) pushes no second copy, whose older twin would keep stale timer state and could
+    /// save it over the newer progress.
     func openInRecipes(_ route: Route) {
         selectedTab = .recipes
+        if case .cookRecipe(let id) = route, Self.recipeId(of: path.last) == id { return }
         push(route)
+    }
+
+    /// The recipe a route shows, with or without cook mode; nil for any other.
+    private static func recipeId(of route: Route?) -> Int64? {
+        switch route {
+        case .recipe(let id), .cookRecipe(let id): id
+        default: nil
+        }
     }
 
     /// Drops the top `count` entries and pushes `route` in their place: how a saved edit

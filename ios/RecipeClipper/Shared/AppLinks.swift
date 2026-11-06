@@ -30,12 +30,15 @@ enum AppLinks {
             .queryItems?.first(where: { $0.name == tabNameItem })?.value
     }
 
-    /// The recipe a cook link names, or nil for any other URL.
+    /// The recipe a cook link names, or nil for any other URL. Any app or web page can open
+    /// `recipeclipper://`, so only a real id (positive, as Android's `routeFor` requires) opens
+    /// anything; what it opens is the cook's own saved state, never a restart (#333).
     static func cookRecipeId(from url: URL) -> Int64? {
         guard url.scheme?.lowercased() == scheme, url.host?.lowercased() == cookHost,
               let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-                .queryItems?.first(where: { $0.name == recipeIdItem })?.value
+                .queryItems?.first(where: { $0.name == recipeIdItem })?.value,
+              let id = Int64(value), id > 0
         else { return nil }
-        return Int64(value)
+        return id
     }
 }

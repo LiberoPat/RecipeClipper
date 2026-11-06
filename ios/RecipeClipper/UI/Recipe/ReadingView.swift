@@ -83,17 +83,28 @@ struct ReadingView: View {
                     let layout = stacked
                         ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
                         : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 0))
-                    layout {
-                        Text("\(index + 1)")
-                            .textStyle(Typography.titleMedium)
-                            .foregroundStyle(Palette.accentText)
-                            .frame(width: stacked ? nil : numberColumn, alignment: .leading)
-                        let parts = content.shownStepParts(index, asWritten: state.asWrittenSteps)
-                        stepText(step, parts, accent: Palette.accentText, linked: true)
-                            .textStyle(Typography.bodyLarge)
-                            .foregroundStyle(Palette.onBackground)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .modifier(StepLinks(parts: parts, onLink: { vm.onIngredientLink(index, $0) }))
+                    VStack(alignment: .leading, spacing: 4) {
+                        layout {
+                            Text("\(index + 1)")
+                                .textStyle(Typography.titleMedium)
+                                .foregroundStyle(Palette.accentText)
+                                .frame(width: stacked ? nil : numberColumn, alignment: .leading)
+                            let parts = content.shownStepParts(index, asWritten: state.asWrittenSteps)
+                            stepText(step, parts, accent: Palette.accentText, linked: true)
+                                .textStyle(Typography.bodyLarge)
+                                .foregroundStyle(Palette.onBackground)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .modifier(StepLinks(parts: parts, onLink: { vm.onIngredientLink(index, $0) }))
+                        }
+                        // A timer still running after cooking ended (the last step's rest, say)
+                        // is visible here, where a tap on its countdown outside the app lands (#333).
+                        if let timer = state.cook.timers[index], timer.running {
+                            Text(Strings.timerRunning(StepTimers.clock(timer.remainingSeconds)))
+                                .textStyle(Typography.labelLarge)
+                                .monospacedDigit()
+                                .foregroundStyle(Palette.accentText)
+                                .padding(.leading, stacked ? 0 : numberColumn)
+                        }
                     }
                     .id("step-\(index)")
                     .padding(.vertical, 8)

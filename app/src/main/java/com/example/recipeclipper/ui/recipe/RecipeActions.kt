@@ -78,8 +78,9 @@ internal fun rememberRecipeActions(
     // Android's UriHandler fires ACTION_VIEW, so the browser opens the draft issue. A local,
     // not a direct Intent, so a UI test can supply its own and see the link without leaving.
     val uriHandler = LocalUriHandler.current
-    // The first timer started asks for permission to post its "time's up" notification.
-    val askForNotifications = rememberNotificationPrompt()
+    // The first timer started asks for permission to post its "time's up" notification; once
+    // allowed, the countdown that permission refused is posted (#333).
+    val askForNotifications = rememberNotificationPrompt(onGranted = viewModel::onNotificationsAllowed)
     return remember(
         viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel, groceriesViewModel, sendFileViewModel,
         printViewModel

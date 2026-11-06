@@ -50,6 +50,12 @@ final class NotificationTimerScheduler: TimerAlarmScheduler {
         }
     }
 
+    /// The alert was delivered at the deadline, or is being delivered: nothing to do here.
+    func ended(recipeId: Int64, step: Int) {}
+
+    /// The alerts are squared by `replaceAll` when the recipe is opened; nothing to do here.
+    func reconcile(running: [StepAlarm]) {}
+
     private func enqueue(_ operation: @escaping @MainActor () async -> Void) {
         let previous = last
         last = Task { @MainActor in
@@ -84,4 +90,6 @@ final class NoOpTimerAlarmScheduler: TimerAlarmScheduler {
     func schedule(_ alarm: StepAlarm) {}
     func cancel(recipeId: Int64, step: Int) {}
     func replaceAll(recipeId: Int64, with alarms: [StepAlarm]) {}
+    func ended(recipeId: Int64, step: Int) {}
+    func reconcile(running: [StepAlarm]) {}
 }

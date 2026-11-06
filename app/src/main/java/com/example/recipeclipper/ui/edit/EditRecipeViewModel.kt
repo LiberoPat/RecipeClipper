@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.Entitlements
 import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.PhotoTextReader
+import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.data.PhotoTextResult
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.RecipeRepository
@@ -139,7 +140,10 @@ class EditRecipeViewModel @Inject constructor(
     private val entitlements: Entitlements = Entitlements.Unavailable,
     private val photoReader: PhotoTextReader = PhotoTextReader.Unavailable,
     /** Where the read lines are sorted and checked, off the main thread (#283). */
-    @DefaultDispatcher private val sorting: CoroutineDispatcher = Dispatchers.Default
+    @DefaultDispatcher private val sorting: CoroutineDispatcher = Dispatchers.Default,
+    /** The countdowns outside the app (#309): an edit that changes the steps drops the cook's
+     *  progress, so they are squared with the database after a save (#333); none without it. */
+    private val countdowns: TimerCountdownSync? = null
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -353,7 +357,7 @@ class EditRecipeViewModel @Inject constructor(
             } else if (recipeId == null) {
                 repository.addManual(state.draft)
             } else {
-                repository.saveEdit(recipeId, state.draft)
+                repository.saveEdit(recipeId, state.draft).also { countdowns?.reconcile() }
             }
             _uiState.update {
                 when {
