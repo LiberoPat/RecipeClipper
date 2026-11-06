@@ -96,6 +96,21 @@ class HomeWidgetsTest {
 
         // No height from the launcher: four rows, the last one the count.
         assertEquals(listOf("Groceries", "item 1", "item 2", "item 3", "+17 more"), host.texts(list))
+
+        // And at every height, the smallest included (#329: one row was the count alone), the
+        // widget names the first items and counts exactly the rest.
+        for (height in listOf(60, 80, 110, 160, 240, 400)) {
+            host.resize(list, portrait = height)
+            widgets.update()
+            val shown = host.texts(list).drop(1)
+            val items = shown.dropLast(1)
+            assertTrue("at ${height}dp an item is named, was $shown", items.isNotEmpty())
+            assertEquals("at ${height}dp", (1..items.size).map { "item $it" }, items)
+            val rest = 20 - items.size
+            // With room for one row the count is beside the item, as a bare "+19".
+            val oneRow = HomeWidgets.rowsThatFit(height, HomeWidgets.LINE_ROW) { it } == 1
+            assertEquals("at ${height}dp", if (oneRow) "+$rest" else "+$rest more", shown.last())
+        }
     }
 
     // #329: one row high used to show "+20 more" and name nothing.
