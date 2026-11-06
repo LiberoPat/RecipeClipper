@@ -36,6 +36,14 @@ import XCTest
 // Use it up rows (#305): a pantry item's name, the saved recipes' lines (one recipe each), then
 // the indices of the recipes UseItUp.groups says use that item, expiring today. Write only
 // `UseIt("spinach", ["1 lb spinach"]),`.
+// Tonight widget rows (#309): meal types written "id sortOrder name" and planned meals written
+// "dayOffset typeId t|n text" (a recipe's title or a note; today is offset 0), then what
+// WidgetContent.tonight shows: each meal's type name, then its title. Write only
+// `Tonight(["3 2 Dinner"], ["0 3 t Focaccia"]),`.
+// Grocery widget rows (#309): the list's unticked lines and its ticked ones, then the lines
+// WidgetContent.groceries leaves to buy. Write only `ToBuy(["2 onions"], ["1 cup milk"]),`.
+// Widget-fit rows (#329): how many items and how many rows there is room for, then
+// WidgetContent.fit's shown, more and inline. Write only `Fitted(20, 4),`.
 // Count-bracket rows (#104): a line, whether it asks the model (needsCountDecision), then the
 // line doubled when unsure, total and each. Write only `Count("4 Apfel (ca. 800g)", lang: "de"),`.
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
@@ -154,6 +162,27 @@ final class DifferentialCorpusTests: XCTestCase {
         let name: String; let lines: [String]; let language: String; let used: [Int64]
         init(_ name: String, _ lines: [String], lang: String = "en", _ used: [Int64] = []) {
             self.name = name; self.lines = lines; self.language = lang; self.used = used
+        }
+    }
+
+    private struct Tonight {
+        let types: [String]; let meals: [String]; let shown: [String]
+        init(_ types: [String], _ meals: [String], _ shown: [String] = []) {
+            self.types = types; self.meals = meals; self.shown = shown
+        }
+    }
+
+    private struct ToBuy {
+        let open: [String]; let ticked: [String]; let language: String; let lines: [String]
+        init(_ open: [String], _ ticked: [String], lang: String = "en", _ lines: [String] = []) {
+            self.open = open; self.ticked = ticked; self.language = lang; self.lines = lines
+        }
+    }
+
+    private struct Fitted {
+        let count: Int; let rows: Int; let shown: Int; let more: Int; let inline: Bool
+        init(_ count: Int, _ rows: Int, _ shown: Int = 0, _ more: Int = 0, _ inline: Bool = false) {
+            self.count = count; self.rows = rows; self.shown = shown; self.more = more; self.inline = inline
         }
     }
 
@@ -1626,6 +1655,47 @@ final class DifferentialCorpusTests: XCTestCase {
         UseIt("lait", ["250 ml de lait", "2 œufs"], lang: "fr", [0]),
     ]
 
+    private static let tonights: [Tonight] = [
+        Tonight(["3 2 Dinner", "1 0 Breakfast", "9 3 Pudding"], ["0 3 t Focaccia", "0 9 n  Ice cream ", "1 1 t Pancakes", "0 1 t Porridge", "0 3 n Salad"], ["Breakfast", "Porridge", "Dinner", "Focaccia", "Dinner", "Salad", "Pudding", "Ice cream"]),
+        Tonight(["3 2 Dinner"], ["0 3 n   ", "0 3 t ", "0 3 n \tLeftovers\n"], ["Dinner", "Leftovers"]),
+        Tonight(["1 0 Breakfast"], ["0 7 t Soup", "0 1 t Toast", "0 7 n Something else"], ["Breakfast", "Toast", "", "Soup", "", "Something else"]),
+        Tonight(["5 1 Lunch", "2 1 Brunch", "4 0 Snack"], ["0 5 t Sandwich", "0 2 t Eggs", "0 4 n Fruit"], ["Snack", "Fruit", "Brunch", "Eggs", "Lunch", "Sandwich"]),
+        Tonight(["3 2 Dinner"], ["-1 3 t Yesterday's stew", "1 3 t Tomorrow's soup"], []),
+        Tonight(["3 2 Dinner", "1 0 Breakfast"], ["0 3 t First", "0 3 n Second", "0 1 t Porridge", "0 3 t Third"], ["Breakfast", "Porridge", "Dinner", "First", "Dinner", "Second", "Dinner", "Third"]),
+        Tonight(["3 2 Abendessen", "1 0 Frühstück"], ["0 3 t Käsespätzle", "0 1 n Müsli"], ["Frühstück", "Müsli", "Abendessen", "Käsespätzle"]),
+        Tonight([], ["0 3 t Focaccia"], ["", "Focaccia"]),
+        Tonight(["3 2 Dinner"], [], []),
+    ]
+
+    private static let toBuys: [ToBuy] = [
+        ToBuy(["200 g flour", "100 g flour", "2 onions", "1 egg", "1 egg", "paper towels"], ["1 cup milk"], ["2 onions", "2 eggs", "300 g flour", "paper towels"]),
+        ToBuy(["200 g flour", "2 onions"], ["100 g flour"], ["2 onions", "200 g flour"]),
+        ToBuy(["1 cup flour", "200 g flour", "2 cups flour"], [], ["1 cup flour", "200 g flour", "2 cups flour"]),
+        ToBuy(["1 can tomatoes", "1 can tomatoes", "400 g tomatoes"], [], ["1 can tomatoes × 2", "400 g tomatoes"]),
+        ToBuy([" 2 onions ", "For the sauce:", "paper towels"], [], ["2 onions", "For the sauce:", "paper towels"]),
+        ToBuy([], ["2 onions", "1 egg"], []),
+        ToBuy([], [], []),
+        ToBuy(["1 lb chicken thighs", "2 tbsp olive oil", "1 tsp salt", "1 cup milk", "2 tbsp olive oil"], ["salt"], ["1 lb chicken thighs", "1 cup milk", "4 tbsp olive oil", "1 tsp salt"]),
+        ToBuy(["200 g Mehl", "300 g Mehl", "1 Zwiebel", "2 EL Öl"], ["1 l Milch"], lang: "de", ["1 Zwiebel", "500 g Mehl", "2 EL Öl"]),
+        ToBuy(["250 ml de lait", "10 cl de lait", "2 œufs"], [], lang: "fr", ["35 cl de lait", "2 œufs"]),
+    ]
+
+    private static let fitteds: [Fitted] = [
+        Fitted(0, 4, 0, 0, false),
+        Fitted(3, 4, 3, 0, false),
+        Fitted(4, 4, 4, 0, false),
+        Fitted(5, 4, 3, 2, false),
+        Fitted(20, 4, 3, 17, false),
+        Fitted(20, 12, 11, 9, false),
+        Fitted(20, 2, 1, 19, false),
+        Fitted(20, 1, 1, 19, true),
+        Fitted(2, 1, 1, 1, true),
+        Fitted(1, 1, 1, 0, false),
+        Fitted(5, 0, 1, 4, true),
+        Fitted(1, 0, 1, 0, false),
+        Fitted(0, 0, 0, 0, false),
+    ]
+
     private static let counts: [Count] = [
         Count("4 Apfel (ca. 800g)", lang: "de", true, ["4 Apfel (ca. 800g)", "8 Apfel (ca. 1600g)", "8 Apfel (ca. 800g)"]),
         Count("1 patate douce (300-400 g)", lang: "fr", true, ["1 patate douce (300-400 g)", "2 patate douce (600-800 g)", "2 patate douce (300-400 g)"]),
@@ -2578,6 +2648,45 @@ final class DifferentialCorpusTests: XCTestCase {
             }
             let used = (UseItUp.groups([item], saved: saved, today: 0).first?.recipes ?? []).map(\.id).sorted()
             XCTAssertEqual(used, row.used, "\(row.name) / \(row.lines)")
+        }
+    }
+
+    func testWidgetTonightMatchesKotlin() {
+        for row in Self.tonights {
+            let types = row.types.map { text -> MealType in
+                let part = text.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+                return MealType(id: Int64(part[0])!, name: part[2], builtInKey: nil, sortOrder: Int(part[1])!)
+            }
+            let meals = row.meals.enumerated().map { i, text -> PlannedMeal in
+                let part = text.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: false).map(String.init)
+                return PlannedMeal(
+                    id: Int64(i + 1), day: 100 + Int64(part[0])!, mealTypeId: Int64(part[1])!,
+                    recipeId: part[2] == "t" ? Int64(i + 1) : nil, title: part[2] == "t" ? part[3] : nil,
+                    imageUrl: nil, servings: nil, note: part[2] == "n" ? part[3] : nil
+                )
+            }
+            let shown = WidgetContent.tonight(meals, types: types, today: 100).flatMap { [$0.mealType, $0.title] }
+            XCTAssertEqual(shown, row.shown, "\(row.types) / \(row.meals)")
+        }
+    }
+
+    func testWidgetGroceriesMatchKotlin() {
+        for row in Self.toBuys {
+            let words = LanguageWords.forTag(row.language)!
+            let lines = row.open.map { ($0, false) } + row.ticked.map { ($0, true) }
+            let items = lines.enumerated().map { i, line in
+                GroceryItem(id: Int64(i + 1), text: line.0, language: row.language,
+                            aisle: Aisles.of(line.0, words: words), checked: line.1, sortOrder: i + 1)
+            }
+            XCTAssertEqual(WidgetContent.groceries(GroceryCombiner.sections(items)), row.lines, "\(row.open) / \(row.ticked)")
+        }
+    }
+
+    func testWidgetFitMatchesKotlin() {
+        for row in Self.fitteds {
+            XCTAssertEqual(WidgetContent.fit(count: row.count, rows: row.rows),
+                           WidgetContent.Fit(shown: row.shown, more: row.more, inline: row.inline),
+                           "\(row.count) items, \(row.rows) rows")
         }
     }
 

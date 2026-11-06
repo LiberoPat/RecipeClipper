@@ -302,8 +302,8 @@ enum Strings {
     static var timesUp: String { String(localized: "timers_up") }
 
     // Home
-    /// The app's name, not translated.
-    static let homeTitle = "Recipe Clipper"
+    /// The app's name, the same in every language (the widgets' `WidgetStrings.appName` too).
+    static var homeTitle: String { String(localized: "app_name") }
     static var labelRecipeUrl: String { String(localized: "label_recipe_url") }
     static var sectionContinueCooking: String { String(localized: "section_continue_cooking") }
     static var sectionRecentlyViewed: String { String(localized: "section_recently_viewed") }

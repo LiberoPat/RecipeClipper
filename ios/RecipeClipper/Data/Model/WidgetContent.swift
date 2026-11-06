@@ -42,4 +42,22 @@ enum WidgetContent {
             }
         }
     }
+
+    /// How a list is cut to a widget's height: `shown` of its items from the top, then "+`more`
+    /// more", on a line of its own or, when `inline`, beside the one item there is room for.
+    struct Fit: Equatable {
+        let shown: Int
+        let more: Int
+        let inline: Bool
+    }
+
+    /// A list of `count` items in a widget with room for `rows` rows: all of them when they fit,
+    /// else the last row is kept for "+N more". An item is always named: with room for a single
+    /// row the count goes beside the first item, never in its place (#329).
+    static func fit(count: Int, rows: Int) -> Fit {
+        if count <= 0 { return Fit(shown: 0, more: 0, inline: false) }
+        if count <= rows { return Fit(shown: count, more: 0, inline: false) }
+        if rows >= 2 { return Fit(shown: rows - 1, more: count - (rows - 1), inline: false) }
+        return Fit(shown: 1, more: count - 1, inline: count > 1)
+    }
 }
