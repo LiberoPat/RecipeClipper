@@ -55,4 +55,21 @@ class WidgetContentTest {
         // Produce, dairy, baking, other; the ticked milk is in the basket.
         assertEquals(listOf("2 onions", "2 eggs", "300 g flour", "paper towels"), WidgetContent.groceries(sections))
     }
+
+    @Test fun aListThatFitsIsShownWhole() {
+        assertEquals(WidgetContent.Fit(shown = 4, more = 0, inline = false), WidgetContent.fit(count = 4, rows = 4))
+        assertEquals(WidgetContent.Fit(shown = 0, more = 0, inline = false), WidgetContent.fit(count = 0, rows = 4))
+    }
+
+    @Test fun aLongerListKeepsItsLastRowForHowManyMore() {
+        assertEquals(WidgetContent.Fit(shown = 3, more = 17, inline = false), WidgetContent.fit(count = 20, rows = 4))
+        assertEquals(WidgetContent.Fit(shown = 1, more = 19, inline = false), WidgetContent.fit(count = 20, rows = 2))
+    }
+
+    // #329: one row used to be "+20 more" and no item at all.
+    @Test fun oneRowStillNamesAnItemWithTheCountBesideIt() {
+        assertEquals(WidgetContent.Fit(shown = 1, more = 19, inline = true), WidgetContent.fit(count = 20, rows = 1))
+        assertEquals(WidgetContent.Fit(shown = 1, more = 1, inline = true), WidgetContent.fit(count = 2, rows = 0))
+        assertEquals(WidgetContent.Fit(shown = 1, more = 0, inline = false), WidgetContent.fit(count = 1, rows = 0))
+    }
 }

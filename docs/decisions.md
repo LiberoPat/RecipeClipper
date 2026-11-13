@@ -1149,31 +1149,66 @@ alert and `TimerAlarmReceiver`'s check of the database are unchanged.
 Behind `widgets`. Two, on both platforms: **Tonight**, today's planned meals
 under their meal type (Mela's next-meal widget is the model; a tap opens the
 Week), and **Groceries**, what's left to buy (a tap opens Groceries). What they
-show is `WidgetContent` (core, with its Swift port, pinned by matching unit
-tests rather than corpus rows): today's meals in meal type order, a meal with
+show is `WidgetContent` (core, with its Swift port, pinned by `Tonight(`,
+`ToBuy(` and `Fitted(` corpus rows since #329; it was first left to matching
+unit tests): today's meals in meal type order, a meal with
 no title or note left out; the list's unticked rows as the screen shows them
 (a combined row is its total, lines kept together each listed, a row with a
 ticked line in the basket, as "Send list" has it). The list's lines are as
 stored, without the on-device model's decisions (#104): the iOS widget runs
-apart from the app and its model, and Android matches it. As many rows as fit
-the widget's height, then "+N more"; an empty plan or list says so. With the
-flag off a placed widget shows only the app's name.
+apart from the app and its model, and Android matches it. An empty plan or
+list says so. With the flag off a placed widget shows only the app's name.
 
+- **As many rows as fit, then "+N more"** (`WidgetContent.fit`): the last row
+  that fits is kept for the count. **An item is always named** (#329): with
+  room for one row, the count sits beside the first item as a bare "+N" (short
+  enough to leave the item its room), where "+N more" used to replace it.
+  Both platforms size this by the text as it is drawn, since a larger text
+  size means fewer rows, never clipped ones (a clipped list looks complete).
 - **Android: RemoteViews** (`widgets/HomeWidgets`, two `AppWidgetProvider`s).
   Glance isn't in the Compose BOM (it's versioned on its own and brings
   WorkManager), and two short lists don't need it. System fonts (serif title):
-  a font resource in RemoteViews depends on the launcher. `HomeWidgets.start`
-  (from `RecipeApp`) redraws when the plan, the list or the flags change while
-  the process lives; `updatePeriodMillis` (30 minutes, the least allowed)
-  covers the rest, midnight included. The tap is an intent action MainActivity
-  routes to the tab, like the expiry reminder's.
+  a font resource in RemoteViews depends on the launcher. The tap is an intent
+  action MainActivity routes to the tab, like the expiry reminder's.
+  - **Rows are budgeted in sp** against the font scale, and for both
+    orientations: `RemoteViews(landscape, portrait)`, from the launcher's least
+    and most height, so turning the phone needs no redraw. The smallest sizes
+    (`minResizeHeight` 80dp and 96dp) hold the title and one row at the default
+    font scale. Every colour, "+N more" included, is a `@color` in a layout,
+    which the launcher resolves for the theme it draws in.
+  - **No periodic refresh** (`updatePeriodMillis` 0; it was 30 minutes, about
+    96 wake-ups a day for one change). `HomeWidgets.start` (from `RecipeApp`)
+    redraws while the process lives, when the mapped `WidgetContent` changes:
+    nothing is observed with no widget placed or the flag off, and a write that
+    changes nothing shown redraws nothing. One redraw at a time (a `Mutex`,
+    reading inside it), so an older list is never drawn over a newer one.
+  - **Midnight is one alarm** (`WidgetDayChange`): inexact, by the decision
+    that rules out an exact-alarm prompt, in a ten-minute window (a plain `set`
+    may run hours late), and not a wake-up, since nobody sees a widget with the
+    screen off. Its redraw arms the next. `WidgetClockReceiver` also hears the
+    date, time and time zone change. The alarm and the receiver (disabled in
+    the manifest) are on only while a Tonight widget is placed.
 - **iOS: WidgetKit**, in the same extension as the Live Activity. It opens the
-  App Group database itself and reads it through the app's own DAOs (the data
-  layer is compiled in, as in the share extension), and asks to be redrawn at
-  midnight. The app's `WidgetRefresher` calls `reloadAllTimelines` when the
-  plan or the list changes, and mirrors the flag into the App Group suite
-  (`widgets_on`, like `reddit_on`), since the extension never sees the flags.
-  The link is `recipeclipper://tab?name=week` (`AppLinks`).
+  App Group database itself and reads it through the app's own DAOs
+  (`WidgetData`, in the data layer so the unit tests reach it). The app's
+  `WidgetRefresher` calls `reloadAllTimelines` when the plan (from the day
+  before it started, with no last day), the meal types or the list changes,
+  and mirrors the flag into the App Group suite (`widgets_on`, like
+  `reddit_on`), since the extension never sees the flags. The link is
+  `recipeclipper://tab?name=week` (`AppLinks`).
+  - **Tonight's timeline holds tomorrow** from midnight, so the day turns on
+    time when WidgetKit is slow to reload; the next timeline is asked for once
+    that entry shows. The list's timeline never reloads by the clock.
+  - **An unreadable database is not an empty plan** (before the first unlock
+    after a restart, or while the app migrates or imports): the widget shows
+    its title and nothing else, never "Nothing planned for today", and asks
+    again in five minutes.
+  - **`FittedRows`** offers each cut of the list to `ViewThatFits`, fullest
+    first, so the rows are measured at the Dynamic Type size and widget size in
+    use rather than assumed. When even one row and the count are too high (the
+    accessibility sizes in a small widget), the text steps down a size at a
+    time until they fit: smaller text, rather than an item unnamed. Not a fixed
+    cap on the text size, which would shrink it where there is room.
 
 ## iOS: importing inside the share extension (#19)
 
