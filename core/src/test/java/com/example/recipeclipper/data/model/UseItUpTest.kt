@@ -2,6 +2,7 @@ package com.example.recipeclipper.data.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -43,6 +44,19 @@ class UseItUpTest {
         assertFalse(UseItUp.uses(recipe(1, "Kuchen", "200 g Butter", language = "de"), item("butter", today)))
         assertTrue(UseItUp.uses(recipe(1, "Kuchen", "200 g Butter", language = "de"), item("Butter", today, language = "de")))
         assertFalse(UseItUp.uses(recipe(1, "Pie", "For the spinach:"), item("spinach", today)))
+    }
+
+    // #332: the lines are parsed once per recipe, then checked against every item expiring.
+    @Test fun `a recipe's names are read once, a heading aside, and checked against each item`() {
+        val names = UseItUp.names(recipe(1, "Pie", "For the filling:", "300 g spinach", "1 cup milk"))!!
+        assertEquals("en", names.language)
+        assertEquals(listOf("spinach", "milk"), names.names)
+        assertTrue(UseItUp.uses(names, item("spinach", today)))
+        assertTrue(UseItUp.uses(names, item("milk", today)))
+        assertFalse(UseItUp.uses(names, item("eggs", today)))
+        assertFalse(UseItUp.uses(names, item("Milch", today, language = "de")))
+        assertNull(UseItUp.names(recipe(2, "Pie", "300 g spinach", language = "xx")))
+        assertEquals(emptyList<UseItUpGroup>(), UseItUp.groups(listOf(item("spinach", today + 3)), listOf(recipe(1, "Pie", "300 g spinach")), today))
     }
 
     @Test fun `a recipe stored with no language is detected`() {

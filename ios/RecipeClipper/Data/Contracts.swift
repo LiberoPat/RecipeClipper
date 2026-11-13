@@ -479,8 +479,10 @@ protocol MealPlanRepository: AnyObject {
     /// The meals planned from day `start` to `end` inclusive (epoch days), in plan order.
     func observeDays(start: Int64, end: Int64) -> AnyPublisher<[PlannedMeal], Never>
 
-    /// Plans `recipeId` on `day`; `servings` nil means the recipe's own yield.
-    func addRecipe(recipeId: Int64, day: Int64, mealTypeId: Int64, servings: Int?) async
+    /// Plans `recipeId` on `day`; `servings` nil means the recipe's own yield. False when the
+    /// write failed (a caller guarding a tap frees it then, #332).
+    @discardableResult
+    func addRecipe(recipeId: Int64, day: Int64, mealTypeId: Int64, servings: Int?) async -> Bool
 
     /// Plans a free-text note on `day`. A blank note is ignored.
     func addNote(_ note: String, day: Int64, mealTypeId: Int64) async

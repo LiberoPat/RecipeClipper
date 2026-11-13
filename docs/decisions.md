@@ -2089,11 +2089,32 @@ Saved recipes for a pantry item about to expire, behind the `useItUp` flag (on).
   never "flour", "butter beans" never "butter". No model decisions (#104): a name match or
   nothing. Lines are read as stored (only names matter, so scaling changes nothing). Pure, in
   `core` (`UseItUp`), ported to Swift and pinned by the corpus's `UseIt` rows.
-- **The sheet:** a heading per item in the reminder's words ("Spinach expires tomorrow."),
-  soonest first, its recipes A–Z, each with one tap per day: "Plan today" and, when the
-  use-by day is tomorrow, "Plan tomorrow". A tap plans it as Dinner at its own yield (as "Add
-  to plan" starts) and the button turns to "Planned …" (any recipe already on the plan that
-  day, from anywhere, shows so). The note under the title says the tap plans dinner.
+- **The sheet:** a heading per item, the name then the day ("Chicken thighs · use by
+  tomorrow", `use_it_up_heading_*`; #332: the reminder's sentence put a singular verb on a
+  plural name, in every language, so the shape has no verb to agree), soonest first, its
+  recipes A–Z, each with one tap per day: "Plan today" and, when the use-by day is tomorrow,
+  "Plan tomorrow". A tap plans it as Dinner at its own yield (as "Add to plan" starts) and the
+  button turns to "Planned …" (any recipe already on the plan that day, from anywhere, shows
+  so). The note under the title says the tap plans dinner. A tap whose write failed is freed
+  (`addRecipe` says whether it wrote), so it can be tried again.
+- **Today is the real day** (#332). The Pantry tab's ViewModel outlives the day, so today is
+  re-read when the Pantry comes back in front (`onScreenResumed`, as the Week's) and when the
+  reminder is tapped: the next morning's reminder shows that day's window, and "Plan today"
+  plans onto it. Nothing shows from yesterday's groups while the new day's are matched.
+- **A reminder nothing answers is forgotten at once** (#332): tapped with no saved recipe for
+  anything due (or the flag off), the request is dropped, so a recipe saved later never pops
+  the sheet up by itself. One tapped before the first matching waits for it.
+- **The row's line stays while selecting** (#258, #332), no longer tappable (the row's tap
+  toggles the checkbox): rows never change height under a dragging finger, which drag to
+  select assumes. The line is the row's last line in the on-ink text token (`tertiary`, as the
+  use-by line above), and its tap target is the minimum touch size (48 dp, 44 pt), standing
+  in the row's bottom padding, so a near miss opens the sheet rather than the edit sheet.
+  iOS's tooltip host counts the open sheet as blocking, as it does the edit sheet.
+- **Matched off the main thread, once per change** (#332): the groups come from (pantry,
+  saved recipes, today) with equal inputs skipped (a tick or a cook step rewrites a recipe
+  without changing a line); the sheet's target only picks from the result. Each recipe's lines
+  are parsed once (`UseItUp.names`), not once per expiring item, and not at all while nothing
+  expires.
 - **Strings:** `use_it_up_*` in all six languages, drafts (`docs/translations.md`).
 
 ## Clip it yourself (#37)

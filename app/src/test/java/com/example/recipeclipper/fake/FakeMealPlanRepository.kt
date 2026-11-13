@@ -42,11 +42,16 @@ class FakeMealPlanRepository : MealPlanRepository {
         }
     }
 
-    override suspend fun addRecipe(recipeId: Long, day: Long, mealTypeId: Long, servings: Int?) {
+    /** When true, [addRecipe] fails as a database error would: nothing written, false returned. */
+    var failAdds = false
+
+    override suspend fun addRecipe(recipeId: Long, day: Long, mealTypeId: Long, servings: Int?): Boolean {
+        if (failAdds) return false
         meals.value = meals.value + PlannedMeal(
             id = nextId++, day = day, mealTypeId = mealTypeId, recipeId = recipeId,
             title = titles[recipeId] ?: "Recipe $recipeId", imageUrl = null, servings = servings, note = null
         )
+        return true
     }
 
     override suspend fun addNote(note: String, day: Long, mealTypeId: Long) {

@@ -25,6 +25,21 @@ final class UseItUpTests: XCTestCase {
         XCTAssertFalse(UseItUp.soon(item("spinach", today, alwaysHave: true), today: today))
     }
 
+    // #332: the lines are parsed once per recipe, then checked against every item expiring.
+    func testARecipesNamesAreReadOnceAHeadingAsideAndCheckedAgainstEachItem() {
+        let names = UseItUp.names(recipe(1, "Pie", "For the filling:", "300 g spinach", "1 cup milk"))
+        XCTAssertEqual(names?.language, "en")
+        XCTAssertEqual(names?.names, ["spinach", "milk"])
+        XCTAssertTrue(UseItUp.uses(names!, item("spinach", today)))
+        XCTAssertTrue(UseItUp.uses(names!, item("milk", today)))
+        XCTAssertFalse(UseItUp.uses(names!, item("eggs", today)))
+        let german = PantryItem(id: 2, name: "Milch", quantity: nil, language: "de", aisle: .other, inStock: true,
+                                alwaysHave: false, purchasedDay: nil, expiresDay: today)
+        XCTAssertFalse(UseItUp.uses(names!, german))
+        XCTAssertNil(UseItUp.names(SavedRecipe(id: 2, title: "Pie", imageUrl: nil, language: "xx", lines: ["300 g spinach"])))
+        XCTAssertEqual(UseItUp.groups([item("spinach", today + 3)], saved: [recipe(1, "Pie", "300 g spinach")], today: today), [])
+    }
+
     func testARecipeStoredWithNoLanguageIsDetected() {
         let adobo = SavedRecipe(id: 1, title: "Chicken Adobo", imageUrl: nil, language: nil,
                                 lines: ["2 lb chicken thighs", "1/2 cup soy sauce"])

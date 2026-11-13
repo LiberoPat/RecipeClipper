@@ -12,6 +12,7 @@ import com.example.recipeclipper.fake.FakeListRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -19,6 +20,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
+import kotlin.coroutines.CoroutineContext
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class UseItUpViewModelTest {
@@ -42,7 +44,18 @@ class UseItUpViewModelTest {
     private val flour = item(3, "flour", today + 5)
     private val pantry = FakePantryRepository(listOf(spinach, milk, flour))
 
-    private fun viewModel() = UseItUpViewModel(pantry, lists, plan, calendar, flags, inbox)
+    /** Counts the matchings handed to the background dispatcher (#332). */
+    private class CountingDispatcher(private val inner: CoroutineDispatcher) : CoroutineDispatcher() {
+        var dispatches = 0
+        override fun dispatch(context: CoroutineContext, block: Runnable) {
+            dispatches++
+            inner.dispatch(context, block)
+        }
+    }
+
+    private val matching = CountingDispatcher(mainDispatcherRule.dispatcher)
+
+    private fun viewModel() = UseItUpViewModel(pantry, lists, plan, calendar, flags, inbox, matching)
 
     init {
         lists.savedRecipes.value = listOf(
@@ -97,6 +110,69 @@ class UseItUpViewModelTest {
         vm.onPlan(10, today + 1)
         advanceUntilIdle()
         assertEquals(1, plan.meals.value.size)
+    }
+
+    // #332: the tab's ViewModel outlives the day; the window and "Plan today" follow the real one.
+    @Test fun `today follows the real day when the Pantry resumes or the reminder is tapped`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        calendar.today = today + 1
+        vm.onScreenResumed()
+        advanceUntilIdle()
+        // Milk expired yesterday; spinach is due today.
+        assertEquals(today + 1, vm.uiState.value.today)
+        assertEquals(mapOf(1L to 2), vm.uiState.value.counts)
+
+        calendar.today = today + 2
+        inbox.offer()
+        advanceUntilIdle()
+        assertEquals(today + 2, vm.uiState.value.today)
+        assertNull(vm.uiState.value.sheet)
+        assertEquals(emptyMap<Long, Int>(), vm.uiState.value.counts)
+    }
+
+    // #332: a reminder with nothing to show is forgotten at once, so a recipe saved later never
+    // pops the sheet up by itself.
+    @Test fun `a request nothing answers is dropped, and never opens the sheet later`() = runTest(mainDispatcherRule.dispatcher) {
+        lists.savedRecipes.value = emptyList()
+        val vm = viewModel()
+        inbox.offer()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.sheet)
+        lists.savedRecipes.value = listOf(SavedRecipe(10, "Saag", null, "en", listOf("500 g spinach")))
+        advanceUntilIdle()
+        assertEquals(mapOf(1L to 1), vm.uiState.value.counts)
+        assertNull(vm.uiState.value.sheet)
+    }
+
+    // #332: a write that failed frees the tap, so it can be tried again.
+    @Test fun `a failed plan can be tried again`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        plan.failAdds = true
+        vm.onPlan(10, today)
+        advanceUntilIdle()
+        assertEquals(0, plan.meals.value.size)
+        plan.failAdds = false
+        vm.onPlan(10, today)
+        advanceUntilIdle()
+        assertEquals(listOf(10L to today), plan.meals.value.map { it.recipeId to it.day })
+    }
+
+    // #332: the groups are matched off the main thread, once per change of what they're made
+    // from; a write to the plan reuses them.
+    @Test fun `matching runs on the background dispatcher, and not again for a plan change`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertEquals(1, matching.dispatches)
+        vm.onPlan(10, today)
+        advanceUntilIdle()
+        assertEquals(setOf(10L to today), vm.uiState.value.planned)
+        assertEquals(1, matching.dispatches)
+        pantry.items.value = pantry.items.value.filter { it.id != 2L }
+        advanceUntilIdle()
+        assertEquals(mapOf(1L to 2), vm.uiState.value.counts)
+        assertEquals(2, matching.dispatches)
     }
 
     @Test fun `off, nothing shows`() = runTest(mainDispatcherRule.dispatcher) {

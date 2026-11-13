@@ -50,6 +50,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.TooltipScreen
@@ -107,6 +108,12 @@ fun PantryScreen(
     val sendFailedMessage = stringResource(R.string.send_file_failed)
     if (sendFileViewModel != null) {
         SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
+    }
+
+    // Use it up (#305) follows the real day: the tab's ViewModel outlives it (#332).
+    LifecycleResumeEffect(useItUpViewModel) {
+        useItUpViewModel?.onScreenResumed()
+        onPauseOrDispose {}
     }
 
     // Selecting (#258): Back leaves it; the gesture reads whether it's on as it goes, so starting
