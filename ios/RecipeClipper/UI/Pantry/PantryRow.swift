@@ -24,6 +24,9 @@ struct PantryRow: View {
     var useItUp = 0
     var onUseItUp: () -> Void = {}
 
+    /// The Use it up line's tap target (#332): the minimum touch size, in the row's bottom padding's place.
+    static let useItUpLineHeight: CGFloat = 44
+
     /// VoiceOver's actions: both other states.
     private var others: [PantryStock] { PantryStock.allCases.filter { $0 != item.stock } }
 
@@ -74,11 +77,16 @@ struct PantryRow: View {
                                 .foregroundStyle(expiry.badge != nil ? Palette.accentText : Palette.muted)
                                 .accessibilityIdentifier("expiry-\(item.id)")
                         }
-                        if useItUp > 0 && !selecting {
+                        if useItUp > 0 {
+                            // Kept while selecting, so rows never change height under a dragging
+                            // finger (#258; the row's tap toggles it then). Its target is 44 pt
+                            // tall, over the row's own bottom padding, so a near miss opens the
+                            // sheet rather than the item's edit sheet (#332).
                             Text(Strings.useItUpCount(useItUp))
                                 .textStyle(Typography.bodySmall)
                                 .foregroundStyle(Palette.accentText)
-                                .padding(.vertical, 4)
+                                .padding(.top, 6)
+                                .frame(maxWidth: .infinity, minHeight: Self.useItUpLineHeight, alignment: .topLeading)
                                 .anchorPreference(key: UseItUpBounds.self, value: .bounds) { $0 }
                         }
                     }
@@ -93,7 +101,8 @@ struct PantryRow: View {
                             .accessibilityIdentifier("quantity-\(item.id)")
                     }
                 }
-                .padding(.vertical, 12)
+                .padding(.top, 12)
+                .padding(.bottom, useItUp > 0 ? 0 : 12)
             }
             .contentShape(Rectangle())
         }
@@ -132,9 +141,10 @@ struct PantryRow: View {
                 }
             }
         }
-        // Use it up (#305): the line opens its sheet, laid over like the tag's button.
+        // Use it up (#305): the line opens its sheet, laid over like the tag's button; not while
+        // selecting, when a tap on it toggles the row like any other.
         .overlayPreferenceValue(UseItUpBounds.self) { anchor in
-            if let anchor {
+            if let anchor, !selecting {
                 GeometryReader { proxy in
                     let rect = proxy[anchor]
                     Button(action: onUseItUp) {

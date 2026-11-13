@@ -581,6 +581,9 @@
         <item quantity="one">%1$d saved recipe uses it</item>
         <item quantity="other">%1$d saved recipes use it</item>
     </plurals>
+    <!-- The sheet's heading per item (#332): the name, then the day, so a plural name needs no verb. -->
+    <string name="use_it_up_heading_today">%1$s · use by today</string>
+    <string name="use_it_up_heading_tomorrow">%1$s · use by tomorrow</string>
     <string name="use_it_up_note">From your saved recipes. A tap plans it for dinner.</string>
     <string name="use_it_up_plan_today">Plan today</string>
     <string name="use_it_up_plan_tomorrow">Plan tomorrow</string>

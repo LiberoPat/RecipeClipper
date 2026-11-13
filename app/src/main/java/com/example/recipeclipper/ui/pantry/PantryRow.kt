@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -153,7 +154,7 @@ internal fun PantryRow(
                             }
                         }
                         .then(if (first) Modifier.tooltipAnchor(Tooltip.PANTRY_IN_STOCK) else Modifier)
-                        .padding(vertical = 12.dp)
+                        .padding(top = 12.dp, bottom = if (useItUp > 0) 0.dp else 12.dp)
                         .testTag("pantry-${item.id}")
                 ) {
                     if (selecting) {
@@ -199,17 +200,27 @@ internal fun PantryRow(
                                 modifier = Modifier.testTag("expiry-${item.id}")
                             )
                         }
-                        if (useItUp > 0 && !selecting) {
-                            Text(
-                                pluralStringResource(R.plurals.use_it_up_count, useItUp, useItUp),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .padding(top = 2.dp)
-                                    .clickable(role = Role.Button, onClick = onUseItUp)
-                                    .padding(vertical = 4.dp)
-                                    .testTag("use-it-up-${item.id}")
-                            )
+                        if (useItUp > 0) {
+                            // Kept while selecting, so rows never change height under a dragging
+                            // finger (#258; the row's tap toggles it then). The target is 48 dp
+                            // tall, over the row's own bottom padding, so a near miss opens the
+                            // sheet rather than the item's edit sheet; the on-ink text token, as
+                            // the use-by line above (#332).
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .then(if (selecting) Modifier else Modifier.clickable(role = Role.Button, onClick = onUseItUp))
+                                    .heightIn(min = UseItUpLineHeight)
+                                    .padding(top = 6.dp)
+                                    .testTag("use-it-up-${item.id}"),
+                                contentAlignment = Alignment.TopStart
+                            ) {
+                                Text(
+                                    pluralStringResource(R.plurals.use_it_up_count, useItUp, useItUp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
                         }
                     }
                     // The quantity as written, in the button's old place (#194); a long one is cut
@@ -233,6 +244,9 @@ internal fun PantryRow(
 
 /** The selecting rows' leading checkbox column; a press this far in (after the list's padding) is on it. */
 internal val CheckboxColumn = 44.dp
+
+/** The Use it up line's tap target (#332): the minimum touch size, in the row's bottom padding's place. */
+internal val UseItUpLineHeight = 48.dp
 
 /** Caps a child's width at [fraction] of what its parent offers; it may be narrower. */
 private fun Modifier.maxWidthFraction(fraction: Float): Modifier = layout { measurable, constraints ->

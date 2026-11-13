@@ -551,6 +551,9 @@
         <item quantity="many">Está en %1$d de recetas guardadas</item>
         <item quantity="other">Está en %1$d recetas guardadas</item>
     </plurals>
+    <!-- The sheet's heading per item (#332): the name, then the day, so a plural name needs no verb. -->
+    <string name="use_it_up_heading_today">%1$s · consumir hoy</string>
+    <string name="use_it_up_heading_tomorrow">%1$s · consumir mañana</string>
     <string name="use_it_up_note">De tus recetas guardadas. Un toque la añade al plan como cena.</string>
     <string name="use_it_up_plan_today">Para hoy</string>
     <string name="use_it_up_plan_tomorrow">Para mañana</string>

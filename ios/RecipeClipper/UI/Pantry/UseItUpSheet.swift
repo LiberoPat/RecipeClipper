@@ -17,7 +17,7 @@ struct UseItUpSheet: View {
                     .foregroundStyle(Palette.muted)
                     .padding(.bottom, 8)
                 ForEach(state.sheet ?? [], id: \.item.id) { group in
-                    Text(Strings.useItUpExpires(
+                    Text(Strings.useItUpHeading(
                         group.item.name.trimmingCharacters(in: .whitespacesAndNewlines),
                         today: group.item.expiresDay == state.today
                     ))
