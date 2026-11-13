@@ -30,7 +30,11 @@ replaces a native speaker's review.
 - **The share text** (`RecipeShareText`) takes its labels ("Serves", "INGREDIENTS",
   "Prep"…) from the UI layer, which reads them from the resources above, so a recipe
   shared from a German phone reads "Portionen: 4 … ZUTATEN". The recipe's own text is
-  never translated.
+  never translated. **The same labels live once more, per language, in
+  `shared/tables/<lang>/splitter.json` under `shareText`** (#334), so a recipe shared from
+  one phone is read back on another whatever its UI language: change a share label and
+  change the table with it (`ShareLabelsTableTest` on Android and `ShareLabelsTableTests` on
+  iOS fail until both agree). `{n}` stands for the number.
 - **The site report** (`SiteReportLink`) stays in English: it's a GitHub issue body the
   maintainer reads, not UI. Its button, "Report this site", is translated.
 - **The tour's sample recipe** (#151) is content in each UI language, once, in

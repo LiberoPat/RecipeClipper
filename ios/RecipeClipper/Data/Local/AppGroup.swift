@@ -79,18 +79,20 @@ struct PendingClip: @unchecked Sendable {
 }
 
 /// Text the share extension was given that holds a recipe, or is neither a link nor a list
-/// (#306), handed to the app. The review needs the app (never saved unchecked), which the
-/// extension can't open (#19), so it leaves the text here and its card says to open Recipe
-/// Clipper; the app, becoming active within `window`, opens the editor on it, once. Each new share
-/// replaces or clears it, as `PendingClip` does.
+/// (#306), handed to the app as its reading (`SharedText.read`, done once in the extension,
+/// #334), as JSON. The review needs the app (never saved unchecked), which the extension can't
+/// open (#19), so it leaves the reading here and its card says to open Recipe Clipper; the app,
+/// becoming active within `window`, opens the editor on it, once. Each new share replaces or
+/// clears it, as `PendingClip` does.
 struct PendingText: @unchecked Sendable {
     static let textKey = "pending_text"
     static let atKey = "pending_text_at"
     static let window: Int64 = PendingClip.window
     let defaults: UserDefaults
 
-    func put(_ text: String, at now: Int64) {
-        defaults.set(text, forKey: Self.textKey)
+    func put(_ reading: SharedText.Reading, at now: Int64) {
+        guard let data = try? JSONEncoder().encode(reading) else { return }
+        defaults.set(data, forKey: Self.textKey)
         defaults.set(now, forKey: Self.atKey)
     }
 
@@ -99,13 +101,14 @@ struct PendingText: @unchecked Sendable {
         defaults.removeObject(forKey: Self.atKey)
     }
 
-    /// The text left within the window, taken so that it opens once; an older one is dropped.
-    func take(now: Int64) -> String? {
-        guard let text = defaults.string(forKey: Self.textKey) else { return nil }
+    /// The reading left within the window, taken so that it opens once; an older one is dropped.
+    func take(now: Int64) -> SharedText.Reading? {
+        guard let data = defaults.data(forKey: Self.textKey) else { return nil }
         let at = (defaults.object(forKey: Self.atKey) as? NSNumber)?.int64Value ?? 0
         clear()
         let age = now - at
-        return age >= 0 && age <= Self.window ? text : nil
+        guard age >= 0 && age <= Self.window else { return nil }
+        return try? JSONDecoder().decode(SharedText.Reading.self, from: data)
     }
 }
 

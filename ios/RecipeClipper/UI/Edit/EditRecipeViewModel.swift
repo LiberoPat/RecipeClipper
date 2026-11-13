@@ -70,6 +70,11 @@ struct EditRecipeUiState: Equatable {
     /// Shared text split into a recipe (true), or is all in the steps to finish by hand (false);
     /// nil when this isn't shared text, or while it is being split.
     var sharedSorted: Bool?
+    /// The recipe's note (#334): shared text's lines the split left out, as written, and whatever
+    /// the cook types; saved with the recipe. Only shared text's review shows it.
+    var note = ""
+    /// Whether the split left lines out, so the review says where they went.
+    var leftovers = false
 
     init(isNew: Bool, photo: PhotoPost? = nil, scan: Bool = false, shared: Bool = false) {
         self.isNew = isNew
@@ -104,9 +109,10 @@ struct EditRecipeUiState: Equatable {
 /// in, read the same way, in order. Saved as a typed-in recipe (manual, `manual:<uuid>`) in the
 /// language its words say, with no picture: the pages aren't kept.
 ///
-/// With `sharedText` (#306) it is the review of text shared in: split by the same splitter, in
-/// the text's language (`SharedText.read`), or, when it doesn't split, every line as a step to
-/// finish by hand. Saved as a typed-in recipe, like a scan; nothing until Save.
+/// With `shared` (#306) it is the review of text shared in, read once by the share extension
+/// (#334, `SharedText.read`): split by the same splitter, in the text's language, or, when it
+/// doesn't split, every line as a step to finish by hand; the lines the split left out are the
+/// note. Saved as a typed-in recipe, like a scan; nothing until Save.
 @MainActor
 @Observable
 final class EditRecipeViewModel {
@@ -115,8 +121,8 @@ final class EditRecipeViewModel {
     @ObservationIgnored private let photo: PhotoPost?
     /// A scan's pages (#226), file URLs in order; nil when this isn't a scan.
     @ObservationIgnored private let scanPages: [String]?
-    /// Text shared in (#306); nil when this isn't its review.
-    @ObservationIgnored private let sharedText: String?
+    /// Text shared in (#306), as read; nil when this isn't its review.
+    @ObservationIgnored private let sharedText: SharedText.Reading?
     /// What is read: the post's pictures, or the scan's pages.
     @ObservationIgnored private let pictures: PhotoPost?
     @ObservationIgnored private let repository: RecipeRepository
@@ -129,15 +135,14 @@ final class EditRecipeViewModel {
     init(
         recipeId: Int64?, repository: RecipeRepository, entitlements: Entitlements = UnavailableEntitlements(),
         photo: PhotoPost? = nil, photoReader: PhotoTextReader = UnavailablePhotoTextReader(),
-        scanPages: [String]? = nil, sharedText: String? = nil
+        scanPages: [String]? = nil, shared: SharedText.Reading? = nil
     ) {
         self.entitlements = entitlements
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.photo = self.recipeId == nil ? photo : nil
         let pages = (scanPages ?? []).filter { !$0.isEmpty }
         self.scanPages = self.recipeId == nil && self.photo == nil && !pages.isEmpty ? pages : nil
-        let text = sharedText.flatMap { $0.kTrimmed.isEmpty ? nil : $0 }
-        self.sharedText = self.recipeId == nil && self.photo == nil && self.scanPages == nil ? text : nil
+        self.sharedText = self.recipeId == nil && self.photo == nil && self.scanPages == nil ? shared : nil
         pictures = self.photo ?? self.scanPages.map { PhotoPost(url: "", title: "", imageUrls: $0) }
         self.repository = repository
         self.photoReader = photoReader
@@ -157,27 +162,26 @@ final class EditRecipeViewModel {
             }
         } else if let pictures {
             readPhoto(pictures)
-        } else if let text = self.sharedText {
-            readText(text)
+        } else if let reading = self.sharedText {
+            readText(reading)
         }
     }
 
-    /// Shared text (#306), split off the main actor (it may be long), into the fields.
-    private func readText(_ text: String) {
-        readTask = Task { [weak self] in
-            let reading = await Task.detached(priority: .userInitiated) { SharedText.read(text) }.value
-            guard let self, !Task.isCancelled else { return }
-            let recipe = reading.recipe
-            photoLanguage = recipe.language
-            uiState.loading = false
-            uiState.sharedSorted = reading.sorted
-            uiState.draft = RecipeDraft(
-                yield: recipe.yield ?? "", prepTime: recipe.prepTime ?? "", cookTime: recipe.cookTime ?? "",
-                totalTime: recipe.totalTime ?? "",
-                ingredientsText: recipe.ingredients.joined(separator: "\n"),
-                instructionsText: recipe.instructions.joined(separator: "\n")
-            )
-        }
+    /// Shared text (#306) into the fields, from its reading (done once, in the extension, #334).
+    /// The lines the split left out are the note.
+    private func readText(_ reading: SharedText.Reading) {
+        let recipe = reading.recipe
+        photoLanguage = recipe.language
+        uiState.loading = false
+        uiState.sharedSorted = reading.sorted
+        uiState.note = reading.leftovers.joined(separator: "\n")
+        uiState.leftovers = !reading.leftovers.isEmpty
+        uiState.draft = RecipeDraft(
+            yield: recipe.yield ?? "", prepTime: recipe.prepTime ?? "", cookTime: recipe.cookTime ?? "",
+            totalTime: recipe.totalTime ?? "",
+            ingredientsText: recipe.ingredients.joined(separator: "\n"),
+            instructionsText: recipe.instructions.joined(separator: "\n")
+        )
     }
 
     deinit {
@@ -277,6 +281,10 @@ final class EditRecipeViewModel {
         uiState = withDraft(uiState, draft)
     }
 
+    func onNoteChange(_ note: String) {
+        uiState.note = note
+    }
+
     /// `state` with `draft` (#286): each card follows its line through the edit (`followLine`) and
     /// shows it as it now is (`PhotoTextSorter.edited`); a card whose line was edited away goes.
     private func withDraft(_ state: EditRecipeUiState, _ draft: RecipeDraft) -> EditRecipeUiState {
@@ -335,10 +343,11 @@ final class EditRecipeViewModel {
         // A scan's or shared text's (#226, #306) is saved as the cook's own, in its language.
         let ownText = scanPages != nil || sharedText != nil
         let language = ownText ? scannedLanguage(state.draft) : nil
+        let notes = state.note.kIsBlank ? nil : state.note
         Task { [weak self, recipeId, repository] in
             let saved: Recipe?
             if ownText {
-                saved = await repository.addManual(draft: state.draft, language: language)
+                saved = await repository.addManual(draft: state.draft, language: language, notes: notes)
             } else if let recipeId {
                 saved = await repository.saveEdit(id: recipeId, draft: state.draft)
             } else {

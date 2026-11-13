@@ -424,18 +424,16 @@ final class AppContainer {
         )
     }
 
-    /// The text the share extension left (#306), if it did so within `PendingText.window`, and
-    /// only while the shareText flag is on.
-    func takePendingText() -> String? {
-        guard let text = pendingText?.take(now: clock.now()) else { return nil }
-        return featureFlags.isOn(.shareText) ? text : nil
+    /// The reading of the text the share extension left (#306), if it did so within
+    /// `PendingText.window`, and only while the shareText flag is on.
+    func takePendingText() -> SharedText.Reading? {
+        guard let reading = pendingText?.take(now: clock.now()) else { return nil }
+        return featureFlags.isOn(.shareText) ? reading : nil
     }
 
-    /// Text shared in (#306): the editor over it, split or as written.
-    func makeEditRecipeViewModel(sharedText: String) -> EditRecipeViewModel {
-        EditRecipeViewModel(
-            recipeId: nil, repository: recipeRepository, entitlements: entitlements, sharedText: sharedText
-        )
+    /// Text shared in (#306): the editor over its reading, split or as written.
+    func makeEditRecipeViewModel(shared: SharedText.Reading) -> EditRecipeViewModel {
+        EditRecipeViewModel(recipeId: nil, repository: recipeRepository, entitlements: entitlements, shared: shared)
     }
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {

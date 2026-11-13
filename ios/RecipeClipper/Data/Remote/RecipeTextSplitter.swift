@@ -3,7 +3,7 @@ import Foundation
 /// What `RecipeTextSplitter` found in a block of text. The name comes from elsewhere (a
 /// Reddit post's title), so it isn't here. `language` is the language the text was read in when
 /// its words said so (#208); nil when nothing was clear and English was used.
-struct SplitRecipe: Equatable {
+struct SplitRecipe: Hashable, Codable {
     let ingredients: [String]
     let instructions: [String]
     let yield: String?

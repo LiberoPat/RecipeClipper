@@ -5,6 +5,7 @@ import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import androidx.core.view.iterator
 
 /**
  * Keeps the app's own "Recipe Clipper" entry (`ProcessTextActivity`, #306) out of the clip
@@ -37,8 +38,7 @@ class OwnProcessTextFilter(
 
     /** Hides the items of [menu] that would open this app: its own text-processing entry. */
     fun filter(menu: Menu) {
-        for (i in 0 until menu.size()) {
-            val item = menu.getItem(i)
+        for (item in menu.iterator()) {
             if (item.intent?.component?.packageName == packageName) item.isVisible = false
         }
     }

@@ -117,7 +117,7 @@ enum SharedText {
     /// `recipe` is what the editor's fields start with; its language, the text's (#208).
     /// `leftovers` are the lines of a sorted text that ended in no field, as written, in order:
     /// the story, "Notes:" and what's under it, a link; the review shows them as the note.
-    struct Reading: Equatable, Codable {
+    struct Reading: Hashable, Codable {
         let recipe: SplitRecipe
         let sorted: Bool
         var leftovers: [String] = []
