@@ -13,6 +13,10 @@ final class FakeTimerAlarmScheduler: TimerAlarmScheduler {
     private(set) var scheduleCalls: [StepAlarm] = []
     private(set) var cancelCalls: [Key] = []
     private(set) var replaceAllCalls: [(recipeId: Int64, alarms: [StepAlarm])] = []
+    /// Timers that ran out on screen (`ended`), in order.
+    private(set) var endedCalls: [Key] = []
+    /// What each `reconcile` was told is still running, in order.
+    private(set) var reconcileCalls: [[StepAlarm]] = []
 
     func schedule(_ alarm: StepAlarm) {
         scheduleCalls.append(alarm)
@@ -28,5 +32,13 @@ final class FakeTimerAlarmScheduler: TimerAlarmScheduler {
         replaceAllCalls.append((recipeId, alarms))
         pending = pending.filter { $0.key.recipeId != recipeId }
         for alarm in alarms { pending[Key(recipeId: alarm.recipeId, step: alarm.step)] = alarm }
+    }
+
+    func ended(recipeId: Int64, step: Int) {
+        endedCalls.append(Key(recipeId: recipeId, step: step))
+    }
+
+    func reconcile(running: [StepAlarm]) {
+        reconcileCalls.append(running)
     }
 }

@@ -19,8 +19,11 @@ interface MealPlanRepository {
     /** The meals planned from day [start] to [end] inclusive (epoch days), in plan order. */
     fun observeDays(start: Long, end: Long): Flow<List<PlannedMeal>>
 
-    /** Plans [recipeId] on [day]; [servings] null means the recipe's own yield. */
-    suspend fun addRecipe(recipeId: Long, day: Long, mealTypeId: Long, servings: Int?)
+    /**
+     * Plans [recipeId] on [day]; [servings] null means the recipe's own yield. False when the
+     * write failed (a caller guarding a tap frees it then, #332).
+     */
+    suspend fun addRecipe(recipeId: Long, day: Long, mealTypeId: Long, servings: Int?): Boolean
 
     /** Plans a free-text note on [day]. A blank note is ignored. */
     suspend fun addNote(note: String, day: Long, mealTypeId: Long)

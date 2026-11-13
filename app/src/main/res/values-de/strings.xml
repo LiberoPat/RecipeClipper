@@ -251,6 +251,7 @@
     <string name="photo_read">Aus dem Foto gelesen. Gleiche jede Zeile damit ab, vor allem die Mengen, bevor du speicherst.</string>
     <string name="photo_not_sorted">Aus dem Foto ließ sich kein Rezept lesen: Vervollständige es von Hand.</string>
     <string name="text_read">Aus dem geteilten Text sortiert. Prüfe jede Zeile, vor allem die Mengen, bevor du speicherst.</string>
+    <string name="text_leftovers">Zeilen, die nirgends hineinpassten, stehen unverändert unter Notizen.</string>
     <string name="text_not_sorted">Im Text waren keine Zutaten und Schritte zu finden, also steht alles unverändert unter Schritte: Vervollständige es von Hand.</string>
     <string name="photo_failed">Das Foto konnte nicht geladen werden. Prüfe die Verbindung und versuche es erneut.</string>
     <string name="photo_not_ready">Die Texterkennung ist auf diesem Gerät noch nicht bereit: Die Google Play-Dienste laden sie einmalig über das Internet herunter. Versuche es in ein paar Minuten erneut oder vervollständige das Rezept unten von Hand.</string>
@@ -526,6 +527,9 @@
         <item quantity="one">In %1$d gespeicherten Rezept</item>
         <item quantity="other">In %1$d gespeicherten Rezepten</item>
     </plurals>
+    <!-- The sheet's heading per item (#332): the name, then the day, so a plural name needs no verb. -->
+    <string name="use_it_up_heading_today">%1$s · bis heute verbrauchen</string>
+    <string name="use_it_up_heading_tomorrow">%1$s · bis morgen verbrauchen</string>
     <string name="use_it_up_note">Aus deinen gespeicherten Rezepten. Ein Tippen plant es als Abendessen ein.</string>
     <string name="use_it_up_plan_today">Für heute planen</string>
     <string name="use_it_up_plan_tomorrow">Für morgen planen</string>

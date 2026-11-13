@@ -13,6 +13,10 @@ class FakeTimerAlarmScheduler : TimerAlarmScheduler {
     val pending = mutableMapOf<Pair<Long, Int>, StepAlarm>()
     val scheduleCalls = mutableListOf<StepAlarm>()
     val cancelCalls = mutableListOf<Pair<Long, Int>>()
+    /** Timers that ran out on screen ([ended]), in order. */
+    val endedCalls = mutableListOf<Pair<Long, Int>>()
+    /** What each [reconcile] was told is still running, in order. */
+    val reconcileCalls = mutableListOf<List<StepAlarm>>()
 
     override fun schedule(alarm: StepAlarm) {
         scheduleCalls += alarm
@@ -22,5 +26,13 @@ class FakeTimerAlarmScheduler : TimerAlarmScheduler {
     override fun cancel(recipeId: Long, step: Int) {
         cancelCalls += recipeId to step
         pending.remove(recipeId to step)
+    }
+
+    override fun ended(recipeId: Long, step: Int) {
+        endedCalls += recipeId to step
+    }
+
+    override fun reconcile(running: List<StepAlarm>) {
+        reconcileCalls += running
     }
 }

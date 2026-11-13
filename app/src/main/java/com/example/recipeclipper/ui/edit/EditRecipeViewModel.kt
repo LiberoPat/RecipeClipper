@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.Entitlements
 import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.PhotoTextReader
+import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.data.PhotoTextResult
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.RecipeRepository
@@ -101,7 +102,12 @@ data class EditRecipeUiState(
     val shared: Boolean = false,
     /** Shared text split into a recipe (true), or is all in the steps to finish by hand (false);
      *  null when this isn't shared text, or while it is being split. */
-    val sharedSorted: Boolean? = null
+    val sharedSorted: Boolean? = null,
+    /** The recipe's note (#334): shared text's lines the split left out, as written, and whatever
+     *  the cook types; saved with the recipe. Only shared text's review shows it. */
+    val note: String = "",
+    /** Whether the split left lines out, so the review says where they went. */
+    val leftovers: Boolean = false
 ) {
     /** The [checks]' lines, each with why. */
     val flags: List<LineFlag> get() = checks.map { it.flag }
@@ -139,7 +145,12 @@ class EditRecipeViewModel @Inject constructor(
     private val entitlements: Entitlements = Entitlements.Unavailable,
     private val photoReader: PhotoTextReader = PhotoTextReader.Unavailable,
     /** Where the read lines are sorted and checked, off the main thread (#283). */
-    @DefaultDispatcher private val sorting: CoroutineDispatcher = Dispatchers.Default
+    @DefaultDispatcher private val sorting: CoroutineDispatcher = Dispatchers.Default,
+    /** Where text shared in waits (#306, #334). */
+    private val sharedTexts: SharedTextInbox = SharedTextInbox(),
+    /** The countdowns outside the app (#309): an edit that changes the steps drops the cook's
+     *  progress, so they are squared with the database after a save (#333); none without it. */
+    private val countdowns: TimerCountdownSync? = null
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -159,8 +170,15 @@ class EditRecipeViewModel @Inject constructor(
         savedStateHandle.get<String>(SCAN_PAGES_ARG)?.split('\n')?.map { it.trim() }?.filter { it.isNotEmpty() }
             ?.takeIf { it.isNotEmpty() && photo == null && recipeId == null }
 
-    /** Text shared in (#306); null when this isn't its review. */
-    private val sharedText: String? = savedStateHandle.get<String>(SHARED_TEXT_ARG)
+    /** Text shared in (#306), taken from the inbox by the route's key (#334): read once, in
+     *  MainActivity. Kept in saved state, so after process death the text is there to read again. */
+    private val sharedEntry: SharedTextInbox.Entry? = savedStateHandle.get<String>(SHARED_TEXT_ARG)
+        ?.takeIf { it.isNotBlank() && recipeId == null && scanPages == null && photo == null }
+        ?.let(sharedTexts::take)
+        ?.also { savedStateHandle[SHARED_TEXT_STATE] = it.text }
+
+    /** The shared text; null when this isn't its review. */
+    private val sharedText: String? = sharedEntry?.text ?: savedStateHandle.get<String>(SHARED_TEXT_STATE)
         ?.takeIf { it.isNotBlank() && recipeId == null && scanPages == null && photo == null }
 
     /** What is read: the post's pictures, or the scan's pages. */
@@ -192,20 +210,23 @@ class EditRecipeViewModel @Inject constructor(
         } else if (pictures != null) {
             readPhoto(pictures)
         } else if (sharedText != null) {
-            readText(sharedText)
+            readText(sharedText, sharedEntry?.reading)
         }
     }
 
-    /** Shared text (#306), split off the main thread (it may be long), into the fields. */
-    private fun readText(text: String) {
+    /** Shared text (#306) into the fields: its [reading] from the inbox, done once; after process
+     *  death, read again off the main thread (it may be long). The lines left out are the note. */
+    private fun readText(text: String, read: SharedText.Reading?) {
         viewModelScope.launch {
-            val reading = withContext(sorting) { SharedText.read(text) }
+            val reading = read ?: withContext(sorting) { SharedText.read(text) }
             photoLanguage = reading.recipe.language
             val recipe = reading.recipe
             _uiState.update {
                 it.copy(
                     loading = false,
                     sharedSorted = reading.sorted,
+                    note = reading.leftovers.joinToString("\n"),
+                    leftovers = reading.leftovers.isNotEmpty(),
                     draft = RecipeDraft(
                         yield = recipe.yield.orEmpty(),
                         prepTime = recipe.prepTime.orEmpty(),
@@ -315,6 +336,8 @@ class EditRecipeViewModel @Inject constructor(
 
     fun onDraftChange(draft: RecipeDraft) = _uiState.update { withDraft(it, draft) }
 
+    fun onNoteChange(note: String) = _uiState.update { it.copy(note = note) }
+
     /**
      * [state] with [draft] (#286): each card follows its line through the edit ([followLine]) and
      * shows it as it now is ([PhotoTextSorter.edited]); a card whose line was edited away goes.
@@ -349,11 +372,11 @@ class EditRecipeViewModel @Inject constructor(
                 return@launch
             }
             val saved = if (scanPages != null || sharedText != null) {
-                repository.addManual(state.draft, scannedLanguage(state.draft))
+                repository.addManual(state.draft, scannedLanguage(state.draft), state.note.takeIf { it.isNotBlank() })
             } else if (recipeId == null) {
                 repository.addManual(state.draft)
             } else {
-                repository.saveEdit(recipeId, state.draft)
+                repository.saveEdit(recipeId, state.draft).also { countdowns?.reconcile() }
             }
             _uiState.update {
                 when {
@@ -428,8 +451,11 @@ class EditRecipeViewModel @Inject constructor(
         /** "Scan a recipe" (#226): the pages, local URIs one per line, in order. */
         const val SCAN_PAGES_ARG = "pages"
 
-        /** Text shared in (#306), as shared. */
-        const val SHARED_TEXT_ARG = "text"
+        /** Text shared in (#306): the key it waits under in [SharedTextInbox] (#334). */
+        const val SHARED_TEXT_ARG = "key"
+
+        /** The shared text itself, kept in saved state once taken, so the review survives process death. */
+        const val SHARED_TEXT_STATE = "sharedText"
     }
 }
 

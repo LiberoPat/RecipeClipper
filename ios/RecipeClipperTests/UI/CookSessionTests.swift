@@ -62,6 +62,20 @@ final class CookSessionTests: XCTestCase {
         XCTAssertNil(session.start(CookState(), stepCount: 0).cook, "no steps, nothing to cook")
     }
 
+    // #333: a tap on a countdown outside the app must never cancel the timer it shows.
+    func testResumingNeverRestartsAFinishedRunOrStopsItsTimers() {
+        let started = session.startTimer(CookState(currentStep: 2, doneSteps: [0, 1, 2]), step: 2, totalSeconds: 600).cook
+
+        XCTAssertEqual(session.resume(started, stepCount: 3), started, "a finished run stays in the reading view")
+        XCTAssertTrue(session.hasRunningTimers)
+
+        let unfinished = session.resume(CookState(currentStep: 7, doneSteps: [0]), stepCount: 3)
+        XCTAssertEqual(unfinished, CookState(active: true, currentStep: 2, doneSteps: [0]))
+        XCTAssertTrue(session.hasRunningTimers)
+
+        XCTAssertNil(session.resume(CookState(), stepCount: 0), "no steps, nothing to cook")
+    }
+
     func testDoneMovesToTheNextUnfinishedStepThenTheEarliestSkippedThenFinishes() {
         let first = session.done(CookState(active: true, currentStep: 0), stepCount: 3)
         XCTAssertEqual(first.cook, CookState(active: true, currentStep: 1, doneSteps: [0]))
@@ -117,16 +131,16 @@ final class CookSessionTests: XCTestCase {
         XCTAssertEqual(started.cook.timers[1], StepTimer(totalSeconds: 60, remainingSeconds: 60, running: true))
 
         clock.current += 20_000
-        let ticked = try XCTUnwrap(session.tick(started.cook))
+        let ticked = try XCTUnwrap(session.tick(started.cook).cook)
         XCTAssertEqual(ticked.timers[1]?.remainingSeconds, 40)
-        XCTAssertNil(session.tick(ticked), "nothing changed within the same second")
+        XCTAssertNil(session.tick(ticked).cook, "nothing changed within the same second")
 
         let paused = try XCTUnwrap(session.toggleTimer(ticked, step: 1))
         XCTAssertNil(paused.endsAt, "pausing cancels the alert")
         XCTAssertEqual(paused.cook.timers[1]?.running, false)
         XCTAssertFalse(session.hasRunningTimers)
         clock.current += 60_000
-        XCTAssertNil(session.tick(paused.cook), "a paused timer doesn't tick")
+        XCTAssertNil(session.tick(paused.cook).cook, "a paused timer doesn't tick")
 
         let resumed = try XCTUnwrap(session.toggleTimer(paused.cook, step: 1))
         XCTAssertEqual(resumed.endsAt, now + 40_000)
@@ -142,7 +156,9 @@ final class CookSessionTests: XCTestCase {
         let started = session.startTimer(CookState(), step: 0, totalSeconds: 5).cook
         clock.current += 5_000
 
-        let done = try XCTUnwrap(session.tick(started))
+        let tick = session.tick(started)
+        XCTAssertEqual(tick.ended, [0], "its countdown outside the app goes")
+        let done = try XCTUnwrap(tick.cook)
         XCTAssertEqual(done.timers[0], StepTimer(totalSeconds: 5, remainingSeconds: 0, running: false))
         XCTAssertFalse(session.hasRunningTimers)
         XCTAssertNil(session.toggleTimer(done, step: 0))

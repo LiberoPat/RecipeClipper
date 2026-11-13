@@ -1,7 +1,9 @@
 package com.example.recipeclipper.ui.navigation
 
 import android.net.Uri
+import androidx.compose.runtime.Composable
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -95,12 +97,39 @@ object Routes {
     fun scan(pages: List<String>) =
         "edit/scan?${EditRecipeViewModel.SCAN_PAGES_ARG}=${Uri.encode(pages.joinToString("\n"))}"
 
-    // Text shared in (#306): the same editor, filled from the text, split or as written.
+    // Text shared in (#306): the same editor, filled from the text, split or as written. The
+    // route carries only the inbox key (`SharedTextInbox`), never the text (#334).
     const val EDIT_TEXT = "edit/text?${EditRecipeViewModel.SHARED_TEXT_ARG}={${EditRecipeViewModel.SHARED_TEXT_ARG}}"
 
-    fun editText(text: String) = "edit/text?${EditRecipeViewModel.SHARED_TEXT_ARG}=${Uri.encode(text)}"
+    fun editText(key: String) = "edit/text?${EditRecipeViewModel.SHARED_TEXT_ARG}=${Uri.encode(key)}"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
+}
+
+/**
+ * Text shared in (#306): the editor's review, found by the inbox key the route carries (#334).
+ * [viewModel] is the screen's, Hilt's by default; a test passes its own over the entry's arguments.
+ */
+fun NavGraphBuilder.editTextDestination(
+    navController: NavHostController,
+    viewModel: @Composable (NavBackStackEntry) -> EditRecipeViewModel = { hiltViewModel() }
+) {
+    composable(
+        route = Routes.EDIT_TEXT,
+        arguments = listOf(
+            navArgument(EditRecipeViewModel.SHARED_TEXT_ARG) { type = NavType.StringType; defaultValue = "" }
+        )
+    ) { entry ->
+        EditRecipeScreen(
+            onBack = { navController.popBackStack() },
+            // As a scan's (#226): the saved recipe replaces the review.
+            onSaved = { id ->
+                navController.popBackStack()
+                navController.navigate(Routes.recipe(id))
+            },
+            viewModel = viewModel(entry)
+        )
+    }
 }
 
 /** Every destination of the Recipes stack, starting at [Routes.HOME]: the Recipes tab of [AppShell]. */
@@ -290,21 +319,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         )
     }
 
-    composable(
-        route = Routes.EDIT_TEXT,
-        arguments = listOf(
-            navArgument(EditRecipeViewModel.SHARED_TEXT_ARG) { type = NavType.StringType; defaultValue = "" }
-        )
-    ) {
-        EditRecipeScreen(
-            onBack = { navController.popBackStack() },
-            // As a scan's (#226): the saved recipe replaces the review.
-            onSaved = { id ->
-                navController.popBackStack()
-                navController.navigate(Routes.recipe(id))
-            }
-        )
-    }
+    editTextDestination(navController)
 
     composable(
         route = Routes.CLIP,

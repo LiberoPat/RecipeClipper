@@ -131,6 +131,28 @@ final class DataRepositoryTests: XCTestCase {
         XCTAssertEqual(second.notes, "Used half the sugar")
     }
 
+    // #333: what the countdowns outside the app are squared with (Android's runningTimers).
+    func testRunningTimersListsEverySavedDeadlineInStepOrder() async throws {
+        let soup = await importSuccess("https://a.com/soup", at: 1_000)!
+        let bread = await importSuccess("https://a.com/bread", title: "Bread", at: 2_000)!
+        await recipes.setCookProgress(id: soup.id, progress: CookProgress(
+            active: true,
+            timers: [
+                2: SavedTimer(totalSeconds: 60, remainingSeconds: 60, endsAt: 9_000),
+                0: SavedTimer(totalSeconds: 60, remainingSeconds: 30, endsAt: nil),
+                1: SavedTimer(totalSeconds: 60, remainingSeconds: 60, endsAt: 5_000)
+            ]
+        ))
+        await recipes.setCookProgress(id: bread.id, progress: CookProgress(active: true, currentStep: 1))
+
+        let running = await recipes.runningTimers()
+
+        XCTAssertEqual(running, [
+            StepAlarm(recipeId: soup.id, recipeTitle: "Soup", step: 1, endsAt: 5_000),
+            StepAlarm(recipeId: soup.id, recipeTitle: "Soup", step: 2, endsAt: 9_000)
+        ])
+    }
+
     func testABlankNoteIsStoredAsNoNote() async throws {
         let recipe = await importSuccess("https://a.com/soup", at: 1_000)!
 

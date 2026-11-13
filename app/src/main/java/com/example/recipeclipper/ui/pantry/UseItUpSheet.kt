@@ -61,9 +61,11 @@ internal fun UseItUpSheet(
             for (group in groups) {
                 val item = group.item
                 item(key = "item-${item.id}") {
-                    val sentence = if (item.expiresDay == today) R.string.expiry_one_today else R.string.expiry_one_tomorrow
+                    // The name, then the day ("Chicken thighs · use by tomorrow"): no verb to
+                    // agree with a plural name, in any of the six languages (#332).
+                    val heading = if (item.expiresDay == today) R.string.use_it_up_heading_today else R.string.use_it_up_heading_tomorrow
                     Text(
-                        ExpiryReminders.capitalized(stringResource(sentence, item.name.trim()), locale),
+                        ExpiryReminders.capitalized(stringResource(heading, item.name.trim()), locale),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)

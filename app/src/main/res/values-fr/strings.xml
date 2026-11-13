@@ -264,6 +264,7 @@
     <string name="photo_read">Recette lue sur la photo. Comparez chaque ligne à la photo, surtout les quantités, avant d\'enregistrer.</string>
     <string name="photo_not_sorted">Impossible de lire une recette sur la photo : terminez-la à la main.</string>
     <string name="text_read">Recette triée à partir du texte partagé. Vérifiez chaque ligne, surtout les quantités, avant d\'enregistrer.</string>
+    <string name="text_leftovers">Les lignes qui n\'avaient leur place nulle part sont dans Notes, telles quelles.</string>
     <string name="text_not_sorted">Impossible de trouver des ingrédients et des étapes dans le texte : tout est dans Étapes, tel quel. Terminez-la à la main.</string>
     <string name="photo_failed">Impossible de charger la photo. Vérifiez votre connexion et réessayez.</string>
     <string name="photo_not_ready">Le lecteur de photos n\'est pas encore prêt sur ce téléphone : les services Google Play le téléchargent une fois, par Internet. Réessayez dans quelques minutes, ou terminez la recette à la main ci-dessous.</string>
@@ -551,6 +552,9 @@
         <item quantity="many">Dans %1$d de recettes enregistrées</item>
         <item quantity="other">Dans %1$d recettes enregistrées</item>
     </plurals>
+    <!-- The sheet's heading per item (#332): the name, then the day, so a plural name needs no verb. -->
+    <string name="use_it_up_heading_today">%1$s · à consommer aujourd\'hui</string>
+    <string name="use_it_up_heading_tomorrow">%1$s · à consommer demain</string>
     <string name="use_it_up_note">Parmi vos recettes enregistrées. Un appui l\'ajoute au planning pour le dîner.</string>
     <string name="use_it_up_plan_today">Prévoir aujourd\'hui</string>
     <string name="use_it_up_plan_tomorrow">Prévoir demain</string>

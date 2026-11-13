@@ -264,6 +264,7 @@
     <string name="photo_read">Lido da foto. Compare cada linha com ela, principalmente as quantidades, antes de salvar.</string>
     <string name="photo_not_sorted">Não foi possível ler uma receita na foto: termine à mão.</string>
     <string name="text_read">Organizado a partir do texto compartilhado. Confira cada linha, principalmente as quantidades, antes de salvar.</string>
+    <string name="text_leftovers">As linhas que não se encaixaram em nada estão em Anotações, como foram escritas.</string>
     <string name="text_not_sorted">Não foi possível encontrar ingredientes e passos no texto, então está tudo em Passos, como escrito: termine à mão.</string>
     <string name="photo_failed">Não foi possível carregar a foto. Verifique a conexão e tente de novo.</string>
     <string name="photo_not_ready">O leitor de fotos ainda não está pronto neste celular: os Serviços do Google Play fazem o download uma vez, pela internet. Tente de novo em alguns minutos ou termine a receita à mão abaixo.</string>
@@ -551,6 +552,9 @@
         <item quantity="many">Em %1$d de receitas salvas</item>
         <item quantity="other">Em %1$d receitas salvas</item>
     </plurals>
+    <!-- The sheet's heading per item (#332): the name, then the day, so a plural name needs no verb. -->
+    <string name="use_it_up_heading_today">%1$s · consumir hoje</string>
+    <string name="use_it_up_heading_tomorrow">%1$s · consumir amanhã</string>
     <string name="use_it_up_note">Das suas receitas salvas. Um toque adiciona ao plano no jantar.</string>
     <string name="use_it_up_plan_today">Planejar hoje</string>
     <string name="use_it_up_plan_tomorrow">Planejar amanhã</string>

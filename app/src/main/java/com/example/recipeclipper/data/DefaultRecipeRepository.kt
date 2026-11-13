@@ -121,7 +121,7 @@ class DefaultRecipeRepository @Inject constructor(
         }
     }
 
-    override suspend fun addManual(draft: RecipeDraft, language: String?): Recipe? {
+    override suspend fun addManual(draft: RecipeDraft, language: String?, notes: String?): Recipe? {
         if (!draft.isValid) return null
         val now = clock.now()
         val recipe = draft.applyTo(
@@ -131,7 +131,8 @@ class DefaultRecipeRepository @Inject constructor(
                 sourceUrl = ManualRecipe.newSourceUrl(newUid()),
                 origin = ContentOrigin.MANUAL,
                 editedAt = now,
-                language = language
+                language = language,
+                notes = notes?.trim()?.ifEmpty { null }
             )
         )
         return log.guard("addManual", null) {

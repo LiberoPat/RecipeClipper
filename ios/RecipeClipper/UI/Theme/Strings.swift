@@ -69,6 +69,7 @@ enum Strings {
     static var photoNotSorted: String { String(localized: "photo_not_sorted") }
     static var textRead: String { String(localized: "text_read") }
     static var textNotSorted: String { String(localized: "text_not_sorted") }
+    static var textLeftovers: String { String(localized: "text_leftovers") }
     static var photoFailed: String { String(localized: "photo_failed") }
     static var photoCheckHeading: String { String(localized: "photo_check_heading") }
     static var photoCheckLarge: String { String(localized: "photo_check_large") }
@@ -489,10 +490,11 @@ enum Strings {
     static var useItUpPlanTomorrow: String { String(localized: "use_it_up_plan_tomorrow") }
     static var useItUpPlannedToday: String { String(localized: "use_it_up_planned_today") }
     static var useItUpPlannedTomorrow: String { String(localized: "use_it_up_planned_tomorrow") }
-    /// "Spinach expires today." / "… tomorrow.", as the reminder words one item.
-    static func useItUpExpires(_ name: String, today: Bool) -> String {
-        let sentence = today ? String(localized: "expiry_one_today \(name)") : String(localized: "expiry_one_tomorrow \(name)")
-        return ExpiryReminders.capitalized(sentence, locale: .current)
+    /// The sheet's heading per item: "Chicken thighs · use by tomorrow" / "… · use by today",
+    /// the name then the day, so a plural name needs no verb (#332).
+    static func useItUpHeading(_ name: String, today: Bool) -> String {
+        let heading = today ? String(localized: "use_it_up_heading_today \(name)") : String(localized: "use_it_up_heading_tomorrow \(name)")
+        return ExpiryReminders.capitalized(heading, locale: .current)
     }
 
     static func expiryNotificationBody(_ reminder: ExpiryReminder) -> String {

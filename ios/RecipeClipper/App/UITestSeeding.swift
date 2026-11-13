@@ -204,6 +204,13 @@ enum UITestSeeding {
                 ? VisionPhotoTextReader() : UITestPhotoTextReader()
         )
         container.libraryPolicy.startMirroring()
+        // Text shared in (#306): the share extension's hand-off, written where the extension
+        // would (`PendingText`, #334), so the app takes its real path, the flag included.
+        container.pendingText = PendingText(defaults: defaults)
+        if let text = ProcessInfo.processInfo.environment["RC_UITEST_SHARED_TEXT"], !text.isEmpty,
+           case .editor(let reading) = SharedText.route(text.replacingOccurrences(of: "\\n", with: "\n")) {
+            container.pendingText?.put(reading, at: clock.now())
+        }
         return container
     }
 
@@ -363,16 +370,6 @@ enum UITestSeeding {
         return pages.isEmpty ? nil : pages
     }
 
-    /// Text shared in (#306), opened once in the editor as the share extension's hand-off would
-    /// (the system share sheet can't be driven): `RC_UITEST_SHARED_TEXT`, with `\n` between lines.
-    @MainActor private static var sharedTextOpened = false
-    @MainActor
-    static func sharedText() -> String? {
-        guard scenario != nil, !sharedTextOpened,
-              let text = ProcessInfo.processInfo.environment["RC_UITEST_SHARED_TEXT"], !text.isEmpty else { return nil }
-        sharedTextOpened = true
-        return text.replacingOccurrences(of: "\\n", with: "\n")
-    }
 }
 
 /// Every link resolves, offline, to the same canned recipe under that link, except two paths

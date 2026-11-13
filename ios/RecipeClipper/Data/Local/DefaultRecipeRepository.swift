@@ -297,7 +297,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
-    func addManual(draft: RecipeDraft, language: String?) async -> Recipe? {
+    func addManual(draft: RecipeDraft, language: String?, notes: String?) async -> Recipe? {
         guard draft.isValid else { return nil }
         let now = clock.now()
         var recipe = draft.apply(to: Recipe(
@@ -308,6 +308,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         recipe.origin = .manual
         recipe.editedAt = now
         recipe.language = language
+        recipe.notes = notes.flatMap { $0.kTrimmed.isEmpty ? nil : $0.kTrimmed }
         let record = recipe.toRecord(viewedAt: now)
         let limit = library.current()
         do {
@@ -433,6 +434,20 @@ final class DefaultRecipeRepository: RecipeRepository {
             try await db.write { conn in try RecipeDao(db: conn).setCookState(id, cookState: json) }
         } catch {
             dataLog.error("setCookProgress failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    func runningTimers() async -> [StepAlarm] {
+        do {
+            let rows = try await db.read { conn in try RecipeDao(db: conn).cookStates() }
+            return rows.flatMap { row in
+                CookStateJSON.decode(row.cookState).timers.sorted { $0.key < $1.key }.compactMap { step, timer in
+                    timer.endsAt.map { StepAlarm(recipeId: row.id, recipeTitle: row.title, step: step, endsAt: $0) }
+                }
+            }
+        } catch {
+            dataLog.error("runningTimers failed: \(String(describing: error), privacy: .public)")
+            return []
         }
     }
 

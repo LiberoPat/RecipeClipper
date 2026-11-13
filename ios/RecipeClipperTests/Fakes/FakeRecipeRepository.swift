@@ -21,6 +21,8 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var saveClipCalls: [Recipe] = []
     /// Per-id answers for `delete`; missing ids answer nil, same as "already gone".
     var deleteResults: [Int64: DeletedRecipe] = [:]
+    /// Staged answer for `runningTimers`.
+    var runningTimersResult: [StepAlarm] = []
 
     private(set) var setCheckedCalls: [(id: Int64, checked: Set<Int>)] = []
     private(set) var setNotesCalls: [(id: Int64, notes: String)] = []
@@ -71,6 +73,7 @@ final class FakeRecipeRepository: RecipeRepository {
     var addManualResult: Recipe?
     private(set) var addManualCalls: [RecipeDraft] = []
     private(set) var addManualLanguages: [String?] = []
+    private(set) var addManualNotes: [String?] = []
 
     @MainActor func updateFromSource(id: Int64) async -> ParseResult {
         updateFromSourceCalls.append(id)
@@ -82,9 +85,10 @@ final class FakeRecipeRepository: RecipeRepository {
         return saveEditResult
     }
 
-    @MainActor func addManual(draft: RecipeDraft, language: String?) async -> Recipe? {
+    @MainActor func addManual(draft: RecipeDraft, language: String?, notes: String?) async -> Recipe? {
         addManualCalls.append(draft)
         addManualLanguages.append(language)
+        addManualNotes.append(notes)
         return addManualResult
     }
 
@@ -108,6 +112,8 @@ final class FakeRecipeRepository: RecipeRepository {
         deleteCalls.append(id)
         return deleteResults[id]
     }
+
+    @MainActor func runningTimers() async -> [StepAlarm] { runningTimersResult }
 
     @MainActor func restore(_ deleted: DeletedRecipe) async {
         restoreCalls.append(deleted)
