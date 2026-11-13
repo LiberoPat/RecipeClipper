@@ -86,6 +86,24 @@ class CookSession(private val clock: Clock) {
         return Start(from.copy(active = true, currentStep = from.currentStep.coerceIn(0, stepCount - 1)), stopped)
     }
 
+    /**
+     * Back to a cook in progress from a timer's countdown outside the app, its alert, the
+     * `recipeclipper://cook` link or Home's resume card (#333): cook mode in its saved state
+     * while the run isn't finished; a finished run stays in the reading view, which shows the
+     * timer still running (the last step's rest, say). Nothing is restarted and no timer stops:
+     * only [start], the reading view's own button, starts a finished run afresh. Null for a
+     * recipe with no steps.
+     */
+    fun resume(cook: CookState, stepCount: Int): CookState? {
+        if (stepCount == 0) return null
+        if (cook.doneSteps.size >= stepCount) return cook
+        return cook.copy(active = true, currentStep = cook.currentStep.coerceIn(0, stepCount - 1))
+    }
+
+    /** Every running timer's alarm, in step order: to show again once notifications are allowed. */
+    fun runningAlarms(recipe: Recipe): List<StepAlarm> =
+        deadlines.entries.sortedBy { it.key }.map { (step, endsAt) -> StepAlarm(recipe.id, recipe.name, step, endsAt) }
+
     /** Cook mode off. Its progress is kept, so a stray tap on Exit loses nothing. */
     fun exit(cook: CookState): CookState = cook.copy(active = false)
 
@@ -163,16 +181,21 @@ class CookSession(private val clock: Clock) {
         return cook.withTimer(step, timer.copy(alerted = true))
     }
 
+    /** A tick's outcome: the cook with the new seconds left, null when none changed, and the
+     *  steps whose timers just ran out, whose countdowns outside the app must go (#333). */
+    data class Tick(val cook: CookState?, val ended: List<Int>)
+
     /**
-     * Every running timer's seconds left now, from its deadline; null when none changed. A timer
-     * that reaches zero stops running and keeps its alarm: the deadline has passed, so the alarm
-     * has fired or is firing, and cancelling it would only race it. The alarm stays quiet on its
-     * own while this recipe is on screen, where the in-app beep sounds instead.
+     * Every running timer's seconds left now, from its deadline. A timer that reaches zero
+     * stops running and keeps its alarm: the deadline has passed, so the alarm has fired or is
+     * firing, and cancelling it would only race it. The alarm stays quiet on its own while this
+     * recipe is on screen, where the in-app beep sounds instead.
      */
-    fun tick(cook: CookState): CookState? {
+    fun tick(cook: CookState): Tick {
         val now = clock.now()
         val remaining = deadlines.mapValues { (_, end) -> secondsUntil(end, now) }
-        remaining.filterValues { it == 0 }.keys.forEach { deadlines.remove(it) }
+        val ended = remaining.filterValues { it == 0 }.keys.sorted()
+        ended.forEach { deadlines.remove(it) }
         val timers = cook.timers.toMutableMap()
         var changed = false
         for ((step, seconds) in remaining) {
@@ -182,7 +205,7 @@ class CookSession(private val clock: Clock) {
                 changed = true
             }
         }
-        return if (changed) cook.copy(timers = timers) else null
+        return Tick(if (changed) cook.copy(timers = timers) else null, ended)
     }
 
     /**

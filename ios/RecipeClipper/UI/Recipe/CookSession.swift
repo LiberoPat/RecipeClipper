@@ -82,6 +82,21 @@ struct CookSession {
         return Start(cook: next, stopped: stopped)
     }
 
+    /// Back to a cook in progress from a timer's countdown outside the app, its alert, the
+    /// `recipeclipper://cook` link or Home's resume card (#333): cook mode in its saved state
+    /// while the run isn't finished; a finished run stays in the reading view, which shows the
+    /// timer still running (the last step's rest, say). Nothing is restarted and no timer
+    /// stops: only `start`, the reading view's own button, starts a finished run afresh. Nil
+    /// for a recipe with no steps.
+    func resume(_ cook: CookState, stepCount: Int) -> CookState? {
+        guard stepCount > 0 else { return nil }
+        guard cook.doneSteps.count < stepCount else { return cook }
+        var next = cook
+        next.active = true
+        next.currentStep = min(max(cook.currentStep, 0), stepCount - 1)
+        return next
+    }
+
     /// Cook mode off. Its progress is kept, so a stray tap on Exit loses nothing.
     func exit(_ cook: CookState) -> CookState {
         var cook = cook
@@ -186,28 +201,39 @@ struct CookSession {
         return cook
     }
 
-    /// Every running timer's seconds left now, from its deadline; nil when none changed. A timer
-    /// that reaches zero stops running and keeps its alert: its deadline has passed, so the alert
-    /// has been delivered or is being delivered, and removing it would only race it. While this
-    /// recipe is on screen the notification is suppressed (NotificationRouter) and the in-app
-    /// beep sounds instead.
-    mutating func tick(_ cook: CookState) -> CookState? {
+    /// A tick's outcome: the cook with the new seconds left, nil when none changed, and the
+    /// steps whose timers just ran out, whose countdowns outside the app must go (#333).
+    struct Tick {
+        let cook: CookState?
+        let ended: [Int]
+    }
+
+    /// Every running timer's seconds left now, from its deadline. A timer that reaches zero
+    /// stops running and keeps its alert: its deadline has passed, so the alert has been
+    /// delivered or is being delivered, and removing it would only race it. While this recipe
+    /// is on screen the notification is suppressed (NotificationRouter) and the in-app beep
+    /// sounds instead.
+    mutating func tick(_ cook: CookState) -> Tick {
         let now = clock.now()
         var timers = cook.timers
         var changed = false
+        var ended: [Int] = []
         for (step, end) in deadlines {
             let seconds = Self.secondsUntil(end, now)
-            if seconds == 0 { deadlines[step] = nil }
+            if seconds == 0 {
+                deadlines[step] = nil
+                ended.append(step)
+            }
             guard var timer = timers[step], timer.remainingSeconds != seconds else { continue }
             timer.remainingSeconds = seconds
             timer.running = seconds > 0
             timers[step] = timer
             changed = true
         }
-        guard changed else { return nil }
-        var cook = cook
-        cook.timers = timers
-        return cook
+        guard changed else { return Tick(cook: nil, ended: ended.sorted()) }
+        var next = cook
+        next.timers = timers
+        return Tick(cook: next, ended: ended.sorted())
     }
 
     /// The cook's place as saved. A running timer is saved by its deadline, so ticks never write

@@ -28,8 +28,12 @@ final class RecipeViewModel {
     @ObservationIgnored private let preferences: AppPreferences
     @ObservationIgnored private let connectivity: Connectivity
     @ObservationIgnored private let entitlements: Entitlements
-    // Opened from a timer notification: start cook mode once the recipe has loaded.
+    // Opened from a timer's countdown or alert, the cook link or Home's resume card: back to
+    // the cook once the recipe has loaded (CookController.resume, #333: never a restart).
     @ObservationIgnored private var openInCookMode: Bool
+    // The countdowns outside the app (#309), squared with the database after a delete, a
+    // re-share or an update (#333); nil without them (tests that aren't about them).
+    @ObservationIgnored private let countdowns: TimerCountdownSync?
     // Opened from the Week (#49): show the planned servings rather than the saved choice. For
     // this visit only; it isn't saved unless the cook changes the servings here.
     @ObservationIgnored private var plannedServings: Int?
@@ -70,10 +74,12 @@ final class RecipeViewModel {
         shortSteps: ShortStepRepository? = nil,
         flags: FeatureFlags? = nil,
         entitlements: Entitlements = UnavailableEntitlements(),
-        decisions: DecisionRepository? = nil
+        decisions: DecisionRepository? = nil,
+        countdowns: TimerCountdownSync? = nil
     ) {
         self.entitlements = entitlements
         self.sleep = sleep
+        self.countdowns = countdowns
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         let shareUrl = url.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
         self.shareUrl = shareUrl
@@ -176,8 +182,10 @@ final class RecipeViewModel {
                 askModel()
                 if openInCookMode {
                     openInCookMode = false
-                    onCookStart()
+                    cookMode.resume()
                 }
+                // A re-share that changed the steps dropped the cook's progress: its countdowns go.
+                if shareUrl != nil { await countdowns?.reconcile() }
             case .error(let error):
                 uiState = failedLoad.shown(uiState, error)
                 // Handed on in the screen's place (#213, #220): nothing on screen to reload.
@@ -259,6 +267,7 @@ final class RecipeViewModel {
         Task {
             // No undo here: the confirmation said the photos go with it (#116).
             if let deleted = await repository.delete(id: id) { await repository.forget(deleted) }
+            await countdowns?.reconcile()
             uiState.deleted = true
         }
     }
@@ -284,6 +293,7 @@ final class RecipeViewModel {
                 uiState.checkedIngredients = fresh.checkedIngredients
                 uiState.asWrittenSteps = []
                 cookMode.restore(fresh)
+                await countdowns?.reconcile()
                 chef.start()
                 askModel()
             case .error(let error):

@@ -62,6 +62,15 @@ final class CookController {
         save()
     }
 
+    /// Back to the cook from outside (#333: a countdown, an alert, the cook link, Home's resume
+    /// card): cook mode in its saved state, or the reading view once the run is finished
+    /// (`CookSession.resume`). Never restarts, so no timer stops.
+    func resume() {
+        guard let content = content() else { return }
+        if let cook = session.resume(cook(), stepCount: content.instructions.count) { onCook(cook) }
+        save()
+    }
+
     func exit() {
         onCook(session.exit(cook()))
         save()
@@ -154,7 +163,11 @@ final class CookController {
     /// Whether the tick loop is alive. For tests: it must not outlive the last running timer.
     var isTicking: Bool { tickTask != nil }
 
+    // A timer that runs out here has beeped on screen: its countdown outside the app goes (#333).
     private func tickOnce() {
-        if let next = session.tick(cook()) { onCook(next) }
+        let tick = session.tick(cook())
+        if let next = tick.cook { onCook(next) }
+        guard let id = content()?.recipe.id else { return }
+        for step in tick.ended { alarms.ended(recipeId: id, step: step) }
     }
 }

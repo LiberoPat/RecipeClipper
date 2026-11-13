@@ -57,6 +57,27 @@ class CookController(
         save()
     }
 
+    /**
+     * Back to the cook from outside (#333: a countdown, an alert, the cook link, Home's resume
+     * card): cook mode in its saved state, or the reading view once the run is finished
+     * ([CookSession.resume]). Never restarts, so no timer stops.
+     */
+    fun resume() {
+        val loaded = content() ?: return
+        session.resume(cook(), loaded.instructions.size)?.let(onCook)
+        save()
+    }
+
+    /**
+     * Notifications were just allowed (Android 13+ asks on the first timer, after its countdown
+     * was refused): schedule every running timer again, which posts the countdowns it could
+     * not and leaves the alarms as they are.
+     */
+    fun showCountdowns() {
+        val recipe = content()?.recipe ?: return
+        session.runningAlarms(recipe).forEach(alarms::schedule)
+    }
+
     fun exit() {
         onCook(session.exit(cook()))
         save()
@@ -130,13 +151,17 @@ class CookController(
     }
 
     // One loop for every running timer, ending by itself once none is; each tick recomputes
-    // the remaining time from the wall clock ([CookSession.tick]) and writes nothing.
+    // the remaining time from the wall clock ([CookSession.tick]) and writes nothing. A timer
+    // that runs out here has beeped on screen: its countdown outside the app goes (#333).
     private fun ensureTicking() {
         if (tickJob?.isActive == true) return
         tickJob = scope.launch {
             while (session.hasRunningTimers) {
                 delay(TICK_MS)
-                session.tick(cook())?.let(onCook)
+                val tick = session.tick(cook())
+                tick.cook?.let(onCook)
+                val id = content()?.recipe?.id
+                if (id != null) tick.ended.forEach { alarms.ended(id, it) }
             }
         }
     }

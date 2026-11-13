@@ -45,6 +45,9 @@ final class RecipesViewModel {
     /// Recently cooked (#116) only while its flag is on; stored, it reads as the default.
     @ObservationIgnored private let cookedSort: Bool
     var showsCookedSort: Bool { cookedSort }
+    /// The countdowns outside the app (#309), squared with the database after a swipe's delete
+    /// (#333); nil without them (tests that aren't about them).
+    @ObservationIgnored private let countdowns: TimerCountdownSync?
     /// What the database last answered, in its own order, so a new sort needs no new query.
     @ObservationIgnored private var found: [RecipeSummary]?
 
@@ -56,9 +59,10 @@ final class RecipesViewModel {
 
     init(
         repository: RecipeRepository, preferences: AppPreferences, sleep: @escaping Sleep = Sleeps.real,
-        library: LibraryPolicy? = nil, cookedSort: Bool = false
+        library: LibraryPolicy? = nil, cookedSort: Bool = false, countdowns: TimerCountdownSync? = nil
     ) {
         self.cookedSort = cookedSort
+        self.countdowns = countdowns
         self.repository = repository
         self.preferences = preferences
         self.sleep = sleep
@@ -178,6 +182,8 @@ final class RecipesViewModel {
     func onDelete(_ recipe: RecipeSummary) {
         Task {
             guard let removed = await repository.delete(id: recipe.id) else { return }
+            // Its countdown goes with it; Undo brings the timer back when the recipe is opened.
+            await countdowns?.reconcile()
             if captured[recipe.id] == nil { capturedOrder.append(recipe.id) }
             captured[recipe.id] = removed
             // The first of a burst starts a new batch; the rest join it.

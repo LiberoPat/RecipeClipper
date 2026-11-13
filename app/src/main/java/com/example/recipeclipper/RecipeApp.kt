@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.AutoBackup
 import com.example.recipeclipper.data.CookedPhotoRepository
 import com.example.recipeclipper.data.ExpiryReminderCoordinator
 import com.example.recipeclipper.data.PlayBillingEntitlements
+import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.widgets.HomeWidgets
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +32,9 @@ class RecipeApp : Application() {
     @Inject
     lateinit var homeWidgets: HomeWidgets
 
+    @Inject
+    lateinit var timerCountdowns: TimerCountdownSync
+
     override fun onCreate() {
         super.onCreate()
         // The pantry's expiry reminder (#52) follows the pantry and the setting for as
@@ -45,5 +49,7 @@ class RecipeApp : Application() {
         autoBackup.start()
         // The home-screen widgets (#309) follow the plan and the list while the process lives.
         homeWidgets.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+        // The countdowns outside the app (#309) go when `liveTimers` is turned off (#333).
+        timerCountdowns.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))
     }
 }
