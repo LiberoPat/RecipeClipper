@@ -50,12 +50,18 @@ final class FakeMealPlanRepository: MealPlanRepository {
             .eraseToAnyPublisher()
     }
 
-    func addRecipe(recipeId: Int64, day: Int64, mealTypeId: Int64, servings: Int?) async {
+    /// When true, `addRecipe` fails as a database error would: nothing written, false returned.
+    var failAdds = false
+
+    @discardableResult
+    func addRecipe(recipeId: Int64, day: Int64, mealTypeId: Int64, servings: Int?) async -> Bool {
+        if failAdds { return false }
         nextId += 1
         meals.value.append(PlannedMeal(
             id: nextId, day: day, mealTypeId: mealTypeId, recipeId: recipeId,
             title: titles[recipeId] ?? "Recipe \(recipeId)", imageUrl: nil, servings: servings, note: nil
         ))
+        return true
     }
 
     func addNote(_ note: String, day: Int64, mealTypeId: Int64) async {

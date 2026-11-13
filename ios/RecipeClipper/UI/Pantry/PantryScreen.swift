@@ -24,6 +24,7 @@ struct PantryScreen: View {
     @State private var sideInset = ReadableWidth.gutter
     /// Touch and hold, and drag to select (#258).
     @State private var drag = PantryDragSelect()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         let state = vm.uiState
@@ -47,11 +48,12 @@ struct PantryScreen: View {
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar(state) }
-        // The tooltips (#190); none over this screen's sheet and snackbar, or while selecting.
+        // The tooltips (#190); none over this screen's sheets and snackbar, or while selecting.
         // Outside the toolbar, whose menu is an anchor too.
         .tooltipHost(
             .pantry,
             blocked: state.editing != nil || state.message != nil || state.confirmClearRunOut != nil || state.selection != nil
+                || useItUpVM?.uiState.sheet != nil
         )
         .overlay(alignment: .bottom) {
             if let message = state.message {
@@ -90,6 +92,11 @@ struct PantryScreen: View {
         }
         .onChange(of: useItUpPending, initial: true) {
             if takeUseItUp() { useItUpVM?.onOpenAll() }
+        }
+        // Use it up (#305) follows the real day: the tab's ViewModel outlives it (#332).
+        .onAppear { useItUpVM?.onScreenResumed() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { useItUpVM?.onScreenResumed() }
         }
     }
 

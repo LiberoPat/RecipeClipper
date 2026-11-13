@@ -24,12 +24,13 @@ final class DefaultMealPlanRepository: MealPlanRepository {
         db.observe { conn in try MealPlanDao(db: conn).days(start: start, end: end) }
     }
 
-    func addRecipe(recipeId: Int64, day: Int64, mealTypeId: Int64, servings: Int?) async {
+    @discardableResult
+    func addRecipe(recipeId: Int64, day: Int64, mealTypeId: Int64, servings: Int?) async -> Bool {
         let entry = MealPlanEntryRecord(
             day: day, mealTypeId: mealTypeId, recipeId: recipeId, servings: servings, note: nil,
             sortOrder: 0, updatedAt: clock.now()
         )
-        await perform("addRecipe") { dao in try dao.add(entry) }
+        return await perform("addRecipe") { dao in try dao.add(entry) }
     }
 
     func addNote(_ note: String, day: Int64, mealTypeId: Int64) async {
@@ -89,11 +90,15 @@ final class DefaultMealPlanRepository: MealPlanRepository {
         await perform("deleteMealType") { dao in try dao.deleteType(id, now: now) }
     }
 
-    private func perform(_ what: String, _ body: @escaping (MealPlanDao) throws -> Void) async {
+    /// One write, logged if it fails; whether it was written.
+    @discardableResult
+    private func perform(_ what: String, _ body: @escaping (MealPlanDao) throws -> Void) async -> Bool {
         do {
             try await db.write { conn in try body(MealPlanDao(db: conn)) }
+            return true
         } catch {
             dataLog.error("\(what, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+            return false
         }
     }
 }

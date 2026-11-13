@@ -34,10 +34,10 @@ class DefaultMealPlanRepository @Inject constructor(
         dao.observeDays(start, end).map { rows -> rows.map { it.toDomain() } }
             .orEmptyOnError(log, "observeDays")
 
-    override suspend fun addRecipe(recipeId: Long, day: Long, mealTypeId: Long, servings: Int?) =
-        log.guard("addRecipe", Unit) {
+    override suspend fun addRecipe(recipeId: Long, day: Long, mealTypeId: Long, servings: Int?): Boolean =
+        log.guard("addRecipe", false) {
             dao.add(entry(day, mealTypeId, recipeId = recipeId, servings = servings, note = null))
-            Unit
+            true
         }
 
     override suspend fun addNote(note: String, day: Long, mealTypeId: Long) {

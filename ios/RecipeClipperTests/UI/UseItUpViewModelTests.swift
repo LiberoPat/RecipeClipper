@@ -64,6 +64,71 @@ final class UseItUpViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.planned, [PlannedRecipeDay(recipeId: 10, day: today + 1)])
     }
 
+    // #332: the tab's ViewModel outlives the day; the window and "Plan today" follow the real one.
+    func testTodayFollowsTheRealDayWhenThePantryResumesOrTheReminderIsTapped() async {
+        let vm = viewModel()
+        await settleMain()
+        calendar.todayValue = today + 1
+        vm.onScreenResumed()
+        await settleMain(until: { vm.uiState.today == self.today + 1 })
+        // Milk expired yesterday; spinach is due today.
+        XCTAssertEqual(vm.uiState.counts, [1: 2])
+
+        calendar.todayValue = today + 2
+        vm.onOpenAll()
+        await settleMain(until: { vm.uiState.today == self.today + 2 })
+        XCTAssertNil(vm.uiState.sheet)
+        XCTAssertEqual(vm.uiState.counts, [:])
+    }
+
+    // #332: a reminder with nothing to show is forgotten at once, so a recipe saved later never
+    // pops the sheet up by itself; one tapped before the first matching waits for it.
+    func testARequestNothingAnswersIsDroppedAndNeverOpensTheSheetLater() async {
+        let vm = viewModel()
+        lists.savedRecipes.value = []
+        vm.onOpenAll()
+        await settleMain()
+        XCTAssertNil(vm.uiState.sheet)
+        lists.savedRecipes.value = [SavedRecipe(id: 10, title: "Saag", imageUrl: nil, language: "en", lines: ["500 g spinach"])]
+        await settleMain(until: { vm.uiState.counts == [1: 1] })
+        XCTAssertNil(vm.uiState.sheet)
+
+        let cold = viewModel()
+        cold.onOpenAll()
+        await settleMain(until: { cold.uiState.sheet != nil })
+        XCTAssertEqual(cold.uiState.sheet?.map(\.item.name), ["milk", "spinach"])
+    }
+
+    // #332: a write that failed frees the tap, so it can be tried again.
+    func testAFailedPlanCanBeTriedAgain() async {
+        let vm = viewModel()
+        await settleMain()
+        plan.failAdds = true
+        vm.onPlan(recipeId: 10, day: today)
+        await settleMain()
+        XCTAssertEqual(plan.meals.value.count, 0)
+        plan.failAdds = false
+        vm.onPlan(recipeId: 10, day: today)
+        await settleMain()
+        XCTAssertEqual(plan.meals.value.map { PlannedRecipeDay(recipeId: $0.recipeId!, day: $0.day) }, [PlannedRecipeDay(recipeId: 10, day: today)])
+    }
+
+    // #332: the groups are matched once per change of what they're made from: a recipe written
+    // again unchanged (a tick, a cook step) or a plan change reuses them.
+    func testMatchingSkipsWhatHasNotChanged() async {
+        let vm = viewModel()
+        await settleMain()
+        XCTAssertEqual(vm.matchings, 1)
+        lists.savedRecipes.value = lists.savedRecipes.value
+        vm.onPlan(recipeId: 10, day: today)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.planned, [PlannedRecipeDay(recipeId: 10, day: today)])
+        XCTAssertEqual(vm.matchings, 1)
+        lists.savedRecipes.value = Array(lists.savedRecipes.value.dropLast())
+        await settleMain(until: { vm.uiState.counts == [1: 1, 2: 1] })
+        XCTAssertEqual(vm.matchings, 2)
+    }
+
     func testOffNothingShows() async {
         on = false
         let vm = viewModel()
