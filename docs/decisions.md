@@ -3724,18 +3724,36 @@ flag, on by default.
   (`RecipeRenderer.content`: its chosen servings, the cook's units and temperatures, the
   model's decisions). The file, `<list name>.pdf`, goes to the share sheet as Send as file's
   does (Android: `cacheDir/exports/cookbook/`, through the app's FileProvider).
-- **The look:** the theme's type, Fraunces over Karla, in ink, muted and paprika on white,
-  whatever the phone's theme. US Letter in the US, Canada, Mexico and the Philippines, A4
-  elsewhere; the print dialog fits it to the paper.
-- **Where pages break is pure and shared:** the platforms measure each block, then
-  `RecipePrint.paginate` places them: a block that doesn't fit starts a page; the title,
-  headings and the lines under the title never end one (they move on with the next line); a
-  block taller than a page has its own. `RecipePrint.startPages` numbers a cookbook's recipes
-  for its contents.
-- **Drawing is the view layer's:** Android draws with `PdfDocument` and `StaticLayout`
-  (`ui/print/PrintPdf`), iOS with `UIGraphicsPDFRenderer` (`UI/Print/PrintPdf`). The
-  `PrintViewModel` (both) holds the job; `PrintEffect` draws it and opens the dialog or the
-  share sheet, or says "Couldn't make the PDF."
+- **The look:** the theme's type, Fraunces over Karla, at the screen's weights (500 for
+  headings, 600 for step numbers), in ink, muted and paprika on white, whatever the phone's
+  theme. US Letter in the US, Canada, Mexico and the Philippines, A4 elsewhere; the print
+  dialog fits it to the paper.
+- **Where pages break is pure and shared:** the platforms measure each block's lines (a
+  photo is one), then `RecipePrint.paginate` places them as pieces: a block that doesn't fit
+  starts a page; the title, headings and the lines under the title never end one (they move
+  on with the next line, or the first line of a block taller than a page); a block taller than
+  a page is split between lines and runs on over the next pages (#331: it used to be cut off
+  at the foot of the page). Each drawer clips the content area, so nothing is ever drawn off
+  a page. `RecipePrint.startPages` numbers a cookbook's recipes for its contents.
+- **Drawing is the view layer's,** off the main thread on both platforms: Android draws with
+  `PdfDocument` and `StaticLayout` (`ui/print/PrintPdf`), iOS with `UIGraphicsPDFRenderer`
+  and TextKit, so each line is known (`UI/Print/PrintPdf`). The `PrintViewModel` (both)
+  holds the job and reads a cookbook's recipes in one query; `PrintEffect` draws it and opens
+  the dialog or the share sheet, or says "Couldn't make the PDF." (also when iOS's print
+  dialog can't open). On Android a page's photos are loaded before the page opens and
+  nothing suspends while one is, so leaving mid-cookbook is a clean cancellation; every page
+  is finished before the document closes.
+- **Progress and leaving (#331):** while a cookbook is built or drawn the list shows "Making
+  the cookbook…". Leaving the screen (not rotating it) drops the job, built or still
+  building: the share sheet or print dialog must never pop up unprompted on return, so the
+  cook asks again. A failure line stays up for its whole time; the flag is lowered only once
+  it has gone.
+- **Photos on paper (#331):** a photo prints only from the disk cache (probed without
+  decoding), decoded at the band it is drawn in (2 px/pt, 144 dpi) just before its page and
+  dropped after it, so a long cookbook holds one page's pictures at a time. The file is
+  lossless whatever we do: Android's `PdfDocument` deflates every bitmap drawn on its canvas
+  (Skia's JPEG pass-through needs the encoded bytes, which the public API can't hand it), so
+  the file-size lever is the band's pixel count, not re-encoding.
 - **Tests.** Pure: `RecipePrintTest` / `RecipePrintTests`. ViewModel over fakes:
   `PrintViewModelTest(s)`. Screens: `PrintScreenTest` (Robolectric, both menus, with a printer
   that records the job through `LocalPrinter`, since a JVM test has no PDF engine). The PDF
