@@ -150,5 +150,19 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_groceries_info" />
         </receiver>
+
+        <!-- Tonight's day (#329): the midnight alarm, and the date, time or time zone being
+             changed. Disabled here: WidgetDayChange enables it only while a Tonight widget is
+             placed, so these never start the app for anyone else. -->
+        <receiver
+            android:name=".widgets.WidgetClockReceiver"
+            android:enabled="false"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

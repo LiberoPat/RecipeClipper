@@ -12,6 +12,7 @@ import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -75,6 +76,65 @@ class RunningTimerNotificationTest {
     @Test
     fun aDeadlineAlreadyPassed_postsNothing() {
         scheduler.schedule(alarm.copy(endsAt = now))
+
+        assertTrue(posted().isEmpty())
+    }
+
+    // #333: an identical repost on every recipe open cost four system calls each.
+    @Test
+    fun schedulingAgainToTheSameDeadline_leavesTheCountdownAsItIs() {
+        scheduler.schedule(alarm)
+        val first = posted().single()
+
+        scheduler.schedule(alarm)
+
+        assertSame(first, posted().single())
+        assertEquals(1, shadowOf(app.getSystemService(android.app.AlarmManager::class.java)).scheduledAlarms.size)
+    }
+
+    // #333: Android 13+ asks for the permission on the first timer, after its countdown was refused.
+    @Test
+    fun withoutThePermission_theAlarmIsSetAndTheCountdownFollowsOnceGranted() {
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        scheduler.schedule(alarm)
+        assertTrue(posted().isEmpty())
+        assertTrue(shadowOf(app.getSystemService(android.app.AlarmManager::class.java)).scheduledAlarms.isNotEmpty())
+
+        shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        scheduler.schedule(alarm)
+
+        assertEquals(alarm.endsAt, posted().single().`when`)
+    }
+
+    @Test
+    fun aTimerThatRanOutOnScreen_losesItsCountdown() {
+        scheduler.schedule(alarm)
+
+        scheduler.ended(alarm.recipeId, alarm.step)
+
+        assertTrue(posted().isEmpty())
+    }
+
+    // #333: a deleted recipe, or steps changed by a re-share or an edit, leave no countdown behind.
+    @Test
+    fun reconciling_keepsOnlyTheDatabasesRunningTimers() {
+        scheduler.schedule(alarm)
+        scheduler.schedule(alarm.copy(step = 4))
+        scheduler.schedule(alarm.copy(recipeId = 8, recipeTitle = "Stew"))
+
+        scheduler.reconcile(listOf(alarm.copy(step = 4)))
+
+        val left = shadowOf(manager).activeNotifications.single()
+        assertEquals(TimerNotifications.runningTag(7), left.tag)
+        assertEquals(4, left.id)
+    }
+
+    @Test
+    fun reconcilingWithTheFlagOff_removesEveryCountdown() {
+        scheduler.schedule(alarm)
+        store.setOverride(Flag.LIVE_TIMERS.key, false)
+
+        scheduler.reconcile(listOf(alarm))
 
         assertTrue(posted().isEmpty())
     }

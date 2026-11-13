@@ -156,6 +156,69 @@ class CookControllerTest {
         assertNull(done.finishedCook)
     }
 
+    // #333: a tap on a countdown, the alert or the cook link comes back to the cook, never restarts.
+    @Test fun `resuming a finished run keeps its timer and the reading view`() = runTest {
+        val saved = CookProgress(
+            active = false, currentStep = 2, doneSteps = setOf(0, 1, 2),
+            timers = mapOf(2 to SavedTimer(600, 600, endsAt = START + 60_000))
+        )
+        val controller = controller(recipe(saved))
+        controller.restore(recipe(saved))
+
+        controller.resume()
+        runCurrent()
+
+        assertFalse("a finished run stays in the reading view", cook.active)
+        assertEquals(setOf(0, 1, 2), cook.doneSteps)
+        assertTrue("the timer still runs", cook.timers.getValue(2).running)
+        assertEquals("its alarm is kept", setOf(ID to 2), alarms.pending.keys)
+        assertTrue(alarms.cancelCalls.isEmpty())
+        controller.close()
+    }
+
+    @Test fun `resuming an unfinished run opens cook mode where it was`() = runTest {
+        val saved = CookProgress(active = false, currentStep = 1, doneSteps = setOf(0))
+        val controller = controller(recipe(saved))
+        controller.restore(recipe(saved))
+
+        controller.resume()
+        runCurrent()
+
+        assertTrue(cook.active)
+        assertEquals(1, cook.currentStep)
+        assertEquals(setOf(0), cook.doneSteps)
+        assertEquals(CookProgress(active = true, currentStep = 1, doneSteps = setOf(0)), repository.setCookProgressCalls.last().second)
+        controller.close()
+    }
+
+    @Test fun `a timer that runs out on screen ends its countdown but not its alarm`() = runTest {
+        val controller = controller()
+        content = RecipeRenderer.content(recipe(), RecipeRenderer.Settings())
+
+        controller.startTimer(1)
+        advanceTimeBy(600_000 + 250)
+        runCurrent()
+
+        assertEquals(listOf(ID to 1), alarms.endedCalls)
+        assertTrue("the alarm has fired, or is firing; cancelling would only race it", alarms.cancelCalls.isEmpty())
+        assertFalse(cook.timers.getValue(1).running)
+        controller.close()
+    }
+
+    @Test fun `once notifications are allowed the running timers are scheduled again`() = runTest {
+        val saved = CookProgress(active = true, timers = mapOf(2 to SavedTimer(600, 600, endsAt = START + 60_000)))
+        val controller = controller(recipe(saved))
+        controller.restore(recipe(saved))
+        controller.startTimer(1)
+        val before = alarms.scheduleCalls.size
+
+        controller.showCountdowns()
+
+        assertEquals(listOf(1, 2), alarms.scheduleCalls.drop(before).map { it.step })
+        assertEquals(START + 60_000, alarms.scheduleCalls.drop(before).last().endsAt)
+        controller.close()
+    }
+
     @Test fun `with nothing loaded cook mode does nothing`() = runTest {
         val controller = controller(loaded = null)
 

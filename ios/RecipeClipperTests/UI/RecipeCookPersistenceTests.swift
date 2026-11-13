@@ -24,13 +24,16 @@ final class RecipeCookPersistenceTests: XCTestCase {
         _ recipe: Recipe,
         clock: TestClock = TestClock(now: 0),
         alarms: FakeTimerAlarmScheduler? = nil,
-        cookArg: Bool = false
+        cookArg: Bool = false,
+        countdowns: Bool = false
     ) async -> (RecipeViewModel, FakeRecipeRepository) {
         let repository = FakeRecipeRepository()
         repository.openResult = recipe
+        let alarms = alarms ?? FakeTimerAlarmScheduler()
         let vm = RecipeViewModel(
             recipeId: recipe.id, url: nil, repository: repository, preferences: FakeAppPreferences(),
-            clock: clock, sleep: clock.sleep, alarms: alarms ?? FakeTimerAlarmScheduler(), openInCookMode: cookArg
+            clock: clock, sleep: clock.sleep, alarms: alarms, openInCookMode: cookArg,
+            countdowns: countdowns ? TimerCountdownSync(repository: repository, alarms: alarms) : nil
         )
         await settleMain()
         return (vm, repository)
@@ -114,6 +117,34 @@ final class RecipeCookPersistenceTests: XCTestCase {
     func testTheCookArgumentOpensInCookMode() async {
         let (vm, _) = await open(recipe(), cookArg: true)
         XCTAssertTrue(vm.uiState.cook.active)
+    }
+
+    // #333: a tap on the countdown after the last step used to restart the run and stop the timer.
+    func testTheCookArgumentOnAFinishedRunKeepsItsTimerAndTheReadingView() async {
+        let alarms = FakeTimerAlarmScheduler()
+        let finished = CookProgress(
+            active: false, currentStep: 2, doneSteps: [0, 1, 2],
+            timers: [2: SavedTimer(totalSeconds: 300, remainingSeconds: 300, endsAt: 60_000)]
+        )
+        let (vm, _) = await open(recipe(cook: finished), alarms: alarms, cookArg: true)
+
+        XCTAssertFalse(vm.uiState.cook.active)
+        XCTAssertEqual(vm.uiState.cook.doneSteps, [0, 1, 2])
+        XCTAssertEqual(vm.uiState.cook.timers[2]?.running, true)
+        XCTAssertEqual(Set(alarms.pending.keys), [key(2)])
+        XCTAssertTrue(alarms.cancelCalls.isEmpty)
+    }
+
+    func testDeletingTheRecipeSquaresTheCountdownsWithTheDatabase() async {
+        let alarms = FakeTimerAlarmScheduler()
+        let (vm, repository) = await open(recipe(), alarms: alarms, countdowns: true)
+        let other = StepAlarm(recipeId: 9, recipeTitle: "Other", step: 0, endsAt: 5_000)
+        repository.runningTimersResult = [other]
+
+        vm.onDelete()
+        await settleMain()
+
+        XCTAssertEqual(alarms.reconcileCalls, [[other]])
     }
 
     // MARK: Saving

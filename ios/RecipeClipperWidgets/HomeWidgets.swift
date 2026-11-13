@@ -1,29 +1,36 @@
 import SwiftUI
 import WidgetKit
 
-/// One home-screen widget's content (#309): its rows, or nil when the `widgets` flag is off.
-struct HomeWidgetEntry<Row>: TimelineEntry {
+/// One home-screen widget's content (#309) from `date` on.
+struct HomeWidgetEntry<Row: Equatable>: TimelineEntry {
     let date: Date
-    let rows: [Row]?
+    let rows: WidgetRows<Row>
 }
 
-/// Reads the rows when WidgetKit asks, and asks again at midnight (Tonight's day changes); the
-/// app asks for every other redraw (`WidgetRefresher`).
-struct HomeWidgetProvider<Row>: TimelineProvider {
-    let load: @Sendable (Date) async -> [Row]?
+/// Hands WidgetKit the timeline `WidgetData` plans: the entries, and when to ask again. The app
+/// asks for a redraw whenever the plan, the list or the flag changes (`WidgetRefresher`).
+struct HomeWidgetProvider<Row: Equatable>: TimelineProvider {
+    let plan: @Sendable (Date) async -> WidgetTimelinePlan<Row>
 
-    func placeholder(in context: Context) -> HomeWidgetEntry<Row> { HomeWidgetEntry(date: Date(), rows: []) }
+    // Not yet read: nothing is claimed.
+    func placeholder(in context: Context) -> HomeWidgetEntry<Row> { HomeWidgetEntry(date: Date(), rows: .unavailable) }
 
     func getSnapshot(in context: Context, completion: @escaping (HomeWidgetEntry<Row>) -> Void) {
         let now = Date()
-        Task { completion(HomeWidgetEntry(date: now, rows: await load(now))) }
+        Task { completion(HomeWidgetEntry(date: now, rows: await plan(now).entries.first?.rows ?? .unavailable)) }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<HomeWidgetEntry<Row>>) -> Void) {
         let now = Date()
         Task {
-            let entry = HomeWidgetEntry(date: now, rows: await load(now))
-            completion(Timeline(entries: [entry], policy: .after(WidgetData.nextMidnight(after: now))))
+            let planned = await plan(now)
+            let policy: TimelineReloadPolicy
+            switch planned.reload {
+            case .never: policy = .never
+            case .atEnd: policy = .atEnd
+            case .after(let date): policy = .after(date)
+            }
+            completion(Timeline(entries: planned.entries.map { HomeWidgetEntry(date: $0.date, rows: $0.rows) }, policy: policy))
         }
     }
 }
@@ -31,8 +38,8 @@ struct HomeWidgetProvider<Row>: TimelineProvider {
 /// Tonight (#309): today's planned meals, each under its meal type. A tap opens the Week.
 struct TonightWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Tonight", provider: HomeWidgetProvider<WidgetContent.Meal>(load: { await WidgetData.tonight(now: $0) })) { entry in
-            HomeWidgetCard(title: WidgetStrings.tonight, rows: entry.rows, empty: WidgetStrings.tonightEmpty, rowHeight: 40) { meal in
+        StaticConfiguration(kind: "Tonight", provider: HomeWidgetProvider(plan: { await WidgetData.shared.tonight(now: $0) })) { entry in
+            HomeWidgetCard(title: WidgetStrings.tonight, rows: entry.rows, empty: WidgetStrings.tonightEmpty) { meal in
                 VStack(alignment: .leading, spacing: 0) {
                     if !meal.mealType.isEmpty {
                         Text(meal.mealType).font(WidgetFont.karla(12, .regular)).foregroundStyle(Palette.muted)
@@ -52,8 +59,8 @@ struct TonightWidget: Widget {
 /// Groceries.
 struct GroceriesWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Groceries", provider: HomeWidgetProvider<String>(load: { _ in await WidgetData.groceries() })) { entry in
-            HomeWidgetCard(title: WidgetStrings.groceries, rows: entry.rows, empty: WidgetStrings.groceriesEmpty, rowHeight: 21) { line in
+        StaticConfiguration(kind: "Groceries", provider: HomeWidgetProvider(plan: { await WidgetData.shared.groceries(now: $0) })) { entry in
+            HomeWidgetCard(title: WidgetStrings.groceries, rows: entry.rows, empty: WidgetStrings.groceriesEmpty) { line in
                 Text(line).font(WidgetFont.karla(15, .regular)).foregroundStyle(Palette.onBackground)
             }
             .widgetURL(AppLinks.tab("groceries"))
@@ -64,36 +71,43 @@ struct GroceriesWidget: Widget {
     }
 }
 
-/// The card both widgets share: the title in paprika, then as many rows as fit and "+N more",
-/// or a muted line when there are none; only the app's name with the flag off.
-private struct HomeWidgetCard<Row, RowView: View>: View {
+/// The card both widgets share: the title in paprika, then as many rows as fit and "+N more"
+/// (`FittedRows`), or a muted line when there are none; only the app's name with the flag off,
+/// and only the title while the database can't be read (#329: never "Nothing planned" unread).
+private struct HomeWidgetCard<Row: Equatable, RowView: View>: View {
     let title: String
-    let rows: [Row]?
+    let rows: WidgetRows<Row>
     let empty: String
-    let rowHeight: CGFloat
     @ViewBuilder let row: (Row) -> RowView
-    @Environment(\.widgetFamily) private var family
 
-    private var fits: Int { max(1, Int((family == .systemLarge ? 300 : 110) / rowHeight)) }
+    private var heading: some View {
+        Text(rows == .off ? WidgetStrings.appName : title)
+            .font(WidgetFont.fraunces(17, .semibold))
+            .foregroundStyle(Palette.accentText)
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+    }
 
     var body: some View {
-        let all = rows ?? []
-        let shown = all.count <= fits ? all : Array(all.prefix(fits - 1))
-        VStack(alignment: .leading, spacing: 4) {
-            Text(rows == nil ? "Recipe Clipper" : title)
-                .font(WidgetFont.fraunces(17, .semibold))
-                .foregroundStyle(Palette.accentText)
-            ForEach(Array(shown.enumerated()), id: \.offset) { _, item in row(item).lineLimit(1) }
-            if shown.count < all.count {
-                Text(WidgetStrings.more(all.count - shown.count))
-                    .font(WidgetFont.karla(14, .regular)).foregroundStyle(Palette.muted)
+        Group {
+            switch rows {
+            case .off, .unavailable:
+                heading
+            case .rows(let all) where all.isEmpty:
+                VStack(alignment: .leading, spacing: 4) {
+                    heading
+                    Text(empty).font(WidgetFont.karla(14, .regular)).foregroundStyle(Palette.muted)
+                        .minimumScaleFactor(0.5)
+                }
+            case .rows(let all):
+                FittedRows(rows: all, header: { heading }, row: row) { count, beside in
+                    Text(beside ? WidgetStrings.moreBeside(count) : WidgetStrings.more(count))
+                        .font(WidgetFont.karla(14, .regular)).foregroundStyle(Palette.muted)
+                }
             }
-            if rows != nil, all.isEmpty {
-                Text(empty).font(WidgetFont.karla(14, .regular)).foregroundStyle(Palette.muted)
-            }
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // No Spacer under the rows: it would be offered half the height they are.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .containerBackground(Palette.background, for: .widget)
     }
 }

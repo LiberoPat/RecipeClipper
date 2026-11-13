@@ -33,6 +33,11 @@ import javax.inject.Singleton
  *
  * With `liveTimers` on (#309) it also shows the timer counting down, in an ongoing notification
  * ([TimerNotifications.postRunning]) that goes when the timer is cancelled or its alert comes.
+ * The alarm is set first: whatever goes wrong posting the display, the alert is scheduled. A
+ * countdown already posted to the same deadline is left as it is (opening a recipe reschedules
+ * its timers), so a repeat costs one query of the posted notifications, not a repost; one that
+ * couldn't be posted (no notification permission yet) is posted on the next schedule, which
+ * the permission's grant triggers.
  */
 @Singleton
 class AndroidTimerAlarmScheduler @Inject constructor(
@@ -45,7 +50,13 @@ class AndroidTimerAlarmScheduler @Inject constructor(
         get() = context.getSystemService(AlarmManager::class.java)
 
     override fun schedule(alarm: StepAlarm) {
-        if (flags.isOn(Flag.LIVE_TIMERS)) TimerNotifications.postRunning(context, alarm, clock.now())
+        setAlarm(alarm)
+        if (!flags.isOn(Flag.LIVE_TIMERS)) return
+        val posted = TimerNotifications.postedCountdowns(context)[alarm.recipeId to alarm.step]
+        if (posted != alarm.endsAt) TimerNotifications.postRunning(context, alarm, clock.now())
+    }
+
+    private fun setAlarm(alarm: StepAlarm) {
         val manager = alarmManager ?: return
         val operation = PendingIntent.getBroadcast(
             context,
@@ -81,6 +92,18 @@ class AndroidTimerAlarmScheduler @Inject constructor(
         ) ?: return
         alarmManager?.cancel(existing)
         existing.cancel()
+    }
+
+    /** The countdown removes itself at the deadline (`setTimeoutAfter`); this only makes sure. */
+    override fun ended(recipeId: Long, step: Int) {
+        TimerNotifications.cancelRunning(context, recipeId, step)
+    }
+
+    override fun reconcile(running: List<StepAlarm>) {
+        val keep = if (flags.isOn(Flag.LIVE_TIMERS)) running.map { it.recipeId to it.step }.toSet() else emptySet()
+        TimerNotifications.postedCountdowns(context).keys
+            .filterNot { it in keep }
+            .forEach { (recipeId, step) -> TimerNotifications.cancelRunning(context, recipeId, step) }
     }
 
     private fun alarmIntent(recipeId: Long, step: Int) =

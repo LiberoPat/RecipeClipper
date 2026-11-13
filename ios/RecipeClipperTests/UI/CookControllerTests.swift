@@ -148,6 +148,54 @@ final class CookControllerTests: XCTestCase {
         XCTAssertNil(done.finishedCook)
     }
 
+    // #333: a tap on a countdown, the alert or the cook link comes back to the cook, never restarts.
+    func testResumingAFinishedRunKeepsItsTimerAndTheReadingView() async {
+        let saved = CookProgress(
+            active: false, currentStep: 2, doneSteps: [0, 1, 2],
+            timers: [2: SavedTimer(totalSeconds: 600, remainingSeconds: 600, endsAt: 60_000)]
+        )
+        let controller = controller(loaded: recipe(cook: saved))
+        controller.restore(recipe(cook: saved))
+
+        controller.resume()
+        await writes.settle()
+
+        XCTAssertFalse(cook.active, "a finished run stays in the reading view")
+        XCTAssertEqual(cook.doneSteps, [0, 1, 2])
+        XCTAssertEqual(cook.timers[2]?.running, true, "the timer still runs")
+        XCTAssertEqual(Set(alarms.pending.keys), [key(2)], "its alert is kept")
+        XCTAssertTrue(alarms.cancelCalls.isEmpty)
+    }
+
+    func testResumingAnUnfinishedRunOpensCookModeWhereItWas() async {
+        let saved = CookProgress(active: false, currentStep: 1, doneSteps: [0])
+        let controller = controller(loaded: recipe(cook: saved))
+        controller.restore(recipe(cook: saved))
+
+        controller.resume()
+        await writes.settle()
+
+        XCTAssertTrue(cook.active)
+        XCTAssertEqual(cook.currentStep, 1)
+        XCTAssertEqual(cook.doneSteps, [0])
+        XCTAssertEqual(repository.setCookProgressCalls.last?.progress, CookProgress(active: true, currentStep: 1, doneSteps: [0]))
+    }
+
+    func testATimerThatRunsOutOnScreenEndsItsCountdownButNotItsAlert() async {
+        let saved = CookProgress(
+            active: true, timers: [1: SavedTimer(totalSeconds: 600, remainingSeconds: 600, endsAt: 2_000)]
+        )
+        let controller = controller(loaded: recipe(cook: saved))
+        controller.restore(recipe(cook: saved))
+
+        await clock.advance(by: 2_250)
+
+        XCTAssertEqual(alarms.endedCalls, [key(1)])
+        XCTAssertTrue(alarms.cancelCalls.isEmpty, "the alert has been delivered, or is being; removing it would only race it")
+        XCTAssertEqual(cook.timers[1]?.running, false)
+        XCTAssertFalse(controller.isTicking)
+    }
+
     func testWithNothingLoadedCookModeDoesNothing() async {
         let controller = controller(loaded: nil)
 

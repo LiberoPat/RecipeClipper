@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.ContentOrigin
+import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.ui.tour.tooltipAnchor
 
@@ -174,6 +175,17 @@ internal fun ReadingView(
                         stepText(step, parts, MaterialTheme.colorScheme.tertiary, onLink),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.stepLinkActions(parts, onLink)
+                    )
+                }
+                // A timer still running after cooking ended (the last step's rest, say) is
+                // visible here, where a tap on its countdown outside the app lands (#333).
+                val timer = state.cook.timers[index]
+                if (timer != null && timer.running) {
+                    Text(
+                        stringResource(R.string.timer_running, StepTimers.clock(timer.remainingSeconds)),
+                        style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.padding(start = 32.dp, bottom = 4.dp)
                     )
                 }
             }

@@ -1075,7 +1075,7 @@ did there was nothing to tap.
 - **Android alert.** One `AlarmManager` alarm per running timer
   (`timers/AndroidTimerAlarmScheduler`), to `TimerAlarmReceiver`, which posts
   a notification (channel "Cook timers", category alarm; a tap opens the
-  recipe in cook mode through `recipe/{id}?cook=true`) only if the database
+  recipe through `recipe/{id}?cook=true`, back to the cook, #333) only if the database
   still has that timer running with that deadline, so a reset timer, a
   deleted recipe or a re-share that changed the steps never rings, and only
   if that recipe isn't on screen, where the in-app beep sounds instead. A
@@ -1110,8 +1110,33 @@ did there was nothing to tap.
 
 Behind `liveTimers`. A running cook-mode timer shows outside the app, counted
 down by the system from the deadline cook progress already saves, so nothing
-writes or posts per tick. A tap opens the recipe in cook mode. The time's-up
-alert and `TimerAlarmReceiver`'s check of the database are unchanged.
+writes or posts per tick. A tap opens the recipe and comes back to the cook.
+The time's-up alert and `TimerAlarmReceiver`'s check of the database are
+unchanged.
+
+- **A tap never cancels the timer it shows** (#333). A countdown, the alert,
+  Home's resume card and the `recipeclipper://cook` link all open the recipe
+  with `cook=true` / `.cookRecipe`, which *resumes* (`CookSession.resume`):
+  cook mode in its saved state while the run isn't finished; the reading view
+  when it is, where a timer still running (the last step's rest, say) shows
+  under its step. Only the reading view's own Start cooking starts a finished
+  run afresh and stops its timers, as before. The cook link opens cook mode
+  like the Live Activity it belongs to: any app can open it, but with only an
+  id above zero, and only the cook's own saved state. A tap while that recipe
+  is already on top opens no second copy (by recipe id on Android, not
+  `launchSingleTop`, which would hand one recipe's screen another's id).
+- **The countdowns follow the database** through one path, `TimerCountdownSync`
+  → `TimerAlarmScheduler.reconcile(running)`: every countdown the database has
+  no running timer for goes (all of them with the flag off). Called after a
+  delete (the Recipes swipe and the recipe screen), a re-share, an edit and
+  Update from source, whenever `liveTimers` changes (Android follows the flag
+  from `RecipeApp`, iOS from `AppContainer`), and on iOS when the app becomes
+  active (the share extension re-shares in its own process). The alerts need
+  none of this: Android's receiver checks the database, iOS's `replaceAll`
+  squares them when the recipe opens. A timer that runs out while its recipe
+  is on screen ends its countdown too (`CookSession.tick` names it,
+  `TimerAlarmScheduler.ended`); its alert is left alone, since it has fired or
+  is firing and cancelling would only race it.
 
 - **Android: an ongoing notification**, posted by
   `AndroidTimerAlarmScheduler.schedule` beside the alarm and removed by
@@ -1124,7 +1149,12 @@ alert and `TimerAlarmReceiver`'s check of the database are unchanged.
   One per timer (tag `running:<recipe>`, id the step). It asks to be promoted
   (`setRequestPromotedOngoing`, `POST_PROMOTED_NOTIFICATIONS`, a normal
   permission), which on Android 16 makes it a Live Update: the status bar chip
-  and the lock screen. Without the notification permission it isn't shown.
+  and the lock screen. Without the notification permission it isn't shown;
+  Android 13+ asks on the first timer, and the grant reposts what it refused.
+  The alarm is set before the countdown is posted, so the alert never depends
+  on the display; a countdown already posted to the same deadline is left as
+  it is (one query of the active notifications, not a repost per recipe
+  open), and the channel is created once per process.
 - **iOS: a Live Activity** per timer, on the lock screen and in the Dynamic
   Island, drawn by the new widget extension `RecipeClipperWidgets`
   (`TimerLiveActivity`, `TimerActivityAttributes` shared with the app under
@@ -1133,7 +1163,11 @@ alert and `TimerAlarmReceiver`'s check of the database are unchanged.
   operations are chained like the notifications', since ending is
   asynchronous. The activity's stale date is the deadline: past it, it reads
   "Time's up: step N" until the app ends it, which opening the recipe does
-  (`replaceAll` keeps only running timers). The link is
+  (`replaceAll` keeps only running timers), as does the timer running out
+  with the recipe on screen. An activity the system has ended (over eight
+  hours) is no longer live: it is cleared and a new one requested. The Dynamic
+  Island's compact countdown takes a wider frame for a timer of an hour or
+  more (h:mm:ss). The link is
   `recipeclipper://cook?id=N` (`AppLinks`, compiled into both targets). The
   extension can't use `Strings.swift` (it formats the app's types), so
   `WidgetStrings` reads the same catalog keys, compiled into its bundle. Its
@@ -1141,39 +1175,74 @@ alert and `TimerAlarmReceiver`'s check of the database are unchanged.
   `AppFont`'s variable-axis UIFont crashed the extension, which WidgetKit
   can't encode. The system asks once, on the first activity, whether to allow
   Live Activities.
-- **The flag off** shows nothing new, and ending never checks the flag, so
-  turning it off mid-cook leaves no countdown behind.
+- **The flag off** shows nothing new, and ending never checks the flag; turned
+  off mid-cook, the reconcile above removes every countdown.
 
 ### Home-screen widgets
 
 Behind `widgets`. Two, on both platforms: **Tonight**, today's planned meals
 under their meal type (Mela's next-meal widget is the model; a tap opens the
 Week), and **Groceries**, what's left to buy (a tap opens Groceries). What they
-show is `WidgetContent` (core, with its Swift port, pinned by matching unit
-tests rather than corpus rows): today's meals in meal type order, a meal with
+show is `WidgetContent` (core, with its Swift port, pinned by `Tonight(`,
+`ToBuy(` and `Fitted(` corpus rows since #329; it was first left to matching
+unit tests): today's meals in meal type order, a meal with
 no title or note left out; the list's unticked rows as the screen shows them
 (a combined row is its total, lines kept together each listed, a row with a
 ticked line in the basket, as "Send list" has it). The list's lines are as
 stored, without the on-device model's decisions (#104): the iOS widget runs
-apart from the app and its model, and Android matches it. As many rows as fit
-the widget's height, then "+N more"; an empty plan or list says so. With the
-flag off a placed widget shows only the app's name.
+apart from the app and its model, and Android matches it. An empty plan or
+list says so. With the flag off a placed widget shows only the app's name.
 
+- **As many rows as fit, then "+N more"** (`WidgetContent.fit`): the last row
+  that fits is kept for the count. **An item is always named** (#329): with
+  room for one row, the count sits beside the first item as a bare "+N" (short
+  enough to leave the item its room), where "+N more" used to replace it.
+  Both platforms size this by the text as it is drawn, since a larger text
+  size means fewer rows, never clipped ones (a clipped list looks complete).
 - **Android: RemoteViews** (`widgets/HomeWidgets`, two `AppWidgetProvider`s).
   Glance isn't in the Compose BOM (it's versioned on its own and brings
   WorkManager), and two short lists don't need it. System fonts (serif title):
-  a font resource in RemoteViews depends on the launcher. `HomeWidgets.start`
-  (from `RecipeApp`) redraws when the plan, the list or the flags change while
-  the process lives; `updatePeriodMillis` (30 minutes, the least allowed)
-  covers the rest, midnight included. The tap is an intent action MainActivity
-  routes to the tab, like the expiry reminder's.
+  a font resource in RemoteViews depends on the launcher. The tap is an intent
+  action MainActivity routes to the tab, like the expiry reminder's.
+  - **Rows are budgeted in sp** against the font scale, and for both
+    orientations: `RemoteViews(landscape, portrait)`, from the launcher's least
+    and most height, so turning the phone needs no redraw. The smallest sizes
+    (`minResizeHeight` 80dp and 96dp) hold the title and one row at the default
+    font scale. Every colour, "+N more" included, is a `@color` in a layout,
+    which the launcher resolves for the theme it draws in.
+  - **No periodic refresh** (`updatePeriodMillis` 0; it was 30 minutes, about
+    96 wake-ups a day for one change). `HomeWidgets.start` (from `RecipeApp`)
+    redraws while the process lives, when the mapped `WidgetContent` changes:
+    nothing is observed with no widget placed or the flag off, and a write that
+    changes nothing shown redraws nothing. One redraw at a time (a `Mutex`,
+    reading inside it), so an older list is never drawn over a newer one.
+  - **Midnight is one alarm** (`WidgetDayChange`): inexact, by the decision
+    that rules out an exact-alarm prompt, in a ten-minute window (a plain `set`
+    may run hours late), and not a wake-up, since nobody sees a widget with the
+    screen off. Its redraw arms the next. `WidgetClockReceiver` also hears the
+    date, time and time zone change. The alarm and the receiver (disabled in
+    the manifest) are on only while a Tonight widget is placed.
 - **iOS: WidgetKit**, in the same extension as the Live Activity. It opens the
-  App Group database itself and reads it through the app's own DAOs (the data
-  layer is compiled in, as in the share extension), and asks to be redrawn at
-  midnight. The app's `WidgetRefresher` calls `reloadAllTimelines` when the
-  plan or the list changes, and mirrors the flag into the App Group suite
-  (`widgets_on`, like `reddit_on`), since the extension never sees the flags.
-  The link is `recipeclipper://tab?name=week` (`AppLinks`).
+  App Group database itself and reads it through the app's own DAOs
+  (`WidgetData`, in the data layer so the unit tests reach it). The app's
+  `WidgetRefresher` calls `reloadAllTimelines` when the plan (from the day
+  before it started, with no last day), the meal types or the list changes,
+  and mirrors the flag into the App Group suite (`widgets_on`, like
+  `reddit_on`), since the extension never sees the flags. The link is
+  `recipeclipper://tab?name=week` (`AppLinks`).
+  - **Tonight's timeline holds tomorrow** from midnight, so the day turns on
+    time when WidgetKit is slow to reload; the next timeline is asked for once
+    that entry shows. The list's timeline never reloads by the clock.
+  - **An unreadable database is not an empty plan** (before the first unlock
+    after a restart, or while the app migrates or imports): the widget shows
+    its title and nothing else, never "Nothing planned for today", and asks
+    again in five minutes.
+  - **`FittedRows`** offers each cut of the list to `ViewThatFits`, fullest
+    first, so the rows are measured at the Dynamic Type size and widget size in
+    use rather than assumed. When even one row and the count are too high (the
+    accessibility sizes in a small widget), the text steps down a size at a
+    time until they fit: smaller text, rather than an item unnamed. Not a fixed
+    cap on the text size, which would shrink it where there is room.
 
 ## iOS: importing inside the share extension (#19)
 
@@ -2756,7 +2825,7 @@ bends the settled link field: an always-visible field became a tile that opens i
   still runs. Then it shows the step stopped on ("Step 2 of 4", the existing `cook_position`)
   and the running timer that ends first ("18:42 left"), counted down from its saved deadline
   every 250 ms as cook mode does, never written; "Resume cooking" opens
-  `recipe/{id}?cook=true`. Otherwise it shows only the name and **"Open recipe"** (decided
+  `recipe/{id}?cook=true` (which resumes, never restarts: #333). Otherwise it shows only the name and **"Open recipe"** (decided
   here: the plain wording). The photo and name also open the recipe, as the Continue cooking
   row did. A recipe with no photo gets a short band in the paprika wash, never a stock image.
   A newer recipe never shows the last one's place, even for a moment.
@@ -5106,7 +5175,7 @@ reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receive
 `home`, `recipes` (the library; was `history`), `settings` (the index, #286: each
 section's page is `settings/<section>`, such as `settings/units` or `settings/help`; and the
 hidden `settings/developer`), `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`
-(`cook=true` from a timer notification opens cook mode), `recipe/import?url={url}` (the
+(`cook=true` from a timer notification or Home comes back to the cook: cook mode in its saved state, or the reading view once the run is finished, #333), `recipe/import?url={url}` (the
 share target: parse, then upsert with no list membership), and
 `edit?recipeId={recipeId}` (no id: a new recipe; saving replaces the edit screen, and
 the recipe screen under it, with `recipe/{id}`), and `clip?url={url}&blocked={blocked}&check={check}` (Clip it

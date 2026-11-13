@@ -128,6 +128,9 @@ final class EditRecipeViewModel {
     @ObservationIgnored private let repository: RecipeRepository
     @ObservationIgnored private let entitlements: Entitlements
     @ObservationIgnored private let photoReader: PhotoTextReader
+    /// The countdowns outside the app (#309): an edit that changes the steps drops the cook's
+    /// progress, so they are squared with the database after a save (#333); nil without them.
+    @ObservationIgnored private let countdowns: TimerCountdownSync?
     @ObservationIgnored private var readTask: Task<Void, Never>?
     /// The language the photo's lines were read in (#208), or nil when nothing was clear.
     @ObservationIgnored private var photoLanguage: String?
@@ -135,9 +138,10 @@ final class EditRecipeViewModel {
     init(
         recipeId: Int64?, repository: RecipeRepository, entitlements: Entitlements = UnavailableEntitlements(),
         photo: PhotoPost? = nil, photoReader: PhotoTextReader = UnavailablePhotoTextReader(),
-        scanPages: [String]? = nil, shared: SharedText.Reading? = nil
+        scanPages: [String]? = nil, shared: SharedText.Reading? = nil, countdowns: TimerCountdownSync? = nil
     ) {
         self.entitlements = entitlements
+        self.countdowns = countdowns
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
         self.photo = self.recipeId == nil ? photo : nil
         let pages = (scanPages ?? []).filter { !$0.isEmpty }
@@ -350,6 +354,7 @@ final class EditRecipeViewModel {
                 saved = await repository.addManual(draft: state.draft, language: language, notes: notes)
             } else if let recipeId {
                 saved = await repository.saveEdit(id: recipeId, draft: state.draft)
+                await self?.countdowns?.reconcile()
             } else {
                 saved = await repository.addManual(draft: state.draft)
             }

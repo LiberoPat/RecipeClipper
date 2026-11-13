@@ -52,6 +52,15 @@ import java.io.File
  * own saved recipe, against one in-stock pantry item of that name expiring today, as the indices
  * of the recipes that use it; write only those (optionally `, lang: "de"`).
  *
+ * `Tonight([types], [meals])` rows (#309) pin the Tonight widget ([WidgetContent.tonight]): meal
+ * types written "id sortOrder name" and planned meals written "dayOffset typeId t|n text" (a
+ * recipe's title or a note; today is offset 0), as each shown meal's type name, then its title;
+ * write only those. `ToBuy([unticked], [ticked])` rows pin the grocery widget
+ * ([WidgetContent.groceries]): a list holding those lines, as the lines left to buy (optionally
+ * `, lang: "de"`). `Fitted(count, rows)` rows (#329) pin [WidgetContent.fit]: that many items in
+ * a widget with room for that many rows, as how many are shown, how many more, and whether the
+ * count sits beside the one item; write only the two numbers.
+ *
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
  *
@@ -167,6 +176,15 @@ class DifferentialCorpusTest {
     private val useItRow = Regex(
         """^(\s*)UseIt\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
     )
+    // A Tonight widget row (#309): the meal types, then the planned meals.
+    private val tonightRow =
+        Regex("""^(\s*)Tonight\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A grocery widget row (#309): the list's unticked lines, its ticked ones, optionally their language.
+    private val toBuyRow = Regex(
+        """^(\s*)ToBuy\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
+    )
+    // A widget-fit row (#329): how many items, and how many rows there is room for.
+    private val fittedRow = Regex("""^(\s*)Fitted\((\d+), (\d+)""")
     // A calendar-file row (#52): one summary's text.
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
@@ -274,6 +292,9 @@ class DifferentialCorpusTest {
         entryRow.find(line)?.let { m -> return entryRow(m) }
         needRow.find(line)?.let { m -> return needRow(m) }
         useItRow.find(line)?.let { m -> return useItRow(m) }
+        tonightRow.find(line)?.let { m -> return tonightRow(m) }
+        toBuyRow.find(line)?.let { m -> return toBuyRow(m) }
+        fittedRow.find(line)?.let { m -> return fittedRow(m) }
         countRow.find(line)?.let { m -> return countRow(m) }
         cardRow.find(line)?.let { m ->
             val (kind, html) = m.groupValues[2] to unescape(m.groupValues[3])
@@ -549,6 +570,52 @@ class DifferentialCorpusTest {
         val saved = lines.mapIndexed { i, line -> SavedRecipe(i.toLong(), "r$i", null, language, listOf(line)) }
         val used = UseItUp.groups(listOf(item), saved, 0).firstOrNull()?.recipes.orEmpty().map { it.id }.sorted()
         return m.groupValues[1] + "UseIt(${q(name)}, ${list(lines)}$lang, ${used.joinToString(", ", "[", "]")}),"
+    }
+
+    private fun literals(group: String) = literal.findAll(group).map { unescape(it.groupValues[1]) }.toList()
+
+    /**
+     * `Tonight([types], [meals], [type, title, …])` (#309): [WidgetContent.tonight] for meal
+     * types written "id sortOrder name" and meals written "dayOffset typeId t|n text" (a recipe's
+     * title or a note), today being day 100: each shown meal's type name, then its title.
+     */
+    private fun tonightRow(m: MatchResult): String {
+        val (types, meals) = literals(m.groupValues[2]) to literals(m.groupValues[3])
+        val mealTypes = types.map { it.split(" ", limit = 3) }
+            .map { (id, order, name) -> MealType(id.toLong(), name, null, order.toInt()) }
+        val planned = meals.mapIndexed { i, meal ->
+            val (day, type, kind, text) = meal.split(" ", limit = 4)
+            PlannedMeal(
+                id = i + 1L, day = 100 + day.toLong(), mealTypeId = type.toLong(),
+                recipeId = if (kind == "t") i + 1L else null, title = text.takeIf { kind == "t" },
+                imageUrl = null, servings = null, note = text.takeIf { kind == "n" }
+            )
+        }
+        val shown = WidgetContent.tonight(planned, mealTypes, 100).flatMap { listOf(it.mealType, it.title) }
+        return m.groupValues[1] + "Tonight(${list(types)}, ${list(meals)}, ${list(shown)}),"
+    }
+
+    /**
+     * `ToBuy([unticked], [ticked], lang:, [lines])` (#309): [WidgetContent.groceries] for a list
+     * holding the unticked lines, then the ticked ones: the lines the widget lists.
+     */
+    private fun toBuyRow(m: MatchResult): String {
+        val (open, ticked) = literals(m.groupValues[2]) to literals(m.groupValues[3])
+        val language = m.groupValues[4].ifEmpty { "en" }
+        val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
+        val words = LanguageWords.forTag(language)!!
+        val items = (open.map { it to false } + ticked.map { it to true }).mapIndexed { i, (text, checked) ->
+            GroceryItem(i + 1L, text, language, Aisles.of(text, words), checked, i + 1)
+        }
+        val lines = WidgetContent.groceries(GroceryCombiner.sections(items))
+        return m.groupValues[1] + "ToBuy(${list(open)}, ${list(ticked)}$lang, ${list(lines)}),"
+    }
+
+    /** `Fitted(count, rows, shown, more, inline)` (#329): [WidgetContent.fit]. */
+    private fun fittedRow(m: MatchResult): String {
+        val (count, rows) = m.groupValues[2].toInt() to m.groupValues[3].toInt()
+        val fit = WidgetContent.fit(count, rows)
+        return m.groupValues[1] + "Fitted($count, $rows, ${fit.shown}, ${fit.more}, ${fit.inline}),"
     }
 
     /** `Step(step, [lines], lang:, as given, doubled in Metric)`: [StepAmounts.annotate], marked. */

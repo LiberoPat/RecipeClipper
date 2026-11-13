@@ -18,6 +18,8 @@ final class AppContainer {
     let backupFiles: BackupFiles
     let appInfo: AppInfo
     let alarms: TimerAlarmScheduler
+    /// The one path that squares the countdowns outside the app (#309) with the database (#333).
+    let timerCountdowns: TimerCountdownSync
     /// Asks to post notifications when expiry reminders are turned on (#52).
     let notificationPermission: NotificationPermission
     /// Keeps the pantry's expiry reminders scheduled (#52); the live app only.
@@ -114,6 +116,7 @@ final class AppContainer {
         self.backupFiles = backupFiles
         self.appInfo = appInfo
         self.alarms = alarms
+        timerCountdowns = TimerCountdownSync(repository: recipeRepository, alarms: alarms)
         self.notificationPermission = notificationPermission
         self.clipFixtureHTML = clipFixtureHTML
         self.sharedDatabase = sharedDatabase
@@ -134,6 +137,17 @@ final class AppContainer {
         sharedDatabase?.refreshObservers()
         // A day may have passed: plan the expiry reminders from today again.
         expiryReminders?.reschedule()
+        // A re-share from the extension may have dropped a cook's progress: its countdowns go (#333).
+        Task { await timerCountdowns.reconcile() }
+    }
+
+    /// The countdowns outside the app (#309) go when `liveTimers` is turned off (#333), as the
+    /// widgets follow their flag above. The live app only.
+    func followLiveTimersFlag(initial: Bool = true) {
+        _ = withObservationTracking { featureFlags.isOn(.liveTimers) } onChange: { [weak self] in
+            Task { @MainActor in self?.followLiveTimersFlag(initial: false) }
+        }
+        if !initial { Task { await timerCountdowns.reconcile() } }
     }
 
     /// Starts the expiry reminders (#52) over `scheduler`. The live app only: a test run never
@@ -241,6 +255,7 @@ final class AppContainer {
         if let photos = container.cookedPhotoRepository { Task { await photos.sweep() } }
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
         if !testing { container.startWidgets(WidgetRefresher(switchStore: DefaultsWidgetsSwitch(defaults: defaults))) }
+        if !testing { container.followLiveTimersFlag() }
         storeKit?.start()
         container.libraryPolicy.startMirroring()
         container.startRedditMirroring(DefaultsRedditSwitch(defaults: defaults))
@@ -269,7 +284,7 @@ final class AppContainer {
     func makeRecipesViewModel() -> RecipesViewModel {
         RecipesViewModel(
             repository: recipeRepository, preferences: preferences, library: libraryPolicy,
-            cookedSort: cookedPhotoRepository != nil
+            cookedSort: cookedPhotoRepository != nil, countdowns: timerCountdowns
         )
     }
 
@@ -281,7 +296,7 @@ final class AppContainer {
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
             openInCookMode: openInCookMode, plannedServings: plannedServings,
             shortSteps: shortStepRepository, flags: featureFlags, entitlements: entitlements,
-            decisions: decisionRepository
+            decisions: decisionRepository, countdowns: timerCountdowns
         )
     }
 
@@ -437,7 +452,9 @@ final class AppContainer {
     }
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {
-        EditRecipeViewModel(recipeId: recipeId, repository: recipeRepository, entitlements: entitlements)
+        EditRecipeViewModel(
+            recipeId: recipeId, repository: recipeRepository, entitlements: entitlements, countdowns: timerCountdowns
+        )
     }
 
     /// "Read the photo" (#198): the editor over a Reddit post's photos, read on the device.
