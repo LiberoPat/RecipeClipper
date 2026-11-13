@@ -63,5 +63,15 @@
     "Liter", "Tassen?"
   ],
   "gluedExceptions": [],
-  "unitLookAlikes": ["e\\s+l", "t\\s+l"]
+  "unitLookAlikes": ["e\\s+l", "t\\s+l"],
+  "shareText": {
+    "about": "The app's own shared text (RecipeShareText, #149) in this UI language, exactly as strings.xml and Localizable.xcstrings write it ({n} stands for the number), so a recipe shared from one phone opens sorted on another (#306, SharedText): the two headings on their own lines, the serves or makes line, and the prep, cook and total words of the times line. Pinned to the strings by ShareLabelsTableTest (Android) and ShareLabelsTableTests (iOS).",
+    "ingredients": "ZUTATEN",
+    "instructions": "ZUBEREITUNG",
+    "serves": "Portionen: {n}",
+    "makes": "Ergibt {n}",
+    "prep": "Vorbereitung",
+    "cook": "Garzeit",
+    "total": "Gesamt"
+  }
 }

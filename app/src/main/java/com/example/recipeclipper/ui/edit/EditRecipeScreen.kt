@@ -98,9 +98,12 @@ fun EditRecipeScreen(
                 state.photo?.let {
                     PhotoReview(it, state, viewModel::onReadAgain, viewModel::onPage, viewModel::onCheckLine, viewModel::onFraction)
                 }
-                // Text shared in (#306): how the split went.
+                // Text shared in (#306): how the split went, and where the lines it left out are (#334).
                 when (state.sharedSorted) {
-                    true -> Note(stringResource(R.string.text_read))
+                    true -> Note(
+                        stringResource(R.string.text_read) +
+                            if (state.leftovers) " " + stringResource(R.string.text_leftovers) else ""
+                    )
                     false -> Note(stringResource(R.string.text_not_sorted))
                     null -> Unit
                 }
@@ -111,7 +114,7 @@ fun EditRecipeScreen(
                         color = MaterialTheme.colorScheme.error
                     )
                     state.reading -> Unit // PhotoReview shows the progress
-                    else -> EditFields(state, viewModel::onDraftChange)
+                    else -> EditFields(state, viewModel::onDraftChange, viewModel::onNoteChange)
                 }
             }
         }
@@ -119,7 +122,7 @@ fun EditRecipeScreen(
 }
 
 @Composable
-private fun EditFields(state: EditRecipeUiState, onChange: (RecipeDraft) -> Unit) {
+private fun EditFields(state: EditRecipeUiState, onChange: (RecipeDraft) -> Unit, onNoteChange: (String) -> Unit) {
     val draft = state.draft
     if (state.showInvalid && !draft.isValid) {
         Message(stringResource(R.string.edit_error_invalid))
@@ -145,6 +148,8 @@ private fun EditFields(state: EditRecipeUiState, onChange: (RecipeDraft) -> Unit
         { onChange(draft.copy(instructionsText = it)) },
         multiLine = true
     )
+    // Shared text's review (#306) keeps the lines the split left out as the note (#334).
+    if (state.shared) Field(stringResource(R.string.heading_notes), state.note, onNoteChange, multiLine = true)
     Field(
         stringResource(R.string.edit_label_photo),
         draft.image,

@@ -55,6 +55,11 @@ final class ShareImportViewModel {
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private var input: SharedInput?
     @ObservationIgnored private var text: String?
+    /// Where the shared text goes (#306), read once per share (#334); nil with no text.
+    @ObservationIgnored private var textRoute: SharedText.Route?
+    /// Whether the share carried pictures, staged as pages or not (the photoText flag): beside
+    /// them only a recipe in the text wins (#334).
+    @ObservationIgnored private var withPictures = false
     /// "Add this list" (#149), made only for shared text with no link but with lines, and only
     /// when the grocery list and the pantry are on.
     @ObservationIgnored private(set) var receiveList: ReceiveListViewModel?
@@ -89,11 +94,14 @@ final class ShareImportViewModel {
     }
 
     /// Called once, with whatever the share carried (nil: no web link in it), its images staged
-    /// as a scan's pages (#226) when it had no link, and its plain `text` when it had no images.
-    func start(with input: SharedInput?, text: String? = nil, scanPages: [String] = []) {
+    /// as a scan's pages (#226) when it had no link, its plain `text`, and whether it carried
+    /// pictures at all (`withPictures`, #334). The text is read here, once.
+    func start(with input: SharedInput?, text: String? = nil, scanPages: [String] = [], withPictures: Bool = false) {
         self.input = input
         self.text = text
         self.scanPages = scanPages
+        self.withPictures = withPictures || !scanPages.isEmpty
+        textRoute = text.map(SharedText.route)
         load()
     }
 
@@ -112,8 +120,9 @@ final class ShareImportViewModel {
         loadTask?.cancel()
         reconnectTask?.cancel()
         reconnectTask = nil
-        // Text (#306): a recipe in it goes to the app's editor, even beside a link.
-        if let text, scanPages.isEmpty, leavesText(text) { return }
+        // Text (#306, the rules of #334): a recipe in it goes to the app's editor, even beside a
+        // link or pictures; other text goes there too when there is no link or picture to follow.
+        if leavesText() { return }
         guard let input else {
             // Images (#226): the app reads them, and the cook checks what it read.
             if !scanPages.isEmpty, let pendingScan {
@@ -123,9 +132,7 @@ final class ShareImportViewModel {
                 uiState = .scanInApp
                 return
             }
-            if let text, leavesText(text, orOther: true) { return }
-            if let text, !ReceivedList.lines(text).isEmpty,
-               let list = receiveList ?? makeReceiveList?() {
+            if let text, isList(text), !withPictures, let list = receiveList ?? makeReceiveList?() {
                 receiveList = list
                 list.open(text)
                 uiState = .list
@@ -164,20 +171,24 @@ final class ShareImportViewModel {
         }
     }
 
-    /// Leaves `text` for the app's editor (#306) when the shareText flag is on and it holds a
-    /// recipe or, with `orOther` (the share had no link), is neither a link nor a list.
-    private func leavesText(_ text: String, orOther: Bool = false) -> Bool {
-        guard shareTextOn(), let pendingText else { return false }
-        switch SharedText.kind(text) {
-        case .recipe: break
-        case .text where orOther && text.utf16.count <= SharedText.maxLength: break
-        default: return false
-        }
+    /// Leaves the text's reading for the app's editor (#306) when the shareText flag is on and
+    /// `SharedText.route` says the editor: a recipe always; other text unless the share carried
+    /// pictures, or a link item apart from the text (Safari's URL beside a title: the text is
+    /// then the link's caption, which the route couldn't see) to follow instead (#334).
+    private func leavesText() -> Bool {
+        guard shareTextOn(), let pendingText, let text, case .editor(let reading) = textRoute,
+              reading.sorted || (!withPictures && (input == nil || SharedText.link(text) != nil)) else { return false }
         pendingClip?.clear()
         pendingScan?.clear()
-        pendingText.put(text, at: clock.now())
+        pendingText.put(reading, at: clock.now())
         uiState = .textInApp
         return true
+    }
+
+    /// "Add this list" (#149) for `text`: with shareText on, only a list as `SharedText.route`
+    /// reads one (every line bulleted); off, as before #306, any lines.
+    private func isList(_ text: String) -> Bool {
+        shareTextOn() ? textRoute == .list : !ReceivedList.lines(text).isEmpty
     }
 
     /// As on the recipe screen: while an offline or fetch-failed error shows, a real

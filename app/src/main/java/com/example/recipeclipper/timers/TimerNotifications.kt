@@ -118,13 +118,33 @@ object TimerNotifications {
         NotificationManagerCompat.from(context).cancel(runningTag(recipeId), step)
     }
 
+    /**
+     * The countdowns now posted, each by its recipe and step to the deadline it counts to
+     * (its `when`): one query, so a schedule can skip an identical repost and a reconcile can
+     * find the stale ones.
+     */
+    fun postedCountdowns(context: Context): Map<Pair<Long, Int>, Long> =
+        NotificationManagerCompat.from(context).activeNotifications
+            .mapNotNull { posted ->
+                val tag = posted.tag?.takeIf { it.startsWith(RUNNING_TAG_PREFIX) } ?: return@mapNotNull null
+                val recipeId = tag.removePrefix(RUNNING_TAG_PREFIX).toLongOrNull() ?: return@mapNotNull null
+                (recipeId to posted.id) to posted.notification.`when`
+            }
+            .toMap()
+
     private fun mayNotify(context: Context): Boolean =
         (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED) &&
             NotificationManagerCompat.from(context).areNotificationsEnabled()
 
+    // Creating a channel is idempotent but a system call: once per process is enough.
+    @Volatile
+    private var runningChannelCreated = false
+
     private fun ensureRunningChannel(context: Context) {
+        if (runningChannelCreated) return
+        runningChannelCreated = true
         val channel = NotificationChannel(
             RUNNING_CHANNEL_ID,
             context.getString(R.string.timer_running_channel_name),
@@ -135,5 +155,7 @@ object TimerNotifications {
 
     private fun tag(recipeId: Long) = "timer:$recipeId"
 
-    fun runningTag(recipeId: Long) = "running:$recipeId"
+    private const val RUNNING_TAG_PREFIX = "running:"
+
+    fun runningTag(recipeId: Long) = "$RUNNING_TAG_PREFIX$recipeId"
 }

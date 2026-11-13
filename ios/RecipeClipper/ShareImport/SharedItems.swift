@@ -44,6 +44,11 @@ enum SharedItems {
     /// at most `ScanPages.maxPages`. Each is copied from the file the sharing app hands over,
     /// never held whole in the extension's small memory; one handed over only as data or an
     /// image is written out. Empty when the share held no image (the last scan's pages stay).
+    /// Whether the share carried a picture at all (#334), staged or not.
+    static func hasImages(_ providers: [NSItemProvider]) -> Bool {
+        providers.contains { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
+    }
+
     static func images(from providers: [NSItemProvider], into pages: ScanPages) async -> [String] {
         let images = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
         guard !images.isEmpty else { return [] }

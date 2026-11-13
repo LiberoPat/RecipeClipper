@@ -8,7 +8,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
@@ -24,13 +26,17 @@ import com.example.recipeclipper.timers.VisibleRecipe
  * Returns a callback for "a timer is starting". On API 33+ it asks for POST_NOTIFICATIONS the
  * first time only (the app's one runtime prompt), remembered in its own preferences file so a
  * refusal isn't asked again on every timer. Refused or not, nothing else changes: the timer
- * runs and the in-app beep still sounds while the recipe is open.
+ * runs and the in-app beep still sounds while the recipe is open. The timer that asked was
+ * started before the answer came, so [onGranted] lets its countdown (#309) be posted after all.
  */
 @Composable
-internal fun rememberNotificationPrompt(): () -> Unit {
+internal fun rememberNotificationPrompt(onGranted: () -> Unit = {}): () -> Unit {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return remember { {} }
     val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val granted by rememberUpdatedState(onGranted)
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
+        if (allowed) granted()
+    }
     return remember(context, launcher) {
         {
             val granted = ContextCompat.checkSelfPermission(

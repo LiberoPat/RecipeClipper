@@ -64,6 +64,31 @@ class CookSessionTest {
         assertNull("no steps, nothing to cook", session.start(CookState(), 0).cook)
     }
 
+    // #333: a tap on a countdown outside the app must never cancel the timer it shows.
+    @Test fun `resuming never restarts a finished run or stops its timers`() {
+        val started = session.startTimer(CookState(doneSteps = setOf(0, 1, 2), currentStep = 2), 2, 600).cook
+
+        val finished = session.resume(started, 3)
+        assertEquals("a finished run stays in the reading view, its timer running", started, finished)
+        assertTrue(session.hasRunningTimers)
+
+        val unfinished = session.resume(CookState(currentStep = 7, doneSteps = setOf(0)), 3)
+        assertEquals(CookState(active = true, currentStep = 2, doneSteps = setOf(0)), unfinished)
+        assertTrue(session.hasRunningTimers)
+
+        assertNull("no steps, nothing to cook", session.resume(CookState(), 0))
+    }
+
+    @Test fun `the running timers' alarms are listed in step order`() {
+        val recipe = recipe()
+        session.startTimer(CookState(), 2, 60)
+        val first = session.startTimer(CookState(), 0, 120)
+        session.toggleTimer(first.cook, 0) // paused: no alarm
+
+        assertEquals(listOf(2), session.runningAlarms(recipe).map { it.step })
+        assertEquals(now + 60_000, session.runningAlarms(recipe).single().endsAt)
+    }
+
     @Test fun `done moves to the next unfinished step, then the earliest skipped, then finishes`() {
         val first = session.done(CookState(active = true, currentStep = 0), 3)
         assertEquals(CookState(active = true, currentStep = 1, doneSteps = setOf(0)), first.cook)
@@ -117,16 +142,16 @@ class CookSessionTest {
         assertEquals(StepTimer(60, 60, running = true), started.cook.timers[1])
 
         now += 20_000
-        val ticked = session.tick(started.cook)!!
+        val ticked = session.tick(started.cook).cook!!
         assertEquals(40, ticked.timers[1]?.remainingSeconds)
-        assertNull("nothing changed within the same second", session.tick(ticked))
+        assertNull("nothing changed within the same second", session.tick(ticked).cook)
 
         val paused = session.toggleTimer(ticked, 1)!!
         assertNull("pausing cancels the alarm", paused.endsAt)
         assertFalse(paused.cook.timers[1]!!.running)
         assertFalse(session.hasRunningTimers)
         now += 60_000
-        assertNull("a paused timer doesn't tick", session.tick(paused.cook))
+        assertNull("a paused timer doesn't tick", session.tick(paused.cook).cook)
 
         val resumed = session.toggleTimer(paused.cook, 1)!!
         assertEquals(now + 40_000, resumed.endsAt)
@@ -142,7 +167,9 @@ class CookSessionTest {
         val started = session.startTimer(CookState(), 0, 5).cook
         now += 5_000
 
-        val done = session.tick(started)!!
+        val tick = session.tick(started)
+        assertEquals("its countdown outside the app goes", listOf(0), tick.ended)
+        val done = tick.cook!!
         assertEquals(StepTimer(5, 0, running = false), done.timers[0])
         assertFalse(session.hasRunningTimers)
         assertNull(session.toggleTimer(done, 0))

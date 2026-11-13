@@ -79,9 +79,10 @@ interface RecipeRepository {
      * Saves a recipe typed in by hand (MANUAL, with a `manual:` link). Null as for [saveEdit].
      * On a full free library (#107) with nothing to make room, the recipe comes back with id 0:
      * not kept, and the editor stays open. [language] is a scanned recipe's (#226), as its
-     * words said; a recipe typed in has none.
+     * words said; a recipe typed in has none. [notes] is the recipe's note from the start (#334:
+     * shared text's lines the split left out), as the cook left it.
      */
-    suspend fun addManual(draft: RecipeDraft, language: String? = null): Recipe?
+    suspend fun addManual(draft: RecipeDraft, language: String? = null, notes: String? = null): Recipe?
 
     /** Opens a recipe from history, a list or home. Counts as a view, so it moves to the top. */
     suspend fun open(id: Long): Recipe?

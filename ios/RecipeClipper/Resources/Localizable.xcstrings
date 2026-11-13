@@ -21823,6 +21823,47 @@
         }
       }
     },
+    "text_leftovers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeilen, die nirgends hineinpassten, stehen unverändert unter Notizen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lines that didn't fit anywhere are under Notes, as written."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las líneas que no encajaban en ningún sitio están en Notas, tal cual."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les lignes qui n'avaient leur place nulle part sont dans Notes, telles quelles."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le righe che non trovavano posto sono in Note, così come sono."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As linhas que não se encaixaram em nada estão em Anotações, como foram escritas."
+          }
+        }
+      }
+    },
     "text_not_sorted" : {
       "extractionState" : "manual",
       "localizations" : {

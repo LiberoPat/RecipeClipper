@@ -33,6 +33,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navigation
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.recipe.Hairline
+import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.settings.SettingsSection
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
@@ -96,7 +97,22 @@ fun NavHostController.openRoute(route: String) {
         return
     }
     if (currentDestination.tab() != Tab.RECIPES) selectTab(Tab.RECIPES)
+    // A countdown tapped while its recipe is on top (#333) mustn't stack a second copy, whose
+    // older twin would keep stale timer state and could save it over the newer progress. By
+    // recipe, not by destination: `launchSingleTop` would hand recipe 5's screen recipe 7's id.
+    if (showsRecipe(route)) return
     navigate(route)
+}
+
+/** The recipe a `recipe/{id}` route opens (with or without `?cook=`); null for any other route. */
+internal fun recipeIdIn(route: String): Long? =
+    Regex("""recipe/(\d+)(\?.*)?""").matchEntire(route)?.groupValues?.get(1)?.toLongOrNull()
+
+private fun NavHostController.showsRecipe(route: String): Boolean {
+    val id = recipeIdIn(route) ?: return false
+    val top = currentBackStackEntry ?: return false
+    return top.destination.route == Routes.RECIPE &&
+        top.arguments?.getLong(RecipeViewModel.RECIPE_ID_ARG) == id
 }
 
 /**

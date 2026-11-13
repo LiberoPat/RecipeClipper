@@ -231,8 +231,9 @@ protocol RecipeRepository: AnyObject {
     /// Saves a recipe typed in by hand (MANUAL, with a `manual:` link). Nil as for `saveEdit`.
     /// On a full free library (#107) with nothing to make room, the recipe comes back with id
     /// 0: not kept, and the editor stays open. `language` is a scanned recipe's (#226), as its
-    /// words said; a recipe typed in has none.
-    func addManual(draft: RecipeDraft, language: String?) async -> Recipe?
+    /// words said; a recipe typed in has none. `notes` is the recipe's note from the start (#334:
+    /// shared text's lines the split left out), as the cook left it.
+    func addManual(draft: RecipeDraft, language: String?, notes: String?) async -> Recipe?
 
     /// Opens a recipe from history, a list or home. Counts as a view. Nil if it's gone.
     func open(id: Int64) async -> Recipe?
@@ -244,6 +245,11 @@ protocol RecipeRepository: AnyObject {
 
     /// Saves where the cook stands. An empty `CookProgress` is stored as none.
     func setCookProgress(id: Int64, progress: CookProgress) async
+
+    /// Every timer saved as running (by its deadline, past or not), whichever recipe's: what
+    /// the countdowns outside the app (#309) are squared with (#333; Android's
+    /// `runningTimers`).
+    func runningTimers() async -> [StepAlarm]
 
     /// Saves the chosen servings; nil goes back to the recipe's own yield.
     func setServingsTarget(id: Int64, target: Int?) async
@@ -292,7 +298,11 @@ extension RecipeRepository {
 
     /// A recipe typed in by hand, with no language of its own (#29).
     func addManual(draft: RecipeDraft) async -> Recipe? {
-        await addManual(draft: draft, language: nil)
+        await addManual(draft: draft, language: nil, notes: nil)
+    }
+
+    func addManual(draft: RecipeDraft, language: String?) async -> Recipe? {
+        await addManual(draft: draft, language: language, notes: nil)
     }
 
     func observeCount() -> AnyPublisher<Int, Never> {
@@ -301,6 +311,9 @@ extension RecipeRepository {
 
     /// Test doubles that have nothing to do with Home's resume card (#286) needn't implement it.
     func observeRecipe(id: Int64) -> AnyPublisher<Recipe?, Never> { Just(nil).eraseToAnyPublisher() }
+
+    /// Test doubles that have nothing to do with the countdowns outside the app (#333) needn't implement it.
+    func runningTimers() async -> [StepAlarm] { [] }
 
     // Test doubles that have nothing to do with the tour (#151) needn't implement these.
     func sampleId() async -> Int64? { nil }
@@ -320,6 +333,15 @@ protocol TimerAlarmScheduler: AnyObject {
     /// recipe: a local notification has no receiver that could check it is still wanted, so
     /// one left over from a re-share that changed the steps must be removed here.
     func replaceAll(recipeId: Int64, with alarms: [StepAlarm])
+    /// The timer ran out while its recipe was on screen, where the in-app beep sounds: its
+    /// countdown (#309) goes. The alert is left alone: delivered, or being delivered.
+    func ended(recipeId: Int64, step: Int)
+    /// Keeps only `running`'s countdowns (#309), the database's running timers (#333): a deleted
+    /// recipe, a re-share or an edit that changed the steps, or `liveTimers` turned off (then
+    /// none stay) leaves nothing counting down for a timer the app has no record of. Alerts are
+    /// left alone: `replaceAll` squares them when the recipe is opened. Called through
+    /// `TimerCountdownSync`.
+    func reconcile(running: [StepAlarm])
 }
 
 /// Schedules the pantry's expiry reminders (#52; Android's `ExpiryReminderScheduler`). The real

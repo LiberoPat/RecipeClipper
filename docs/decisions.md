@@ -1075,7 +1075,7 @@ did there was nothing to tap.
 - **Android alert.** One `AlarmManager` alarm per running timer
   (`timers/AndroidTimerAlarmScheduler`), to `TimerAlarmReceiver`, which posts
   a notification (channel "Cook timers", category alarm; a tap opens the
-  recipe in cook mode through `recipe/{id}?cook=true`) only if the database
+  recipe through `recipe/{id}?cook=true`, back to the cook, #333) only if the database
   still has that timer running with that deadline, so a reset timer, a
   deleted recipe or a re-share that changed the steps never rings, and only
   if that recipe isn't on screen, where the in-app beep sounds instead. A
@@ -1110,8 +1110,33 @@ did there was nothing to tap.
 
 Behind `liveTimers`. A running cook-mode timer shows outside the app, counted
 down by the system from the deadline cook progress already saves, so nothing
-writes or posts per tick. A tap opens the recipe in cook mode. The time's-up
-alert and `TimerAlarmReceiver`'s check of the database are unchanged.
+writes or posts per tick. A tap opens the recipe and comes back to the cook.
+The time's-up alert and `TimerAlarmReceiver`'s check of the database are
+unchanged.
+
+- **A tap never cancels the timer it shows** (#333). A countdown, the alert,
+  Home's resume card and the `recipeclipper://cook` link all open the recipe
+  with `cook=true` / `.cookRecipe`, which *resumes* (`CookSession.resume`):
+  cook mode in its saved state while the run isn't finished; the reading view
+  when it is, where a timer still running (the last step's rest, say) shows
+  under its step. Only the reading view's own Start cooking starts a finished
+  run afresh and stops its timers, as before. The cook link opens cook mode
+  like the Live Activity it belongs to: any app can open it, but with only an
+  id above zero, and only the cook's own saved state. A tap while that recipe
+  is already on top opens no second copy (by recipe id on Android, not
+  `launchSingleTop`, which would hand one recipe's screen another's id).
+- **The countdowns follow the database** through one path, `TimerCountdownSync`
+  → `TimerAlarmScheduler.reconcile(running)`: every countdown the database has
+  no running timer for goes (all of them with the flag off). Called after a
+  delete (the Recipes swipe and the recipe screen), a re-share, an edit and
+  Update from source, whenever `liveTimers` changes (Android follows the flag
+  from `RecipeApp`, iOS from `AppContainer`), and on iOS when the app becomes
+  active (the share extension re-shares in its own process). The alerts need
+  none of this: Android's receiver checks the database, iOS's `replaceAll`
+  squares them when the recipe opens. A timer that runs out while its recipe
+  is on screen ends its countdown too (`CookSession.tick` names it,
+  `TimerAlarmScheduler.ended`); its alert is left alone, since it has fired or
+  is firing and cancelling would only race it.
 
 - **Android: an ongoing notification**, posted by
   `AndroidTimerAlarmScheduler.schedule` beside the alarm and removed by
@@ -1124,7 +1149,12 @@ alert and `TimerAlarmReceiver`'s check of the database are unchanged.
   One per timer (tag `running:<recipe>`, id the step). It asks to be promoted
   (`setRequestPromotedOngoing`, `POST_PROMOTED_NOTIFICATIONS`, a normal
   permission), which on Android 16 makes it a Live Update: the status bar chip
-  and the lock screen. Without the notification permission it isn't shown.
+  and the lock screen. Without the notification permission it isn't shown;
+  Android 13+ asks on the first timer, and the grant reposts what it refused.
+  The alarm is set before the countdown is posted, so the alert never depends
+  on the display; a countdown already posted to the same deadline is left as
+  it is (one query of the active notifications, not a repost per recipe
+  open), and the channel is created once per process.
 - **iOS: a Live Activity** per timer, on the lock screen and in the Dynamic
   Island, drawn by the new widget extension `RecipeClipperWidgets`
   (`TimerLiveActivity`, `TimerActivityAttributes` shared with the app under
@@ -1133,7 +1163,11 @@ alert and `TimerAlarmReceiver`'s check of the database are unchanged.
   operations are chained like the notifications', since ending is
   asynchronous. The activity's stale date is the deadline: past it, it reads
   "Time's up: step N" until the app ends it, which opening the recipe does
-  (`replaceAll` keeps only running timers). The link is
+  (`replaceAll` keeps only running timers), as does the timer running out
+  with the recipe on screen. An activity the system has ended (over eight
+  hours) is no longer live: it is cleared and a new one requested. The Dynamic
+  Island's compact countdown takes a wider frame for a timer of an hour or
+  more (h:mm:ss). The link is
   `recipeclipper://cook?id=N` (`AppLinks`, compiled into both targets). The
   extension can't use `Strings.swift` (it formats the app's types), so
   `WidgetStrings` reads the same catalog keys, compiled into its bundle. Its
@@ -1141,8 +1175,8 @@ alert and `TimerAlarmReceiver`'s check of the database are unchanged.
   `AppFont`'s variable-axis UIFont crashed the extension, which WidgetKit
   can't encode. The system asks once, on the first activity, whether to allow
   Live Activities.
-- **The flag off** shows nothing new, and ending never checks the flag, so
-  turning it off mid-cook leaves no countdown behind.
+- **The flag off** shows nothing new, and ending never checks the flag; turned
+  off mid-cook, the reconcile above removes every countdown.
 
 ### Home-screen widgets
 
@@ -2812,7 +2846,7 @@ bends the settled link field: an always-visible field became a tile that opens i
   still runs. Then it shows the step stopped on ("Step 2 of 4", the existing `cook_position`)
   and the running timer that ends first ("18:42 left"), counted down from its saved deadline
   every 250 ms as cook mode does, never written; "Resume cooking" opens
-  `recipe/{id}?cook=true`. Otherwise it shows only the name and **"Open recipe"** (decided
+  `recipe/{id}?cook=true` (which resumes, never restarts: #333). Otherwise it shows only the name and **"Open recipe"** (decided
   here: the plain wording). The photo and name also open the recipe, as the Continue cooking
   row did. A recipe with no photo gets a short band in the paprika wash, never a stock image.
   A newer recipe never shows the last one's place, even for a moment.
@@ -4616,55 +4650,97 @@ shares into the app. Behind the existing `photoText` flag, on both platforms.
 - **Needs a phone:** the camera itself, the picker's order, sharing from Photos or a gallery,
   ML Kit's model through Play services, and real cards and cookbook pages (docs/testing.md).
 
-## Share text, not just links (#306, 2026-10-30)
+## Share text, not just links (#306, 2026-10-30; the review's fixes, #334, 2026-11-06)
 
 A recipe in a note, an email from a relative or a message is shared into the app as text, split
 into a recipe and opened in the editor for the cook to check, as "Read the photo" (#198) and a
 scan (#226) are. Behind the `shareText` flag, on both platforms.
 
-- **Where shared text goes** (`SharedText.kind`, pure, in `:core` with its Swift port, pinned by
-  the corpus's `Shared(…)` rows), in order:
-  1. **A recipe:** the text splits (`RecipeTextSplitter`, in the language its words say, #208).
-     **It wins over a link in it.** The cook chose this text; a link beside a recipe (an email
-     signature, "see also", the highlight link Chrome adds to a shared selection) may lead
-     anywhere, and importing it could open a different recipe. A browser shares a link with at
-     most a title, which never splits, so a shared page still imports as before.
-  2. **A link:** today's import of its first http(s) link.
-  3. **A bulleted list** ("- ", "• ", …): #149's "Add this list", as before, so a list sent from
-     Groceries or the Pantry still arrives as one (it never splits: it has no steps).
-  4. **Anything else** (prose, unbulleted lines): the editor, as written. Before #306 unbulleted
-     lines were offered as a list; a bulleted list is what the app itself sends, and text that is
-     neither is likelier a recipe told in prose than a list.
+- **Where shared text goes** (`SharedText.route`, pure, in `:core` with its Swift port, pinned by
+  the corpus's `Shared(…)` rows; the owner's rules from the code review, #334), in order:
+  1. **A recipe:** the text splits (`RecipeTextSplitter`, in the language its words say, #208),
+     or is the app's own shared text (below). **It wins over a link in it.** The cook chose this
+     text; a link beside a recipe (an email signature, "see also", the highlight link Chrome
+     adds to a shared selection) may lead anywhere, and importing it could open a different
+     recipe. The link is not kept as the source credit (a recipe of the cook's own has none, and
+     "Update from source" would fetch it); it stays in the note (below).
+  2. **A link, only when the text is essentially just the link:** the links taken out, at most
+     two other lines, each at most 160 characters (a title, a caption: what a browser or an app
+     shares). Anything more is a recipe for the editor, even prose with a signature's link.
+  3. **A list** (#149's "Add this list"): every non-blank line bulleted ("- ", "• ", …), as the
+     app's own "Send list" writes them; an unbulleted line passes as a heading when it is short
+     (40 characters or fewer), doesn't end a sentence and a bulleted line follows it somewhere
+     after (the title, an aisle). A bulleted line beside prose is a recipe for the editor, so a
+     method under a bulleted ingredient list is never dropped.
+  4. **Anything else** (prose, unbulleted lines): the editor, as written. Blank text goes
+     nowhere, on both platforms. Text past 50,000 characters is never offered to the editor
+     (the review keeps it in saved state): a link in it imports, a bulleted one is a list, else
+     nothing.
+  Line breaks are normalised first: `\r\n`, `\r`, the vertical tab, form feed, NEL, U+2028 and
+  U+2029 (Pages, Messages on a Mac and Google Docs share some of these) all become `\n`.
 - **What the editor opens with** (`SharedText.read`): split, its ingredients, steps, yield and
-  times. Not split: **every non-blank line, trimmed and otherwise as written, as a step**, with
-  "Couldn't find ingredients and steps in the text, so it's all under Steps, as written: finish
-  it by hand." Steps rather than ingredients (the photo's fallback) because a step is never
-  scaled, converted, bought or used up, so an unsorted line can never become a confident wrong
-  number; prose reads as steps, and the cook moves the ingredient lines. **No name either way**:
-  the first line might be "Hi Mum," or "Fwd:", and the splitter drops the lines before the first
-  section, so Save points out the rule, as a scan's does. Nothing is corrected, and no lines are
-  listed to check: typed text has no recogniser to doubt.
+  times. Shared text is **plain text, never HTML**: "2 eggs <room temperature>" keeps its
+  brackets and "&amp;" stays as written (only whitespace is collapsed). **Nothing the cook shared
+  is lost:** the lines a split leaves out (`SplitLines.leftover`: the story before the first
+  section, a "Notes:" or "Tip:" block, a link, a second yield or time) open in a **Notes** field
+  under the steps, as written, in order, and are saved as the recipe's note (`addManual(notes:)`);
+  the review says so ("Lines that didn't fit anywhere are under Notes, as written."). Not split:
+  **every non-blank line, trimmed and otherwise as written, as a step**, with "Couldn't find
+  ingredients and steps in the text, so it's all under Steps, as written: finish it by hand."
+  Steps rather than ingredients (the photo's fallback) because a step is never scaled,
+  converted, bought or used up, so an unsorted line can never become a confident wrong number;
+  prose reads as steps, and the cook moves the ingredient lines. **No name either way**: the
+  first line might be "Hi Mum," or "Fwd:", so Save points out the rule, as a scan's does
+  (the title line of the app's own text sits first in the note). Nothing is corrected, and no
+  lines are listed to check: typed text has no recogniser to doubt.
+- **The app's own shared text round-trips** (`SharedText.appShared`): what "Share" writes
+  (`RecipeShareText`) is read back whichever of the six UI languages the sender's phone wrote
+  its words in, so a German phone's "ZUTATEN … ZUBEREITUNG" around an English recipe opens
+  sorted, with its serves line ("Portionen: 3 (ursprünglich 6)", kept whole as the yield) and
+  its times line ("Vorbereitung 10m · Garzeit 20m"). The words live once per language in
+  `shared/tables/<lang>/splitter.json` under `shareText` (`{n}` stands for the number; French
+  writes a no-break space before its colon, read as a space since an app in between may swap
+  it), pinned to each platform's strings by `ShareLabelsTableTest` (Robolectric, six locales)
+  and `ShareLabelsTableTests` (the compiled catalog). The recipe's language is still its own
+  words', never the sender's phone's. Tried before the splitter: the two headings on their own
+  lines, in order, each with lines under it.
 - **Saved as the cook's own** (`addManual` with the text's language, then the checked recipe's
-  words, else English), like a scan: `MANUAL`, `manual:<uuid>`, no source credit. The link a
-  recipe won over is not kept (a follow-up could keep it as the credit). Nothing is saved until
-  Save; Back discards.
-- **Android:** `ACTION_SEND` text/plain as before, now read as a `CharSequence` (some apps send
-  styled text), and **`ACTION_PROCESS_TEXT`**: "Recipe Clipper" in any app's text-selection menu,
-  read the same way (with the flag off the app just opens). `TextIntent` decides; the route is
-  `edit/text?text=…`, the text in the route, so it survives process death; longer than
-  50,000 characters it isn't offered to the editor (the saved state's limit), and falls back to a
-  link or a list.
-- **iOS:** the share extension reads the shared text (also beside a link while the flag is on)
+  words, else English), like a scan: `MANUAL`, `manual:<uuid>`, no source credit, the note as
+  the review left it. Nothing is saved until Save; Back discards.
+- **Android:** `ACTION_SEND` text/plain as before, read as a `CharSequence` (some apps send
+  styled text), the text beside shared pictures (`EXTRA_TEXT` on an image share), and
+  **`ACTION_PROCESS_TEXT`**: "Recipe Clipper" in any app's text-selection menu. The menu starts
+  its target for a result, inside the other app's task, so a small trampoline
+  (`ProcessTextActivity`, translucent, excluded from recents) takes it and forwards the text to
+  the single-task `MainActivity` in the app's own task; `MainActivity` declares no
+  `PROCESS_TEXT` filter itself. `ProcessTextEntry` enables and disables the trampoline
+  component with the `shareText` flag (Developer settings included), so with the flag off the
+  entry shows nowhere, and the clip page's WebView hides the app's own entry from its selection
+  menu (`OwnProcessTextFilter`; Compose's text fields show no such entries). **The hand-off:**
+  `MainActivity` reads the text once, off the main thread (`TextIntent.target`), and leaves the
+  text with its reading in `SharedTextInbox` (in memory, like `ReceivedListInbox`); the route
+  is `edit/text?key=…`, a short key, never the text (past about 117,000 encoded characters the
+  route stopped matching and crashed, #334). `EditRecipeViewModel` takes the entry by the key
+  and keeps the text in its `SavedStateHandle`, so after process death it reads the text again
+  (hence the 50,000-character cap). **Pictures with text:** a recipe in the text wins (the
+  editor); anything else leaves the pictures to the scan (`photoText` on) or does nothing.
+- **iOS:** the share extension reads the shared text (also beside a link, or beside pictures,
+  while the flag is on), **reads it once** (`SharedText.route` in `ShareImportViewModel.start`)
   and **hands off rather than opens** (#19), as a scan does: `PendingText` (`pending_text`,
-  `pending_text_at`) and "Open Recipe Clipper to check the recipe from this text…"; the app,
-  becoming active within 10 minutes, opens the editor in Recipes, once. Each new share replaces
-  or clears what an earlier one left. The flag is mirrored as `share_text_on`.
+  `pending_text_at`) holds the reading itself as JSON, and the card says "Open Recipe Clipper to
+  check the recipe from this text…"; the app, becoming active within 10 minutes, opens the
+  editor in Recipes on that reading, once, and only while the flag is on. Each new share
+  replaces or clears what an earlier one left. The flag is mirrored as `share_text_on`.
+  Pictures with text as on Android; blank text is ignored.
 - **Not built:** shared PDFs (a PDF's text through PDFKit or `PdfRenderer` plus OCR would feed
-  the same editor; a follow-up issue).
-- **Tests:** `SharedTextTest`, `TextIntentTest`, `EditRecipeTextViewModelTest` and
-  `EditRecipeTextScreenTest` (Android); `TextHandOffTests`, `EditRecipeTextTests` and
-  `ShareTextUITests` (iOS, with `RC_UITEST_SHARED_TEXT` standing in for the hand-off, since the
-  share sheet can't be driven). Sharing from Notes, Mail, Messages or a selection needs a phone.
+  the same editor; a follow-up issue). Guessing the name from the app's own text's title line.
+- **Tests:** `SharedTextTest`, `TextIntentTest`, `EditRecipeTextViewModelTest`,
+  `EditRecipeTextScreenTest`, `EditTextRouteTest` (a 20,000-character Japanese text through the
+  real NavHost route), `ProcessTextEntryTest` and `ShareLabelsTableTest` (Android);
+  `TextHandOffTests`, `EditRecipeTextTests`, `ShareLabelsTableTests` and `ShareTextUITests`
+  (iOS; `RC_UITEST_SHARED_TEXT` writes to the real `PendingText`, since the share sheet can't be
+  driven, so the UI test takes the app's own path and fails with the flag off). Sharing from
+  Notes, Mail, Messages or a selection, and the trampoline's task behaviour, need a phone.
 
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
@@ -5120,7 +5196,7 @@ reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receive
 `home`, `recipes` (the library; was `history`), `settings` (the index, #286: each
 section's page is `settings/<section>`, such as `settings/units` or `settings/help`; and the
 hidden `settings/developer`), `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`
-(`cook=true` from a timer notification opens cook mode), `recipe/import?url={url}` (the
+(`cook=true` from a timer notification or Home comes back to the cook: cook mode in its saved state, or the reading view once the run is finished, #333), `recipe/import?url={url}` (the
 share target: parse, then upsert with no list membership), and
 `edit?recipeId={recipeId}` (no id: a new recipe; saving replaces the edit screen, and
 the recipe screen under it, with `recipe/{id}`), and `clip?url={url}&blocked={blocked}&check={check}` (Clip it
@@ -5131,8 +5207,8 @@ saving replaces it and the error screen under it, if any, with `recipe/{id}`), a
 from a Reddit post's pictures, one address per line in `images`; saving replaces it and the
 error screen like a clip), and `edit/scan?pages={pages}` (Scan a recipe, #226: the same editor
 over the cook's own pages, local URIs one per line; saving replaces it with `recipe/{id}`), and
-`edit/text?text={text}` (text shared in, #306: the same editor, split or as written; saving
-replaces it with `recipe/{id}`). A bottom tab bar (#47) nests this graph under a Recipes tab
+`edit/text?key={key}` (text shared in, #306: the same editor, split or as written, found by its
+key in `SharedTextInbox`, #334; saving replaces it with `recipe/{id}`). A bottom tab bar (#47) nests this graph under a Recipes tab
 alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and
 `week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry` (#51)
 (`AppShell`/iOS `RootView`'s `tabs`). Hidden on the recipe reading view and in cook

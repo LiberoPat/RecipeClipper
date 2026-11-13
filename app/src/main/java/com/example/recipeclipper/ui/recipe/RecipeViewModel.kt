@@ -12,6 +12,7 @@ import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.ShortStepRepository
 import com.example.recipeclipper.data.TimerAlarmScheduler
+import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
@@ -63,13 +64,17 @@ class RecipeViewModel @Inject constructor(
     private val entitlements: Entitlements = Entitlements.Unavailable,
     // The on-device model's decisions (#104: count brackets; junk after an ingredient, #174);
     // none without it.
-    decisionRepository: DecisionRepository? = null
+    decisionRepository: DecisionRepository? = null,
+    // The countdowns outside the app (#309), squared with the database after a delete, a
+    // re-share or an update (#333); none without it (tests that aren't about them).
+    private val countdowns: TimerCountdownSync? = null
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
     private val shareUrl: String? = savedStateHandle.get<String>(URL_ARG)?.takeIf { it.isNotBlank() }
 
-    // Opened from a timer notification: start cook mode once the recipe has loaded.
+    // Opened from a timer's countdown or alert, the cook link or Home's resume card: back to
+    // the cook once the recipe has loaded (CookController.resume, #333: never a restart).
     private var openInCookMode: Boolean = savedStateHandle.get<Boolean>(COOK_ARG) == true
 
     // Opened from the Week (#49): show the planned servings rather than the saved choice. For
@@ -203,8 +208,10 @@ class RecipeViewModel @Inject constructor(
                 askModel()
                 if (openInCookMode) {
                     openInCookMode = false
-                    onCookStart()
+                    cookMode.resume()
                 }
+                // A re-share that changed the steps dropped the cook's progress: its countdowns go.
+                if (shareUrl != null) countdowns?.reconcile()
             }
             if (result is ParseResult.Error && result.error.reloadsOnReconnect) reloadOnReconnect()
         }
@@ -293,6 +300,7 @@ class RecipeViewModel @Inject constructor(
         viewModelScope.launch {
             // No undo here: the confirmation said the photos go with it (#116).
             repository.delete(id)?.let { repository.forget(it) }
+            countdowns?.reconcile()
             _uiState.update { it.copy(deleted = true) }
         }
     }
@@ -321,6 +329,7 @@ class RecipeViewModel @Inject constructor(
                     )
                 }
                 cookMode.restore(result.recipe)
+                countdowns?.reconcile()
                 chef.start()
                 askModel()
             } else {
@@ -384,6 +393,9 @@ class RecipeViewModel @Inject constructor(
         endJump()
         cookMode.exit()
     }
+
+    /** Notifications were just allowed (Android 13+): the running timers' countdowns can show now. */
+    fun onNotificationsAllowed() = cookMode.showCountdowns()
 
     fun onIngredientsToggle() {
         endJump()

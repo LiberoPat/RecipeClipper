@@ -43,14 +43,6 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
 
-            <!-- Text selected in any app (#306): "Recipe Clipper" in the selection menu, read as
-                 shared text (behind the shareText flag; off, it opens the app) -->
-            <intent-filter>
-                <action android:name="android.intent.action.PROCESS_TEXT" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-
             <!-- "Scan a recipe" (#226): a photo or screenshot of a recipe, or several pages,
                  shared in from the gallery or another app, read on the device -->
             <intent-filter>
@@ -79,6 +71,22 @@
                 <data android:pathPattern=".*\\.recipeclipper" />
                 <data android:pathPattern=".*\\..*\\.recipeclipper" />
                 <data android:pathPattern=".*\\..*\\..*\\.recipeclipper" />
+            </intent-filter>
+        </activity>
+
+        <!-- Text selected in any app (#306): "Recipe Clipper" in the selection menu. A trampoline
+             (#334): the menu starts it inside the other app's task, and it forwards the text to
+             MainActivity in the app's own task. ProcessTextEntry disables it while the shareText
+             flag is off, so the entry then shows nowhere. -->
+        <activity
+            android:name=".ProcessTextActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
 
