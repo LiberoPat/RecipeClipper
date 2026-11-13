@@ -70,20 +70,54 @@ final class RecipePrintTests: XCTestCase {
         XCTAssertFalse(RecipePrint.keepsWithNext(.step(1, "Stir")))
     }
 
+    /// Whole blocks (one line each), as the page each lands on.
+    private func pages(_ heights: [Double], keep: [Bool], pageHeight: Double) -> [Int] {
+        RecipePrint.paginate(heights.indices.map { .init(space: 0, lines: [heights[$0]], keep: keep[$0]) }, pageHeight: pageHeight).map(\.page)
+    }
+
+    private func measured(_ space: Double, _ lines: [Double], _ keep: Bool = false) -> RecipePrint.Measured {
+        RecipePrint.Measured(space: space, lines: lines, keep: keep)
+    }
+
+    private func piece(_ block: Int, _ page: Int, _ first: Int, _ end: Int) -> RecipePrint.Piece {
+        RecipePrint.Piece(block: block, page: page, first: first, end: end)
+    }
+
     func testBlocksFillAPageThenTheNext() {
-        XCTAssertEqual(RecipePrint.paginate([40, 50, 60, 30, 20], keep: Array(repeating: false, count: 5), pageHeight: 100), [0, 0, 1, 1, 2])
+        XCTAssertEqual(pages([40, 50, 60, 30, 20], keep: Array(repeating: false, count: 5), pageHeight: 100), [0, 0, 1, 1, 2])
     }
 
     func testAHeadingNeverEndsAPage() {
-        XCTAssertEqual(RecipePrint.paginate([70, 20, 20], keep: [false, true, false], pageHeight: 100), [0, 1, 1])
+        XCTAssertEqual(pages([70, 20, 20], keep: [false, true, false], pageHeight: 100), [0, 1, 1])
     }
 
     func testAKeptRunTallerThanAPageBreaksWhereItMust() {
-        XCTAssertEqual(RecipePrint.paginate([60, 30, 90], keep: [true, true, false], pageHeight: 100), [0, 0, 1])
+        XCTAssertEqual(pages([60, 30, 90], keep: [true, true, false], pageHeight: 100), [0, 0, 1])
     }
 
-    func testABlockTallerThanAPageGetsItsOwn() {
-        XCTAssertEqual(RecipePrint.paginate([10, 150, 10], keep: [false, false, false], pageHeight: 100), [0, 1, 2])
+    func testASingleLineTallerThanAPageGetsAPageOfItsOwn() {
+        XCTAssertEqual(pages([10, 150, 10], keep: [false, false, false], pageHeight: 100), [0, 1, 2])
+    }
+
+    func testABlockTallerThanAPageCarriesOnOverTheNextPagesSplitBetweenLines() {
+        // 15 lines of 10 after a block of 10: nine fill the first page, six go on with the next block.
+        let pieces = RecipePrint.paginate(
+            [measured(0, [10]), measured(0, Array(repeating: 10, count: 15)), measured(0, [10])], pageHeight: 100
+        )
+        XCTAssertEqual(pieces, [piece(0, 0, 0, 1), piece(1, 0, 0, 9), piece(1, 1, 9, 15), piece(2, 1, 0, 1)])
+    }
+
+    func testAHeadingStaysWithTheFirstLineOfABlockTallerThanAPage() {
+        // The heading (20) and the note's first line (4 + 10) move on together; the note's space counts once.
+        let pieces = RecipePrint.paginate(
+            [measured(0, [75]), measured(0, [20], true), measured(4, Array(repeating: 10, count: 12))], pageHeight: 100
+        )
+        XCTAssertEqual(pieces, [piece(0, 0, 0, 1), piece(1, 1, 0, 1), piece(2, 1, 0, 7), piece(2, 2, 7, 12)])
+    }
+
+    func testABlockWithNoLinesTakesItsSpace() {
+        XCTAssertEqual(RecipePrint.paginate([measured(5, [])], pageHeight: 100), [piece(0, 0, 0, 0)])
+        XCTAssertEqual(measured(5, [4, 6]).height, 15)
     }
 
     func testACookbookNumbersFromItsTitleAndContentsPages() {

@@ -27,13 +27,15 @@ internal class PrintStyle(context: Context, locale: Locale = Locale.getDefault()
     private val display: Typeface = font(context, R.font.fraunces, Typeface.SERIF)
     private val body: Typeface = font(context, R.font.karla, Typeface.SANS_SERIF)
 
-    val title = paint(display, 24f, INK)
-    val bookTitle = paint(display, 34f, INK)
-    val section = paint(display, 15f, PAPRIKA)
-    val group = paint(display, 12f, MUTED)
-    val stepNumber = paint(display, 11.5f, PAPRIKA)
-    val text = paint(body, 11f, INK)
-    val muted = paint(body, 10f, MUTED)
+    // The weights the screen uses (Theme.kt's `variable`, iOS's PrintStyle): 500 for headings,
+    // 600 for step numbers, set on the variable font through the paint (#331).
+    val title = paint(display, 24f, INK, weight = 500)
+    val bookTitle = paint(display, 34f, INK, weight = 500)
+    val section = paint(display, 15f, PAPRIKA, weight = 500)
+    val group = paint(display, 12f, MUTED, weight = 500)
+    val stepNumber = paint(display, 11.5f, PAPRIKA, weight = 600)
+    val text = paint(body, 11f, INK, weight = 400)
+    val muted = paint(body, 10f, MUTED, weight = 400)
 
     /** [s] wrapped to [width] in [paint], left aligned unless [centre]. */
     fun layout(s: CharSequence, paint: TextPaint, width: Float = contentWidth, centre: Boolean = false): StaticLayout =
@@ -42,10 +44,11 @@ internal class PrintStyle(context: Context, locale: Locale = Locale.getDefault()
             .setLineSpacing(0f, 1.15f)
             .build()
 
-    private fun paint(face: Typeface, size: Float, color: Int) = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
+    private fun paint(face: Typeface, size: Float, color: Int, weight: Int) = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
         typeface = face
         textSize = size
         this.color = color
+        fontVariationSettings = "'wght' $weight" // ignored by a fallback face with no such axis
     }
 
     private fun font(context: Context, id: Int, fallback: Typeface): Typeface =

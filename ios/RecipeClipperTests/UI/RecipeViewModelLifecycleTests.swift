@@ -35,6 +35,7 @@ private final class GatedRecipeRepository: RecipeRepository {
         return nil
     }
 
+    func byIds(_ ids: [Int64]) async -> [Recipe] { [] }
     @MainActor func setChecked(id: Int64, checked: Set<Int>) async {}
     @MainActor func setNotes(id: Int64, notes: String) async {}
     @MainActor func setCookProgress(id: Int64, progress: CookProgress) async {}

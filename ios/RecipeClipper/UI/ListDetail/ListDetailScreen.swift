@@ -20,6 +20,17 @@ struct ListDetailScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 ScreenTitle(state.list?.name ?? "").padding(.bottom, 12)
                 Hairline().padding(.bottom, 4)
+                // A cookbook takes a while (#331): say so until the share sheet opens.
+                if printVM?.uiState.busy == true {
+                    HStack(spacing: 10) {
+                        ProgressView().controlSize(.small)
+                        Text(Strings.cookbookMaking).textStyle(Typography.bodyMedium).foregroundStyle(Palette.muted)
+                    }
+                    .padding(.top, 12)
+                    .padding(.bottom, 4)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("list.cookbookMaking")
+                }
                 if state.loaded && state.recipes.isEmpty {
                     Text(Strings.listEmpty)
                         .textStyle(Typography.bodyLarge)

@@ -12,14 +12,19 @@ import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentInfo
 import android.print.PrintManager
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.data.backup.ShareFile
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.io.FileOutputStream
@@ -28,13 +33,19 @@ import java.io.IOException
 /**
  * The platform half of printing (#318): draws [PrintViewModel]'s job into a PDF, then opens the
  * system print dialog on a recipe (which also offers "Save as PDF") or the share sheet on a
- * cookbook, as Send as file does. [onFailed] (a snackbar) when it couldn't be made.
+ * cookbook, as Send as file does. [onFailed] (a snackbar) when it couldn't be made. Leaving the
+ * screen (not rotating it) drops the job (#331): the dialog or the sheet must never pop up on
+ * return, minutes later; the cook asks again.
  */
 @Composable
 fun PrintEffect(viewModel: PrintViewModel, onFailed: suspend () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val printer = LocalPrinter.current
+    val activity = LocalActivity.current
+    DisposableEffect(viewModel) {
+        onDispose { if (activity?.isChangingConfigurations != true) viewModel.onLeave() }
+    }
     LaunchedEffect(state.job) {
         val job = state.job ?: return@LaunchedEffect
         val ok = try {
@@ -46,12 +57,20 @@ fun PrintEffect(viewModel: PrintViewModel, onFailed: suspend () -> Unit) {
         }
         if (ok) viewModel.onDone() else viewModel.onFailed()
     }
+    // The line stays up for its whole time: the flag is lowered only once it has gone (#331).
     LaunchedEffect(state.failed) {
         if (!state.failed) return@LaunchedEffect
-        viewModel.onFailureShown()
         onFailed()
+        viewModel.onFailureShown()
     }
 }
+
+/**
+ * The route's [PrintViewModel], or null with the `print` flag off (#87): what every route that
+ * shows a recipe or a list passes, so none forgets the menu entry (#331; `PrintWiringTest`).
+ */
+@Composable
+fun printViewModelIfOn(): PrintViewModel? = if (LocalFlagValues.current.isOn(Flag.PRINT)) hiltViewModel() else null
 
 /**
  * Draws a [PrintJob] and hands it on: the print dialog or the share sheet. True once handed on.

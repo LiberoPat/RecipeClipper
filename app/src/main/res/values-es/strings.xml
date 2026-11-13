@@ -713,6 +713,7 @@
     <string name="action_cookbook">Crear un recetario</string>
     <string name="menu_desc_cookbook">Todas las recetas de aquí en un PDF</string>
     <string name="cookbook_contents">Índice</string>
+    <string name="cookbook_making">Creando el recetario…</string>
     <string name="print_failed">No se pudo crear el PDF.</string>
     <string name="menu_desc_update_from_source">Sustituye tus cambios por la versión actual de la web</string>
     <string name="menu_desc_what_i_need">Lo que piden las recetas de la semana y no tienes en la despensa</string>

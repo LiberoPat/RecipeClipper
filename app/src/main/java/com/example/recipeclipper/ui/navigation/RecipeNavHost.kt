@@ -8,8 +8,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.recipeclipper.data.PhotoPost
-import com.example.recipeclipper.data.flags.Flag
-import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.clip.ClipScreen
 import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.edit.EditRecipeScreen
@@ -19,6 +17,7 @@ import com.example.recipeclipper.ui.home.HomeScreen
 import com.example.recipeclipper.ui.listdetail.ListDetailScreen
 import com.example.recipeclipper.ui.listdetail.ListDetailViewModel
 import com.example.recipeclipper.ui.lists.ListsScreen
+import com.example.recipeclipper.ui.print.printViewModelIfOn
 import com.example.recipeclipper.ui.recipe.RecipeScreen
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.week.WhatINeedViewModel
@@ -133,7 +132,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         ListDetailScreen(
             onBack = { navController.popBackStack() },
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
-            printViewModel = if (LocalFlagValues.current.isOn(Flag.PRINT)) hiltViewModel() else null
+            printViewModel = printViewModelIfOn()
         )
     }
 
@@ -192,7 +191,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             groceriesViewModel = hiltViewModel(),
             photosViewModel = hiltViewModel(),
             sendFileViewModel = hiltViewModel(),
-            printViewModel = if (LocalFlagValues.current.isOn(Flag.PRINT)) hiltViewModel() else null,
+            printViewModel = printViewModelIfOn(),
             useUpViewModel = hiltViewModel()
         )
     }
@@ -250,7 +249,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             groceriesViewModel = hiltViewModel(),
             photosViewModel = hiltViewModel(),
             sendFileViewModel = hiltViewModel(),
-            printViewModel = if (LocalFlagValues.current.isOn(Flag.PRINT)) hiltViewModel() else null,
+            printViewModel = printViewModelIfOn(),
             useUpViewModel = hiltViewModel()
         )
     }

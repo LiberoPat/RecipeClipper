@@ -35,27 +35,68 @@ struct PrintStyle {
     }
 }
 
-/// One block measured for the page: `space` above it (dropped at the top of a page), its own
-/// `height`, and how to draw it with its top at a given y.
+/// One block measured for the page: `space` above it (dropped at the top of a page), the heights
+/// of its `lines` (a photo is one), and how to draw lines `first` until `end` of it with the
+/// first's top at a given y: a block taller than a page runs over several (`RecipePrint.paginate`).
 struct LaidBlock {
     let space: CGFloat
-    let height: CGFloat
+    let lines: [CGFloat]
     let keep: Bool
-    let draw: (CGFloat) -> Void
+    let draw: (_ top: CGFloat, _ first: Int, _ end: Int) -> Void
+
+    /// The height of lines `first` until `end`.
+    func height(_ first: Int, _ end: Int) -> CGFloat { lines[first..<end].reduce(0, +) }
+
+    var measured: RecipePrint.Measured { .init(space: Double(space), lines: lines.map(Double.init), keep: keep) }
 }
 
-private let drawing: NSStringDrawingOptions = [.usesLineFragmentOrigin, .usesFontLeading]
+/// `text` wrapped to `width` (TextKit, so each line is known): its lines' heights, and drawing
+/// of a run of them, the rest clipped away. Made and used on one thread.
+final class WrappedText {
+    private let storage: NSTextStorage
+    private let manager = NSLayoutManager()
+    private let container: NSTextContainer
+    private let tops: [CGFloat]
+    let lines: [CGFloat]
+
+    init(_ text: NSAttributedString, width: CGFloat) {
+        storage = NSTextStorage(attributedString: text)
+        container = NSTextContainer(size: CGSize(width: width, height: .greatestFiniteMagnitude))
+        container.lineFragmentPadding = 0
+        manager.addTextContainer(container)
+        storage.addLayoutManager(manager)
+        var tops: [CGFloat] = []
+        var heights: [CGFloat] = []
+        manager.enumerateLineFragments(forGlyphRange: manager.glyphRange(for: container)) { rect, _, _, _, _ in
+            tops.append(rect.minY)
+            heights.append(rect.height)
+        }
+        self.tops = tops
+        self.lines = heights
+    }
+
+    /// Lines `first` until `end`, the first's top at `origin`.
+    func draw(from first: Int, to end: Int, at origin: CGPoint) {
+        guard end > first, let context = UIGraphicsGetCurrentContext() else { return }
+        let top = tops[first]
+        let bottom = tops[end - 1] + lines[end - 1]
+        context.saveGState()
+        context.clip(to: CGRect(x: origin.x - 100, y: origin.y, width: container.size.width + 200, height: bottom - top))
+        manager.drawGlyphs(forGlyphRange: manager.glyphRange(for: container), at: CGPoint(x: origin.x, y: origin.y - top))
+        context.restoreGState()
+    }
+}
 
 extension PrintStyle {
-    /// `text` wrapped to `width` at `x`.
+    /// `text` wrapped to `width` at `x`; `marker` ("•" or "3.") sits in the margin beside its first line.
     func textBlock(_ text: NSAttributedString, space: CGFloat, keep: Bool, x: CGFloat? = nil, width: CGFloat? = nil,
                    marker: NSAttributedString? = nil) -> LaidBlock {
         let width = width ?? contentWidth
         let x = x ?? margin
-        let height = ceil(text.boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude), options: drawing, context: nil).height)
-        return LaidBlock(space: space, height: height, keep: keep) { top in
-            marker?.draw(at: CGPoint(x: margin, y: top))
-            text.draw(with: CGRect(x: x, y: top, width: width, height: height), options: drawing, context: nil)
+        let wrapped = WrappedText(text, width: width)
+        return LaidBlock(space: space, lines: wrapped.lines, keep: keep) { top, first, end in
+            if first == 0 { marker?.draw(at: CGPoint(x: margin, y: top)) }
+            wrapped.draw(from: first, to: end, at: CGPoint(x: x, y: top))
         }
     }
 
@@ -84,7 +125,7 @@ extension PrintStyle {
     /// The photo across the page, cropped from its centre to a band at most 230 points tall.
     private func photo(_ image: UIImage) -> LaidBlock {
         let height = min(contentWidth * 9 / 16, 230)
-        return LaidBlock(space: 0, height: height + 14, keep: true) { top in
+        return LaidBlock(space: 0, lines: [height + 14], keep: true) { top, _, _ in
             let box = CGRect(x: margin, y: top, width: contentWidth, height: height)
             guard image.size.width > 0, image.size.height > 0, let context = UIGraphicsGetCurrentContext() else { return }
             let scale = max(box.width / image.size.width, box.height / image.size.height)

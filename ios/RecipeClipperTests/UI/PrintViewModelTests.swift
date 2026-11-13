@@ -19,8 +19,9 @@ final class PrintViewModelTests: XCTestCase {
         return recipe
     }
 
+    private let recipes = FakeRecipeRepository()
+
     private func viewModel() -> PrintViewModel {
-        let recipes = FakeRecipeRepository()
         recipes.recipes.value = [1: recipe(1, "Pancakes", servingsTarget: 4), 2: recipe(2, "Waffles")]
         return PrintViewModel(recipes: recipes, preferences: FakeAppPreferences(unitSystem: .metric), decisions: FakeDecisionRepository())
     }
@@ -70,6 +71,44 @@ final class PrintViewModelTests: XCTestCase {
         XCTAssertFalse(vm.uiState.failed)
     }
 
+    func testACookbookReadsItsRecipesInOneQuery() async {
+        let cards = await cookbook(viewModel(), [2, 1])
+        XCTAssertEqual(recipes.byIdsQueries, [[2, 1]])
+        XCTAssertEqual(cards?.count, 2)
+    }
+
+    func testACookbookIsBusyUntilItIsHandedOver() async {
+        let vm = viewModel()
+        vm.makeCookbook(title: "Breakfast", recipeIds: [1], labels: .english, contents: "Contents")
+        XCTAssertTrue(vm.uiState.busy)
+        await vm.currentWork?.value
+        XCTAssertTrue(vm.uiState.busy)
+        vm.onDone()
+        XCTAssertEqual(vm.uiState, PrintUiState())
+    }
+
+    func testLeavingTheScreenDropsTheJobBuiltOrStillBuilding() async {
+        let vm = viewModel()
+        vm.makeCookbook(title: "Breakfast", recipeIds: [1], labels: .english, contents: "Contents")
+        vm.onLeave()
+        await vm.currentWork?.value
+        XCTAssertEqual(vm.uiState, PrintUiState())
+
+        vm.printRecipe(title: "Pancakes", blocks: [.title("Pancakes")])
+        vm.onLeave()
+        XCTAssertEqual(vm.uiState, PrintUiState())
+    }
+
+    func testTheFailureAlertGoingLeavesAJobStartedMeanwhileAlone() async {
+        let vm = viewModel()
+        vm.makeCookbook(title: "Breakfast", recipeIds: [9], labels: .english, contents: "Contents")
+        await vm.currentWork?.value
+        XCTAssertTrue(vm.uiState.failed)
+        vm.printRecipe(title: "Pancakes", blocks: [.title("Pancakes")])
+        vm.onFailureShown()
+        XCTAssertEqual(vm.uiState, PrintUiState(busy: true, job: .recipe(title: "Pancakes", blocks: [.title("Pancakes")])))
+    }
+
     // MARK: The PDF
 
     private func card(_ name: String, steps: Int) -> [RecipePrint.Block] {
@@ -86,6 +125,16 @@ final class PrintViewModelTests: XCTestCase {
 
     func testALongRecipeBreaksAcrossPages() {
         XCTAssertGreaterThan(pages(PrintPdf().recipe(card("Pancakes", steps: 40), photos: [:])), 1)
+    }
+
+    func testAStepTallerThanAPageRunsOnToTheNextSplitBetweenLines() {
+        // One step of some 7,000 characters: once cut off at the foot of the page (#331).
+        let step = String(repeating: "Stir the batter well, then rest it a while. ", count: 160)
+        let pdf = PrintPdf().recipe([.title("Pancakes"), .section("Instructions"), .step(1, step)], photos: [:])
+        let document = PDFDocument(data: pdf)
+        XCTAssertEqual(document?.pageCount, 2)
+        XCTAssertTrue(document?.page(at: 1)?.string?.contains("Stir the batter") ?? false)
+        XCTAssertTrue(document?.page(at: 0)?.string?.contains("1.") ?? false)
     }
 
     func testACookbookHasATitlePageContentsAndEachRecipeFromANewPage() {

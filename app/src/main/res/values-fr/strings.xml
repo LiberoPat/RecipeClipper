@@ -713,6 +713,7 @@
     <string name="action_cookbook">Créer un livre de recettes</string>
     <string name="menu_desc_cookbook">Toutes ces recettes dans un seul PDF</string>
     <string name="cookbook_contents">Sommaire</string>
+    <string name="cookbook_making">Création du livre de recettes…</string>
     <string name="print_failed">Impossible de créer le PDF.</string>
     <string name="menu_desc_update_from_source">Remplace vos modifications par la dernière version du site</string>
     <string name="menu_desc_what_i_need">Ce que les recettes de la semaine demandent et que vous n\'avez pas</string>

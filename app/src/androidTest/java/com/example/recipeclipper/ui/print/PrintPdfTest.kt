@@ -44,6 +44,15 @@ class PrintPdfTest {
     }
 
     @Test
+    fun aStepTallerThanAPageRunsOnToTheNextSplitBetweenLines() = runBlocking {
+        // One step of some 7,000 characters: once cut off at the foot of the page (#331).
+        val step = "Stir the batter well, then rest it a while. ".repeat(160)
+        val file = File(dir, "tall.pdf")
+        assertTrue(PrintPdf(context).recipe(listOf(Block.Title("Pancakes"), Block.Section("Instructions"), Block.Step(1, step)), file))
+        assertEquals(2, pages(file))
+    }
+
+    @Test
     fun aCookbookHasATitlePageContentsAndEachRecipeFromANewPage() = runBlocking {
         val file = File(dir, "book.pdf")
         val recipes = listOf("Pancakes" to card("Pancakes", 3), "Waffles" to card("Waffles", 3))

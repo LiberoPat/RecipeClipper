@@ -6,7 +6,8 @@ package com.example.recipeclipper.data.model
  * already rendered for the screen (scaled, converted), so nothing here scales, converts or
  * re-parses. Ticked lines print plain. The platforms only measure and draw the blocks; where
  * the pages break is [paginate], and a cookbook's page numbers are [startPages], so both apps
- * break a recipe at the same block. iOS's `RecipePrint` is a line-for-line port.
+ * break a recipe at the same block, or the same line of one taller than a page. iOS's
+ * `RecipePrint` is a line-for-line port.
  */
 object RecipePrint {
 
@@ -89,32 +90,60 @@ object RecipePrint {
     }
 
     /**
-     * The page (from 0) each block goes on, given each block's [heights] (its space above
-     * included) and [keep] ([keepsWithNext]) in the same order, on pages [pageHeight] tall. A
-     * block that doesn't fit starts a new page, and so does a run of kept blocks with the line
-     * after it, unless that run is taller than a page by itself. A block taller than a page
-     * gets a page of its own.
+     * A block measured for paper: the [space] above it (dropped at the top of a page) and the
+     * heights of its [lines], top to bottom (a photo is one line); [keep] is [keepsWithNext].
      */
-    fun paginate(heights: List<Double>, keep: List<Boolean>, pageHeight: Double): List<Int> {
-        val pages = ArrayList<Int>(heights.size)
+    data class Measured(val space: Double, val lines: List<Double>, val keep: Boolean) {
+        val height: Double get() = space + lines.sum()
+    }
+
+    /** Lines [first] until [end] of block [block] (both indexes), on [page] (from 0). */
+    data class Piece(val block: Int, val page: Int, val first: Int, val end: Int)
+
+    /**
+     * Where [blocks] go on pages [pageHeight] tall, in order: each block as one [Piece], or, a
+     * block taller than a page, as one piece per page it runs over, split between lines, so
+     * nothing is drawn off a page. A block that doesn't fit starts a new page, and so does a run
+     * of kept blocks with the line after it, unless that run is taller than a page by itself;
+     * a block taller than a page needs only its first line to start on a page.
+     */
+    fun paginate(blocks: List<Measured>, pageHeight: Double): List<Piece> {
+        val pieces = ArrayList<Piece>(blocks.size)
         var page = 0
         var used = 0.0
-        for (i in heights.indices) {
-            var run = heights[i]
+        fun start(i: Int) = blocks[i].let { if (it.height <= pageHeight) it.height else it.space + (it.lines.firstOrNull() ?: 0.0) }
+        for (i in blocks.indices) {
+            var run = start(i)
             var j = i
-            while (j < heights.size - 1 && keep.getOrElse(j) { false }) {
+            while (j < blocks.size - 1 && blocks[j].keep) {
                 j++
-                run += heights[j]
+                run += start(j)
             }
-            val needed = if (run <= pageHeight) run else heights[i]
+            val needed = if (run <= pageHeight) run else start(i)
             if (used > 0 && used + needed > pageHeight) {
                 page++
                 used = 0.0
             }
-            pages += page
-            used += heights[i]
+            val block = blocks[i]
+            if (block.height <= pageHeight) {
+                pieces += Piece(i, page, 0, block.lines.size)
+                used += block.height
+                continue
+            }
+            var first = 0
+            block.lines.forEachIndexed { l, line ->
+                val height = line + if (l == 0) block.space else 0.0
+                if (used > 0 && used + height > pageHeight) {
+                    if (l > first) pieces += Piece(i, page, first, l)
+                    page++
+                    used = 0.0
+                    first = l
+                }
+                used += height
+            }
+            pieces += Piece(i, page, first, block.lines.size)
         }
-        return pages
+        return pieces
     }
 
     /**

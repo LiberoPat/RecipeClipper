@@ -86,6 +86,12 @@ interface RecipeRepository {
     /** Opens a recipe from history, a list or home. Counts as a view, so it moves to the top. */
     suspend fun open(id: Long): Recipe?
 
+    /**
+     * The recipes with [ids] in one query, in no particular order, those gone meanwhile left
+     * out; not a view (#318: a list's cookbook).
+     */
+    suspend fun byIds(ids: List<Long>): List<Recipe>
+
     /** The tour's sample recipe's id (#151), or null if it isn't in the library. */
     suspend fun sampleId(): Long?
 

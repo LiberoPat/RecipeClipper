@@ -44,6 +44,9 @@ import XCTest
 // WidgetContent.groceries leaves to buy. Write only `ToBuy(["2 onions"], ["1 cup milk"]),`.
 // Widget-fit rows (#329): how many items and how many rows there is room for, then
 // WidgetContent.fit's shown, more and inline. Write only `Fitted(20, 4),`.
+// Page-break rows (#318): the page height and the blocks measured for paper (space above, line
+// heights, keeps with next), then the pieces RecipePrint.paginate places (block, page, first
+// line, end). Write only `Paged(100, [M(0, [40], false), M(0, [50, 50], false)]),`.
 // Count-bracket rows (#104): a line, whether it asks the model (needsCountDecision), then the
 // line doubled when unsure, total and each. Write only `Count("4 Apfel (ca. 800g)", lang: "de"),`.
 // Close-name rows (#104): two names, then DecisionCandidates.close. Write only `Close("a", "b"),`.
@@ -184,6 +187,21 @@ final class DifferentialCorpusTests: XCTestCase {
         init(_ count: Int, _ rows: Int, _ shown: Int = 0, _ more: Int = 0, _ inline: Bool = false) {
             self.count = count; self.rows = rows; self.shown = shown; self.more = more; self.inline = inline
         }
+    }
+
+    private struct Paged {
+        let pageHeight: Double; let blocks: [RecipePrint.Measured]; let pieces: [RecipePrint.Piece]
+        init(_ pageHeight: Double, _ blocks: [RecipePrint.Measured], _ pieces: [RecipePrint.Piece] = []) {
+            self.pageHeight = pageHeight; self.blocks = blocks; self.pieces = pieces
+        }
+    }
+
+    private static func M(_ space: Double, _ lines: [Double], _ keep: Bool) -> RecipePrint.Measured {
+        RecipePrint.Measured(space: space, lines: lines, keep: keep)
+    }
+
+    private static func P(_ block: Int, _ page: Int, _ first: Int, _ end: Int) -> RecipePrint.Piece {
+        RecipePrint.Piece(block: block, page: page, first: first, end: end)
     }
 
     private struct Count {
@@ -1696,6 +1714,19 @@ final class DifferentialCorpusTests: XCTestCase {
         Fitted(0, 0, 0, 0, false),
     ]
 
+    private static let pageds: [Paged] = [
+        Paged(100, [M(0, [40], false), M(0, [50], false), M(0, [60], false), M(0, [30], false), M(0, [20], false)], [P(0, 0, 0, 1), P(1, 0, 0, 1), P(2, 1, 0, 1), P(3, 1, 0, 1), P(4, 2, 0, 1)]),
+        Paged(100, [M(0, [70], false), M(0, [20], true), M(0, [20], false)], [P(0, 0, 0, 1), P(1, 1, 0, 1), P(2, 1, 0, 1)]),
+        Paged(100, [M(0, [60], true), M(0, [30], true), M(0, [90], false)], [P(0, 0, 0, 1), P(1, 0, 0, 1), P(2, 1, 0, 1)]),
+        Paged(100, [M(0, [10], false), M(0, [150], false), M(0, [10], false)], [P(0, 0, 0, 1), P(1, 1, 0, 1), P(2, 2, 0, 1)]),
+        Paged(100, [M(0, [10], false), M(0, [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10], false), M(0, [10], false)], [P(0, 0, 0, 1), P(1, 0, 0, 9), P(1, 1, 9, 15), P(2, 1, 0, 1)]),
+        Paged(100, [M(0, [75], false), M(0, [20], true), M(4, [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10], false)], [P(0, 0, 0, 1), P(1, 1, 0, 1), P(2, 1, 0, 7), P(2, 2, 7, 12)]),
+        Paged(100, [M(18, [15], true), M(8, [13, 13, 13, 13, 13, 13, 13, 13], false), M(8, [13], false)], [P(0, 0, 0, 1), P(1, 0, 0, 4), P(1, 1, 4, 8), P(2, 1, 0, 1)]),
+        Paged(50, [M(0, [12.5, 12.5, 12.5, 12.5], false), M(6, [12.5, 12.5, 12.5, 12.5, 12.5], false)], [P(0, 0, 0, 4), P(1, 1, 0, 3), P(1, 2, 3, 5)]),
+        Paged(100, [M(5, [], false), M(0, [100], false), M(0, [100.5], false), M(0, [1], false)], [P(0, 0, 0, 0), P(1, 1, 0, 1), P(2, 2, 0, 1), P(3, 3, 0, 1)]),
+        Paged(100, [M(0, [30], true), M(0, [30], true), M(0, [30], true), M(0, [30], false)], [P(0, 0, 0, 1), P(1, 1, 0, 1), P(2, 1, 0, 1), P(3, 1, 0, 1)]),
+    ]
+
     private static let counts: [Count] = [
         Count("4 Apfel (ca. 800g)", lang: "de", true, ["4 Apfel (ca. 800g)", "8 Apfel (ca. 1600g)", "8 Apfel (ca. 800g)"]),
         Count("1 patate douce (300-400 g)", lang: "fr", true, ["1 patate douce (300-400 g)", "2 patate douce (600-800 g)", "2 patate douce (300-400 g)"]),
@@ -2687,6 +2718,12 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(WidgetContent.fit(count: row.count, rows: row.rows),
                            WidgetContent.Fit(shown: row.shown, more: row.more, inline: row.inline),
                            "\(row.count) items, \(row.rows) rows")
+        }
+    }
+
+    func testPrintPagesMatchKotlin() {
+        for row in Self.pageds {
+            XCTAssertEqual(RecipePrint.paginate(row.blocks, pageHeight: row.pageHeight), row.pieces, "\(row.blocks)")
         }
     }
 

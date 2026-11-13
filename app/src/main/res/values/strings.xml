@@ -739,6 +739,7 @@
     <string name="action_cookbook">Make a cookbook</string>
     <string name="menu_desc_cookbook">Every recipe here in one PDF</string>
     <string name="cookbook_contents">Contents</string>
+    <string name="cookbook_making">Making the cookbook…</string>
     <string name="print_failed">Couldn\'t make the PDF.</string>
     <string name="menu_desc_update_from_source">Replace your edits with the website\'s latest</string>
     <string name="menu_desc_what_i_need">What this week\'s recipes need that your pantry doesn\'t have</string>

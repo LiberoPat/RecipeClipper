@@ -1,6 +1,8 @@
 package com.example.recipeclipper.data.model
 
 import com.example.recipeclipper.data.model.RecipePrint.Block
+import com.example.recipeclipper.data.model.RecipePrint.Measured
+import com.example.recipeclipper.data.model.RecipePrint.Piece
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -71,21 +73,46 @@ class RecipePrintTest {
         assertFalse(RecipePrint.keepsWithNext(Block.Step(1, "Stir")))
     }
 
+    /** Whole blocks (one line each), as the page each lands on. */
+    private fun pages(heights: List<Double>, keep: List<Boolean>, pageHeight: Double): List<Int> =
+        RecipePrint.paginate(heights.mapIndexed { i, h -> Measured(0.0, listOf(h), keep[i]) }, pageHeight).map { it.page }
+
     @Test fun `blocks fill a page, then the next`() {
-        assertEquals(listOf(0, 0, 1, 1, 2), RecipePrint.paginate(listOf(40.0, 50.0, 60.0, 30.0, 20.0), List(5) { false }, 100.0))
+        assertEquals(listOf(0, 0, 1, 1, 2), pages(listOf(40.0, 50.0, 60.0, 30.0, 20.0), List(5) { false }, 100.0))
     }
 
     @Test fun `a heading never ends a page`() {
         // The heading (20) fits after 70, but its first line (20) wouldn't: both move on.
-        assertEquals(listOf(0, 1, 1), RecipePrint.paginate(listOf(70.0, 20.0, 20.0), listOf(false, true, false), 100.0))
+        assertEquals(listOf(0, 1, 1), pages(listOf(70.0, 20.0, 20.0), listOf(false, true, false), 100.0))
     }
 
     @Test fun `a kept run taller than a page breaks where it must`() {
-        assertEquals(listOf(0, 0, 1), RecipePrint.paginate(listOf(60.0, 30.0, 90.0), listOf(true, true, false), 100.0))
+        assertEquals(listOf(0, 0, 1), pages(listOf(60.0, 30.0, 90.0), listOf(true, true, false), 100.0))
     }
 
-    @Test fun `a block taller than a page gets its own`() {
-        assertEquals(listOf(0, 1, 2), RecipePrint.paginate(listOf(10.0, 150.0, 10.0), List(3) { false }, 100.0))
+    @Test fun `a single line taller than a page gets a page of its own`() {
+        assertEquals(listOf(0, 1, 2), pages(listOf(10.0, 150.0, 10.0), List(3) { false }, 100.0))
+    }
+
+    @Test fun `a block taller than a page carries on over the next pages, split between lines`() {
+        // 15 lines of 10 after a block of 10: nine fill the first page, six go on with the next block.
+        val pieces = RecipePrint.paginate(
+            listOf(Measured(0.0, listOf(10.0), false), Measured(0.0, List(15) { 10.0 }, false), Measured(0.0, listOf(10.0), false)), 100.0
+        )
+        assertEquals(listOf(Piece(0, 0, 0, 1), Piece(1, 0, 0, 9), Piece(1, 1, 9, 15), Piece(2, 1, 0, 1)), pieces)
+    }
+
+    @Test fun `a heading stays with the first line of a block taller than a page`() {
+        // The heading (20) and the note's first line (4 + 10) move on together; the note's space counts once.
+        val pieces = RecipePrint.paginate(
+            listOf(Measured(0.0, listOf(75.0), false), Measured(0.0, listOf(20.0), true), Measured(4.0, List(12) { 10.0 }, false)), 100.0
+        )
+        assertEquals(listOf(Piece(0, 0, 0, 1), Piece(1, 1, 0, 1), Piece(2, 1, 0, 7), Piece(2, 2, 7, 12)), pieces)
+    }
+
+    @Test fun `a block with no lines takes its space`() {
+        assertEquals(listOf(Piece(0, 0, 0, 0)), RecipePrint.paginate(listOf(Measured(5.0, emptyList(), false)), 100.0))
+        assertEquals(15.0, Measured(5.0, listOf(4.0, 6.0), false).height, 0.0)
     }
 
     @Test fun `a cookbook numbers from its title and contents pages`() {
