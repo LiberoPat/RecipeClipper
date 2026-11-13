@@ -32,7 +32,9 @@ Activities and the Tonight and grocery widgets from `RecipeClipper/Shared/`, `Da
 the share extension's two excludes: it reads the App Group database), the tables,
 `UI/Theme/Theme.swift`, the fonts and the catalog;
 its text uses `WidgetFont` and `WidgetStrings`, never `AppFont`'s UIFonts (WidgetKit can't
-encode a variable-axis UIFont, and the extension crashes).
+encode a variable-axis UIFont, and the extension crashes). What a widget reads and how its
+list is cut to fit (`Data/Local/WidgetData.swift`, `Shared/FittedRows.swift`) sit in those
+shared folders, not the extension's own, so the unit tests reach them (#329).
 `RecipeClipperTests` bundles `../shared/fixtures` (the export files the Android tests read
 too), found at `fixtures/backup/<name>.json` in the test bundle.
 

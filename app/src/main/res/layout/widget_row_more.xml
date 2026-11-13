@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "+3 more" under a home-screen widget's rows (#309). Its colour is a resource, like every
+     other colour here, so the launcher resolves it for the theme it draws in (#329). -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_more"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:ellipsize="end"
+    android:maxLines="1"
+    android:paddingVertical="2dp"
+    android:textColor="@color/widget_muted"
+    android:textSize="15sp" />

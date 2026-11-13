@@ -48,4 +48,21 @@ final class WidgetContentTests: XCTestCase {
         XCTAssertEqual(WidgetContent.groceries(GroceryCombiner.sections(items)),
                        ["2 onions", "2 eggs", "300 g flour", "paper towels"])
     }
+
+    func testAListThatFitsIsShownWhole() {
+        XCTAssertEqual(WidgetContent.fit(count: 4, rows: 4), .init(shown: 4, more: 0, inline: false))
+        XCTAssertEqual(WidgetContent.fit(count: 0, rows: 4), .init(shown: 0, more: 0, inline: false))
+    }
+
+    func testALongerListKeepsItsLastRowForHowManyMore() {
+        XCTAssertEqual(WidgetContent.fit(count: 20, rows: 4), .init(shown: 3, more: 17, inline: false))
+        XCTAssertEqual(WidgetContent.fit(count: 20, rows: 2), .init(shown: 1, more: 19, inline: false))
+    }
+
+    // #329: one row used to be "+20 more" and no item at all.
+    func testOneRowStillNamesAnItemWithTheCountBesideIt() {
+        XCTAssertEqual(WidgetContent.fit(count: 20, rows: 1), .init(shown: 1, more: 19, inline: true))
+        XCTAssertEqual(WidgetContent.fit(count: 2, rows: 0), .init(shown: 1, more: 1, inline: true))
+        XCTAssertEqual(WidgetContent.fit(count: 1, rows: 0), .init(shown: 1, more: 0, inline: false))
+    }
 }

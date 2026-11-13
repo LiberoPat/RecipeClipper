@@ -40,4 +40,22 @@ object WidgetContent {
                 }
             }
         }
+
+    /**
+     * How a list is cut to a widget's height: [shown] of its items from the top, then "+[more]
+     * more", on a line of its own or, when [inline], beside the one item there is room for.
+     */
+    data class Fit(val shown: Int, val more: Int, val inline: Boolean)
+
+    /**
+     * A list of [count] items in a widget with room for [rows] rows: all of them when they fit,
+     * else the last row is kept for "+N more". An item is always named: with room for a single
+     * row the count goes beside the first item, never in its place (#329).
+     */
+    fun fit(count: Int, rows: Int): Fit = when {
+        count <= 0 -> Fit(0, 0, false)
+        count <= rows -> Fit(count, 0, false)
+        rows >= 2 -> Fit(rows - 1, count - (rows - 1), false)
+        else -> Fit(1, count - 1, count > 1)
+    }
 }
