@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.remote.SharedText
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
@@ -24,12 +25,16 @@ class EditRecipeTextScreenTest {
     val compose = createComposeRule()
 
     private val repository = FakeRecipeRepository()
+    private val inbox = SharedTextInbox()
 
     private fun show(text: String, onSaved: (Long) -> Unit = {}) {
+        // As MainActivity leaves it (#334): the reading in the inbox, its key in the route.
+        val key = inbox.offer(text, (SharedText.route(text) as SharedText.Route.Editor).reading)
         val viewModel = EditRecipeViewModel(
-            SavedStateHandle(mapOf(EditRecipeViewModel.SHARED_TEXT_ARG to text)),
+            SavedStateHandle(mapOf(EditRecipeViewModel.SHARED_TEXT_ARG to key)),
             repository,
-            sorting = Dispatchers.Unconfined
+            sorting = Dispatchers.Unconfined,
+            sharedTexts = inbox
         )
         compose.setContent { EditRecipeScreen(onBack = {}, onSaved = onSaved, viewModel = viewModel) }
     }
@@ -53,6 +58,16 @@ class EditRecipeTextScreenTest {
 
         assertEquals("2 cups flour\n1 tsp salt", repository.addManualCalls.single().ingredientsText)
         assertEquals(5L, saved)
+    }
+
+    @Test
+    fun linesTheSplitLeftOutAreUnderNotesAsWritten() {
+        show("Hi Mum, try this.\nIngredients:\n- 2 eggs <room temperature>\nMethod:\n1. Beat.\nTip: chill the bowl.")
+
+        compose.onNodeWithText("Lines that didn't fit anywhere", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("2 eggs <room temperature>", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Tip: chill the bowl.", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Hi Mum, try this.", substring = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test

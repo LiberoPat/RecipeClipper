@@ -60,5 +60,15 @@
   "amountPatterns": [],
   "gluedUnits": ["colher(?:es)?", "xícaras?", "quilogramas?", "quilos?", "gramas?", "mililitros?", "litros?"],
   "gluedExceptions": [],
-  "unitLookAlikes": ["oolher(?:es)?"]
+  "unitLookAlikes": ["oolher(?:es)?"],
+  "shareText": {
+    "about": "The app's own shared text (RecipeShareText, #149) in this UI language, exactly as strings.xml and Localizable.xcstrings write it ({n} stands for the number), so a recipe shared from one phone opens sorted on another (#306, SharedText): the two headings on their own lines, the serves or makes line, and the prep, cook and total words of the times line. Pinned to the strings by ShareLabelsTableTest (Android) and ShareLabelsTableTests (iOS).",
+    "ingredients": "INGREDIENTES",
+    "instructions": "MODO DE PREPARO",
+    "serves": "Porções: {n}",
+    "makes": "Rende {n}",
+    "prep": "Preparo",
+    "cook": "Cozimento",
+    "total": "Total"
+  }
 }

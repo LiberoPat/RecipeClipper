@@ -69,6 +69,7 @@ enum Strings {
     static var photoNotSorted: String { String(localized: "photo_not_sorted") }
     static var textRead: String { String(localized: "text_read") }
     static var textNotSorted: String { String(localized: "text_not_sorted") }
+    static var textLeftovers: String { String(localized: "text_leftovers") }
     static var photoFailed: String { String(localized: "photo_failed") }
     static var photoCheckHeading: String { String(localized: "photo_check_heading") }
     static var photoCheckLarge: String { String(localized: "photo_check_large") }

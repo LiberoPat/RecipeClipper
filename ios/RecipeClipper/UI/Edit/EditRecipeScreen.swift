@@ -18,9 +18,9 @@ struct EditRecipeScreen: View {
                         onCheckLine: vm.onCheckLine, onFraction: vm.onFraction
                     )
                 }
-                // Text shared in (#306): how the split went.
+                // Text shared in (#306): how the split went, and where the lines it left out are (#334).
                 if let sorted = state.sharedSorted {
-                    Text(sorted ? Strings.textRead : Strings.textNotSorted)
+                    Text(sorted ? Strings.textRead + (state.leftovers ? " " + Strings.textLeftovers : "") : Strings.textNotSorted)
                         .textStyle(Typography.bodyMedium)
                         .foregroundStyle(Palette.muted)
                         .accessibilityIdentifier("edit.sharedNote")
@@ -82,6 +82,14 @@ struct EditRecipeScreen: View {
         OutlinedField(label: Strings.editLabelTotal, text: binding(\.totalTime))
         MultilineField(label: Strings.editLabelIngredients, text: binding(\.ingredientsText))
         MultilineField(label: Strings.editLabelSteps, text: binding(\.instructionsText))
+        // Shared text's review (#306) keeps the lines the split left out as the note (#334).
+        if state.shared {
+            MultilineField(
+                label: Strings.headingNotes,
+                text: Binding(get: { vm.uiState.note }, set: { vm.onNoteChange($0) })
+            )
+            .accessibilityIdentifier("edit.notes")
+        }
         OutlinedField(label: Strings.editLabelPhoto, text: binding(\.image), keyboard: .URL)
     }
 

@@ -297,7 +297,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
-    func addManual(draft: RecipeDraft, language: String?) async -> Recipe? {
+    func addManual(draft: RecipeDraft, language: String?, notes: String?) async -> Recipe? {
         guard draft.isValid else { return nil }
         let now = clock.now()
         var recipe = draft.apply(to: Recipe(
@@ -308,6 +308,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         recipe.origin = .manual
         recipe.editedAt = now
         recipe.language = language
+        recipe.notes = notes.flatMap { $0.kTrimmed.isEmpty ? nil : $0.kTrimmed }
         let record = recipe.toRecord(viewedAt: now)
         let limit = library.current()
         do {

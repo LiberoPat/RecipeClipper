@@ -1,12 +1,14 @@
 import XCTest
 @testable import RecipeClipper
 
-/// Text shared in (#306): the review, split or as written. Android's EditRecipeTextViewModelTest.
+/// Text shared in (#306): the review, split or as written, over the reading the share extension
+/// left (#334). Android's EditRecipeTextViewModelTest.
 @MainActor
 final class EditRecipeTextTests: XCTestCase {
 
     private func viewModel(_ text: String, repository: FakeRecipeRepository = FakeRecipeRepository()) -> EditRecipeViewModel {
-        EditRecipeViewModel(recipeId: nil, repository: repository, sharedText: text)
+        guard case .editor(let reading) = SharedText.route(text) else { fatalError("not the editor's: \(text)") }
+        return EditRecipeViewModel(recipeId: nil, repository: repository, shared: reading)
     }
 
     private func saved(_ id: Int64) -> Recipe {
@@ -20,7 +22,6 @@ final class EditRecipeTextTests: XCTestCase {
 
     func testARecipeInTheTextIsSplitIntoTheFieldsWithNoNameGuessed() async {
         let vm = viewModel("Grandma's scones\nServes 4\nIngredients:\n- 2 cups flour\n- 1 tsp salt\nMethod:\n1. Mix.\n2. Bake.")
-        XCTAssertTrue(vm.uiState.loading)
         await settleMain(until: { !vm.uiState.loading })
 
         let state = vm.uiState
@@ -62,6 +63,29 @@ final class EditRecipeTextTests: XCTestCase {
         XCTAssertEqual(repository.addManualCalls.map(\.name), ["Kuchen"])
         XCTAssertEqual(repository.addManualLanguages, ["de"])
         XCTAssertEqual(vm.uiState.savedId, 7)
+    }
+
+    func testTheLinesTheSplitLeftOutAreTheNoteAsWrittenAndSavedWithTheRecipe() async {
+        let repository = FakeRecipeRepository()
+        repository.addManualResult = saved(3)
+        let vm = viewModel(
+            "Hi Mum, here's the recipe.\nIngredients:\n- 2 eggs <room temperature>\nMethod:\n1. Beat.\nNotes:\nChill first.",
+            repository: repository
+        )
+        await settleMain(until: { !vm.uiState.loading })
+
+        XCTAssertTrue(vm.uiState.leftovers)
+        XCTAssertEqual(vm.uiState.note, "Hi Mum, here's the recipe.\nNotes:\nChill first.")
+        XCTAssertEqual(vm.uiState.draft.ingredientsText, "2 eggs <room temperature>")
+
+        vm.onNoteChange(vm.uiState.note + "\nMum's version")
+        var draft = vm.uiState.draft
+        draft.name = "Eggs"
+        vm.onDraftChange(draft)
+        vm.onSave()
+        await settleMain(until: { vm.uiState.savedId != nil })
+
+        XCTAssertEqual(repository.addManualNotes, ["Hi Mum, here's the recipe.\nNotes:\nChill first.\nMum's version"])
     }
 
     func testWithNoNameSavePointsOutTheRuleAndSavesNothing() async {
