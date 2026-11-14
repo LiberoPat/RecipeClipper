@@ -32,14 +32,17 @@ struct PrintPdf {
         var starts = Array(repeating: 0, count: recipes.count)
         let heading = style.textBlock(style.string(contents, style.title, PrintStyle.ink), space: 0, keep: true)
         let rows = recipes.indices.map { i in contentsRow(recipes[i].0) { starts[i] } }
-        let contentsPages = paged([LaidBlock(space: 0, height: heading.height + 12, keep: true, draw: heading.draw)] + rows)
+        let headed = LaidBlock(space: 0, lines: [heading.height(0, heading.lines.count) + 12], keep: true) { top, _, _ in
+            heading.draw(top, 0, heading.lines.count)
+        }
+        let contentsPages = paged([headed] + rows)
         starts = RecipePrint.startPages(pagesOf.map(\.count), contentsPages: contentsPages.count)
 
         return renderer.pdfData { context in
             context.beginPage()
             let name = style.string(title, style.bookTitle, PrintStyle.ink, centre: true)
             let block = style.textBlock(name, space: 0, keep: false)
-            block.draw((style.page.height - block.height) / 2)
+            block.draw((style.page.height - block.height(0, block.lines.count)) / 2, 0, block.lines.count)
             var number = 2
             for page in contentsPages + pagesOf.flatMap({ $0 }) {
                 draw(page, in: context, footer: "\(number)")
@@ -52,32 +55,41 @@ struct PrintPdf {
 
     private func contentsRow(_ name: String, page: @escaping () -> Int) -> LaidBlock {
         let row = style.textBlock(style.string(name, style.text, PrintStyle.ink), space: 8, keep: false, width: style.contentWidth - 40)
-        return LaidBlock(space: 8, height: row.height, keep: false) { top in
-            row.draw(top)
+        return LaidBlock(space: 8, lines: [row.height(0, row.lines.count)], keep: false) { top, _, _ in
+            row.draw(top, 0, row.lines.count)
             let number = style.string("\(page())", style.small, PrintStyle.muted)
             number.draw(at: CGPoint(x: style.margin + style.contentWidth - number.size().width, y: top + 1))
         }
     }
 
-    private func paged(_ laid: [LaidBlock]) -> [[LaidBlock]] {
-        let pages = RecipePrint.paginate(laid.map { Double($0.space + $0.height) }, keep: laid.map(\.keep),
-                                         pageHeight: Double(style.contentHeight))
-        var result: [[LaidBlock]] = []
-        for (block, page) in zip(laid, pages) {
-            if page >= result.count { result.append([]) }
-            result[result.count - 1].append(block)
+    /// A block, or the lines of one, on a page.
+    private struct Placed {
+        let block: LaidBlock
+        let piece: RecipePrint.Piece
+    }
+
+    private func paged(_ laid: [LaidBlock]) -> [[Placed]] {
+        let pieces = RecipePrint.paginate(laid.map(\.measured), pageHeight: Double(style.contentHeight))
+        var result: [[Placed]] = []
+        for piece in pieces {
+            if piece.page >= result.count { result.append([]) }
+            result[result.count - 1].append(Placed(block: laid[piece.block], piece: piece))
         }
         return result
     }
 
-    private func draw(_ blocks: [LaidBlock], in context: UIGraphicsPDFRendererContext, footer: String?) {
+    private func draw(_ placed: [Placed], in context: UIGraphicsPDFRendererContext, footer: String?) {
         context.beginPage()
         var y = style.margin
-        for (i, block) in blocks.enumerated() {
-            if i > 0 { y += block.space }
-            block.draw(y)
-            y += block.height
+        // Nothing is drawn below the content area (#331); the footer sits in the margin.
+        context.cgContext.saveGState()
+        context.cgContext.clip(to: CGRect(x: 0, y: style.margin, width: style.page.width, height: style.contentHeight))
+        for (i, item) in placed.enumerated() {
+            if i > 0 && item.piece.first == 0 { y += item.block.space }
+            item.block.draw(y, item.piece.first, item.piece.end)
+            y += item.block.height(item.piece.first, item.piece.end)
         }
+        context.cgContext.restoreGState()
         if let footer {
             let text = style.string(footer, style.small, PrintStyle.muted)
             let size = text.size()

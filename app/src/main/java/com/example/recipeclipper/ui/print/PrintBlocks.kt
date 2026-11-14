@@ -1,29 +1,37 @@
 package com.example.recipeclipper.ui.print
 
+import androidx.core.graphics.withClip
 import androidx.core.graphics.withTranslation
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Rect
 import android.graphics.RectF
 import android.text.StaticLayout
 import com.example.recipeclipper.data.model.RecipePrint
 import com.example.recipeclipper.data.model.RecipePrint.Block
 
 /**
- * One [Block] measured for the page: [space] above it (dropped at the top of a page), its own
- * [height], and how to draw it with its top at a given y. A photo is drawn from [photoUrl].
+ * One [Block] measured for the page: [space] above it (dropped at the top of a page), the
+ * heights of its [lines] (a photo is one), and how to [draw] lines `first` until `end` of it
+ * with the first's top at a given y: a block taller than a page runs over several
+ * ([RecipePrint.paginate]). A photo's [photoUrl] is loaded just before its page is drawn (one
+ * page's pictures at a time, #331) and handed to [draw].
  */
 internal class LaidBlock(
     val space: Float,
-    val height: Float,
+    val lines: List<Float>,
     val keep: Boolean,
     val photoUrl: String? = null,
-    val draw: (Canvas, Float, Bitmap?) -> Unit
-)
+    val draw: (canvas: Canvas, top: Float, first: Int, end: Int, photo: Bitmap?) -> Unit
+) {
+    /** The height of lines [first] until [end]. */
+    fun height(first: Int, end: Int): Float = lines.subList(first, end).sum()
+
+    fun measured() = RecipePrint.Measured(space.toDouble(), lines.map { it.toDouble() }, keep)
+}
 
 /** [blocks] measured in [style]; a photo only when [cached] says it's on the phone. */
-internal suspend fun measure(blocks: List<Block>, style: PrintStyle, cached: suspend (String) -> Boolean): List<LaidBlock> =
+internal fun measure(blocks: List<Block>, style: PrintStyle, cached: (String) -> Boolean): List<LaidBlock> =
     blocks.mapNotNull { block ->
         val keep = RecipePrint.keepsWithNext(block)
         when (block) {
@@ -42,30 +50,40 @@ internal suspend fun measure(blocks: List<Block>, style: PrintStyle, cached: sus
     }
 
 private fun text(layout: StaticLayout, space: Float, keep: Boolean, style: PrintStyle) =
-    LaidBlock(space, layout.height.toFloat(), keep) { canvas, top, _ ->
-        canvas.withTranslation(style.margin, top) { layout.draw(this) }
+    LaidBlock(space, lineHeights(layout), keep) { canvas, top, first, end, _ ->
+        drawLines(canvas, layout, style.margin, top, first, end)
     }
 
-/** A line with a marker in the margin ("•" or "3."), the text indented by [indent]. */
+/** A line with a marker in the margin ("•" or "3.") beside its first line, the text indented by [indent]. */
 private fun hanging(marker: String, layout: StaticLayout, indent: Float, space: Float, style: PrintStyle, numbered: Boolean) =
-    LaidBlock(space, layout.height.toFloat(), keep = false) { canvas, top, _ ->
-        val paint = if (numbered) style.stepNumber else style.muted
-        canvas.drawText(marker, style.margin, top + layout.getLineBaseline(0), paint)
-        canvas.withTranslation(style.margin + indent, top) { layout.draw(this) }
+    LaidBlock(space, lineHeights(layout), keep = false) { canvas, top, first, end, _ ->
+        if (first == 0) canvas.drawText(marker, style.margin, top + layout.getLineBaseline(0), if (numbered) style.stepNumber else style.muted)
+        drawLines(canvas, layout, style.margin + indent, top, first, end)
     }
 
-/** The photo across the page, cropped from its centre to a band at most [MAX_PHOTO] tall. */
-private fun photo(url: String, style: PrintStyle): LaidBlock {
-    val height = minOf(style.contentWidth * 9f / 16f, MAX_PHOTO)
-    return LaidBlock(0f, height + 14f, keep = true, photoUrl = url) { canvas, top, bitmap ->
-        bitmap ?: return@LaidBlock
-        val box = RectF(style.margin, top, style.margin + style.contentWidth, top + height)
-        val scale = maxOf(box.width() / bitmap.width, box.height() / bitmap.height)
-        val w = (box.width() / scale).toInt()
-        val h = (box.height() / scale).toInt()
-        val src = Rect((bitmap.width - w) / 2, (bitmap.height - h) / 2, (bitmap.width + w) / 2, (bitmap.height + h) / 2)
-        canvas.drawBitmap(bitmap, src, box, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+private fun lineHeights(layout: StaticLayout): List<Float> =
+    (0 until layout.lineCount).map { (layout.getLineTop(it + 1) - layout.getLineTop(it)).toFloat() }
+
+/** Lines [first] until [end] of [layout] at [x], the first's top at [top]; the other lines are clipped away. */
+private fun drawLines(canvas: Canvas, layout: StaticLayout, x: Float, top: Float, first: Int, end: Int) {
+    if (end <= first) return
+    val lineTop = layout.getLineTop(first).toFloat()
+    canvas.withTranslation(x, top - lineTop) {
+        withClip(-x, lineTop, layout.width + x, layout.getLineTop(end).toFloat()) { layout.draw(this) }
     }
 }
+
+/** The photo across the page, already cropped to a band at most [MAX_PHOTO] tall ([PrintPdf.photoBand]). */
+private fun photo(url: String, style: PrintStyle): LaidBlock {
+    val height = photoHeight(style.contentWidth)
+    return LaidBlock(0f, listOf(height + 14f), keep = true, photoUrl = url) { canvas, top, _, _, bitmap ->
+        bitmap ?: return@LaidBlock
+        val box = RectF(style.margin, top, style.margin + style.contentWidth, top + height)
+        canvas.drawBitmap(bitmap, null, box, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+    }
+}
+
+/** The photo band's height in points, for [width] across. */
+internal fun photoHeight(width: Float): Float = minOf(width * 9f / 16f, MAX_PHOTO)
 
 private const val MAX_PHOTO = 230f

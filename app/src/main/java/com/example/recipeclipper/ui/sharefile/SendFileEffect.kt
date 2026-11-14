@@ -25,10 +25,11 @@ fun SendFileEffect(viewModel: SendFileViewModel, onFailed: suspend () -> Unit) {
         shareFile(context, file)
         viewModel.onSent()
     }
+    // The line stays up for its whole time: the flag is lowered only once it has gone (#331).
     LaunchedEffect(state.failed) {
         if (!state.failed) return@LaunchedEffect
-        viewModel.onFailureShown()
         onFailed()
+        viewModel.onFailureShown()
     }
 }
 

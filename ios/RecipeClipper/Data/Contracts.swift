@@ -238,6 +238,10 @@ protocol RecipeRepository: AnyObject {
     /// Opens a recipe from history, a list or home. Counts as a view. Nil if it's gone.
     func open(id: Int64) async -> Recipe?
 
+    /// The recipes with `ids` in one query, in no particular order, those gone meanwhile left
+    /// out; not a view (#318: a list's cookbook).
+    func byIds(_ ids: [Int64]) async -> [Recipe]
+
     func setChecked(id: Int64, checked: Set<Int>) async
 
     /// Saves the user's note on a recipe. A blank note is stored as no note.

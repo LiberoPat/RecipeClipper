@@ -13,7 +13,8 @@ struct CookbookRecipe: Equatable {
     var blocks: [RecipePrint.Block]
 }
 
-/// `job` is ready for the screen to draw; `failed` once it couldn't be made.
+/// `busy` while a job is built or drawn (the screen shows it, #331); `job` is ready for the
+/// screen to draw; `failed` once it couldn't be made.
 struct PrintUiState: Equatable {
     var busy = false
     var job: PrintJob?
@@ -23,7 +24,8 @@ struct PrintUiState: Equatable {
 /// Print or save as PDF (#318). The recipe screen hands over its card, already built from what it
 /// shows; a list's cookbook renders each recipe as the reading view would open it (its chosen
 /// servings, the cook's units), without the note: a cookbook is for giving, as Send as file
-/// leaves the note out. Drawing the PDF is the screen's (`PrintEffect`). Android's `PrintViewModel`.
+/// leaves the note out. Drawing the PDF is the screen's (`PrintEffect`). Leaving the screen
+/// (`onLeave`) drops the job, so nothing pops up on return (#331). Android's `PrintViewModel`.
 @MainActor
 @Observable
 final class PrintViewModel {
@@ -58,24 +60,23 @@ final class PrintViewModel {
                 temperatureUnit: current.temperatureUnit,
                 decisions: await decisions?.current() ?? Decisions.none
             )
-            var cards: [CookbookRecipe] = []
-            for id in recipeIds {
-                guard let recipe = await Self.first(recipes, id) else { continue }
-                let shown = RecipeRenderer.content(recipe, settings: settings)
-                cards.append(CookbookRecipe(name: recipe.name, blocks: RecipePrint.blocks(
-                    recipe: recipe, servings: shown.servings, ingredients: shown.ingredients,
-                    instructions: shown.instructions, sourceDomain: shown.sourceDomain, note: nil, labels: labels
-                )))
-            }
+            // One query for the lot, then each rendered off the main actor (#331).
+            let found = Dictionary(await recipes.byIds(recipeIds).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            guard !Task.isCancelled else { return }
+            let cards = await Task.detached(priority: .userInitiated) { () -> [CookbookRecipe] in
+                recipeIds.compactMap { found[$0] }.map { recipe in
+                    let shown = RecipeRenderer.content(recipe, settings: settings)
+                    return CookbookRecipe(name: recipe.name, blocks: RecipePrint.blocks(
+                        recipe: recipe, servings: shown.servings, ingredients: shown.ingredients,
+                        instructions: shown.instructions, sourceDomain: shown.sourceDomain, note: nil, labels: labels
+                    ))
+                }
+            }.value
+            guard !Task.isCancelled else { return }
             uiState = cards.isEmpty
                 ? PrintUiState(failed: true)
                 : PrintUiState(busy: true, job: .cookbook(title: title, contents: contents, recipes: cards))
         }
-    }
-
-    private static func first(_ recipes: RecipeRepository, _ id: Int64) async -> Recipe? {
-        for await recipe in recipes.observeRecipe(id: id).values { return recipe }
-        return nil
     }
 
     /// The screen drew the job (and opened the dialog or the share sheet).
@@ -88,7 +89,15 @@ final class PrintViewModel {
         uiState = PrintUiState(failed: true)
     }
 
+    /// The failure alert has gone; a job started meanwhile stays.
     func onFailureShown() {
+        if uiState.failed { uiState = PrintUiState() }
+    }
+
+    /// The screen was left: whatever was being built or drawn is dropped, and nothing shows on return.
+    func onLeave() {
+        currentWork?.cancel()
+        currentWork = nil
         uiState = PrintUiState()
     }
 }

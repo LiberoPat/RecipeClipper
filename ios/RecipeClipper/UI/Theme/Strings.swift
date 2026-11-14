@@ -610,6 +610,7 @@ enum Strings {
     static var menuDescCookbook: String { String(localized: "menu_desc_cookbook") }
     static var cookbookContents: String { String(localized: "cookbook_contents") }
     static var printFailed: String { String(localized: "print_failed") }
+    static var cookbookMaking: String { String(localized: "cookbook_making") }
     static var receiveFileTitle: String { String(localized: "receive_file_title") }
     static var receiveFileEmpty: String { String(localized: "receive_file_empty") }
     static var receiveFileToPantry: String { String(localized: "receive_file_to_pantry") }

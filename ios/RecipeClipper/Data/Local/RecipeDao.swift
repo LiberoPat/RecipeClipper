@@ -24,6 +24,16 @@ struct RecipeDao {
         try db.queryOne("SELECT \(RecipeRecord.columns) FROM recipes WHERE sourceUrl = ?", url, map: RecipeRecord.init(row:))
     }
 
+    /// The rows with `ids`, in one statement per 500 (SQLite caps a statement's parameters).
+    func byIds(_ ids: [Int64]) throws -> [RecipeRecord] {
+        try stride(from: 0, to: ids.count, by: 500).flatMap { start -> [RecipeRecord] in
+            let chunk = Array(ids[start..<min(start + 500, ids.count)])
+            let marks = chunk.map { _ in "?" }.joined(separator: ", ")
+            return try db.query("SELECT \(RecipeRecord.columns) FROM recipes WHERE id IN (\(marks))",
+                                arguments: chunk.map { $0 as SQLiteBindable? }, map: RecipeRecord.init(row:))
+        }
+    }
+
     /// An `id` of 0 lets SQLite assign one (Room's autoGenerate); a non-zero id is honoured,
     /// which is what `restore` relies on.
     @discardableResult

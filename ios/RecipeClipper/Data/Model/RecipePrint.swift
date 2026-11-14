@@ -5,7 +5,8 @@ import Foundation
 /// already rendered for the screen (scaled, converted), so nothing here scales, converts or
 /// re-parses. Ticked lines print plain. The screen only measures and draws the blocks; where the
 /// pages break is `paginate`, and a cookbook's page numbers are `startPages`, so both apps break
-/// a recipe at the same block. A line-for-line port of Android's `RecipePrint`.
+/// a recipe at the same block, or the same line of one taller than a page. A line-for-line port
+/// of Android's `RecipePrint`.
 enum RecipePrint {
 
     /// One thing on the page, top to bottom.
@@ -79,31 +80,68 @@ enum RecipePrint {
         }
     }
 
-    /// The page (from 0) each block goes on, given each block's `heights` (its space above
-    /// included) and `keep` (`keepsWithNext`) in the same order, on pages `pageHeight` tall. A
-    /// block that doesn't fit starts a new page, and so does a run of kept blocks with the line
-    /// after it, unless that run is taller than a page by itself. A block taller than a page gets
-    /// a page of its own.
-    static func paginate(_ heights: [Double], keep: [Bool], pageHeight: Double) -> [Int] {
-        var pages: [Int] = []
+    /// A block measured for paper: the `space` above it (dropped at the top of a page) and the
+    /// heights of its `lines`, top to bottom (a photo is one line); `keep` is `keepsWithNext`.
+    struct Measured: Equatable {
+        var space: Double
+        var lines: [Double]
+        var keep: Bool
+        var height: Double { space + lines.reduce(0, +) }
+    }
+
+    /// Lines `first` until `end` of block `block` (both indexes), on `page` (from 0).
+    struct Piece: Equatable {
+        var block: Int
+        var page: Int
+        var first: Int
+        var end: Int
+    }
+
+    /// Where `blocks` go on pages `pageHeight` tall, in order: each block as one `Piece`, or, a
+    /// block taller than a page, as one piece per page it runs over, split between lines, so
+    /// nothing is drawn off a page. A block that doesn't fit starts a new page, and so does a run
+    /// of kept blocks with the line after it, unless that run is taller than a page by itself;
+    /// a block taller than a page needs only its first line to start on a page.
+    static func paginate(_ blocks: [Measured], pageHeight: Double) -> [Piece] {
+        var pieces: [Piece] = []
         var page = 0
         var used = 0.0
-        for i in heights.indices {
-            var run = heights[i]
+        func start(_ i: Int) -> Double {
+            let block = blocks[i]
+            return block.height <= pageHeight ? block.height : block.space + (block.lines.first ?? 0)
+        }
+        for i in blocks.indices {
+            var run = start(i)
             var j = i
-            while j < heights.count - 1 && (j < keep.count ? keep[j] : false) {
+            while j < blocks.count - 1 && blocks[j].keep {
                 j += 1
-                run += heights[j]
+                run += start(j)
             }
-            let needed = run <= pageHeight ? run : heights[i]
+            let needed = run <= pageHeight ? run : start(i)
             if used > 0 && used + needed > pageHeight {
                 page += 1
                 used = 0
             }
-            pages.append(page)
-            used += heights[i]
+            let block = blocks[i]
+            if block.height <= pageHeight {
+                pieces.append(Piece(block: i, page: page, first: 0, end: block.lines.count))
+                used += block.height
+                continue
+            }
+            var first = 0
+            for (l, line) in block.lines.enumerated() {
+                let height = line + (l == 0 ? block.space : 0)
+                if used > 0 && used + height > pageHeight {
+                    if l > first { pieces.append(Piece(block: i, page: page, first: first, end: l)) }
+                    page += 1
+                    used = 0
+                    first = l
+                }
+                used += height
+            }
+            pieces.append(Piece(block: i, page: page, first: first, end: block.lines.count))
         }
-        return pages
+        return pieces
     }
 
     /// A cookbook's page numbers (from 1): the title page is 1, then `contentsPages` pages of

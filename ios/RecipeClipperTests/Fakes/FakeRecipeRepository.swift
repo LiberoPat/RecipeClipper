@@ -144,6 +144,14 @@ final class FakeRecipeRepository: RecipeRepository {
         recipes.map { $0[id] }.eraseToAnyPublisher()
     }
 
+    /// Each `byIds` call's ids (#331: a cookbook reads its recipes in one query).
+    private(set) var byIdsQueries: [[Int64]] = []
+
+    func byIds(_ ids: [Int64]) async -> [Recipe] {
+        byIdsQueries.append(ids)
+        return ids.compactMap { recipes.value[$0] }
+    }
+
     /// The tour's sample (#151): its id while it is "in the library", else nil.
     var sample: Int64?
     /// Every sample `addSample` was given; a nil `addSampleResult` fails the save.

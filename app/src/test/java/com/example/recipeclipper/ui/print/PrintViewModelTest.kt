@@ -31,7 +31,7 @@ class PrintViewModelTest {
         this.recipes.value = mapOf(1L to recipe(1, "Pancakes", servingsTarget = 4), 2L to recipe(2, "Waffles"))
     }
     private val preferences = FakeAppPreferences(unitSystem = UnitSystem.METRIC)
-    private val viewModel = PrintViewModel(recipes, preferences, FakeDecisionRepository())
+    private val viewModel = PrintViewModel(recipes, preferences, FakeDecisionRepository(), rendering = mainDispatcherRule.dispatcher)
 
     private fun idle() = mainDispatcherRule.dispatcher.scheduler.advanceUntilIdle()
 
@@ -77,5 +77,42 @@ class PrintViewModelTest {
         assertTrue(viewModel.uiState.value.failed)
         viewModel.onFailureShown()
         assertFalse(viewModel.uiState.value.failed)
+    }
+
+    @Test fun `a cookbook reads its recipes in one query`() {
+        viewModel.makeCookbook("Breakfast", listOf(2L, 1L), RecipePrint.Labels.ENGLISH, "Contents")
+        idle()
+        assertEquals(listOf(listOf(2L, 1L)), recipes.byIdsQueries)
+        assertEquals(2, cookbook().recipes.size)
+    }
+
+    @Test fun `a cookbook is busy until it is handed over, and the screen draws it`() {
+        viewModel.makeCookbook("Breakfast", listOf(1L), RecipePrint.Labels.ENGLISH, "Contents")
+        assertTrue(viewModel.uiState.value.busy)
+        idle()
+        assertTrue(viewModel.uiState.value.busy)
+        viewModel.onDone()
+        assertEquals(PrintUiState(), viewModel.uiState.value)
+    }
+
+    @Test fun `leaving the screen drops the job, built or still building`() {
+        viewModel.makeCookbook("Breakfast", listOf(1L), RecipePrint.Labels.ENGLISH, "Contents")
+        viewModel.onLeave()
+        idle()
+        assertEquals(PrintUiState(), viewModel.uiState.value)
+
+        viewModel.printRecipe("Pancakes", listOf(Block.Title("Pancakes")))
+        viewModel.onLeave()
+        assertEquals(PrintUiState(), viewModel.uiState.value)
+    }
+
+    @Test fun `the failure line going leaves a job started meanwhile alone`() {
+        viewModel.makeCookbook("Breakfast", listOf(9L), RecipePrint.Labels.ENGLISH, "Contents")
+        idle()
+        assertTrue(viewModel.uiState.value.failed)
+        val job = PrintJob.Recipe("Pancakes", listOf(Block.Title("Pancakes")))
+        viewModel.printRecipe(job.title, job.blocks)
+        viewModel.onFailureShown()
+        assertEquals(PrintUiState(busy = true, job = job), viewModel.uiState.value)
     }
 }

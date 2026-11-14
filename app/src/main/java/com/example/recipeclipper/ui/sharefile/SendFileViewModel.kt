@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -55,8 +56,9 @@ class SendFileViewModel @Inject constructor(
     }
 
     /** The failure was shown. */
+    /** The failure line has gone; a job started meanwhile stays. */
     fun onFailureShown() {
-        _uiState.value = SendFileUiState()
+        _uiState.update { if (it.failed) SendFileUiState() else it }
     }
 
     private fun send(title: String, make: suspend () -> String?) {

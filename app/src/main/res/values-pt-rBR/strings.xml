@@ -717,6 +717,7 @@
     <string name="action_cookbook">Criar um livro de receitas</string>
     <string name="menu_desc_cookbook">Todas as receitas daqui em um PDF</string>
     <string name="cookbook_contents">Sumário</string>
+    <string name="cookbook_making">Criando o livro de receitas…</string>
     <string name="print_failed">Não foi possível criar o PDF.</string>
     <string name="menu_desc_update_from_source">Troca suas edições pela versão atual do site</string>
     <string name="menu_desc_what_i_need">O que as receitas da semana pedem e a despensa não tem</string>

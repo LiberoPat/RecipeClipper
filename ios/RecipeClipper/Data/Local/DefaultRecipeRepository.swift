@@ -402,6 +402,15 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
+    func byIds(_ ids: [Int64]) async -> [Recipe] {
+        do {
+            return try await db.read { conn in try RecipeDao(db: conn).byIds(ids).map { $0.toDomain() } }
+        } catch {
+            dataLog.error("byIds failed: \(String(describing: error), privacy: .public)")
+            return []
+        }
+    }
+
     func setChecked(id: Int64, checked: Set<Int>) async {
         do {
             try await db.write { conn in try RecipeDao(db: conn).setChecked(id, checked: checked) }

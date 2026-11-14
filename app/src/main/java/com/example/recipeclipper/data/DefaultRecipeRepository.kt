@@ -342,6 +342,11 @@ class DefaultRecipeRepository @Inject constructor(
         entity.copy(lastViewedAt = now).toDomain()
     }
 
+    override suspend fun byIds(ids: List<Long>): List<Recipe> = log.guard("byIds", emptyList()) {
+        // SQLite caps a statement's parameters; a cookbook is never that long, but a chunk costs nothing.
+        ids.chunked(500).flatMap { chunk -> recipeDao.byIds(chunk).map { it.toDomain() } }
+    }
+
     override suspend fun setChecked(id: Long, checked: Set<Int>) =
         log.guard("setChecked", Unit) { recipeDao.setChecked(id, checked) }
 

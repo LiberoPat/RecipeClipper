@@ -54,6 +54,7 @@ class DatabaseErrorTest {
     private class ThrowingRecipeDao(private val throwable: () -> Throwable = { Boom() }) : RecipeDao() {
         override suspend fun get(id: Long): RecipeEntity? = throw throwable()
         override suspend fun findByUrl(url: String): RecipeEntity? = throw throwable()
+        override suspend fun byIds(ids: List<Long>): List<RecipeEntity> = throw throwable()
         override fun observe(id: Long): Flow<RecipeEntity?> = flow { throw throwable() }
         override suspend fun insert(recipe: RecipeEntity): Long = throw throwable()
         override suspend fun update(recipe: RecipeEntity) = throw throwable()

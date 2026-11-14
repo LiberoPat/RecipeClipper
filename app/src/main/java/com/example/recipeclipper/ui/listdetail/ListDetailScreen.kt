@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,6 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -71,8 +75,10 @@ fun ListDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val printFailedMessage = stringResource(R.string.print_failed)
     val contentsHeading = stringResource(R.string.cookbook_contents)
+    var makingCookbook = false
     if (printViewModel != null) {
         PrintEffect(printViewModel) { snackbarHostState.showSnackbar(printFailedMessage) }
+        makingCookbook = printViewModel.uiState.collectAsStateWithLifecycle().value.busy
     }
     val now = remember { System.currentTimeMillis() }
 
@@ -122,6 +128,8 @@ fun ListDetailScreen(
                         Spacer(Modifier.height(12.dp))
                         Hairline()
                         Spacer(Modifier.height(4.dp))
+                        // A cookbook takes a while (#331): say so until the share sheet opens.
+                        if (makingCookbook) MakingCookbook()
                     }
 
                     if (state.loaded && state.recipes.isEmpty()) {
@@ -236,6 +244,19 @@ private fun ListOverflowMenu(
                     Text(stringResource(R.string.action_cancel))
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun MakingCookbook() {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) {
+        CircularProgressIndicator(Modifier.size(16.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            stringResource(R.string.cookbook_making),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

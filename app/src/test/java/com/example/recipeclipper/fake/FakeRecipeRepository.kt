@@ -195,6 +195,14 @@ class FakeRecipeRepository : RecipeRepository {
 
     override fun observeRecipe(id: Long): Flow<Recipe?> = recipes.map { it[id] }
 
+    /** Each [byIds] call's ids (#331: a cookbook reads its recipes in one query). */
+    val byIdsQueries = mutableListOf<List<Long>>()
+
+    override suspend fun byIds(ids: List<Long>): List<Recipe> {
+        byIdsQueries += ids
+        return ids.mapNotNull { recipes.value[it] }
+    }
+
     /** What [observeCount] emits (#107). */
     val count = MutableStateFlow(0)
 

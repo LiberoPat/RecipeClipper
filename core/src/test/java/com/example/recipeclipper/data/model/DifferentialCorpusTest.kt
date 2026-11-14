@@ -61,6 +61,10 @@ import java.io.File
  * a widget with room for that many rows, as how many are shown, how many more, and whether the
  * count sits beside the one item; write only the two numbers.
  *
+ * `Paged(pageHeight, [M(space, [lines], keep), ...])` rows (#318) pin [RecipePrint.paginate]: blocks
+ * measured for paper (each its space above, its lines' heights and whether it keeps with the
+ * next), as the pieces placed, `P(block, page, first, end)`; write only the height and the blocks.
+ *
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
  *
@@ -185,6 +189,9 @@ class DifferentialCorpusTest {
     )
     // A widget-fit row (#329): how many items, and how many rows there is room for.
     private val fittedRow = Regex("""^(\s*)Fitted\((\d+), (\d+)""")
+    // A page-break row (#318): the page height, then each block as M(space, [line heights], keep).
+    private val pagedRow = Regex("""^(\s*)Paged\((\d+(?:\.\d+)?), \[((?:\s*M\([^)]*\),?)*)\s*]""")
+    private val measuredEntry = Regex("""M\((\d+(?:\.\d+)?), \[([^\]]*)], (true|false)\)""")
     // A calendar-file row (#52): one summary's text.
     // A step row (#101): one step, the ingredient lines, optionally their language.
     private val stepRow = Regex("""^(\s*)Step\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
@@ -295,6 +302,7 @@ class DifferentialCorpusTest {
         tonightRow.find(line)?.let { m -> return tonightRow(m) }
         toBuyRow.find(line)?.let { m -> return toBuyRow(m) }
         fittedRow.find(line)?.let { m -> return fittedRow(m) }
+        pagedRow.find(line)?.let { m -> return pagedRow(m) }
         countRow.find(line)?.let { m -> return countRow(m) }
         cardRow.find(line)?.let { m ->
             val (kind, html) = m.groupValues[2] to unescape(m.groupValues[3])
@@ -616,6 +624,17 @@ class DifferentialCorpusTest {
         val (count, rows) = m.groupValues[2].toInt() to m.groupValues[3].toInt()
         val fit = WidgetContent.fit(count, rows)
         return m.groupValues[1] + "Fitted($count, $rows, ${fit.shown}, ${fit.more}, ${fit.inline}),"
+    }
+
+    /** `Paged(pageHeight, [M(space, [lines], keep)], [P(block, page, first, end)])` (#318): [RecipePrint.paginate]. */
+    private fun pagedRow(m: MatchResult): String {
+        val blocks = measuredEntry.findAll(m.groupValues[3]).map { e ->
+            val lines = e.groupValues[2].split(",").map { it.trim() }.filter { it.isNotEmpty() }.map { it.toDouble() }
+            RecipePrint.Measured(e.groupValues[1].toDouble(), lines, e.groupValues[3].toBoolean())
+        }.toList()
+        val pieces = RecipePrint.paginate(blocks, m.groupValues[2].toDouble())
+        val placed = pieces.joinToString(", ", "[", "]") { "P(${it.block}, ${it.page}, ${it.first}, ${it.end})" }
+        return m.groupValues[1] + "Paged(${m.groupValues[2]}, [${m.groupValues[3].trim()}], $placed),"
     }
 
     /** `Step(step, [lines], lang:, as given, doubled in Metric)`: [StepAmounts.annotate], marked. */
