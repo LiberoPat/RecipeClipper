@@ -41,7 +41,7 @@ class DefaultListRepository @Inject constructor(
 
     override fun observeSavedRecipes(): Flow<List<SavedRecipe>> =
         listDao.observeSavedRecipes().orEmptyOnError(log, "observeSavedRecipes")
-            .map { rows -> rows.map { SavedRecipe(it.id, it.title, it.imageUrl, it.language, it.ingredients) } }
+            .map { rows -> rows.map { SavedRecipe(it.id, it.title, it.language, it.ingredients) } }
 
     override suspend fun setMembership(recipeId: Long, listId: Long, inList: Boolean) =
         log.guard("setMembership", Unit) {

@@ -136,7 +136,7 @@ class UseItUpViewModel @Inject constructor(
         }
         viewModelScope.launch {
             plan.observeMealTypes().collect { types ->
-                mealType = (types.firstOrNull { it.builtInKey == MealType.DINNER } ?: types.firstOrNull())?.id
+                mealType = MealType.defaultTypeId(types)
             }
         }
         viewModelScope.launch {

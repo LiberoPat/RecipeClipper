@@ -121,7 +121,13 @@ class LanguageWords private constructor(
             (listOf(name) + ingredients).joinToString("\n")
 
         /** The words a recipe is read with. A recipe stored before #14 has no language: detect it. */
-        fun forRecipe(recipe: Recipe): LanguageWords? =
-            forTag(recipe.language ?: resolve(null, null) { detectionText(recipe.name, recipe.ingredients) })
+        fun forRecipe(recipe: Recipe): LanguageWords? = forRecipe(recipe.language, recipe.name, recipe.ingredients)
+
+        /**
+         * The same for a recipe read in part (What I need's planned ingredients, Use it up's saved
+         * recipe): its stored [language], else the one its [title] and [lines] detect.
+         */
+        fun forRecipe(language: String?, title: String, lines: List<String>): LanguageWords? =
+            forTag(language ?: resolve(null, null) { detectionText(title, lines) })
     }
 }

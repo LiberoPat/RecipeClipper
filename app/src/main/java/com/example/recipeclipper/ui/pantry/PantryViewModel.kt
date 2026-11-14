@@ -182,6 +182,9 @@ class PantryViewModel @Inject constructor(
     private fun onList(): Set<Long> =
         items.filter { PantryList.onListLines(it, groceryItems).isNotEmpty() }.map { it.id }.toSet()
 
+    /** The Pantry is back in front: the expiry badges follow the real day, as the tab's ViewModel outlives it (#332). */
+    fun onScreenResumed() = _uiState.update { it.copy(today = calendar.today()) }
+
     fun onQueryChange(query: String) = _uiState.update { it.copy(query = query).arranged() }
 
     fun onSortChange(sort: PantrySort) = _uiState.update { it.copy(sort = sort).arranged() }

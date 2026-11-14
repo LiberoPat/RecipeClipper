@@ -10,6 +10,9 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
     static let recipeIdKey = "recipeId"
     /// A tab to open on a tap: an expiry reminder's `AppTab.pantry` (#52).
     static let openTabKey = "openTab"
+    /// Set (to true) by an expiry reminder alone: its tab also opens the Use it up sheet (#305).
+    /// Its own marker, so a notification that only wants the tab never pops the sheet.
+    static let useItUpKey = "useItUp"
 
     @MainActor weak var router: Router?
 
@@ -23,11 +26,13 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let id = Self.recipeId(response.notification)
-        let tab = (response.notification.request.content.userInfo[Self.openTabKey] as? String).flatMap(AppTab.init)
+        let userInfo = response.notification.request.content.userInfo
+        let tab = (userInfo[Self.openTabKey] as? String).flatMap(AppTab.init)
+        let useItUp = (userInfo[Self.useItUpKey] as? Bool) ?? false
         Task { @MainActor in
             if let id { self.router?.openInRecipes(.cookRecipe(id: id)) }
-            // An expiry reminder's tab opens on Use it up (#305), which shows only when the flag is on.
-            if tab == .pantry { self.router?.requestUseItUp() } else if let tab { self.router?.select(tab) }
+            // An expiry reminder opens its tab on Use it up (#305), which shows only when the flag is on.
+            if useItUp { self.router?.requestUseItUp() } else if let tab { self.router?.select(tab) }
             completionHandler()
         }
     }

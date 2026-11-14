@@ -460,9 +460,7 @@ final class WeekViewModel {
         uiState.removed = nil
     }
 
-    private func defaultType(_ types: [MealType]) -> Int64? {
-        (types.first { $0.builtInKey == MealType.dinner } ?? types.first)?.id
-    }
+    private func defaultType(_ types: [MealType]) -> Int64? { MealType.defaultTypeId(types) }
 }
 
 // MARK: - Menus (#52)
