@@ -37,8 +37,8 @@ enum RecipePrint {
     }
 
     /// `recipe`'s card. `ingredients` and `instructions` are the lines as shown; `note` is the
-    /// cook's own (printed on a single card; a cookbook leaves it out, as Send as file does);
-    /// `photo` says whether to place the photo, which the screen draws only if it is cached.
+    /// cook's own (printed on a single card; a cookbook leaves it out, as Send as file does).
+    /// The photo is placed when the recipe has one; the screen draws it only if it is cached.
     static func blocks(
         recipe: Recipe,
         servings: ServingsScale?,
@@ -46,11 +46,10 @@ enum RecipePrint {
         instructions: [String],
         sourceDomain: String?,
         note: String?,
-        labels: Labels = .english,
-        photo: Bool = true
+        labels: Labels = .english
     ) -> [Block] {
         var blocks: [Block] = []
-        if photo, let image = recipe.image, !image.kTrimmed.isEmpty { blocks.append(.photo(image)) }
+        if let image = recipe.image, !image.kTrimmed.isEmpty { blocks.append(.photo(image)) }
         blocks.append(.title(recipe.name))
         if let sourceDomain, !sourceDomain.kTrimmed.isEmpty { blocks.append(.credit(sourceDomain)) }
         blocks += RecipeShareText.metaLines(recipe, servings, labels.share).map { .meta($0) }

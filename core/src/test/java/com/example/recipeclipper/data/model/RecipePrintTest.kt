@@ -26,11 +26,8 @@ class RecipePrintTest {
     private fun blocks(
         ingredients: List<String> = listOf("1 kg chicken thighs", "For the sauce:", "60 ml soy sauce"),
         note: String? = null,
-        photo: Boolean = true,
         recipe: Recipe = this.recipe
-    ) = RecipePrint.blocks(
-        recipe, ServingsScale(base = 6, target = 3), ingredients, recipe.instructions, "example.com", note, photo = photo
-    )
+    ) = RecipePrint.blocks(recipe, ServingsScale(base = 6, target = 3), ingredients, recipe.instructions, "example.com", note)
 
     @Test fun `the card is the lines as shown, in the reading view's order`() {
         assertEquals(
@@ -57,8 +54,7 @@ class RecipePrintTest {
         assertFalse(blocks(note = "  ").any { it is Block.Note })
     }
 
-    @Test fun `no photo when asked for none or the recipe has none`() {
-        assertFalse(blocks(photo = false).any { it is Block.Photo })
+    @Test fun `no photo when the recipe has none`() {
         assertFalse(blocks(recipe = recipe.copy(image = null)).any { it is Block.Photo })
     }
 

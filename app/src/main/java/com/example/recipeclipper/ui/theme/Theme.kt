@@ -22,11 +22,12 @@ import com.example.recipeclipper.R
 
 // Design language from CLAUDE.md: Fraunces over Karla on a warm off-white ground, one
 // paprika accent. Cook mode inverts to ink. Never fall back to the default Material purple.
-private val Ground = Color(0xFFFBF9F6)
-private val Ink = Color(0xFF1C1917)
-private val Muted = Color(0xFF6B6259)
-private val Hairline = Color(0xFFE7E1D9)
-private val Paprika = Color(0xFFBF4A2B)
+// The light tokens are read by print too (PrintStyle, #318): paper is always light.
+internal val Ground = Color(0xFFFBF9F6)
+internal val Ink = Color(0xFF1C1917)
+internal val Muted = Color(0xFF6B6259)
+internal val Hairline = Color(0xFFE7E1D9)
+internal val Paprika = Color(0xFFBF4A2B)
 
 // Derived for the inverted cook view (the spec only names the light-side tokens): the
 // spec's muted and paprika are too dim to read as small text on ink.
