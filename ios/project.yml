@@ -191,6 +191,7 @@ targets:
         type: folder
         buildPhase: resources
       - path: RecipeClipper/UI/Theme/Theme.swift
+      - path: RecipeClipper/UI/Theme/WidgetStrings.swift
       - path: RecipeClipper/Resources/Localizable.xcstrings
       - path: RecipeClipper/Resources/Fonts
         buildPhase: resources

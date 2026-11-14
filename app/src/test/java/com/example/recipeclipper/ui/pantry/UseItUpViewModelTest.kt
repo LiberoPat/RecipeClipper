@@ -59,9 +59,9 @@ class UseItUpViewModelTest {
 
     init {
         lists.savedRecipes.value = listOf(
-            SavedRecipe(10, "Saag", null, "en", listOf("500 g spinach")),
-            SavedRecipe(11, "Pancakes", null, "en", listOf("1 cup milk", "2 cups flour")),
-            SavedRecipe(12, "Spinach pie", null, "en", listOf("For the filling:", "300 g spinach"))
+            SavedRecipe(10, "Saag", "en", listOf("500 g spinach")),
+            SavedRecipe(11, "Pancakes", "en", listOf("1 cup milk", "2 cups flour")),
+            SavedRecipe(12, "Spinach pie", "en", listOf("For the filling:", "300 g spinach"))
         )
     }
 
@@ -139,7 +139,7 @@ class UseItUpViewModelTest {
         inbox.offer()
         advanceUntilIdle()
         assertNull(vm.uiState.value.sheet)
-        lists.savedRecipes.value = listOf(SavedRecipe(10, "Saag", null, "en", listOf("500 g spinach")))
+        lists.savedRecipes.value = listOf(SavedRecipe(10, "Saag", "en", listOf("500 g spinach")))
         advanceUntilIdle()
         assertEquals(mapOf(1L to 1), vm.uiState.value.counts)
         assertNull(vm.uiState.value.sheet)

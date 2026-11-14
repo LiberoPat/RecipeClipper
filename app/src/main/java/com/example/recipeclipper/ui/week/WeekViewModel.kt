@@ -538,8 +538,7 @@ class WeekViewModel @Inject constructor(
 
     fun onMenuMessageShown() = updateMenus { it.copy(message = null) }
 
-    private fun defaultType(types: List<MealType>): Long? =
-        (types.firstOrNull { it.builtInKey == MealType.DINNER } ?: types.firstOrNull())?.id
+    private fun defaultType(types: List<MealType>): Long? = MealType.defaultTypeId(types)
 
     companion object {
         /** The list's days: a year back and two ahead of today (or of a day jumped to beyond). */

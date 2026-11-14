@@ -9,7 +9,6 @@ import java.util.Locale
 data class SavedRecipe(
     val id: Long,
     val title: String,
-    val imageUrl: String?,
     val language: String?,
     val lines: List<String>
 )
@@ -43,8 +42,7 @@ object UseItUp {
     /** [recipe]'s ingredient names, or null when its language has no tables. */
     fun names(recipe: SavedRecipe): RecipeNames? {
         // A recipe stored with no language (before #14) is detected, as What I need's are.
-        val tag = recipe.language ?: LanguageWords.resolve(null, null) { LanguageWords.detectionText(recipe.title, recipe.lines) }
-        val words = LanguageWords.forTag(tag) ?: return null
+        val words = LanguageWords.forRecipe(recipe.language, recipe.title, recipe.lines) ?: return null
         val names = recipe.lines.filter { GrocerySources.buyable(it) }.mapNotNull { IngredientName.of(it, words) }
         return RecipeNames(recipe, words.language, names)
     }

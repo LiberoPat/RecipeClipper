@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.recipeclipper.MainActivity
 import com.example.recipeclipper.R
+import com.example.recipeclipper.runAsync
 import com.example.recipeclipper.data.ExpiryReminderCoordinator
 import com.example.recipeclipper.data.ExpiryReminderScheduler
 import com.example.recipeclipper.data.model.ExpiryReminder
@@ -26,10 +27,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.TimeZone
 import javax.inject.Inject
@@ -97,6 +94,12 @@ object ExpiryNotifications {
     /** MainActivity opens the Pantry tab for an intent with this action. */
     const val ACTION_OPEN_PANTRY = "com.example.recipeclipper.action.OPEN_PANTRY"
 
+    /**
+     * A boolean extra the reminder alone sets: its tab also opens the Use it up sheet (#305).
+     * Its own marker, so an intent that only wants the tab never pops the sheet.
+     */
+    const val EXTRA_USE_IT_UP = "useItUp"
+
     internal const val NOTIFICATION_TAG = "pantry:expiry"
 
     fun post(context: Context, reminder: ExpiryReminder) {
@@ -113,7 +116,7 @@ object ExpiryNotifications {
         val text = body(context, reminder)
         val open = PendingIntent.getActivity(
             context, 0,
-            Intent(context, MainActivity::class.java).setAction(ACTION_OPEN_PANTRY),
+            Intent(context, MainActivity::class.java).setAction(ACTION_OPEN_PANTRY).putExtra(EXTRA_USE_IT_UP, true),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -167,14 +170,9 @@ class ExpiryReminderReceiver : BroadcastReceiver() {
         val app = context.applicationContext
         val coordinator = EntryPointAccessors.fromApplication(app, ExpiryReminderEntryPoint::class.java)
             .expiryReminderCoordinator()
-        val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            try {
-                if (day == coordinator.today()) coordinator.dueToday()?.let { ExpiryNotifications.post(app, it) }
-                coordinator.refresh()
-            } finally {
-                pending.finish()
-            }
+        runAsync {
+            if (day == coordinator.today()) coordinator.dueToday()?.let { ExpiryNotifications.post(app, it) }
+            coordinator.refresh()
         }
     }
 }

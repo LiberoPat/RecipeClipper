@@ -17,34 +17,39 @@ enum AppGroup {
     }
 }
 
-/// Whether the home-screen widgets show the plan and the list (the `widgets` flag, #309), as
-/// the widget extension reads it: mirrored by the app like `DefaultsRedditSwitch`. On until
-/// the app has written it, as the flag's default is.
-struct DefaultsWidgetsSwitch: @unchecked Sendable {
-    static let key = "widgets_on"
+/// A feature flag's key in the App Group suite, where the app mirrors it for its extensions,
+/// which never see the flags (`AppContainer.startMirroring`).
+protocol MirroredFlag {
+    static var key: String { get }
+}
+
+/// A flag as an extension reads it: the app's mirror of it in the App Group suite, under
+/// `F.key`. On until the app has written it, as every flag's default is.
+struct DefaultsFlagSwitch<F: MirroredFlag>: @unchecked Sendable {
+    static var key: String { F.key }
     let defaults: UserDefaults
 
-    var isOn: Bool { defaults.object(forKey: Self.key) as? Bool ?? true }
+    var isOn: Bool { defaults.object(forKey: F.key) as? Bool ?? true }
 
     func store(_ on: Bool) {
-        if defaults.object(forKey: Self.key) as? Bool != on { defaults.set(on, forKey: Self.key) }
+        if defaults.object(forKey: F.key) as? Bool != on { defaults.set(on, forKey: F.key) }
     }
 }
+
+/// Whether the home-screen widgets show the plan and the list (the `widgets` flag, #309), as
+/// the widget extension reads it.
+enum WidgetsFlag: MirroredFlag { static let key = "widgets_on" }
+typealias DefaultsWidgetsSwitch = DefaultsFlagSwitch<WidgetsFlag>
 
 /// Whether Reddit links go to the Reddit source (the `reddit` flag, #11), as the share
-/// extension reads it: the app mirrors the flag into the App Group suite under `reddit_on`,
-/// since the extension never sees the flags. On until the app has written it, as the flag's
-/// default is.
-struct DefaultsRedditSwitch: @unchecked Sendable {
-    static let key = "reddit_on"
-    let defaults: UserDefaults
+/// extension reads it.
+enum RedditFlag: MirroredFlag { static let key = "reddit_on" }
+typealias DefaultsRedditSwitch = DefaultsFlagSwitch<RedditFlag>
 
-    var isOn: Bool { defaults.object(forKey: Self.key) as? Bool ?? true }
-
-    func store(_ on: Bool) {
-        if defaults.object(forKey: Self.key) as? Bool != on { defaults.set(on, forKey: Self.key) }
-    }
-}
+/// Whether shared text goes to the editor (the `shareText` flag, #306), as the share extension
+/// reads it.
+enum ShareTextFlag: MirroredFlag { static let key = "share_text_on" }
+typealias DefaultsShareTextSwitch = DefaultsFlagSwitch<ShareTextFlag>
 
 /// A Reddit post the share extension was blocked from reading (#213), handed to the app. The
 /// extension can't open the app (#19), so it leaves the post here and its card says to open
@@ -109,19 +114,5 @@ struct PendingText: @unchecked Sendable {
         let age = now - at
         guard age >= 0 && age <= Self.window else { return nil }
         return try? JSONDecoder().decode(SharedText.Reading.self, from: data)
-    }
-}
-
-/// Whether shared text goes to the editor (the `shareText` flag, #306), as the share extension
-/// reads it: the app mirrors the flag into the App Group suite under `share_text_on`. On until
-/// the app has written it, as the flag's default is.
-struct DefaultsShareTextSwitch: @unchecked Sendable {
-    static let key = "share_text_on"
-    let defaults: UserDefaults
-
-    var isOn: Bool { defaults.object(forKey: Self.key) as? Bool ?? true }
-
-    func store(_ on: Bool) {
-        if defaults.object(forKey: Self.key) as? Bool != on { defaults.set(on, forKey: Self.key) }
     }
 }

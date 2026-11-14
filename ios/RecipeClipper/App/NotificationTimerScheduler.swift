@@ -15,7 +15,7 @@ import UserNotifications
 final class NotificationTimerScheduler: TimerAlarmScheduler {
     private let center: UNUserNotificationCenter
     private let clock: Clock
-    private var last: Task<Void, Never>?
+    private let queue = OrderedWrites()
 
     init(center: UNUserNotificationCenter = .current(), clock: Clock) {
         self.center = center
@@ -26,13 +26,13 @@ final class NotificationTimerScheduler: TimerAlarmScheduler {
     private static func prefix(_ recipeId: Int64) -> String { "timer.\(recipeId)." }
 
     func schedule(_ alarm: StepAlarm) {
-        enqueue { [center, clock] in
+        queue.enqueue { [center, clock] in
             await Self.add(alarm, center: center, clock: clock)
         }
     }
 
     func cancel(recipeId: Int64, step: Int) {
-        enqueue { [center] in
+        queue.enqueue { [center] in
             center.removePendingNotificationRequests(
                 withIdentifiers: [Self.identifier(recipeId: recipeId, step: step)]
             )
@@ -40,7 +40,7 @@ final class NotificationTimerScheduler: TimerAlarmScheduler {
     }
 
     func replaceAll(recipeId: Int64, with alarms: [StepAlarm]) {
-        enqueue { [center, clock] in
+        queue.enqueue { [center, clock] in
             let prefix = Self.prefix(recipeId)
             let stale = await center.pendingNotificationRequests()
                 .map(\.identifier)
@@ -55,14 +55,6 @@ final class NotificationTimerScheduler: TimerAlarmScheduler {
 
     /// The alerts are squared by `replaceAll` when the recipe is opened; nothing to do here.
     func reconcile(running: [StepAlarm]) {}
-
-    private func enqueue(_ operation: @escaping @MainActor () async -> Void) {
-        let previous = last
-        last = Task { @MainActor in
-            await previous?.value
-            await operation()
-        }
-    }
 
     private static func add(_ alarm: StepAlarm, center: UNUserNotificationCenter, clock: Clock) async {
         guard (try? await center.requestAuthorization(options: [.alert, .sound])) == true else { return }

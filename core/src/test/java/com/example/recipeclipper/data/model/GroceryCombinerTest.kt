@@ -202,6 +202,19 @@ class GroceryCombinerTest {
         assertEquals(listOf("100 g flour", "1 tsp baking powder", "200 g flour"), rows.map { (it as GroceryCombiner.Row.Single).item.text })
     }
 
+    // #329: the one walk "Send list" and the grocery widget share. A ticked row is in the basket;
+    // a combined row is its total, lines kept together are each listed; texts are trimmed.
+    @Test fun uncheckedLinesAreTheRowsStillToBuyAsShown() {
+        val flour = item("200 g flour", checked = true)
+        val sections = GroceryCombiner.sections(
+            listOf(flour, item(" 1 cup milk "), item("100 g sugar"), item("1 cup sugar"), item("2 eggs"), item("2 eggs"))
+        )
+        val lines = sections.flatMap { GroceryCombiner.uncheckedLines(it) }
+        assertEquals(listOf("1 cup milk", "4 eggs", "100 g sugar", "1 cup sugar"), lines.map { it.text })
+        assertEquals(listOf(1, 2, 1, 1), lines.map { it.items.size })
+        assertTrue(lines.none { flour in it.items })
+    }
+
     @Test fun linesWithNoNameOrNoLanguageGroupOnlyWithTheSameLine() {
         val rows = GroceryCombiner.sections(
             listOf(item("salt and pepper"), item("salt and pepper"), item("olive oil and butter"),

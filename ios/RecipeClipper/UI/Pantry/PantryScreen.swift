@@ -93,11 +93,16 @@ struct PantryScreen: View {
         .onChange(of: useItUpPending, initial: true) {
             if takeUseItUp() { useItUpVM?.onOpenAll() }
         }
-        // Use it up (#305) follows the real day: the tab's ViewModel outlives it (#332).
-        .onAppear { useItUpVM?.onScreenResumed() }
+        // The expiry badges and Use it up (#305) follow the real day: the tab's ViewModels outlive it (#332).
+        .onAppear { onScreenResumed() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { useItUpVM?.onScreenResumed() }
+            if phase == .active { onScreenResumed() }
         }
+    }
+
+    private func onScreenResumed() {
+        vm.onScreenResumed()
+        useItUpVM?.onScreenResumed()
     }
 
     private func list(_ state: PantryUiState, _ proxy: ScrollViewProxy) -> some View {

@@ -5,7 +5,6 @@ import Foundation
 struct SavedRecipe: Equatable, Identifiable {
     let id: Int64
     let title: String
-    let imageUrl: String?
     let language: String?
     let lines: [String]
 }
@@ -38,10 +37,9 @@ enum UseItUp {
     /// `recipe`'s ingredient names, or nil when its language has no tables.
     static func names(_ recipe: SavedRecipe) -> RecipeNames? {
         // A recipe stored with no language (before #14) is detected, as What I need's are.
-        let tag = recipe.language ?? LanguageWords.resolve(declared: nil, page: nil) {
-            LanguageWords.detectionText(name: recipe.title, ingredients: recipe.lines)
+        guard let words = LanguageWords.forRecipe(language: recipe.language, title: recipe.title, lines: recipe.lines) else {
+            return nil
         }
-        guard let words = LanguageWords.forTag(tag) else { return nil }
         let names = recipe.lines.filter { GrocerySources.buyable($0) }.compactMap { IngredientName.of($0, words: words) }
         return RecipeNames(recipe: recipe, language: words.language, names: names)
     }

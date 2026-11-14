@@ -521,6 +521,19 @@ final class GroceryCombinerTests: XCTestCase {
         XCTAssertEqual(sugar.map(\.text), ["1 cup sugar", "100 g sugar"])
     }
 
+    /// #329: the one walk "Send list" and the grocery widget share. A ticked row is in the basket;
+    /// a combined row is its total, lines kept together are each listed; texts are trimmed.
+    func testUncheckedLinesAreTheRowsStillToBuyAsShown() {
+        let flour = item("200 g flour", checked: true)
+        let sections = GroceryCombiner.sections(
+            [flour, item(" 1 cup milk "), item("100 g sugar"), item("1 cup sugar"), item("2 eggs"), item("2 eggs")]
+        )
+        let lines = sections.flatMap(GroceryCombiner.uncheckedLines)
+        XCTAssertEqual(lines.map(\.text), ["1 cup milk", "4 eggs", "100 g sugar", "1 cup sugar"])
+        XCTAssertEqual(lines.map(\.items.count), [1, 2, 1, 1])
+        XCTAssertFalse(lines.contains { $0.items.contains(flour) })
+    }
+
     func testAListedPairIsOneRowAndADifferentOnionAnother() {
         let rows = GroceryCombiner.sections([
             item("1 onion"), item("1 red onion"), item("2 onions"), item("2 red onions"), item("1 yellow onion"),

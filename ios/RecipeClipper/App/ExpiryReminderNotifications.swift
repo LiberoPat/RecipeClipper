@@ -95,7 +95,7 @@ final class NotificationExpiryReminderScheduler: ExpiryReminderScheduler {
                 content.title = Strings.expiryNotificationTitle
                 content.body = Strings.expiryNotificationBody(reminder)
                 content.sound = .default
-                content.userInfo = [NotificationRouter.openTabKey: AppTab.pantry.rawValue]
+                content.userInfo = [NotificationRouter.openTabKey: AppTab.pantry.rawValue, NotificationRouter.useItUpKey: true]
                 var date = DateComponents()
                 let utc = PlanDays.utcDate(reminder.day)
                 var gregorian = Calendar(identifier: .gregorian)

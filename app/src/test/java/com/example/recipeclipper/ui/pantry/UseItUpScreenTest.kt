@@ -46,8 +46,8 @@ class UseItUpScreenTest {
         val pantry = FakePantryRepository(listOf(spinach))
         val lists = FakeListRepository().apply {
             savedRecipes.value = listOf(
-                SavedRecipe(10, "Saag paneer", null, "en", listOf("500 g spinach")),
-                SavedRecipe(11, "Spinach pie", null, "en", listOf("300 g spinach, chopped"))
+                SavedRecipe(10, "Saag paneer", "en", listOf("500 g spinach")),
+                SavedRecipe(11, "Spinach pie", "en", listOf("300 g spinach, chopped"))
             )
         }
         val flags = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = false)

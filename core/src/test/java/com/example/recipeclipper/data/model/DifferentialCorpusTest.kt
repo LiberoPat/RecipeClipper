@@ -575,7 +575,7 @@ class DifferentialCorpusTest {
         val language = m.groupValues[4].ifEmpty { "en" }
         val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
         val item = PantryItem(1, name, null, language, Aisle.OTHER, inStock = true, alwaysHave = false, purchasedDay = null, expiresDay = 0)
-        val saved = lines.mapIndexed { i, line -> SavedRecipe(i.toLong(), "r$i", null, language, listOf(line)) }
+        val saved = lines.mapIndexed { i, line -> SavedRecipe(i.toLong(), "r$i", language, listOf(line)) }
         val used = UseItUp.groups(listOf(item), saved, 0).firstOrNull()?.recipes.orEmpty().map { it.id }.sorted()
         return m.groupValues[1] + "UseIt(${q(name)}, ${list(lines)}$lang, ${used.joinToString(", ", "[", "]")}),"
     }

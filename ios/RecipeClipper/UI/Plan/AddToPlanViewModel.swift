@@ -73,9 +73,7 @@ final class AddToPlanViewModel {
         Task { await repository.addRecipe(recipeId: recipe, day: day, mealTypeId: type, servings: servings) }
     }
 
-    private static func defaultType(_ types: [MealType]) -> Int64? {
-        (types.first { $0.builtInKey == MealType.dinner } ?? types.first)?.id
-    }
+    private static func defaultType(_ types: [MealType]) -> Int64? { MealType.defaultTypeId(types) }
 }
 
 /// Identified by instance, so the recipe screen can present its sheet with `sheet(item:)`.

@@ -17,6 +17,10 @@ data class MealType(
     companion object {
         /** New plan entries default to Dinner, and a deleted type's entries move to it. */
         const val DINNER = "dinner"
+
+        /** The type a new plan entry defaults to: Dinner, else the first; null with no types. */
+        fun defaultTypeId(types: List<MealType>): Long? =
+            (types.firstOrNull { it.builtInKey == DINNER } ?: types.firstOrNull())?.id
     }
 }
 

@@ -304,7 +304,7 @@ enum Strings {
 
     // Home
     /// The app's name, the same in every language (the widgets' `WidgetStrings.appName` too).
-    static var homeTitle: String { String(localized: "app_name") }
+    static var homeTitle: String { WidgetStrings.appName }
     static var labelRecipeUrl: String { String(localized: "label_recipe_url") }
     static var sectionContinueCooking: String { String(localized: "section_continue_cooking") }
     static var sectionRecentlyViewed: String { String(localized: "section_recently_viewed") }
@@ -472,7 +472,7 @@ enum Strings {
     }
 
     // Step timer notifications (#10)
-    static func timerNotificationTitle(step: Int) -> String { String(localized: "timer_notification_title \(step)") }
+    static func timerNotificationTitle(step: Int) -> String { WidgetStrings.timerNotificationTitle(step: step) }
 
     // Pantry expiry reminders (#52)
     static var settingsSectionPantry: String { String(localized: "settings_section_pantry") }
@@ -482,21 +482,6 @@ enum Strings {
     static var expiryNotificationTitle: String { String(localized: "expiry_notification_title") }
 
     /// "Milk and yogurt expire tomorrow.", or both sentences when some expire today.
-    // Use it up (#305)
-    static var useItUpTitle: String { String(localized: "use_it_up_title") }
-    static func useItUpCount(_ n: Int) -> String { String(localized: "use_it_up_count \(n)") }
-    static var useItUpNote: String { String(localized: "use_it_up_note") }
-    static var useItUpPlanToday: String { String(localized: "use_it_up_plan_today") }
-    static var useItUpPlanTomorrow: String { String(localized: "use_it_up_plan_tomorrow") }
-    static var useItUpPlannedToday: String { String(localized: "use_it_up_planned_today") }
-    static var useItUpPlannedTomorrow: String { String(localized: "use_it_up_planned_tomorrow") }
-    /// The sheet's heading per item: "Chicken thighs · use by tomorrow" / "… · use by today",
-    /// the name then the day, so a plural name needs no verb (#332).
-    static func useItUpHeading(_ name: String, today: Bool) -> String {
-        let heading = today ? String(localized: "use_it_up_heading_today \(name)") : String(localized: "use_it_up_heading_tomorrow \(name)")
-        return ExpiryReminders.capitalized(heading, locale: .current)
-    }
-
     static func expiryNotificationBody(_ reminder: ExpiryReminder) -> String {
         func sentence(_ names: [String], one: (String) -> String, many: (String) -> String) -> String {
             let joined = ExpiryReminders.joinNames(names) { String(localized: "expiry_names_and \($0) \($1)") }
@@ -518,10 +503,25 @@ enum Strings {
         }
     }
 
+    // Use it up (#305)
+    static var useItUpTitle: String { String(localized: "use_it_up_title") }
+    static func useItUpCount(_ n: Int) -> String { String(localized: "use_it_up_count \(n)") }
+    static var useItUpNote: String { String(localized: "use_it_up_note") }
+    static var useItUpPlanToday: String { String(localized: "use_it_up_plan_today") }
+    static var useItUpPlanTomorrow: String { String(localized: "use_it_up_plan_tomorrow") }
+    static var useItUpPlannedToday: String { String(localized: "use_it_up_planned_today") }
+    static var useItUpPlannedTomorrow: String { String(localized: "use_it_up_planned_tomorrow") }
+    /// The sheet's heading per item: "Chicken thighs · use by tomorrow" / "… · use by today",
+    /// the name then the day, so a plural name needs no verb (#332).
+    static func useItUpHeading(_ name: String, today: Bool) -> String {
+        let heading = today ? String(localized: "use_it_up_heading_today \(name)") : String(localized: "use_it_up_heading_tomorrow \(name)")
+        return ExpiryReminders.capitalized(heading, locale: .current)
+    }
+
     // Bottom tabs (#47)
     static var tabRecipes: String { String(localized: "tab_recipes") }
     static var tabWeek: String { String(localized: "tab_week") }
-    static var tabGroceries: String { String(localized: "tab_groceries") }
+    static var tabGroceries: String { WidgetStrings.groceries }
     static var tabPantry: String { String(localized: "tab_pantry") }
 
     // Week meal plan (#49)

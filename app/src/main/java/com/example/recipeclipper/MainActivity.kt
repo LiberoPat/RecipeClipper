@@ -184,8 +184,8 @@ class MainActivity : ComponentActivity() {
      *  Text is read once, off the main thread (it may be long), and left in [sharedTexts]. */
     private suspend fun routeFor(intent: Intent?): String? {
         if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) {
-            // Use it up (#305): the Pantry opens on the saved recipes for what's expiring, if any.
-            useItUp.offer()
+            // Use it up (#305): a reminder's Pantry opens on the saved recipes for what's expiring, if any.
+            if (intent.getBooleanExtra(ExpiryNotifications.EXTRA_USE_IT_UP, false)) useItUp.offer()
             return Tab.PANTRY.route
         }
         // The home-screen widgets (#309): Tonight opens the Week, the list opens Groceries.

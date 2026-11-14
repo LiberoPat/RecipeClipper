@@ -108,16 +108,6 @@ struct PendingScan: @unchecked Sendable {
     }
 }
 
-/// Whether images shared in are scanned (the `photoText` flag, #226), as the share extension
-/// reads it: the app mirrors the flag into the App Group suite under `photo_text_on`, since the
-/// extension never sees the flags. On until the app has written it, as the flag's default is.
-struct DefaultsPhotoTextSwitch: @unchecked Sendable {
-    static let key = "photo_text_on"
-    let defaults: UserDefaults
-
-    var isOn: Bool { defaults.object(forKey: Self.key) as? Bool ?? true }
-
-    func store(_ on: Bool) {
-        if defaults.object(forKey: Self.key) as? Bool != on { defaults.set(on, forKey: Self.key) }
-    }
-}
+/// Whether scans go to the editor (the `photoText` flag, #226), as the share extension reads it.
+enum PhotoTextFlag: MirroredFlag { static let key = "photo_text_on" }
+typealias DefaultsPhotoTextSwitch = DefaultsFlagSwitch<PhotoTextFlag>
