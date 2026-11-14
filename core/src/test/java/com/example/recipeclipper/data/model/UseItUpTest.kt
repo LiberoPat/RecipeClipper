@@ -20,7 +20,7 @@ class UseItUpTest {
     ) = PantryItem(id, name, null, language, Aisle.OTHER, inStock, alwaysHave, null, expires)
 
     private fun recipe(id: Long, title: String, vararg lines: String, language: String = "en") =
-        SavedRecipe(id, title, null, language, lines.toList())
+        SavedRecipe(id, title, language, lines.toList())
 
     @Test fun `soon is the reminder's window, today and tomorrow`() {
         assertTrue(UseItUp.soon(item("spinach", today), today))
@@ -60,7 +60,7 @@ class UseItUpTest {
     }
 
     @Test fun `a recipe stored with no language is detected`() {
-        val adobo = SavedRecipe(1, "Chicken Adobo", null, null, listOf("2 lb chicken thighs", "1/2 cup soy sauce"))
+        val adobo = SavedRecipe(1, "Chicken Adobo", null, listOf("2 lb chicken thighs", "1/2 cup soy sauce"))
         assertTrue(UseItUp.uses(adobo, item("chicken thighs", today)))
     }
 

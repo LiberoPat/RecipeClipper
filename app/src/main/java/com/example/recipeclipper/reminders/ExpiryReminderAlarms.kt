@@ -97,6 +97,12 @@ object ExpiryNotifications {
     /** MainActivity opens the Pantry tab for an intent with this action. */
     const val ACTION_OPEN_PANTRY = "com.example.recipeclipper.action.OPEN_PANTRY"
 
+    /**
+     * A boolean extra the reminder alone sets: its tab also opens the Use it up sheet (#305).
+     * Its own marker, so an intent that only wants the tab never pops the sheet.
+     */
+    const val EXTRA_USE_IT_UP = "useItUp"
+
     internal const val NOTIFICATION_TAG = "pantry:expiry"
 
     fun post(context: Context, reminder: ExpiryReminder) {
@@ -113,7 +119,7 @@ object ExpiryNotifications {
         val text = body(context, reminder)
         val open = PendingIntent.getActivity(
             context, 0,
-            Intent(context, MainActivity::class.java).setAction(ACTION_OPEN_PANTRY),
+            Intent(context, MainActivity::class.java).setAction(ACTION_OPEN_PANTRY).putExtra(EXTRA_USE_IT_UP, true),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)

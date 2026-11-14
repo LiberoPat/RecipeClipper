@@ -19,9 +19,9 @@ final class UseItUpViewModelTests: XCTestCase {
     private func viewModel() -> UseItUpViewModel {
         let pantry = FakePantryRepository([item(1, "spinach", today + 1), item(2, "milk", today), item(3, "flour", today + 5)])
         lists.savedRecipes.value = [
-            SavedRecipe(id: 10, title: "Saag", imageUrl: nil, language: "en", lines: ["500 g spinach"]),
-            SavedRecipe(id: 11, title: "Pancakes", imageUrl: nil, language: "en", lines: ["1 cup milk", "2 cups flour"]),
-            SavedRecipe(id: 12, title: "Spinach pie", imageUrl: nil, language: "en", lines: ["For the filling:", "300 g spinach"]),
+            SavedRecipe(id: 10, title: "Saag", language: "en", lines: ["500 g spinach"]),
+            SavedRecipe(id: 11, title: "Pancakes", language: "en", lines: ["1 cup milk", "2 cups flour"]),
+            SavedRecipe(id: 12, title: "Spinach pie", language: "en", lines: ["For the filling:", "300 g spinach"]),
         ]
         return UseItUpViewModel(pantry: pantry, lists: lists, plan: plan, calendar: calendar, isOn: { [unowned self] in on })
     }
@@ -89,7 +89,7 @@ final class UseItUpViewModelTests: XCTestCase {
         vm.onOpenAll()
         await settleMain()
         XCTAssertNil(vm.uiState.sheet)
-        lists.savedRecipes.value = [SavedRecipe(id: 10, title: "Saag", imageUrl: nil, language: "en", lines: ["500 g spinach"])]
+        lists.savedRecipes.value = [SavedRecipe(id: 10, title: "Saag", language: "en", lines: ["500 g spinach"])]
         await settleMain(until: { vm.uiState.counts == [1: 1] })
         XCTAssertNil(vm.uiState.sheet)
 
