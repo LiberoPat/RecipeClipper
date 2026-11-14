@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.remote
 
 import com.example.recipeclipper.data.model.LanguageWords
+import com.example.recipeclipper.data.model.ReceivedList
 import org.json.JSONObject
 
 /**
@@ -71,7 +72,7 @@ object SharedText {
         if (normalized.isBlank()) return Route.None
         val reading = if (normalized.length <= MAX_LENGTH) read(normalized) else null
         if (reading?.sorted == true) return Route.Editor(reading)
-        val lines = normalized.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+        val lines = ReceivedList.allLines(normalized)
         val link = link(normalized)
         if (link != null && justALink(lines)) return Route.Link(link)
         if (isList(lines)) return Route.List
@@ -124,7 +125,7 @@ object SharedText {
             val recipe = found.split.recipe.copy(language = found.language)
             return Reading(recipe, sorted = true, leftovers = found.split.leftover.map { lines[it].trim() })
         }
-        val all = lines.map { it.trim() }.filter { it.isNotEmpty() }
+        val all = ReceivedList.allLines(normalized)
         val language = RecipeTextSplitter.languageOf(normalized)
         return Reading(SplitRecipe(emptyList(), all, null, null, null, null, language), sorted = false)
     }

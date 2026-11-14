@@ -34,8 +34,6 @@ enum SharedText {
     private static let headingLength = 40
     private static let sentenceEnd: Set<Character> = [".", "!", "?", "。", "！", "？"]
 
-    private static let linkPattern = JRegex(#"https?://\S+"#)
-
     /// Every line break but "\n": "\r\n", "\r", the vertical tab, form feed, NEL, LS and PS.
     private static let separator = JRegex("\r\n|[\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}]")
 
@@ -43,14 +41,14 @@ enum SharedText {
     static func normalize(_ text: String) -> String { separator.replace(text, with: "\n") }
 
     /// The first http(s) link in `text`, as shared (the repository cleans it).
-    static func link(_ text: String) -> String? { linkPattern.find(text)?.value }
+    static func link(_ text: String) -> String? { UrlInput.extractSharedUrl(text) }
 
     static func route(_ text: String) -> Route {
         let normalized = normalize(text)
         if normalized.kIsBlank { return .none }
         let reading = normalized.u16Count <= maxLength ? read(normalized) : nil
         if let reading, reading.sorted { return .editor(reading) }
-        let lines = normalized.components(separatedBy: "\n").map(\.kTrimmed).filter { !$0.isEmpty }
+        let lines = ReceivedList.allLines(normalized)
         let link = link(normalized)
         if let link, justALink(lines) { return .link(link) }
         if isList(lines) { return .list }
@@ -69,7 +67,7 @@ enum SharedText {
 
     /// Rule 2: the links taken out, what's left is at most a short title or caption.
     private static func justALink(_ lines: [String]) -> Bool {
-        let others = lines.map { linkPattern.replace($0, with: "").kTrimmed }.filter { !$0.isEmpty }
+        let others = lines.map { UrlInput.sharedLink.replace($0, with: "").kTrimmed }.filter { !$0.isEmpty }
         return others.count <= captionLines && others.allSatisfy { $0.u16Count <= captionLength }
     }
 
@@ -103,7 +101,7 @@ enum SharedText {
             recipe.language = found.language
             return Reading(recipe: recipe, sorted: true, leftovers: found.split.leftover.map { lines[$0].kTrimmed })
         }
-        let all = lines.map(\.kTrimmed).filter { !$0.isEmpty }
+        let all = ReceivedList.allLines(normalized)
         let language = RecipeTextSplitter.languageOf(normalized)
         return Reading(
             recipe: SplitRecipe(
