@@ -32,15 +32,7 @@ enum WidgetContent {
     /// combined row is its total, lines kept together are each listed. A row with any ticked
     /// line is in the basket.
     static func groceries(_ sections: [GroceryCombiner.Section]) -> [String] {
-        sections.flatMap { section in
-            section.rows.filter { row in !row.items.contains(where: \.checked) }.flatMap { row -> [String] in
-                switch row {
-                case .single(let item): return [item.text.trimmingCharacters(in: .whitespacesAndNewlines)]
-                case .combined(_, let text, _): return [text]
-                case .together: return GroceryCombiner.lineGroups(row).map(GroceryCombiner.lineText)
-                }
-            }
-        }
+        sections.flatMap { section in GroceryCombiner.uncheckedLines(section).map(\.text) }
     }
 
     /// How a list is cut to a widget's height: `shown` of its items from the top, then "+`more`

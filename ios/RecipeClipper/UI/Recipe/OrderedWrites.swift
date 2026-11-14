@@ -1,9 +1,11 @@
 import Foundation
 
-/// The recipe screen's one write queue (#10, #234; Android's `OrderedWrites`): cook progress and
-/// the chosen servings, each waiting for the one before, so two quick taps can never land out of
-/// order and leave the older state saved. A write holds what it writes to (the repository), not
-/// the ViewModel, so one queued just before the screen is popped still lands.
+/// A serial chain of async work: each task waits for the one queued before it. The recipe
+/// screen's one write queue (#10, #234; Android's `OrderedWrites`): cook progress and the chosen
+/// servings, so two quick taps can never land out of order and leave the older state saved. A
+/// write holds what it writes to (the repository), not the ViewModel, so one queued just before
+/// the screen is popped still lands. The timer schedulers (`NotificationTimerScheduler`,
+/// `ActivityKitTimerDisplay`) chain their system calls through one too.
 @MainActor
 final class OrderedWrites {
     // The last queued write.

@@ -258,18 +258,18 @@ final class AppContainer {
         if !testing { container.followLiveTimersFlag() }
         storeKit?.start()
         container.libraryPolicy.startMirroring()
-        container.startRedditMirroring(DefaultsRedditSwitch(defaults: defaults))
+        container.startMirroring(.reddit, into: DefaultsRedditSwitch(defaults: defaults))
         if !testing { container.pendingClip = PendingClip(defaults: defaults) }
         // Scans (#226): the extension's copy of the flag, the hand-off, and pages nobody finished
         // with, gone after an hour.
-        container.startPhotoTextMirroring(DefaultsPhotoTextSwitch(defaults: defaults))
+        container.startMirroring(.photoText, into: DefaultsPhotoTextSwitch(defaults: defaults))
         if !testing {
             container.pendingScan = PendingScan(defaults: defaults, pages: container.scanPages)
             let pages = container.scanPages
             Task.detached(priority: .utility) { pages.sweep(olderThan: 60 * 60) }
         }
         // Shared text (#306): the extension's copy of the flag, and the hand-off.
-        container.startShareTextMirroring(DefaultsShareTextSwitch(defaults: defaults))
+        container.startMirroring(.shareText, into: DefaultsShareTextSwitch(defaults: defaults))
         if !testing { container.pendingText = PendingText(defaults: defaults) }
         return container
     }
@@ -314,13 +314,18 @@ final class AppContainer {
         )
     }
 
-    /// Keeps the share extension's copy of the `reddit` flag (#11) current: now, and after every
-    /// change, as `LibraryPolicy` does the library limit.
-    func startRedditMirroring(_ mirror: DefaultsRedditSwitch) {
-        let on = withObservationTracking { featureFlags.isOn(.reddit) } onChange: { [weak self] in
-            Task { @MainActor in self?.startRedditMirroring(mirror) }
+    /// Keeps an extension's copy of `flag` current (`DefaultsFlagSwitch`; the `reddit` flag for the
+    /// share extension, #11, `photoText`, #226, `shareText`, #306, `widgets` for the widgets, #309):
+    /// `sink` takes its value now and after every change, as `LibraryPolicy` does the library limit.
+    func startMirroring(_ flag: Flag, into sink: @escaping @MainActor (Bool) -> Void) {
+        let on = withObservationTracking { featureFlags.isOn(flag) } onChange: { [weak self] in
+            Task { @MainActor in self?.startMirroring(flag, into: sink) }
         }
-        mirror.store(on)
+        sink(on)
+    }
+
+    func startMirroring<F>(_ flag: Flag, into mirror: DefaultsFlagSwitch<F>) {
+        startMirroring(flag) { mirror.store($0) }
     }
 
     /// The home-screen widgets (#309): redrawn when the plan, the list or the `widgets` flag
@@ -328,22 +333,7 @@ final class AppContainer {
     func startWidgets(_ refresher: WidgetRefresher) {
         widgetRefresher = refresher
         refresher.start(mealPlan: mealPlanRepository, groceries: groceryRepository, today: planCalendar.today())
-        followWidgetsFlag()
-    }
-
-    private func followWidgetsFlag() {
-        let on = withObservationTracking { featureFlags.isOn(.widgets) } onChange: { [weak self] in
-            Task { @MainActor in self?.followWidgetsFlag() }
-        }
-        widgetRefresher?.flag(on: on)
-    }
-
-    /// Keeps the share extension's copy of the `photoText` flag (#226) current, as above.
-    func startPhotoTextMirroring(_ mirror: DefaultsPhotoTextSwitch) {
-        let on = withObservationTracking { featureFlags.isOn(.photoText) } onChange: { [weak self] in
-            Task { @MainActor in self?.startPhotoTextMirroring(mirror) }
-        }
-        mirror.store(on)
+        startMirroring(.widgets) { [weak self] on in self?.widgetRefresher?.flag(on: on) }
     }
 
     /// Makes "Print or save as PDF" and the cookbook's ViewModel (#318); nil with the `print` flag off.
@@ -351,14 +341,6 @@ final class AppContainer {
         guard featureFlags.isOn(.print) else { return nil }
         let recipes = recipeRepository, preferences = preferences, decisions = decisionRepository
         return { PrintViewModel(recipes: recipes, preferences: preferences, decisions: decisions) }
-    }
-
-    /// Keeps the share extension's copy of the `shareText` flag (#306) current, as above.
-    func startShareTextMirroring(_ mirror: DefaultsShareTextSwitch) {
-        let on = withObservationTracking { featureFlags.isOn(.shareText) } onChange: { [weak self] in
-            Task { @MainActor in self?.startShareTextMirroring(mirror) }
-        }
-        mirror.store(on)
     }
 
     /// Makes "Send as file"'s ViewModel (#149); nil without a share file repository.

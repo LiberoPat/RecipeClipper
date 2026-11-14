@@ -5,14 +5,11 @@ import android.appwidget.AppWidgetProvider
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.os.Bundle
+import com.example.recipeclipper.runAsync
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 /** What the widget providers need from the graph (an entry point, as for the timer receivers). */
 @EntryPoint
@@ -26,14 +23,7 @@ interface WidgetEntryPoint {
 internal fun BroadcastReceiver.redrawWidgets(context: Context) {
     val widgets = EntryPointAccessors.fromApplication(context.applicationContext, WidgetEntryPoint::class.java)
         .homeWidgets()
-    val pending = goAsync()
-    CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-        try {
-            widgets.update()
-        } finally {
-            pending.finish()
-        }
-    }
+    runAsync { widgets.update() }
 }
 
 /**
