@@ -51,68 +51,60 @@ typealias DefaultsRedditSwitch = DefaultsFlagSwitch<RedditFlag>
 enum ShareTextFlag: MirroredFlag { static let key = "share_text_on" }
 typealias DefaultsShareTextSwitch = DefaultsFlagSwitch<ShareTextFlag>
 
-/// A Reddit post the share extension was blocked from reading (#213), handed to the app. The
-/// extension can't open the app (#19), so it leaves the post here and its card says to open
-/// Recipe Clipper; the app, becoming active within `window`, opens "Clip it yourself" on it,
-/// with the note, once. Each new share replaces or clears it.
-struct PendingClip: @unchecked Sendable {
-    static let urlKey = "pending_clip_url"
-    static let atKey = "pending_clip_at"
-    /// Long enough to switch to the app; short enough that opening it later, for something else,
-    /// doesn't land on a clip nobody remembers asking for.
-    static let window: Int64 = 10 * 60 * 1000
-    let defaults: UserDefaults
-
-    func put(_ url: String, at now: Int64) {
-        defaults.set(url, forKey: Self.urlKey)
-        defaults.set(now, forKey: Self.atKey)
-    }
-
-    func clear() {
-        defaults.removeObject(forKey: Self.urlKey)
-        defaults.removeObject(forKey: Self.atKey)
-    }
-
-    /// The post left within the window, taken so that it opens once; an older one is dropped.
-    func take(now: Int64) -> String? {
-        guard let url = defaults.string(forKey: Self.urlKey) else { return nil }
-        let at = (defaults.object(forKey: Self.atKey) as? NSNumber)?.int64Value ?? 0
-        clear()
-        let age = now - at
-        return age >= 0 && age <= Self.window ? url : nil
-    }
+/// What a hand-off from the share extension stores: a value and the time it was left, under
+/// `valueKey` and `atKey` in the App Group suite.
+protocol HandOffKind {
+    associatedtype Value: Codable
+    static var valueKey: String { get }
+    static var atKey: String { get }
 }
 
-/// Text the share extension was given that holds a recipe, or is neither a link nor a list
-/// (#306), handed to the app as its reading (`SharedText.read`, done once in the extension,
-/// #334), as JSON. The review needs the app (never saved unchecked), which the extension can't
-/// open (#19), so it leaves the reading here and its card says to open Recipe Clipper; the app,
-/// becoming active within `window`, opens the editor on it, once. Each new share replaces or
-/// clears it, as `PendingClip` does.
-struct PendingText: @unchecked Sendable {
-    static let textKey = "pending_text"
-    static let atKey = "pending_text_at"
-    static let window: Int64 = PendingClip.window
+/// Something the share extension hands to the app, as JSON. The extension can't open the app
+/// (#19), so it leaves the value here and its card says to open Recipe Clipper; the app,
+/// becoming active within `window`, takes it, once. Each new share replaces or clears it.
+struct PendingHandOff<K: HandOffKind>: @unchecked Sendable {
+    /// Long enough to switch to the app; short enough that opening it later, for something else,
+    /// doesn't land on a hand-off nobody remembers asking for.
+    static var window: Int64 { 10 * 60 * 1000 }
     let defaults: UserDefaults
 
-    func put(_ reading: SharedText.Reading, at now: Int64) {
-        guard let data = try? JSONEncoder().encode(reading) else { return }
-        defaults.set(data, forKey: Self.textKey)
-        defaults.set(now, forKey: Self.atKey)
+    func put(_ value: K.Value, at now: Int64) {
+        guard let data = try? JSONEncoder().encode(value) else { return }
+        defaults.set(data, forKey: K.valueKey)
+        defaults.set(now, forKey: K.atKey)
     }
 
     func clear() {
-        defaults.removeObject(forKey: Self.textKey)
-        defaults.removeObject(forKey: Self.atKey)
+        defaults.removeObject(forKey: K.valueKey)
+        defaults.removeObject(forKey: K.atKey)
     }
 
-    /// The reading left within the window, taken so that it opens once; an older one is dropped.
-    func take(now: Int64) -> SharedText.Reading? {
-        guard let data = defaults.data(forKey: Self.textKey) else { return nil }
-        let at = (defaults.object(forKey: Self.atKey) as? NSNumber)?.int64Value ?? 0
+    /// The value left within the window, taken so that it is used once; an older one is dropped.
+    func take(now: Int64) -> K.Value? {
+        guard let data = defaults.data(forKey: K.valueKey) else { return nil }
+        let at = (defaults.object(forKey: K.atKey) as? NSNumber)?.int64Value ?? 0
         clear()
         let age = now - at
         guard age >= 0 && age <= Self.window else { return nil }
-        return try? JSONDecoder().decode(SharedText.Reading.self, from: data)
+        return try? JSONDecoder().decode(K.Value.self, from: data)
     }
 }
+
+/// A Reddit post the share extension was blocked from reading (#213): its URL, which the app
+/// opens "Clip it yourself" on, with the note.
+enum ClipHandOff: HandOffKind {
+    typealias Value = String
+    static let valueKey = "pending_clip_url"
+    static let atKey = "pending_clip_at"
+}
+typealias PendingClip = PendingHandOff<ClipHandOff>
+
+/// Text the share extension was given that holds a recipe, or is neither a link nor a list
+/// (#306), as its reading (`SharedText.read`, done once in the extension, #334). The review
+/// needs the app (never saved unchecked), which opens the editor on it.
+enum TextHandOff: HandOffKind {
+    typealias Value = SharedText.Reading
+    static let valueKey = "pending_text"
+    static let atKey = "pending_text_at"
+}
+typealias PendingText = PendingHandOff<TextHandOff>

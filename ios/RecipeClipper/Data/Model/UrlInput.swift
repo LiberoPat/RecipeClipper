@@ -4,7 +4,8 @@ import Foundation
 enum UrlInput {
 
     private static let whitespace = JRegex(#"\s+"#)
-    private static let sharedLink = JRegex(#"https?://\S+"#)
+    /// An http(s) link anywhere in text (`SharedText`'s too).
+    static let sharedLink = JRegex(#"https?://\S+"#)
 
     static func normalize(_ text: String) -> String? {
         let token = whitespace.split(text.kTrimmed).first ?? ""
@@ -20,8 +21,8 @@ enum UrlInput {
         return nil
     }
 
-    /// Finds the first http(s) link in shared text (the share extension / URL scheme path).
-    /// Mirrors Android's `MainActivity.extractUrl`: apps often share "Look at this! <link>",
+    /// Finds the first http(s) link in shared text (the share extension / URL scheme path, and
+    /// `SharedText.link`; Android's `SharedText.link`): apps often share "Look at this! <link>",
     /// so the link is picked out of the text rather than expected to be all of it.
     static func extractSharedUrl(_ text: String) -> String? {
         sharedLink.find(text)?.value

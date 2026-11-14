@@ -476,15 +476,17 @@ object ReceivedList {
     private const val BULLETS = "-*•◦▪·–—"
 
     fun lines(text: String): List<String> {
-        val all = text.split(NEWLINE).map { it.trim() }.filter { it.isNotEmpty() }
+        val all = allLines(text)
         val bulleted = all.mapNotNull(::withoutBullet)
         val items = if (bulleted.isEmpty()) all else bulleted
         return items.filter { line -> GrocerySources.buyable(line) && line.any { it.isLetterOrDigit() } }
     }
 
+    /** Every non-blank line of [text], trimmed (also [SharedText]'s lines, #306). */
+    fun allLines(text: String): List<String> = text.split(NEWLINE).map { it.trim() }.filter { it.isNotEmpty() }
+
     /** Whether any line of [text] starts with a bullet: a list, as "Send list" writes one (#306). */
-    fun bulleted(text: String): Boolean =
-        text.split(NEWLINE).any { withoutBullet(it.trim()) != null }
+    fun bulleted(text: String): Boolean = allLines(text).any { withoutBullet(it) != null }
 
     // "- 2 eggs" is "2 eggs"; a line with no bullet, or a bullet with nothing after it, is null.
     private fun withoutBullet(line: String): String? {
