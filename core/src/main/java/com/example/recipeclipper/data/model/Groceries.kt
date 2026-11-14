@@ -552,8 +552,7 @@ object GrocerySources {
         decisions: Decisions = Decisions.NONE
     ): List<GrocerySource> =
         planned.mapNotNull { p ->
-            val tag = p.language ?: LanguageWords.resolve(null, null) { LanguageWords.detectionText(p.title, p.ingredients) }
-            val words = LanguageWords.forTag(tag)
+            val words = LanguageWords.forRecipe(p.language, p.title, p.ingredients)
             val base = Servings.parse(p.yield, words)
             val factor = if (base != null && p.servings != null) p.servings.toDouble() / base else 1.0
             val lines = IngredientRendering.render(p.ingredients, factor, system, convertLiquids, words, decisions).filter(::buyable)

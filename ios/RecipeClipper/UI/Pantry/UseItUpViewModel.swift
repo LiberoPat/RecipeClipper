@@ -87,7 +87,7 @@ final class UseItUpViewModel {
         typesSubscription = plan.observeMealTypes()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] types in
-                self?.mealType = (types.first { $0.builtInKey == MealType.dinner } ?? types.first)?.id
+                self?.mealType = MealType.defaultTypeId(types)
             }
     }
 

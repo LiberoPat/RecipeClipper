@@ -42,6 +42,16 @@ class PantryViewModelTest {
 
     private fun PantryViewModel.names() = uiState.value.sections.orEmpty().flatMap { s -> s.items.map { it.name } }
 
+    // #332: the tab's ViewModel outlives the screen, so the badges' day is re-read on resume.
+    @Test
+    fun `today follows the real day when the Pantry comes back in front`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = PantryViewModel(FakePantryRepository(), groceries, calendar)
+        assertEquals(calendar.today(), vm.uiState.value.today)
+        calendar.today += 1
+        vm.onScreenResumed()
+        assertEquals(calendar.today(), vm.uiState.value.today)
+    }
+
     @Test
     fun `a typed item is added in stock, today, in its aisle`() = runTest(mainDispatcherRule.dispatcher) {
         val pantry = FakePantryRepository()

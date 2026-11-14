@@ -8,7 +8,9 @@ import UIKit
 // `.environment(\.colorScheme, .dark)` override — which is how cook mode is forced onto ink
 // when "Dark while cooking" is on.
 
-private enum Tokens {
+/// The design tokens. Only `Palette`'s dynamic colours are used on screen; the light ones are
+/// read by print too (`PrintStyle`, #318): paper is always light.
+enum Tokens {
     static let ground = UIColor(rgb: 0xFBF9F6)
     static let ink = UIColor(rgb: 0x1C1917)
     static let muted = UIColor(rgb: 0x6B6259)

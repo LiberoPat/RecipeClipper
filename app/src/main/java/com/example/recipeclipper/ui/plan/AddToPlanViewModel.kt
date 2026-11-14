@@ -99,6 +99,5 @@ class AddToPlanViewModel @Inject constructor(
         viewModelScope.launch { repository.addRecipe(recipe, state.selectedDay, type, state.servings) }
     }
 
-    private fun defaultType(types: List<MealType>): Long? =
-        (types.firstOrNull { it.builtInKey == MealType.DINNER } ?: types.firstOrNull())?.id
+    private fun defaultType(types: List<MealType>): Long? = MealType.defaultTypeId(types)
 }

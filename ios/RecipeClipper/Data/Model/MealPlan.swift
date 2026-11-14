@@ -13,6 +13,11 @@ struct MealType: Equatable, Identifiable {
 
     /// New plan entries default to Dinner, and a deleted type's entries move to it.
     static let dinner = "dinner"
+
+    /// The type a new plan entry defaults to: Dinner, else the first; nil with no types.
+    static func defaultTypeId(_ types: [MealType]) -> Int64? {
+        (types.first { $0.builtInKey == dinner } ?? types.first)?.id
+    }
 }
 
 /// One meal on the plan: a recipe with its planned servings, or a free-text note. `title` and

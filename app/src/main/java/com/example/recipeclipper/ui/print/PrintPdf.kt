@@ -1,26 +1,24 @@
 package com.example.recipeclipper.ui.print
 
-import androidx.core.graphics.withClip
-import androidx.core.graphics.withTranslation
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Paint
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.pdf.PdfDocument
+import androidx.core.graphics.withClip
+import androidx.core.graphics.withTranslation
 import coil.imageLoader
 import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.request.SuccessResult
 import coil.size.Precision
 import coil.size.Scale
+import com.example.recipeclipper.data.SoftwareBitmaps
 import com.example.recipeclipper.data.model.RecipePrint
 import com.example.recipeclipper.data.model.RecipePrint.Block
+import java.io.File
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.math.roundToInt
 
 /**
  * Draws printed recipes (#318) into a PDF: one recipe for the print dialog, or a list as a
@@ -126,17 +124,13 @@ internal class PrintPdf(private val context: Context) {
     private suspend fun load(url: String): Bitmap? {
         val width = (style.contentWidth * PHOTO_SCALE).roundToInt()
         val height = (photoHeight(style.contentWidth) * PHOTO_SCALE).roundToInt()
-        val request = ImageRequest.Builder(context)
-            .data(url)
-            .size(width, height)
-            .scale(Scale.FILL)
-            .precision(Precision.EXACT)
-            .allowHardware(false) // a PDF canvas draws only software bitmaps
-            .networkCachePolicy(CachePolicy.DISABLED)
-            .memoryCachePolicy(CachePolicy.DISABLED) // the band is drawn once; the screen's copy is another size
-            .build()
-        val result = context.imageLoader.execute(request) as? SuccessResult ?: return null
-        val bitmap = (result.drawable as? BitmapDrawable)?.bitmap ?: return null
+        val bitmap = SoftwareBitmaps.load(context, url) {
+            size(width, height)
+            scale(Scale.FILL)
+            precision(Precision.EXACT)
+            networkCachePolicy(CachePolicy.DISABLED)
+            memoryCachePolicy(CachePolicy.DISABLED) // the band is drawn once; the screen's copy is another size
+        } ?: return null
         // Only the band's pixels go into the file: the overhang of a taller or wider picture is cut off.
         val w = minOf(width, bitmap.width)
         val h = minOf(height, bitmap.height)

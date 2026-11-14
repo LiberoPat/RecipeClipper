@@ -540,10 +540,7 @@ enum GrocerySources {
         _ planned: [PlannedIngredients], system: UnitSystem, convertLiquids: Bool, decisions: Decisions = .none
     ) -> [GrocerySource] {
         planned.compactMap { p in
-            let tag = p.language ?? LanguageWords.resolve(declared: nil, page: nil) {
-                LanguageWords.detectionText(name: p.title, ingredients: p.ingredients)
-            }
-            let words = LanguageWords.forTag(tag)
+            let words = LanguageWords.forRecipe(language: p.language, title: p.title, lines: p.ingredients)
             let base = Servings.parse(p.yield, words: words)
             let factor = (base != nil && p.servings != nil) ? Double(p.servings!) / Double(base!) : 1.0
             let lines = IngredientRendering.render(

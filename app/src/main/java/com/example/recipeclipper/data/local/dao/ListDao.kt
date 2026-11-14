@@ -35,7 +35,6 @@ data class ListCoverPhotoRow(
 data class SavedRecipeRow(
     val id: Long,
     val title: String,
-    val imageUrl: String?,
     val language: String?,
     val ingredients: List<String>
 )
@@ -112,7 +111,7 @@ abstract class ListDao {
      */
     @Query(
         """
-        SELECT r.id, r.title, r.imageUrl, r.language, r.ingredients
+        SELECT r.id, r.title, r.language, r.ingredients
         FROM recipes r
         WHERE r.id IN (SELECT recipeId FROM recipe_list_cross_ref)
         ORDER BY r.id

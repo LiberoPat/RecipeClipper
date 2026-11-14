@@ -45,8 +45,8 @@ object RecipePrint {
 
     /**
      * [recipe]'s card. [ingredients] and [instructions] are the lines as shown; [note] is the
-     * cook's own (printed on a single card; a cookbook leaves it out, as Send as file does);
-     * [photo] says whether to place the photo, which the platform draws only if it is cached.
+     * cook's own (printed on a single card; a cookbook leaves it out, as Send as file does).
+     * The photo is placed when the recipe has one; the platform draws it only if it is cached.
      */
     fun blocks(
         recipe: Recipe,
@@ -55,10 +55,9 @@ object RecipePrint {
         instructions: List<String>,
         sourceDomain: String?,
         note: String?,
-        labels: Labels = Labels.ENGLISH,
-        photo: Boolean = true
+        labels: Labels = Labels.ENGLISH
     ): List<Block> = buildList {
-        recipe.image?.takeIf { photo && it.isNotBlank() }?.let { add(Block.Photo(it)) }
+        recipe.image?.takeIf { it.isNotBlank() }?.let { add(Block.Photo(it)) }
         add(Block.Title(recipe.name))
         sourceDomain?.takeIf { it.isNotBlank() }?.let { add(Block.Credit(it)) }
         RecipeShareText.metaLines(recipe, servings, labels.share).forEach { add(Block.Meta(it)) }

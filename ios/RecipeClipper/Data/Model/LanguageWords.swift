@@ -131,8 +131,12 @@ final class LanguageWords: Equatable, @unchecked Sendable {
 
     /// The words a recipe is read with. A recipe stored before #14 has no language: detect it.
     static func forRecipe(_ recipe: Recipe) -> LanguageWords? {
-        forTag(recipe.language ?? resolve(declared: nil, page: nil) {
-            detectionText(name: recipe.name, ingredients: recipe.ingredients)
-        })
+        forRecipe(language: recipe.language, title: recipe.name, lines: recipe.ingredients)
+    }
+
+    /// The same for a recipe read in part (What I need's planned ingredients, Use it up's saved
+    /// recipe): its stored `language`, else the one its `title` and `lines` detect.
+    static func forRecipe(language: String?, title: String, lines: [String]) -> LanguageWords? {
+        forTag(language ?? resolve(declared: nil, page: nil) { detectionText(name: title, ingredients: lines) })
     }
 }

@@ -1,9 +1,6 @@
 package com.example.recipeclipper.ui.week
 
-import android.content.ActivityNotFoundException
-import android.content.ClipData
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,15 +21,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -85,13 +82,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
-import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.TooltipScreen
+import com.example.recipeclipper.ui.common.MenuItemText
+import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.MealTypeChoices
@@ -105,6 +102,7 @@ import com.example.recipeclipper.ui.plan.shortWeekday
 import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.sharefile.shareFileUri
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TooltipHost
 import java.io.File
@@ -529,17 +527,9 @@ private fun shareCalendarFile(context: Context, file: CalendarFile, title: Strin
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
         val out = File(dir, file.fileName).apply { writeText(file.text, Charsets.UTF_8) }
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", out)
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = MealPlanIcs.MIME_TYPE
-            putExtra(Intent.EXTRA_STREAM, uri)
-            clipData = ClipData.newRawUri(null, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        context.startActivity(Intent.createChooser(send, title))
+        shareFileUri(context, uri, MealPlanIcs.MIME_TYPE, title)
     } catch (e: IOException) {
         // Couldn't write the file: nothing to share.
-    } catch (e: ActivityNotFoundException) {
-        // Nothing can receive a file.
     }
 }
 

@@ -15,9 +15,10 @@ struct PrintStyle {
         page = letter ? CGRect(x: 0, y: 0, width: 612, height: 792) : CGRect(x: 0, y: 0, width: 595, height: 842)
     }
 
-    static let ink = UIColor(red: 0x1C / 255, green: 0x19 / 255, blue: 0x17 / 255, alpha: 1)
-    static let muted = UIColor(red: 0x6B / 255, green: 0x62 / 255, blue: 0x59 / 255, alpha: 1)
-    static let paprika = UIColor(red: 0xBF / 255, green: 0x4A / 255, blue: 0x2B / 255, alpha: 1)
+    // The theme's light tokens: paper is always light.
+    static let ink = Tokens.ink
+    static let muted = Tokens.muted
+    static let paprika = Tokens.paprika
 
     let title = AppFont.fraunces(24, weight: 500)
     let bookTitle = AppFont.fraunces(34, weight: 500)

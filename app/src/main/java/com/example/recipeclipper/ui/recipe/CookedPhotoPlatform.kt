@@ -1,9 +1,7 @@
 package com.example.recipeclipper.ui.recipe
 
 import android.content.ActivityNotFoundException
-import android.content.ClipData
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -15,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import com.example.recipeclipper.ui.sharefile.shareFileUri
 import java.io.File
 
 /**
@@ -82,18 +81,7 @@ private fun scanCaptureUri(context: Context): Uri {
 /** The share sheet with the photo and the recipe's name as plain text (#116). */
 internal fun sharePhoto(context: Context, path: String, recipeName: String, chooserTitle: String) {
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(path))
-    val send = Intent(Intent.ACTION_SEND).apply {
-        type = "image/jpeg"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        putExtra(Intent.EXTRA_TEXT, recipeName)
-        clipData = ClipData.newRawUri(null, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    try {
-        context.startActivity(Intent.createChooser(send, chooserTitle))
-    } catch (_: ActivityNotFoundException) {
-        // Nothing can receive a picture: nothing to do.
-    }
+    shareFileUri(context, uri, "image/jpeg", chooserTitle, text = recipeName)
 }
 
 private const val MAX_PICKED = 10
