@@ -23,6 +23,7 @@ import com.example.recipeclipper.ui.listdetail.ListDetailScreen
 import com.example.recipeclipper.ui.listdetail.ListDetailViewModel
 import com.example.recipeclipper.ui.recipe.RecipeScreenFixture
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -43,7 +44,9 @@ class PrintScreenTest {
     private val printed = mutableListOf<PrintJob>()
     private val printer = Printer { _, job -> printed += job; true }
     private val recipes = FakeRecipeRepository()
-    private fun printViewModel() = PrintViewModel(recipes, FakeAppPreferences(), FakeDecisionRepository())
+    // Rendering on Main, Robolectric's looper, which waitForIdle drains: on Default the cookbook
+    // could still be building when the test looked (CI, once).
+    private fun printViewModel() = PrintViewModel(recipes, FakeAppPreferences(), FakeDecisionRepository(), rendering = Dispatchers.Main)
 
     @Test
     fun theRecipeMenuPrintsTheRecipeAsShown() {
