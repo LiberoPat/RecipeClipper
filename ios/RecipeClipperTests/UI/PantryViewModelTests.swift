@@ -36,6 +36,15 @@ final class PantryViewModelTests: XCTestCase {
         for rows in [before, after] { XCTAssertEqual(Set(rows.map(\.id)).count, rows.count) }
     }
 
+    /// #332: the tab's ViewModel outlives the screen, so the badges' day is re-read on resume.
+    func testTodayFollowsTheRealDayWhenThePantryComesBackInFront() async {
+        let vm = await viewModel(FakePantryRepository())
+        XCTAssertEqual(vm.uiState.today, calendar.today())
+        calendar.todayValue += 1
+        vm.onScreenResumed()
+        XCTAssertEqual(vm.uiState.today, calendar.today())
+    }
+
     func testATypedItemIsAddedInStockTodayInItsAisle() async {
         let pantry = FakePantryRepository()
         let vm = await viewModel(pantry)

@@ -2708,7 +2708,7 @@ final class DifferentialCorpusTests: XCTestCase {
                 alwaysHave: false, purchasedDay: nil, expiresDay: 0
             )
             let saved = row.lines.enumerated().map { i, line in
-                SavedRecipe(id: Int64(i), title: "r\(i)", imageUrl: nil, language: row.language, lines: [line])
+                SavedRecipe(id: Int64(i), title: "r\(i)", language: row.language, lines: [line])
             }
             let used = (UseItUp.groups([item], saved: saved, today: 0).first?.recipes ?? []).map(\.id).sorted()
             XCTAssertEqual(used, row.used, "\(row.name) / \(row.lines)")

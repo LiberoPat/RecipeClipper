@@ -174,6 +174,11 @@ final class PantryViewModel {
         Set(items.filter { !PantryList.onListLines($0, groceryItems).isEmpty }.map(\.id))
     }
 
+    /// The Pantry is back in front: the expiry badges follow the real day, as the tab's ViewModel outlives it (#332).
+    func onScreenResumed() {
+        uiState.today = calendar.today()
+    }
+
     func onQueryChange(_ query: String) {
         uiState.query = query
         arrange()

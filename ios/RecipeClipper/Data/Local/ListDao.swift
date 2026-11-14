@@ -73,15 +73,15 @@ struct ListDao {
     func savedRecipes() throws -> [SavedRecipe] {
         try db.query(
             """
-            SELECT r.id, r.title, r.imageUrl, r.language, r.ingredients
+            SELECT r.id, r.title, r.language, r.ingredients
             FROM recipes r
             WHERE r.id IN (SELECT recipeId FROM recipe_list_cross_ref)
             ORDER BY r.id
             """,
             map: { row in
                 SavedRecipe(
-                    id: row.int64(0), title: row.string(1), imageUrl: row.optionalString(2),
-                    language: row.optionalString(3), lines: JSONColumns.decodeStrings(row.string(4))
+                    id: row.int64(0), title: row.string(1),
+                    language: row.optionalString(2), lines: JSONColumns.decodeStrings(row.string(3))
                 )
             }
         )

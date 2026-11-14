@@ -103,7 +103,8 @@ final class CookModeUITests: RecipeUITestCase {
         require(app.buttons["Done — finish"]).tap()
 
         require(app.buttons["Start cooking"], "the reading view")
-        assertAbsent(text("Step 1 of 4"))
+        // A wait for the cook view's own control to go: its text's absence once timed out on a slow runner.
+        requireGone(app.buttons["Done — finish"], "cook mode")
     }
 
     /// Exit is not "abandon": coming back resumes on the same step.

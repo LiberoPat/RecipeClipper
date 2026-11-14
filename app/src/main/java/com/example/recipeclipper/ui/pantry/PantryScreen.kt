@@ -110,8 +110,9 @@ fun PantryScreen(
         SendFileEffect(sendFileViewModel) { snackbarHostState.showSnackbar(sendFailedMessage) }
     }
 
-    // Use it up (#305) follows the real day: the tab's ViewModel outlives it (#332).
+    // The expiry badges and Use it up (#305) follow the real day: the tab's ViewModels outlive it (#332).
     LifecycleResumeEffect(useItUpViewModel) {
+        viewModel.onScreenResumed()
         useItUpViewModel?.onScreenResumed()
         onPauseOrDispose {}
     }

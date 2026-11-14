@@ -12,7 +12,7 @@ final class UseItUpTests: XCTestCase {
     }
 
     private func recipe(_ id: Int64, _ title: String, _ lines: String...) -> SavedRecipe {
-        SavedRecipe(id: id, title: title, imageUrl: nil, language: "en", lines: lines)
+        SavedRecipe(id: id, title: title, language: "en", lines: lines)
     }
 
     func testSoonIsTheRemindersWindow() {
@@ -36,12 +36,12 @@ final class UseItUpTests: XCTestCase {
         let german = PantryItem(id: 2, name: "Milch", quantity: nil, language: "de", aisle: .other, inStock: true,
                                 alwaysHave: false, purchasedDay: nil, expiresDay: today)
         XCTAssertFalse(UseItUp.uses(names!, german))
-        XCTAssertNil(UseItUp.names(SavedRecipe(id: 2, title: "Pie", imageUrl: nil, language: "xx", lines: ["300 g spinach"])))
+        XCTAssertNil(UseItUp.names(SavedRecipe(id: 2, title: "Pie", language: "xx", lines: ["300 g spinach"])))
         XCTAssertEqual(UseItUp.groups([item("spinach", today + 3)], saved: [recipe(1, "Pie", "300 g spinach")], today: today), [])
     }
 
     func testARecipeStoredWithNoLanguageIsDetected() {
-        let adobo = SavedRecipe(id: 1, title: "Chicken Adobo", imageUrl: nil, language: nil,
+        let adobo = SavedRecipe(id: 1, title: "Chicken Adobo", language: nil,
                                 lines: ["2 lb chicken thighs", "1/2 cup soy sauce"])
         XCTAssertTrue(UseItUp.uses(adobo, item("chicken thighs", today)))
     }
