@@ -1,9 +1,6 @@
 package com.example.recipeclipper.ui.settings
 
-import android.content.ActivityNotFoundException
-import android.content.ClipData
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +34,7 @@ import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.ImportSummary
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
+import com.example.recipeclipper.ui.sharefile.shareFileUri
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -211,19 +209,9 @@ internal fun AutoBackupRows(
 
 /** Opens the share sheet on an export file, letting only the chosen app read it. */
 internal fun shareExport(context: Context, uriString: String, title: String) {
-    val uri = uriString.toUri()
-    val send = Intent(Intent.ACTION_SEND).apply {
-        // With photos (#116) the export is a zip.
-        type = if (uriString.endsWith(".zip")) "application/zip" else "application/json"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        clipData = ClipData.newRawUri(null, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    try {
-        context.startActivity(Intent.createChooser(send, title))
-    } catch (e: ActivityNotFoundException) {
-        // Nothing can receive a file: nothing to do, and the export is still in the cache.
-    }
+    // With photos (#116) the export is a zip.
+    val mimeType = if (uriString.endsWith(".zip")) "application/zip" else "application/json"
+    shareFileUri(context, uriString.toUri(), mimeType, title)
 }
 
 /** What the file picker offers. Some file managers label .json as a generic binary. */

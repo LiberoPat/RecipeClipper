@@ -19,13 +19,12 @@ final class RecipePrintTests: XCTestCase {
     private func blocks(
         ingredients: [String] = ["1 kg chicken thighs", "For the sauce:", "60 ml soy sauce"],
         note: String? = nil,
-        photo: Bool = true,
         recipe: Recipe? = nil
     ) -> [RecipePrint.Block] {
         let r = recipe ?? self.recipe
         return RecipePrint.blocks(
             recipe: r, servings: ServingsScale(base: 6, target: 3), ingredients: ingredients,
-            instructions: r.instructions, sourceDomain: "example.com", note: note, photo: photo
+            instructions: r.instructions, sourceDomain: "example.com", note: note
         )
     }
 
@@ -51,12 +50,10 @@ final class RecipePrintTests: XCTestCase {
         XCTAssertFalse(blocks(note: "  ").contains { if case .note = $0 { return true } else { return false } })
     }
 
-    func testNoPhotoWhenAskedForNoneOrTheRecipeHasNone() {
+    func testNoPhotoWhenTheRecipeHasNone() {
         var noImage = recipe
         noImage.image = nil
-        for shown in [blocks(photo: false), blocks(recipe: noImage)] {
-            XCTAssertFalse(shown.contains { if case .photo = $0 { return true } else { return false } })
-        }
+        XCTAssertFalse(blocks(recipe: noImage).contains { if case .photo = $0 { return true } else { return false } })
     }
 
     func testAnEmptySectionHasNoHeading() {

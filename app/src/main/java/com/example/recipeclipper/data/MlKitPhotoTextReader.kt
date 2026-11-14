@@ -2,11 +2,7 @@ package com.example.recipeclipper.data
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
-import coil.imageLoader
 import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.request.SuccessResult
 import coil.size.Precision
 import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
@@ -97,20 +93,14 @@ class MlKitPhotoTextReader @Inject constructor(
         // The cook's own page (#226) is read from where it is, never cached: a reused capture
         // file must never answer with an earlier picture, and a scan isn't kept.
         val local = url.startsWith("content:") || url.startsWith("file:")
-        val request = ImageRequest.Builder(context)
-            .data(url)
-            .size(MAX_SIDE)
-            .precision(Precision.INEXACT) // subsample a large picture, never enlarge a small one
-            .allowHardware(false) // ML Kit reads the pixels
-            .apply {
-                if (local) {
-                    memoryCachePolicy(CachePolicy.DISABLED)
-                    diskCachePolicy(CachePolicy.DISABLED)
-                }
+        return SoftwareBitmaps.load(context, url) {
+            size(MAX_SIDE)
+            precision(Precision.INEXACT) // subsample a large picture, never enlarge a small one
+            if (local) {
+                memoryCachePolicy(CachePolicy.DISABLED)
+                diskCachePolicy(CachePolicy.DISABLED)
             }
-            .build()
-        val result = context.imageLoader.execute(request) as? SuccessResult ?: return null
-        return (result.drawable as? BitmapDrawable)?.bitmap
+        }
     }
 
     /**

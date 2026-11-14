@@ -1,9 +1,6 @@
 package com.example.recipeclipper.ui.sharefile
 
-import android.content.ActivityNotFoundException
-import android.content.ClipData
 import android.content.Context
-import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,17 +30,5 @@ fun SendFileEffect(viewModel: SendFileViewModel, onFailed: suspend () -> Unit) {
     }
 }
 
-private fun shareFile(context: Context, file: SentFile) {
-    val uri = file.uri.toUri()
-    val send = Intent(Intent.ACTION_SEND).apply {
-        type = ShareFile.MIME_TYPE
-        putExtra(Intent.EXTRA_STREAM, uri)
-        clipData = ClipData.newRawUri(file.name, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    try {
-        context.startActivity(Intent.createChooser(send, file.name))
-    } catch (e: ActivityNotFoundException) {
-        // Nothing can receive a file: nothing to do.
-    }
-}
+private fun shareFile(context: Context, file: SentFile) =
+    shareFileUri(context, file.uri.toUri(), ShareFile.MIME_TYPE, file.name)

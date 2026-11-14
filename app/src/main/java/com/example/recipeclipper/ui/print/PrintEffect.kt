@@ -1,9 +1,6 @@
 package com.example.recipeclipper.ui.print
 
-import android.content.ActivityNotFoundException
-import android.content.ClipData
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.ParcelFileDescriptor
@@ -25,10 +22,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.data.backup.ShareFile
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.ui.common.LocalFlagValues
-import kotlinx.coroutines.CancellationException
+import com.example.recipeclipper.ui.sharefile.shareFileUri
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 
 /**
  * The platform half of printing (#318): draws [PrintViewModel]'s job into a PDF, then opens the
@@ -102,17 +100,7 @@ private suspend fun shareCookbook(context: Context, job: PrintJob.Cookbook): Boo
     val file = File(File(context.cacheDir, COOKBOOK_DIR).apply { deleteRecursively() }, ShareFile.fileName(job.title, "pdf"))
     if (!PrintPdf(context).cookbook(job.title, job.contents, job.recipes, file)) return false
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    val send = Intent(Intent.ACTION_SEND).apply {
-        type = PDF
-        putExtra(Intent.EXTRA_STREAM, uri)
-        clipData = ClipData.newRawUri(file.name, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    try {
-        context.startActivity(Intent.createChooser(send, file.name))
-    } catch (e: ActivityNotFoundException) {
-        // Nothing can receive a file: nothing to do.
-    }
+    shareFileUri(context, uri, PDF, file.name)
     return true
 }
 
