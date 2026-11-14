@@ -1170,7 +1170,8 @@ unchanged.
   more (h:mm:ss). The link is
   `recipeclipper://cook?id=N` (`AppLinks`, compiled into both targets). The
   extension can't use `Strings.swift` (it formats the app's types), so
-  `WidgetStrings` reads the same catalog keys, compiled into its bundle. Its
+  `WidgetStrings` (`UI/Theme`, compiled into both targets; `Strings` delegates
+  the keys it shares) reads the catalog, compiled into its bundle too. Its
   text is Fraunces and Karla by name (`WidgetFont`): a `Font` made from
   `AppFont`'s variable-axis UIFont crashed the extension, which WidgetKit
   can't encode. The system asks once, on the first activity, whether to allow

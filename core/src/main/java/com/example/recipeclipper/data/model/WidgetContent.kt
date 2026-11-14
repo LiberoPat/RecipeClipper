@@ -31,15 +31,7 @@ object WidgetContent {
      * any ticked line is in the basket, as "Send list" has it ([GroceryShareText]).
      */
     fun groceries(sections: List<GroceryCombiner.Section>): List<String> =
-        sections.flatMap { section ->
-            section.rows.filter { row -> row.items.none { it.checked } }.flatMap { row ->
-                when (row) {
-                    is GroceryCombiner.Row.Single -> listOf(row.item.text.trim())
-                    is GroceryCombiner.Row.Combined -> listOf(row.text)
-                    is GroceryCombiner.Row.Together -> GroceryCombiner.lineGroups(row).map(GroceryCombiner::lineText)
-                }
-            }
-        }
+        sections.flatMap { section -> GroceryCombiner.uncheckedLines(section).map { it.text } }
 
     /**
      * How a list is cut to a widget's height: [shown] of its items from the top, then "+[more]

@@ -7,14 +7,11 @@ import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.ExpiryReminderCoordinator
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.TimerAlarmScheduler
+import com.example.recipeclipper.runAsync
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 /** What the receivers need from the graph. An entry point rather than `@AndroidEntryPoint`,
  *  which for a BroadcastReceiver wants a `super.onReceive` Kotlin can't call. */
@@ -29,18 +26,6 @@ interface TimerEntryPoint {
 
 private fun entryPoint(context: Context): TimerEntryPoint =
     EntryPointAccessors.fromApplication(context.applicationContext, TimerEntryPoint::class.java)
-
-/** Runs [block] off the main thread and keeps the receiver alive until it finishes. */
-private fun BroadcastReceiver.runAsync(block: suspend () -> Unit) {
-    val pending = goAsync()
-    CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-        try {
-            block()
-        } finally {
-            pending.finish()
-        }
-    }
-}
 
 /**
  * A step timer's alarm went off. Posts the notification only if the database still has that

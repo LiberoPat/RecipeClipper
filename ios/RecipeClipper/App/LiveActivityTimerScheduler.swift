@@ -61,21 +61,21 @@ final class LiveActivityTimerScheduler: TimerAlarmScheduler {
 @MainActor
 final class ActivityKitTimerDisplay: TimerActivityDisplay {
     private let clock: Clock
-    private var last: Task<Void, Never>?
+    private let queue = OrderedWrites()
 
     init(clock: Clock) { self.clock = clock }
 
     func show(_ alarm: StepAlarm) {
-        enqueue { [clock] in await Self.show(alarm, now: clock.now()) }
+        queue.enqueue { [clock] in await Self.show(alarm, now: clock.now()) }
     }
 
     func end(recipeId: Int64, step: Int) {
-        enqueue { await Self.end { $0.recipeId == recipeId && $0.step == step } }
+        queue.enqueue { await Self.end { $0.recipeId == recipeId && $0.step == step } }
     }
 
     func replaceAll(recipeId: Int64, with alarms: [StepAlarm]) {
         let steps = Set(alarms.map(\.step))
-        enqueue { [clock] in
+        queue.enqueue { [clock] in
             await Self.end { $0.recipeId == recipeId && !steps.contains($0.step) }
             for alarm in alarms { await Self.show(alarm, now: clock.now()) }
         }
@@ -83,20 +83,12 @@ final class ActivityKitTimerDisplay: TimerActivityDisplay {
 
     func keepOnly(_ alarms: [StepAlarm]) {
         let keep = Set(alarms.map { Key(recipeId: $0.recipeId, step: $0.step) })
-        enqueue { await Self.end { !keep.contains(Key(recipeId: $0.recipeId, step: $0.step)) } }
+        queue.enqueue { await Self.end { !keep.contains(Key(recipeId: $0.recipeId, step: $0.step)) } }
     }
 
     private struct Key: Hashable {
         let recipeId: Int64
         let step: Int
-    }
-
-    private func enqueue(_ operation: @escaping @MainActor () async -> Void) {
-        let previous = last
-        last = Task { @MainActor in
-            await previous?.value
-            await operation()
-        }
     }
 
     private static func activities(_ match: (TimerActivityAttributes) -> Bool) -> [Activity<TimerActivityAttributes>] {
@@ -130,14 +122,4 @@ final class ActivityKitTimerDisplay: TimerActivityDisplay {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
     }
-}
-
-/// Shows nothing: under XCTest and UI-test seeding, like `NoOpTimerAlarmScheduler`.
-final class NoOpTimerActivityDisplay: TimerActivityDisplay {
-    nonisolated init() {}
-
-    func show(_ alarm: StepAlarm) {}
-    func end(recipeId: Int64, step: Int) {}
-    func replaceAll(recipeId: Int64, with alarms: [StepAlarm]) {}
-    func keepOnly(_ alarms: [StepAlarm]) {}
 }

@@ -304,6 +304,26 @@ enum GroceryCombiner {
         return group.count == 1 ? text : "\(text) × \(group.count)"
     }
 
+    /// A line to buy, as the Groceries screen shows it, and the `items` it stands for.
+    struct Line: Equatable {
+        let text: String
+        let items: [GroceryItem]
+    }
+
+    /// `section`'s lines still to buy, in order: a combined row is its total ("300 g flour"),
+    /// lines kept together are each listed (`lineText`). A row with any ticked line is in the
+    /// basket and left out. Texts are trimmed, as `lineText`'s are. What "Send list" and the
+    /// grocery widget both list (#329).
+    static func uncheckedLines(_ section: Section) -> [Line] {
+        section.rows.filter { row in !row.items.contains { $0.checked } }.flatMap { row -> [Line] in
+            switch row {
+            case .single(let item): return [Line(text: item.text.kTrimmed, items: row.items)]
+            case .combined(_, let text, _): return [Line(text: text, items: row.items)]
+            case .together: return lineGroups(row).map { Line(text: lineText($0), items: $0) }
+            }
+        }
+    }
+
     /// What the lines use in all, as an amount (#302): the figure and its unit ("4 lb"; "1 cup"
     /// and "2 tbsp" are "1 1/8 cup"), or a count with its words ("5 eggs"), by `combine`'s exact
     /// rules. One line counts when it is one exact amount. Nil when they don't add up exactly, or
@@ -414,18 +434,11 @@ enum GroceryShareText {
             lines.append(recipes.isEmpty ? "- \(text)" : "- \(text) (\(recipes.joined(separator: ", ")))")
         }
         for section in sections {
-            let rows = section.rows.filter { row in !row.items.contains { $0.checked } }
+            let rows = GroceryCombiner.uncheckedLines(section)
             if rows.isEmpty { continue }
             lines.append("")
             lines.append(aisleName(section.aisle))
-            for row in rows {
-                switch row {
-                case .single(let item): line(item.text, row.items)
-                case .combined(_, let text, _): line(text, row.items)
-                case .together:
-                    for group in GroceryCombiner.lineGroups(row) { line(GroceryCombiner.lineText(group), group) }
-                }
-            }
+            for row in rows { line(row.text, row.items) }
         }
         return lines.joined(separator: "\n")
     }

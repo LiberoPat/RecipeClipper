@@ -31,12 +31,13 @@ object TimerNotifications {
     const val ACTION_OPEN_COOK = "com.example.recipeclipper.action.OPEN_COOK"
     const val EXTRA_RECIPE_ID = "recipeId"
 
-    private fun ensureChannel(context: Context) {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            context.getString(R.string.timer_channel_name),
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply { description = context.getString(R.string.timer_channel_description) }
+    // Creating a channel is idempotent but a system call: once per process is enough.
+    private val channelsCreated = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    private fun ensureChannel(context: Context, id: String, name: Int, description: Int, importance: Int) {
+        if (!channelsCreated.add(id)) return
+        val channel = NotificationChannel(id, context.getString(name), importance)
+            .apply { this.description = context.getString(description) }
         context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
     }
 
@@ -57,13 +58,12 @@ object TimerNotifications {
      * permission was denied: the in-app beep is still there when the recipe is open.
      */
     fun post(context: Context, alarm: StepAlarm) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) return
+        if (!mayNotify(context)) return
         val manager = NotificationManagerCompat.from(context)
-        if (!manager.areNotificationsEnabled()) return
-        ensureChannel(context)
+        ensureChannel(
+            context, CHANNEL_ID, R.string.timer_channel_name, R.string.timer_channel_description,
+            NotificationManager.IMPORTANCE_HIGH
+        )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_timer)
             .setContentTitle(context.getString(R.string.timer_notification_title, alarm.step + 1))
@@ -89,7 +89,10 @@ object TimerNotifications {
     fun postRunning(context: Context, alarm: StepAlarm, now: Long) {
         val remaining = alarm.endsAt - now
         if (remaining <= 0 || !mayNotify(context)) return
-        ensureRunningChannel(context)
+        ensureChannel(
+            context, RUNNING_CHANNEL_ID, R.string.timer_running_channel_name, R.string.timer_running_channel_description,
+            NotificationManager.IMPORTANCE_LOW
+        )
         val notification = NotificationCompat.Builder(context, RUNNING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_timer)
             .setContentTitle(context.getString(R.string.timer_running_title, alarm.step + 1))
@@ -137,21 +140,6 @@ object TimerNotifications {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED) &&
             NotificationManagerCompat.from(context).areNotificationsEnabled()
-
-    // Creating a channel is idempotent but a system call: once per process is enough.
-    @Volatile
-    private var runningChannelCreated = false
-
-    private fun ensureRunningChannel(context: Context) {
-        if (runningChannelCreated) return
-        runningChannelCreated = true
-        val channel = NotificationChannel(
-            RUNNING_CHANNEL_ID,
-            context.getString(R.string.timer_running_channel_name),
-            NotificationManager.IMPORTANCE_LOW
-        ).apply { description = context.getString(R.string.timer_running_channel_description) }
-        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
-    }
 
     private fun tag(recipeId: Long) = "timer:$recipeId"
 

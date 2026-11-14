@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.recipeclipper.MainActivity
 import com.example.recipeclipper.R
+import com.example.recipeclipper.runAsync
 import com.example.recipeclipper.data.ExpiryReminderCoordinator
 import com.example.recipeclipper.data.ExpiryReminderScheduler
 import com.example.recipeclipper.data.model.ExpiryReminder
@@ -26,10 +27,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.TimeZone
 import javax.inject.Inject
@@ -173,14 +170,9 @@ class ExpiryReminderReceiver : BroadcastReceiver() {
         val app = context.applicationContext
         val coordinator = EntryPointAccessors.fromApplication(app, ExpiryReminderEntryPoint::class.java)
             .expiryReminderCoordinator()
-        val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            try {
-                if (day == coordinator.today()) coordinator.dueToday()?.let { ExpiryNotifications.post(app, it) }
-                coordinator.refresh()
-            } finally {
-                pending.finish()
-            }
+        runAsync {
+            if (day == coordinator.today()) coordinator.dueToday()?.let { ExpiryNotifications.post(app, it) }
+            coordinator.refresh()
         }
     }
 }

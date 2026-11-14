@@ -324,6 +324,24 @@ object GroceryCombiner {
         return if (group.size == 1) text else "$text × ${group.size}"
     }
 
+    /** A line to buy, as the Groceries screen shows it, and the [items] it stands for. */
+    data class Line(val text: String, val items: List<GroceryItem>)
+
+    /**
+     * [section]'s lines still to buy, in order: a combined row is its total ("300 g flour"),
+     * lines kept together are each listed ([lineText]). A row with any ticked line is in the
+     * basket and left out. Texts are trimmed, as [lineText]'s are. What "Send list" and the
+     * grocery widget both list (#329).
+     */
+    fun uncheckedLines(section: Section): List<Line> =
+        section.rows.filter { row -> row.items.none { it.checked } }.flatMap { row ->
+            when (row) {
+                is Row.Single -> listOf(Line(row.item.text.trim(), row.items))
+                is Row.Combined -> listOf(Line(row.text, row.items))
+                is Row.Together -> lineGroups(row).map { Line(lineText(it), it) }
+            }
+        }
+
     /**
      * The lines added up as one line ("300 g flour"), or the same line added again and again
      * ([repeated]), or null when they can't be added up exactly, or don't all name the same
@@ -434,18 +452,11 @@ object GroceryShareText {
             lines += if (recipes.isEmpty()) "- $text" else "- $text (${recipes.joinToString(", ")})"
         }
         for (section in sections) {
-            val rows = section.rows.filter { row -> row.items.none { it.checked } }
+            val rows = GroceryCombiner.uncheckedLines(section)
             if (rows.isEmpty()) continue
             lines += ""
             lines += aisleName(section.aisle)
-            for (row in rows) {
-                when (row) {
-                    is GroceryCombiner.Row.Single -> line(row.item.text, row.items)
-                    is GroceryCombiner.Row.Combined -> line(row.text, row.items)
-                    is GroceryCombiner.Row.Together ->
-                        GroceryCombiner.lineGroups(row).forEach { line(GroceryCombiner.lineText(it), it) }
-                }
-            }
+            for (row in rows) line(row.text, row.items)
         }
         return lines.joinToString("\n")
     }
