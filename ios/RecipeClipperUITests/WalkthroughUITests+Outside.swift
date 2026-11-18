@@ -52,6 +52,8 @@ extension WalkthroughUITests {
         require(app.buttons["edit.save"], "Save").tap()
         require(bookmark, "the saved recipe")
         pause(3)
+        back() // the reading view hides the tab bar
+        pause()
         tab("Groceries")
         recipeMenu("Paste a list")
         require(text("Add this list"), "the sheet")
