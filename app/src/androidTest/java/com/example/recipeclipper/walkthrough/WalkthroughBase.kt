@@ -37,6 +37,7 @@ import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.NewPantryItem
+import com.example.recipeclipper.data.model.PantryEdit
 import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.Tooltip
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -49,6 +50,7 @@ import org.junit.Rule
 import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
 import org.junit.runners.model.Statement
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -88,13 +90,15 @@ abstract class WalkthroughBase {
      * Seeds, turns [flags] on and opens Home, recording from there. [seeded] false: an empty
      * library. [firstRun]: the first-run tour (#151, #190) as a fresh install has it, every
      * tooltip still to see; otherwise every one is seen, so none appears. [kitchen]: the Pantry and
-     * the grocery list of [WalkthroughSeed.pantry] and [WalkthroughSeed.groceries] too.
+     * the grocery list of [WalkthroughSeed.pantry] and [WalkthroughSeed.groceries] too, with
+     * [expiringTomorrow]'s use-by day tomorrow (Use it up, #305).
      */
     fun start(
         vararg flags: String,
         seeded: Boolean = true,
         firstRun: Boolean = false,
-        kitchen: Boolean = false
+        kitchen: Boolean = false,
+        expiringTomorrow: String? = null
     ) {
         hilt!!.inject()
         // Expiry reminders ask for notifications; granted up front so no system dialog shows.
@@ -104,6 +108,10 @@ abstract class WalkthroughBase {
         runBlocking {
             if (seeded) seed()
             if (kitchen) stockTheKitchen()
+            expiringTomorrow?.let { name ->
+                val item = pantryRepository.items().first { it.name == name }
+                pantryRepository.edit(item.id, PantryEdit(item.name, item.quantity, item.alwaysHave, LocalDate.now().toEpochDay() + 1))
+            }
         }
         flags.forEach { flagStore.setOverride(it, true) }
         if (!firstRun) Tooltip.entries.forEach { tour.setTooltipSeen(it, true) }
