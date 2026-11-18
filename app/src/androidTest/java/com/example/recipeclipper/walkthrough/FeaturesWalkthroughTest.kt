@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.DecisionModel
@@ -37,7 +38,12 @@ class FeaturesWalkthroughTest : WalkthroughBase() {
         scrollTo("weekList", "addToDay-$day")
         tapTag("addToDay-$day")
         type("addSearch", title.substringBefore(' '), submit = false)
-        tap(title)
+        // The sheet's row is the last node with the title: a meal already planned has it too.
+        val rows = hasText(title) and !hasSetTextAction()
+        waitFor(rows)
+        val all = compose.onAllNodes(rows)
+        all[all.fetchSemanticsNodes().size - 1].performClick()
+        pause()
     }
 
     /**

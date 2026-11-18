@@ -764,9 +764,12 @@ in `+MealPlan.swift`, 35–36 in `+Kitchen.swift`, 37 and 40 in `+Outside.swift`
   cut the end of 31.
 - **Outside the app** (38, 39): the timer's countdown is real on both platforms (iOS's UI-test launch
   schedules nothing unless `-uiTestLiveTimers` asks for the Live Activity scheduler; the system's "Allow"
-  prompts are answered on Springboard). Android opens the shade and taps the notification through
-  UiAutomation's window trees (`HomeScreenWalkthroughTest.systemTap`), and places the widgets from the
-  launcher's picker the same way; iOS locks the phone (`pressLockButton`) and wakes it to the lock screen,
+  prompts are answered on Springboard). Android opens the shade and taps its first notification by its
+  place on the 1080×2424 emulator (the shade's tree stays out of UiAutomation's reach), and places the
+  widgets from the Pixel launcher's picker through UiAutomation's window trees
+  (`HomeScreenWalkthroughTest.systemTap`: the launcher reset first with `pm clear`, the picker searched
+  for the app, each preview's exact name then its "Add … widget"; a `uiautomator dump` can't run beside
+  the test's own UiAutomation); iOS locks the phone (`pressLockButton`) and wakes it to the lock screen,
   and places the widgets through the home screen's Edit → Add Widget gallery. Clip 39 on iOS runs the
   **real app**, not a seeded one, since the widget extension reads the app's own database: the script
   uninstalls the app first, so it starts as a fresh install (the tour's sample recipe is tonight's dinner).
