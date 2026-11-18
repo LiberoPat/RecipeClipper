@@ -678,10 +678,16 @@ German post, a French card), 30 "Scan a recipe" (#226: a card's two sides from t
 yourself" on a live Reddit post (#213, #230: the guided steps, Review asking for the name, then the Text view with one field selected first), 32 "Clip it
 yourself" on a live blog page (#37, field first: Name, Ingredients, two Steps blocks, Undo, Photo, with real taps),
 33 selecting several pantry items (#258: touch and hold, a drag, Mark run out, Select all, Remove, one Undo each),
-34 fraction chips (#245, #276: the handwritten fraction card scanned with real OCR on both platforms, its look-alikes and glued glyphs flagged with chips, each chip tapped, the other slips typed right).
+34 fraction chips (#245, #276: the handwritten fraction card scanned with real OCR on both platforms, its look-alikes and glued glyphs flagged with chips, each chip tapped, the other slips typed right),
+35 an amount typed with a pantry item's name and the pantry's amount beside the week's in What I need (#302),
+36 Use it up (#305: the row's line, the sheet, Plan tomorrow, the Week), 37 text shared in (#306: a recipe sorted into
+the editor with its leftovers under Notes, then a bulleted list to Add this list), 38 a timer counting down outside the
+app (#309: the shade's notification, iOS's Live Activity on the lock screen, a tap resuming the cook), 39 the Tonight
+and Groceries widgets placed on the home screen (#309), 40 Print or save as PDF and Make a cookbook (#318).
 Android's 13–21, 23–26 and 33 are in `CookingWalkthroughTest` and
-`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–32 and 34 in `RecipesWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–34 in `+Features.swift`, 22
-in `+MealPlan.swift`). What they need from outside the app:
+`SharingWalkthroughTest` (22 beside 12, in `MealPlanWalkthroughTest`; 27–32 and 34 in `RecipesWalkthroughTest`; 35–37 and
+40 in `FeaturesWalkthroughTest`; 38 and 39 in `HomeScreenWalkthroughTest`), iOS's in `WalkthroughUITests+Cooking.swift` and `+Sharing.swift` (24–34 in `+Features.swift`, 22
+in `+MealPlan.swift`, 35–36 in `+Kitchen.swift`, 37 and 40 in `+Outside.swift`, 38–39 in `+Home.swift`). What they need from outside the app:
 
 - **The photo** "I made this" adds is a macOS sample picture (`/Library/User Pictures/Fun/Gingerbread
   Man.heic`), which each script converts: Android pushes it to `/data/local/tmp` and the test hands
@@ -756,6 +762,22 @@ in `+MealPlan.swift`). What they need from outside the app:
   size the emulator's encoder fell behind on a busy machine and lost the ends of clips. It
   records for up to 10 minutes (`--time-limit 600`): screenrecord stops at 3 by default, which
   cut the end of 31.
+- **Outside the app** (38, 39): the timer's countdown is real on both platforms (iOS's UI-test launch
+  schedules nothing unless `-uiTestLiveTimers` asks for the Live Activity scheduler; the system's "Allow"
+  prompts are answered on Springboard). Android opens the shade and taps its first notification by its
+  place on the 1080×2424 emulator (the shade's tree stays out of UiAutomation's reach), and places the
+  widgets from the Pixel launcher's picker through UiAutomation's window trees
+  (`HomeScreenWalkthroughTest.systemTap`: the launcher reset first with `pm clear`, the picker searched
+  for the app, each preview's exact name then its "Add … widget"; a `uiautomator dump` can't run beside
+  the test's own UiAutomation); iOS locks the phone (`pressLockButton`) and wakes it to the lock screen,
+  and places the widgets through the home screen's Edit → Add Widget gallery. Clip 39 on iOS runs the
+  **real app**, not a seeded one, since the widget extension reads the app's own database: the script
+  uninstalls the app first, so it starts as a fresh install (the tour's sample recipe is tonight's dinner).
+- **Shared text** (37): Android sends an `ACTION_SEND` intent from the app itself; iOS seeds the share
+  extension's hand-off (`RC_UITEST_SHARED_TEXT`), and its list goes through "Paste a list" (the extension's
+  own "Add this list" sheet runs in the sharing app, out of reach).
+- **Use it up** (36): the kitchen with the soy sauce's use-by day tomorrow (`start(expiringTomorrow =)`,
+  iOS's `walkthroughUseItUp` scenario), so the Adobo and the Beef Stir-Fry are its two saved recipes.
 - **Chef mode unsupported** is the stub model's answer: Android's classes bind
   `ChefSupport.Unsupported` (and a decision model that supports nothing, so no AI answer shows);
   iOS passes `-uiTestChefUnsupported`.

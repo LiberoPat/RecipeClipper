@@ -16,6 +16,7 @@ import UIKit
 ///     a list" (#149) reads it without the paste prompt, which a UI test can't rely on. A launch
 ///     argument keeps only its first line, so `\n` (backslash, n) in it stands for a newline;
 ///   - `-uiTestReceiveFile` opens a canned shared file (#149) at launch (`receivedFileURL`);
+///   - `-uiTestLiveTimers` schedules timers for real, Live Activity included (#309, walkthrough 38);
 ///   - a stub typed-decision model (`UITestDecisionModel`), consulted only with `aiDecisions` on;
 ///   - the first-run tour (#151, #190) done (the sample decided, every tooltip seen), unless
 ///     `-uiTestTooltips` asks for a fresh install's;
@@ -40,6 +41,7 @@ import UIKit
 ///   chef      one recipe with a long step, for Chef mode (#100); every launch gets a stub model
 ///   walkthrough  twenty realistic recipes for the walkthrough videos (#106) — see UITestWalkthroughSeed
 ///   walkthroughPantry  the same, with a stocked pantry and the Adobo on the grocery list
+///   walkthroughUseItUp  the same, the soy sauce expiring tomorrow (Use it up, #305)
 enum UITestSeeding {
     static let flag = "-uiTestSeed"
     static let keepPrefsFlag = "-uiTestKeepPrefs"
@@ -48,6 +50,7 @@ enum UITestSeeding {
     static let flagsSuite = "RecipeClipperUITestsFlags"
     static let pasteboardFlag = "-uiTestPasteboard"
     static let receiveFileFlag = "-uiTestReceiveFile"
+    static let liveTimersFlag = "-uiTestLiveTimers"
 
     /// With `-uiTestReceiveFile`, a shared file (#149) as another phone would send it, opened
     /// once at launch as if from Messages (a UI test can't drive another app's "Open in"):
@@ -189,6 +192,12 @@ enum UITestSeeding {
             backupRepository: backupRepository,
             preferences: preferences,
             clock: clock,
+            // Walkthrough 38 (#309): the real Live Activity (and alert) for a running timer, which
+            // the no-op default never shows; the system asks once whether to allow activities.
+            alarms: arguments.contains(liveTimersFlag)
+                ? LiveActivityTimerScheduler(wrapping: NotificationTimerScheduler(clock: clock),
+                                             display: ActivityKitTimerDisplay(clock: clock), flags: flags)
+                : NoOpTimerAlarmScheduler(),
             clipFixtureHTML: liveReddit || livePage != nil ? nil : clipFixtureHTML,
             featureFlags: flags,
             shortStepRepository: DefaultShortStepRepository(db: database, shortener: UITestStepShortener(), clock: clock),
@@ -251,6 +260,9 @@ enum UITestSeeding {
                     case "walkthroughPantry":
                         try UITestWalkthroughSeed.seed(conn, now: now)
                         try UITestWalkthroughSeed.seedPantry(conn, now: now)
+                    case "walkthroughUseItUp": // clip 36 (#305): the soy sauce, in two saved recipes, due tomorrow
+                        try UITestWalkthroughSeed.seed(conn, now: now)
+                        try UITestWalkthroughSeed.seedPantry(conn, now: now, expiringTomorrow: "soy sauce")
                     case "useItUp":
                         try seedStandard(conn, now: now)
                         try seedUseItUp(conn, now: now)

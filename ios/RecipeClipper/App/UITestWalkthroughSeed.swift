@@ -156,13 +156,15 @@ enum UITestWalkthroughSeed {
     /// On the grocery list, from the Chicken Adobo (Android's `WalkthroughSeed.groceries`).
     static let groceries = ["2 lb chicken thighs", "1/2 cup soy sauce", "6 cloves garlic, crushed", "3 bay leaves"]
 
-    static func seedPantry(_ conn: SQLiteConnection, now: Int64) throws {
+    /// `expiringTomorrow` names the item whose use-by day is tomorrow (Use it up, clip 36, #305).
+    static func seedPantry(_ conn: SQLiteConnection, now: Int64, expiringTomorrow: String? = nil) throws {
         guard let words = LanguageWords.forTag("en") else { fatalError("UI test seed: no English tables") }
         let pantryDao = PantryDao(db: conn)
         for item in pantry {
+            let expires: Int64? = item.name == expiringTomorrow ? PlanDays.today(millis: now) + 1 : nil
             _ = try pantryDao.insert(PantryItemRecord(
                 name: item.name, quantity: item.quantity, language: "en", aisle: Aisles.ofName(item.name, words: words).key,
-                inStock: item.inStock, alwaysHave: false, purchasedDay: nil, expiresDay: nil, updatedAt: now
+                inStock: item.inStock, alwaysHave: false, purchasedDay: nil, expiresDay: expires, updatedAt: now
             ))
         }
         let adobo = try RecipeDao(db: conn).findByUrl("https://example.com/chicken-adobo")?.id

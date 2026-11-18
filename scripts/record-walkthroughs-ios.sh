@@ -17,7 +17,8 @@ TESTS=("$@")
   test18_doneShoppingAndOnList test19_pantrySendList test20_pantryUseUpAfterCooking test21_chefModeUnsupportedSimulated
   test22_recipeJunkHidden test23_markAsCooked test24_tooltips test25_pantryStates test26_onionPlurals
   test27_redditImport test28_readThePhoto test29_readingOtherLanguages test30_scanARecipe test31_redditClipYourself test32_clipItYourself
-  test33_pantryMultiSelect test34_fractionChips)
+  test33_pantryMultiSelect test34_fractionChips test35_pantryAmounts test36_useItUp test37_shareText
+  test38_timersOutsideTheApp test39_widgets test40_printAndCookbook)
 mkdir -p "$OUT" "$DD/raw"
 xcrun simctl ui "$SIM" appearance light
 # A new simulator's keyboard shows its slide-to-type introduction once, over the app: mark it seen.
@@ -58,6 +59,9 @@ for t in "${TESTS[@]}"; do
       xcrun simctl addmedia "$SIM" "$card.png"
     sleep 2
   fi
+  # Clip 39 runs the real app (#309: the widgets read its own database), so it starts from a fresh
+  # install, with no widget placed by an earlier run.
+  if [ "$t" = test39_widgets ]; then xcrun simctl uninstall "$SIM" com.liberopat.recipeclipper 2>/dev/null || true; fi
   xcrun simctl io "$SIM" recordVideo --codec h264 --force "$raw" 2>/dev/null &
   rec=$!
   sleep 1
