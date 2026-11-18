@@ -34,6 +34,8 @@ class RecipeApp : Application() {
 
     @Inject
     lateinit var processTextEntry: ProcessTextEntry
+
+    @Inject
     lateinit var timerCountdowns: TimerCountdownSync
 
     override fun onCreate() {
