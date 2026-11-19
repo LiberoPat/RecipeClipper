@@ -43,7 +43,7 @@ data class SavedRecipeRow(
 abstract class ListDao {
 
     /**
-     * Lists, built-ins first, each with its recipe count and whether it contains [recipeId].
+     * Lists in the cook's own order (`sortOrder`, #381; seeded lists start first), each with its recipe count and whether it contains [recipeId].
      *
      * One query rather than two, in the same spirit as [RecipeDao.observeHistory]'s empty-query
      * branch: the Lists screen passes [NO_RECIPE], an id no row can have, so `containsRecipe`
@@ -58,7 +58,7 @@ abstract class ListDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c2
                       WHERE c2.listId = l.id AND c2.recipeId = :recipeId) AS containsRecipe
         FROM lists l
-        ORDER BY l.isBuiltIn DESC, l.sortOrder ASC, l.id ASC
+        ORDER BY l.sortOrder ASC, l.id ASC
         """
     )
     abstract fun observeLists(recipeId: Long): Flow<List<ListRow>>
@@ -160,6 +160,29 @@ abstract class ListDao {
         )
         if (recipeId != NO_RECIPE) addToList(RecipeListCrossRef(recipeId, id, now))
         return id
+    }
+
+    @Query("SELECT id FROM lists ORDER BY sortOrder ASC, id ASC")
+    protected abstract suspend fun idsInOrder(): List<Long>
+
+    @Query("UPDATE lists SET sortOrder = :position WHERE id = :id")
+    protected abstract suspend fun setPosition(id: Long, position: Int)
+
+    /**
+     * The cook's new order (#381): [orderedIds] first, in that order, then any list not named
+     * (one created while a drag was in flight) in the order it already had. Ids that are not
+     * lists are ignored, and every list ends up with a distinct position 0, 1, 2... One
+     * transaction, so the Lists screen sees the move once.
+     */
+    @Transaction
+    open suspend fun reorder(orderedIds: List<Long>) {
+        val current = idsInOrder()
+        val known = current.toSet()
+        val named = orderedIds.filter { it in known }.distinct()
+        val namedSet = named.toSet()
+        (named + current.filterNot { it in namedSet }).forEachIndexed { position, id ->
+            setPosition(id, position)
+        }
     }
 
     /** Built-ins are renameable — the restriction is on deleting them, not naming them. */

@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface ListRepository {
 
-    /** Every list with its recipe count, built-ins first. */
+    /** Every list with its recipe count, in the cook's own order (#381; seeded lists start first). */
     fun observeLists(): Flow<List<RecipeList>>
 
     /**
@@ -50,6 +50,12 @@ interface ListRepository {
      * list's id, or `-1` ([DefaultListRepository.CREATE_FAILED]) if the database refused.
      */
     suspend fun createList(name: String, addRecipeId: Long? = null): Long
+
+    /**
+     * The cook's new order for the lists (#381): [orderedIds] first, in that order, then any list
+     * not named in the order it had. Stored, so every place lists are shown follows it.
+     */
+    suspend fun reorderLists(orderedIds: List<Long>)
 
     suspend fun rename(listId: Long, name: String)
 

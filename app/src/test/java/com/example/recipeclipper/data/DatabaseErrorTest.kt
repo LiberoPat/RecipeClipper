@@ -109,6 +109,8 @@ class DatabaseErrorTest {
         override suspend fun removeFromList(recipeId: Long, listId: Long) = throw Boom()
         override suspend fun insert(list: ListEntity): Long = throw Boom()
         override suspend fun nextSortOrder(): Int = throw Boom()
+        override suspend fun idsInOrder(): List<Long> = throw Boom()
+        override suspend fun setPosition(id: Long, position: Int) = throw Boom()
         override suspend fun rename(id: Long, name: String) = throw Boom()
         override suspend fun delete(id: Long) = throw Boom()
     }
@@ -208,6 +210,7 @@ class DatabaseErrorTest {
         assertEquals(DefaultListRepository.CREATE_FAILED, lists.createList("Soups", addRecipeId = 1))
         lists.rename(2, "Stews")
         lists.deleteList(2)
+        lists.reorderLists(listOf(2, 1))
         assertEquals(listOf(emptyList<Any>()), lists.observeLists().toList())
         assertEquals(listOf(emptyList<Any>()), lists.observeListsFor(1).toList())
         assertEquals(listOf(emptyList<Any>()), lists.observeRecipesIn(2).toList())
@@ -216,7 +219,7 @@ class DatabaseErrorTest {
         assertEquals(
             listOf(
                 "setMembership failed", "setMembership failed", "createList failed",
-                "rename failed", "deleteList failed",
+                "rename failed", "deleteList failed", "reorderLists failed",
                 "observeLists failed", "observeListsFor failed", "observeRecipesIn failed",
                 "observeCoverPhotos failed"
             ),

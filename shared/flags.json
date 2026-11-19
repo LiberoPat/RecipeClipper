@@ -95,6 +95,12 @@
       "description": "Recipe versions: JSON shared in whose isBasedOn names a recipe in the library (its link, as Change this recipe wrote it) is saved as a version of it, linked by the original's uid. The version shows Based on the original (a tap opens it) and the original lists its versions. Off, the link is neither saved nor shown, and the recipe is a plain chat recipe.",
       "defaults": { "debug": true, "release": true },
       "issue": 354
+    },
+    {
+      "key": "reorderLists",
+      "description": "Reorder lists: a long press on a list's cover on the Lists screen lifts it to be dragged into place (and, for TalkBack or VoiceOver, Move earlier / Move later actions); the order is stored and used wherever lists are shown (Lists, the save-to-list sheet, Recipes) and carried by export and import. Off, lists are in the seeded-first order of before and cannot be moved.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 381
     }
   ]
 }

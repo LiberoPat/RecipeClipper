@@ -54,7 +54,7 @@ abstract class BackupDao {
     @Query("SELECT * FROM recipes ORDER BY lastViewedAt DESC, id DESC")
     abstract suspend fun allRecipes(): List<RecipeEntity>
 
-    @Query("SELECT * FROM lists ORDER BY isBuiltIn DESC, sortOrder ASC, id ASC")
+    @Query("SELECT * FROM lists ORDER BY sortOrder ASC, id ASC")
     abstract suspend fun allLists(): List<ListEntity>
 
     @Query("SELECT * FROM recipe_list_cross_ref ORDER BY listId ASC, addedAt ASC, recipeId ASC")
@@ -151,7 +151,7 @@ abstract class BackupDao {
     )
     abstract suspend fun existingRecipes(): List<ExistingRecipe>
 
-    @Query("SELECT id, uid, name, isFavorites FROM lists ORDER BY isBuiltIn DESC, sortOrder ASC, id ASC")
+    @Query("SELECT id, uid, name, isFavorites FROM lists ORDER BY sortOrder ASC, id ASC")
     abstract suspend fun existingLists(): List<ExistingList>
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM lists")

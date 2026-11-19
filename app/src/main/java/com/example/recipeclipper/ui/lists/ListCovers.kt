@@ -33,7 +33,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
@@ -43,15 +46,36 @@ import com.example.recipeclipper.ui.savetolist.countLabel
 private val CoverShape = RoundedCornerShape(12.dp)
 private val MosaicGap = 2.dp
 
-/** One list on the Lists screen (#286): its cover, then its name and count under it. */
+/**
+ * One list on the Lists screen (#286): its cover, then its name and count under it.
+ *
+ * [onMoveEarlier] and [onMoveLater] (#381) are the accessible way to reorder, offered as custom
+ * actions on the tile (TalkBack's actions menu); null where the move is not possible, the first
+ * list's earlier and the last one's later, or where reordering is off.
+ */
 @Composable
-internal fun ListCoverTile(list: RecipeList, photos: List<String>, onClick: () -> Unit) {
+internal fun ListCoverTile(
+    list: RecipeList,
+    photos: List<String>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onMoveEarlier: (() -> Unit)? = null,
+    onMoveLater: (() -> Unit)? = null
+) {
+    val earlierLabel = stringResource(R.string.lists_move_earlier)
+    val laterLabel = stringResource(R.string.lists_move_later)
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clip(CoverShape)
             .clickable(role = Role.Button, onClick = onClick)
             .testTag("lists.cover.${list.id}")
+            .semantics {
+                customActions = listOfNotNull(
+                    onMoveEarlier?.let { move -> CustomAccessibilityAction(earlierLabel) { move(); true } },
+                    onMoveLater?.let { move -> CustomAccessibilityAction(laterLabel) { move(); true } }
+                )
+            }
     ) {
         CoverMosaic(photos, Modifier.fillMaxWidth().aspectRatio(1f))
         Spacer(Modifier.height(8.dp))

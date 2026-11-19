@@ -214,6 +214,8 @@
     <string name="lists_title">Listas</string>
     <string name="action_new_list">+  Nova lista</string>
     <string name="lists_new_list_tile">Nova lista</string>
+    <string name="lists_move_earlier">Mover para antes</string>
+    <string name="lists_move_later">Mover para depois</string>
     <string name="action_create">Criar</string>
     <string name="action_rename">Renomear</string>
     <string name="action_save">Salvar</string>
