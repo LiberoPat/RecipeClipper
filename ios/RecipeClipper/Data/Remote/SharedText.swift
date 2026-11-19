@@ -129,6 +129,9 @@ enum SharedText {
     /// How many places in the text that open a JSON value are tried before giving up.
     private static let maxJsonCandidates = 20
 
+    /// A bracket, quote or backslash as the UTF-16 unit the scan compares.
+    private static func u(_ c: Unicode.Scalar) -> UInt16 { UInt16(c.value) }
+
     /// Rule 0 (#350): the first `{...}` or `[...]` in the text that holds a schema.org Recipe, read
     /// by `JsonLdRecipeParser` (never a second reader). See the Kotlin.
     private static func jsonRecipe(_ text: String) -> Reading? {
@@ -138,7 +141,7 @@ enum SharedText {
         var tried = 0
         var i = 0
         while i < units.count && tried < maxJsonCandidates {
-            if units[i] != UInt16(ascii: "{") && units[i] != UInt16(ascii: "[") { i += 1; continue }
+            if units[i] != u("{") && units[i] != u("[") { i += 1; continue }
             tried += 1
             let end = jsonEnd(units, i)
             if end < 0 { i += 1; continue }
@@ -168,17 +171,17 @@ enum SharedText {
             if inString {
                 if escaped {
                     escaped = false
-                } else if c == UInt16(ascii: "\\") {
+                } else if c == u("\\") {
                     escaped = true
-                } else if c == UInt16(ascii: "\"") {
+                } else if c == u("\"") {
                     inString = false
                 }
                 continue
             }
             switch c {
-            case UInt16(ascii: "\""): inString = true
-            case UInt16(ascii: "{"), UInt16(ascii: "["): depth += 1
-            case UInt16(ascii: "}"), UInt16(ascii: "]"):
+            case u("\""): inString = true
+            case u("{"), u("["): depth += 1
+            case u("}"), u("]"):
                 depth -= 1
                 if depth == 0 { return i }
             default: break
