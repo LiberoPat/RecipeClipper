@@ -139,6 +139,8 @@ import java.io.File
  * `PlanText("text")` rows (#352) pin [MealPlanImport.read]: shared text as a week of recipes, each
  * `Meal("name", epochDay or nil, [ingredients], [steps])` in order, or `[]` when it holds no plan;
  * write only the text.
+ * `Based("text")` rows (#354) pin [SharedText.Reading.basedOn]: text shared into the app, then the
+ * recipe its JSON's `isBasedOn` names (nil for none); write only the text.
  *
  * `Photo(["line", ...])` rows (#208) pin [PhotoTextSorter.sort]: a photo's lines as the language
  * they were read in, whether they sorted, the ingredients, steps, the lines to check one by one
@@ -235,6 +237,8 @@ class DifferentialCorpusTest {
     private val sharedRow = Regex("""^(\s*)Shared\("((?:[^"\\]|\\.)*)"""")
     // A meal-plan row (#352): text shared in as a week of recipes.
     private val planTextRow = Regex("""^(\s*)PlanText\("((?:[^"\\]|\\.)*)"""")
+    // A shared-text version row (#354): text shared into the app, then its JSON's isBasedOn.
+    private val basedRow = Regex("""^(\s*)Based\("((?:[^"\\]|\\.)*)"""")
     // A photo row (#208): the lines read from a photo.
     private val photoRow = Regex("""^(\s*)Photo\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     // A placed-photo row (#286): the lines read, each with its page and box and optionally its
@@ -425,6 +429,10 @@ class DifferentialCorpusTest {
                 "Meal(${q(it.recipe.name)}, ${it.day?.toString() ?: "nil"}, ${list(it.recipe.ingredients)}, ${list(it.recipe.instructions)})"
             }
             return m.groupValues[1] + "PlanText(${q(text)}, $meals),"
+        }
+        basedRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            return m.groupValues[1] + "Based(${q(text)}, ${SharedText.read(text).basedOn?.let(::q) ?: "nil"}),"
         }
         photoRow.find(line)?.let { m ->
             val lines = literal.findAll(m.groupValues[2]).map { unescape(it.groupValues[1]) }.toList()

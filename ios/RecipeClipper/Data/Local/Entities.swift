@@ -31,12 +31,17 @@ struct RecipeRecord: Equatable {
     /// version, never refreshed by a re-share.
     var contentOrigin: String = "PARSED"
     var editedAt: Int64? = nil              // when the user last saved an edit; nil if never
+    /// The `uid` of the recipe this one is a version of (#354, an AI's change saved linked to its
+    /// original), or nil. A uid, not a row id, so it survives an export and an import. No foreign
+    /// key: a delete clears it by hand (`RecipeDao.clearOrphanedLinks`), so it never points at
+    /// nothing. `update` never writes it, as it never writes the uid.
+    var basedOnUid: String? = nil
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
         totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language, \
-        cookState, servingsTarget, contentOrigin, editedAt
+        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid
         """
 
     init(
@@ -46,7 +51,7 @@ struct RecipeRecord: Equatable {
         sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = [],
         notes: String? = nil, uid: String = newUid(), language: String? = nil,
         cookState: String? = nil, servingsTarget: Int? = nil,
-        contentOrigin: String = "PARSED", editedAt: Int64? = nil
+        contentOrigin: String = "PARSED", editedAt: Int64? = nil, basedOnUid: String? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -68,6 +73,7 @@ struct RecipeRecord: Equatable {
         self.servingsTarget = servingsTarget
         self.contentOrigin = contentOrigin
         self.editedAt = editedAt
+        self.basedOnUid = basedOnUid
     }
 
     init(row: SQLiteRow) {
@@ -91,6 +97,7 @@ struct RecipeRecord: Equatable {
         servingsTarget = row.isNull(17) ? nil : row.int(17)
         contentOrigin = row.string(18)
         editedAt = row.isNull(19) ? nil : row.int64(19)
+        basedOnUid = row.optionalString(20)
     }
 }
 

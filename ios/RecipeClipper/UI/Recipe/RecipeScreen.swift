@@ -7,6 +7,8 @@ struct RecipeScreen: View {
     let vm: RecipeViewModel
     let saveVM: SaveToListViewModel
     var onEdit: (Int64) -> Void = { _ in }
+    /// A version's original, or an original's version (#354): opens that recipe.
+    var onOpenRecipe: (Int64) -> Void = { _ in }
     /// Makes the "Add to plan" sheet's ViewModel (#49); nil (tests) hides the menu item. Made on
     /// first use and kept for the screen's life.
     var makePlanVM: (() -> AddToPlanViewModel)? = nil
@@ -70,7 +72,7 @@ struct RecipeScreen: View {
                 if state.cook.active {
                     CookView(content: success, state: state, vm: vm)
                 } else {
-                    ReadingView(content: success, state: state, vm: vm, photos: photosVM)
+                    ReadingView(content: success, state: state, vm: vm, photos: photosVM, onOpenRecipe: onOpenRecipe)
                 }
             case .loading:
                 StatusView {

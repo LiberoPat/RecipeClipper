@@ -67,6 +67,13 @@ class DatabaseErrorTest {
         override suspend fun setTimes(id: Long, prep: String?, cook: String?, total: String?) = throw throwable()
         override suspend fun cookStates(): List<CookStateRow> = throw throwable()
         override suspend fun delete(id: Long) = throw throwable()
+        override suspend fun clearOrphanedLinks() = throw throwable()
+        override suspend fun versionIdsOf(uid: String): List<Long> = throw throwable()
+        override suspend fun relink(ids: List<Long>, uid: String) = throw throwable()
+        override fun observeOriginal(id: Long): Flow<com.example.recipeclipper.data.local.dao.RecipeLinkRow?> =
+            flow { throw throwable() }
+        override fun observeVersions(id: Long): Flow<List<com.example.recipeclipper.data.local.dao.RecipeLinkRow>> =
+            flow { throw throwable() }
         override suspend fun crossRefsFor(recipeId: Long): List<RecipeListCrossRef> = throw throwable()
         override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) = throw throwable()
         override fun observeHistory(): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }

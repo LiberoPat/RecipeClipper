@@ -82,6 +82,36 @@ class EditRecipeTextViewModelTest {
             assertEquals("a chat's JSON is saved as from a chat (#355)", listOf(true), repository.addManualFromChat)
         }
 
+    @Test fun `JSON that names the recipe it changed is saved with that claim (#354)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { addManualResult = saved(8L) }
+            val vm = viewModel(
+                "{\"@type\":\"Recipe\",\"name\":\"Spicier Soup\",\"isBasedOn\":\"https://example.com/soup\"," +
+                    "\"recipeIngredient\":[\"1 onion\",\"1 chilli\"],\"recipeInstructions\":[\"Simmer.\"]}",
+                repository
+            )
+            advanceUntilIdle()
+            vm.onSave()
+            advanceUntilIdle()
+
+            assertEquals(listOf<String?>("https://example.com/soup"), repository.addManualBasedOn)
+            assertEquals(listOf(true), repository.addManualFromChat)
+            assertEquals(8L, vm.uiState.value.savedId)
+        }
+
+    @Test fun `JSON with no isBasedOn is saved with no claim (#354)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { addManualResult = saved(8L) }
+            val vm = viewModel(
+                "{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"]}", repository
+            )
+            advanceUntilIdle()
+            vm.onSave()
+            advanceUntilIdle()
+
+            assertEquals(listOf<String?>(null), repository.addManualBasedOn)
+        }
+
     @Test fun `text that doesn't split is every line a step, as written`() =
         runTest(mainDispatcherRule.dispatcher) {
             val vm = viewModel("Hi Mum,\nMix the flour with the butter and bake it.\n\nLove, Sam")

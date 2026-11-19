@@ -97,6 +97,12 @@ data class Recipe(
         get() = origin.isUsersVersion && origin != ContentOrigin.MANUAL && !ManualRecipe.isManual(sourceUrl)
 }
 
+/**
+ * A recipe named by another (#354): the original a version is based on, or one of a recipe's
+ * versions. Just what a row of "Based on" or "Versions" shows and opens.
+ */
+data class RecipeLink(val id: Long, val title: String)
+
 /** What a list row (history, home) needs, without loading every ingredient and step. */
 data class RecipeSummary(
     val id: Long,

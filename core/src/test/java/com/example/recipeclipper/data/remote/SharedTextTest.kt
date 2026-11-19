@@ -205,6 +205,41 @@ class SharedTextTest {
         assertEquals(Kind.RECIPE, SharedText.kind(recipe.replace("Grandma's", "Grandma's [best] {recipe}")))
     }
 
+    // --- isBasedOn (#354): the recipe a chat's answer says it changed ---
+
+    /** [json] with an `isBasedOn` of [value] (raw JSON) added, or none for null. */
+    private fun withBasedOn(value: String?): String =
+        if (value == null) json else json.dropLast(1) + ", \"isBasedOn\": $value}"
+
+    private fun basedOn(value: String?): String? = SharedText.read(withBasedOn(value)).basedOn
+
+    @Test fun `isBasedOn is read as a string, an object's id or url, or the first of an array`() {
+        assertEquals("manual:1b2c", basedOn("\"manual:1b2c\""))
+        assertEquals("https://example.com/soup", basedOn("\"  https://example.com/soup \""))
+        assertEquals("https://example.com/soup", basedOn("{\"@id\": \"https://example.com/soup\"}"))
+        assertEquals("https://example.com/soup", basedOn("{\"@type\": \"Recipe\", \"url\": \"https://example.com/soup\"}"))
+        assertEquals("manual:a", basedOn("[\"manual:a\", \"manual:b\"]"))
+    }
+
+    @Test fun `no isBasedOn, or a blank or odd one, is none`() {
+        assertNull(basedOn(null))
+        assertNull(basedOn("\"\""))
+        assertNull(basedOn("\"   \""))
+        assertNull(basedOn("[]"))
+        assertNull(basedOn("42"))
+        assertNull(basedOn("{}"))
+    }
+
+    @Test fun `isBasedOn is read from a fence, a graph and prose, and never from plain text`() {
+        val text = withBasedOn("\"manual:1b2c\"")
+        assertEquals("manual:1b2c", SharedText.read("```json\n$text\n```").basedOn)
+        assertEquals("manual:1b2c", SharedText.read("Here you go: $text Enjoy!").basedOn)
+        val graph = """{"@graph":[{"@type":"Recipe","name":"Soup","recipeIngredient":["1 onion"],"isBasedOn":"manual:g"}]}"""
+        assertEquals("manual:g", SharedText.read(graph).basedOn)
+        assertNull(SharedText.read(recipe).basedOn)
+        assertNull(SharedText.read("manual:1b2c").basedOn)
+    }
+
     @Test fun `JSON nested far too deep is no recipe and never a crash`() {
         assertFalse(SharedText.read("recipe " + "[".repeat(20_000) + "]".repeat(20_000)).sorted)
         assertFalse(SharedText.read("recipe " + "{\"a\":".repeat(5_000) + "1" + "}".repeat(5_000)).sorted)

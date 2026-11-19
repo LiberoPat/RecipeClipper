@@ -268,6 +268,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         RecipeScreen(
             onBack = { navController.popBackStack() },
             onEdit = { navController.navigate(Routes.edit(it)) },
+            onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
             planViewModel = hiltViewModel(),
             groceriesViewModel = hiltViewModel(),
             photosViewModel = hiltViewModel(),
@@ -313,6 +314,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         RecipeScreen(
             onBack = { navController.popBackStack() },
             onEdit = { navController.navigate(Routes.edit(it)) },
+            onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
             onClip = { navController.navigate(Routes.clip(it)) },
             // Replaces the import, so Back from the clip never lands on an error screen (#213).
             onClipBlocked = {

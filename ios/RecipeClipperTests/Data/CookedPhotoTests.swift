@@ -66,7 +66,7 @@ final class CookedPhotoTests: XCTestCase {
         do {
             let old = try SQLiteConnection(path: path)
             try AppDatabase.migrate(old, upTo: 12)
-            try RecipeDao(db: old).insert(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
+            try RecipeDao(db: old).insertBeforeVersions(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
         }
         let migrated = try AppDatabase(path: path)
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
@@ -96,7 +96,7 @@ final class CookedPhotoTests: XCTestCase {
         do {
             let old = try SQLiteConnection(path: path)
             try AppDatabase.migrate(old, upTo: 13)
-            recipeId = try RecipeDao(db: old).insert(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
+            recipeId = try RecipeDao(db: old).insertBeforeVersions(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
             let dao = CookedPhotoDao(db: old)
             try dao.insert(CookedPhotoRecord(
                 id: 3, recipeId: recipeId, fileName: "a.jpg", day: 20_000, note: "Good", createdAt: 1, updatedAt: 2, uid: "photo-uid"

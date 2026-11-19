@@ -74,6 +74,28 @@ func dataRecipe(_ url: String, title: String = "Soup", ingredients: [String] = [
     )
 }
 
+extension RecipeDao {
+    /// `insert` for a database older than user_version 16 (#354), which has no `basedOnUid` yet: the
+    /// migration tests build an old file with the real migrations, then put a row in it.
+    @discardableResult
+    func insertBeforeVersions(_ r: RecipeRecord) throws -> Int64 {
+        try db.run(
+            """
+            INSERT INTO recipes (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime,
+                totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language, cookState,
+                servingsTarget, contentOrigin, editedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            r.id == 0 ? nil : r.id, r.sourceUrl, r.title, r.imageUrl,
+            JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
+            r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
+            JSONColumns.encode(r.checkedIngredients), r.notes, r.uid, r.language, r.cookState, r.servingsTarget,
+            r.contentOrigin, r.editedAt
+        )
+        return db.lastInsertRowId
+    }
+}
+
 extension AppDatabase {
     /// DAO helpers for tests: each is its own write / read.
     @discardableResult

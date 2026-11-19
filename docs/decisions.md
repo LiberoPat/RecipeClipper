@@ -4944,8 +4944,8 @@ replies vary; Ask an AI makes them reliable. **No AI runs in the app**: a prompt
   for word. The ViewModels (`AskAiViewModel`, both platforms) are tested over fakes; Home's tile
   and the sheet over fakes on Android (`AskAiSheetTest`, `ChangeRecipeMenuTest`), and
   `AskAiWiringTest` checks every recipe route passes the ViewModel, as `PrintWiringTest` does.
-- **Not here:** saving a version linked to its original (#354). Reading the answer is #350's
-  (one recipe) and #352's (a week, next section).
+- **Not here:** reading the answer is #350's (one recipe) and #352's (a week, next section);
+  saving a version linked to its original is "Recipe versions" (#354, after it).
 
 ## Meal-plan import: a week of AI recipes into Week (#352, 2026-11-19)
 
@@ -4991,6 +4991,61 @@ Behind the `mealPlanImport` flag (on by default; off, the first recipe opens the
   (core + iOS port), `MealPlanReviewViewModelTest`/`MealPlanReviewTests` over fakes,
   `MealPlanReviewScreenTest` (Android, through a NavHost route), `TextIntentTest`, `PlanHandOffTests`
   (iOS). The share sheet/extension on a real phone, and a real AI's answer, need a device.
+
+## Recipe versions: an AI's change saved linked to its original (#354, 2026-11-19)
+
+"Change this recipe" (#353) sends the recipe as schema.org JSON with `isBasedOn` set to its
+`sourceUrl`; the chat's answer comes back as shared JSON (#350), read as from a chat (#355). When
+that JSON's `isBasedOn` names a recipe in the library, the new recipe is saved as a **version** of
+it. Behind the `recipeVersions` flag (on by default in debug and release), on both platforms.
+
+- **The link is a column, by uid.** `recipes.basedOnUid`, nullable (Room 16 to 17, `MIGRATION_16_17`,
+  `MigrationTest`; iOS `user_version` 15 to 16, `addBasedOn`): the `uid` of the original, not its
+  row id, so it survives an export and an import (the same reason a list membership uses uids).
+  No foreign key: every delete clears it by hand (below), so a link never points at nothing.
+  `update` and a re-share never rewrite it (`keepingUserState` keeps it on Android; iOS's
+  `update` doesn't write it, as it doesn't write `uid`), so editing a version, editing or
+  refreshing its original, and re-sharing either all leave the link alone.
+- **Finding the original.** `SharedText.Reading.basedOn` is the JSON's `isBasedOn` as written
+  (`JsonLdRecipeParser.isBasedOn`: a string, or an object's `@id` or `url`, or the first of an
+  array; trimmed; blank is none). It is only a claim: `addManual(..., basedOn:)` looks it up when
+  the editor saves. By `sourceUrl` as written (a typed or chat recipe's `manual:<uuid>`, a clipped
+  page's cleaned link), else, for an `http` link, cleaned by `UrlCleaner` (an AI may keep or drop
+  tracking). Only with `fromChat` and the flag on. **An `isBasedOn` that matches nothing is ignored**:
+  a plain chat recipe. The editor still opens to check the recipe first, as for any shared JSON;
+  nothing about the link is shown there.
+- **A version of a version.** Changing a version names its own `manual:` link, so the answer links
+  to that version, not to the first original. The original lists only its direct versions; each
+  version lists its own.
+- **Seen on the recipe.** A version says **Based on <original title>** quietly under its title (the
+  muted line "From a chat" sits in; a tap opens the original, pushed on the back stack). The
+  original lists **Versions** after its steps (before the note), newest first, one tappable line
+  each. Both follow the database as it changes (`RecipeRepository.observeBasedOn` and
+  `observeVersions`, over a join on `uid`), only for a kept recipe, and are absent with the flag
+  off. Three strings (`recipe_based_on`, `recipe_versions_heading`, `cd_open_recipe_named`) in six
+  languages on both platforms (drafts for a native speaker). The Week tab opens a linked recipe
+  in its own tab (`weekRecipe`), the others push `recipe/{id}`.
+- **Deleting.** Deleting the original keeps its versions and clears their link (`clearOrphanedLinks`:
+  `UPDATE ... SET basedOnUid = NULL WHERE basedOnUid NOT IN (SELECT uid FROM recipes)`, run after a
+  delete, the free tier's swap-out and the old clean-up's cull, in the same transaction). An undo
+  links them again: the delete reads their ids (`versionIdsOf`) into `DeletedRecipe.versionIds`,
+  and a restore relinks those rows, then clears any link whose original is gone meanwhile.
+  Deleting a version leaves the original alone.
+- **The free limit.** A version is saved through the one `upsert`, so it counts like any recipe and
+  at the limit is shown, not saved ("Not saved"), the editor staying open as for any shared JSON.
+- **Export and import.** `BackupRecipe.basedOn` (the original's uid; `"basedOn"` in the file, absent
+  in an older file, which reads as none and an older app ignores). `BackupMerger` keeps a new
+  recipe's link only if its original is here after the import, under the uid it has then: the
+  file's own (a new recipe, written), this phone's (a recipe matched by its link), or an existing
+  uid the file doesn't carry; a link to a recipe left out by the limit or missing is dropped, and
+  never to itself. A recipe already here keeps what it has: import never changes a link. Shared
+  files (#149) carry it too, and drop it on a phone without the original.
+- **Tests.** `RecipeVersionsRepositoryTest`, `RecipeDaoTest` (versions) and `MigrationTest`
+  (16 to 17) on Android; `RecipeVersionsTests` and `RecipeVersionsViewModelTests` on iOS; the shared
+  fixture `backup-v1-versions.json` read by `BackupJsonTest` and `BackupMergerTest` and their iOS
+  twins; `SharedTextTest`, `SharedTextJsonTests`, and the corpus's `Based("text")` rows (generated
+  from the Kotlin) for `isBasedOn`; the editor's `addManual` claim in `EditRecipeTextViewModelTest`
+  and `EditRecipeTextTests`; the recipe screen in `RecipeVersionsTest`.
 
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
@@ -5467,9 +5522,9 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 16** (iOS `user_version` 15): `recipes`
-(with nullable `notes`, `language`, `cookState`, `servingsTarget` and `editedAt`, and
-`contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
+Room database `recipe_clipper.db`, **version 17** (iOS `user_version` 16): `recipes`
+(with nullable `notes`, `language`, `cookState`, `servingsTarget`, `editedAt` and `basedOnUid`,
+#354, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
 `meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51; `runningLow`, #194), `menus` and
 `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never
 exported), `cooked_photos` (#116, cascading; no `fileName` for "Mark as cooked", #173). Recipes, lists, the plan, grocery,

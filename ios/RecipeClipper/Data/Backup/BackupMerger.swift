@@ -137,6 +137,10 @@ struct ImportPlan: Equatable {
 /// Menus (#52): a menu comes in, with its meals, unless its uid is already here; one here is
 /// left as it is. Its meals follow the plan's rules, its recipes come in like listed ones (the
 /// cull keeps them too), and a menu left with no meals is dropped.
+/// Versions (#354): a new recipe's `basedOn` (its original's uid in the file) stays only if that
+/// recipe is here after the import, under the uid it has then; a link to a recipe that isn't
+/// (skipped for the limit, or not in the file) is dropped. The recipes themselves come in as any
+/// other. One already here keeps what it has: import never changes a link.
 /// Typed-in recipes (#102, origin MANUAL, or CHAT, #355) come in like listed ones, and one here counts as listed.
 /// Photos of the user's own cooking (#116) come in unless their uid is already here, and only
 /// with their picture (`availablePhotoFiles`); a recipe with a photo coming in comes in like a
@@ -340,6 +344,27 @@ enum BackupMerger {
 
         // --- Groceries: by uid only, after what's on the list, keeping a recipe that's here.
         let written = Set(newRecipes.map { MergeTarget.new($0.id) })
+
+        // --- Versions (#354): a new recipe keeps its link to its original only if that recipe is
+        // here after the import, by the uid it has then (a matched one takes this phone's); else
+        // the link is dropped and the recipe stands alone. Never to itself.
+        let hereUidById = Dictionary(existingRecipes.map { ($0.id, $0.uid) }, uniquingKeysWith: { first, _ in first })
+        let hereUids = Set(existingRecipes.map(\.uid))
+        func survivingUid(_ fileId: String) -> String? {
+            switch recipeTargets[fileId] {
+            case .existing(let id): return hereUidById[id]
+            case .new(let uid): return written.contains(.new(uid)) ? uid : nil
+            case nil: return hereUids.contains(fileId) ? fileId : nil
+            }
+        }
+        let linkedRecipes = newRecipes.map { recipe -> BackupRecipe in
+            var linked = recipe
+            if let claim = recipe.basedOn {
+                let original = survivingUid(claim)
+                linked.basedOn = original == recipe.id ? nil : original
+            }
+            return linked
+        }
         let newGroceries = backup.groceries.filter { !existingGroceryUids.contains($0.id) }.map { item -> NewGrocery in
             var recipe = item.recipeId.flatMap { recipeTargets[$0] }
             if case .new = recipe, !written.contains(recipe!) { recipe = nil }
@@ -428,7 +453,7 @@ enum BackupMerger {
         }
 
         return ImportPlan(
-            newRecipes: newRecipes,
+            newRecipes: linkedRecipes,
             noteUpdates: noteUpdates,
             newLists: newListOrder.compactMap { newListsByName[$0] },
             // A recipe left out by the cap (#345) takes no list membership with it.
