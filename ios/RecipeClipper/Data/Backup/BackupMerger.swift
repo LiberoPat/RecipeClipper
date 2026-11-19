@@ -137,7 +137,7 @@ struct ImportPlan: Equatable {
 /// Menus (#52): a menu comes in, with its meals, unless its uid is already here; one here is
 /// left as it is. Its meals follow the plan's rules, its recipes come in like listed ones (the
 /// cull keeps them too), and a menu left with no meals is dropped.
-/// Typed-in recipes (#102, origin MANUAL) come in like listed ones, and one here counts as listed.
+/// Typed-in recipes (#102, origin MANUAL, or CHAT, #355) come in like listed ones, and one here counts as listed.
 /// Photos of the user's own cooking (#116) come in unless their uid is already here, and only
 /// with their picture (`availablePhotoFiles`); a recipe with a photo coming in comes in like a
 /// listed one, and one here with photos counts as listed. A cooking marked with no photo (#173)
@@ -276,8 +276,8 @@ enum BackupMerger {
         for entry in incomingMenuEntries {
             if let target = entry.recipeId.flatMap({ recipeTargets[$0] }) { listedTargets.insert(target) }
         }
-        // So is a recipe typed in by hand (#102): it has no link to bring it back.
-        for recipe in newByUrl.values where recipe.contentOrigin == "MANUAL" { listedTargets.insert(.new(recipe.id)) }
+        // So is a recipe typed in by hand (#102) or read from a chat (#355): it has no link to bring it back.
+        for recipe in newByUrl.values where recipe.contentOrigin == "MANUAL" || recipe.contentOrigin == "CHAT" { listedTargets.insert(.new(recipe.id)) }
         // And one with the user's own photos (#116): only the recipe can hold them.
         var takenPhotoUids = existingCookedPhotoUids
         // A cooking marked with no photo (#173) needs no picture.

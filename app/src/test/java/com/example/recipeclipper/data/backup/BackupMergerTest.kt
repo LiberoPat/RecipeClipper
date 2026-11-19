@@ -324,6 +324,17 @@ class BackupMergerTest {
         assertEquals(0, plan.summary.recipesSkipped)
     }
 
+    @Test fun `recipes from a chat always come in, even when history is full (#355)`() {
+        val here = (1..50L).map { ExistingRecipe(it, "u$it", "https://h.example/$it", false, isListed = false) }
+        val incoming = listOf(
+            BackupRecipe("f1", "manual:abc", "BLOG", "F1", null, emptyList(), listOf("Mix."),
+                null, null, null, null, 0, emptySet(), null, contentOrigin = "CHAT")
+        )
+        val plan = BackupMerger.plan(Backup(0, incoming, emptyList(), emptyList()), here, emptyList(), 0, 50, uids())
+        assertEquals(listOf("f1"), plan.newRecipes.map { it.id })
+        assertEquals(0, plan.summary.recipesSkipped)
+    }
+
     @Test fun `a recipe here that the file puts in a list frees its place in history`() {
         val here = (1..50L).map { ExistingRecipe(it, "u$it", "https://h.example/$it", false, isListed = false) }
         val incoming = listOf(

@@ -228,6 +228,22 @@ final class BackupDaoTests: XCTestCase {
         _ = listId
     }
 
+    func testARecipeFromAChatRoundTripsAsFromAChat() async throws {
+        var chat = dataRecipeRecord("manual:chat-1", viewedAt: 5)
+        chat.contentOrigin = "CHAT"
+        _ = try await insert(chat)
+
+        guard case .success(let exported) = await repo.export() else { return XCTFail("export failed") }
+        let other = try AppDatabase(path: nil)
+        let otherRepo = DefaultBackupRepository(db: other, clock: clock)
+        _ = try summary(await otherRepo.importBackup(exported.json))
+
+        let copy = try await other.read { try RecipeDao(db: $0).findByUrl("manual:chat-1") }!
+        XCTAssertEqual(copy.contentOrigin, "CHAT")
+        let counts = try await other.libraryCounts()
+        XCTAssertEqual(counts.chat, 1)
+    }
+
     func testExportedListsAndRecipesCarryTheirStableUids() async throws {
         let id = try await insert(dataRecipeRecord("https://example.com/a", viewedAt: 1))
         let uid = try await db.get(id)!.uid

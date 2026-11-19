@@ -20,6 +20,7 @@ final class SharedTextJsonTests: XCTestCase {
         guard case .editor(let reading) = SharedText.route(text) else { return XCTFail("not the editor's", file: file, line: line) }
         XCTAssertTrue(reading.sorted, file: file, line: line)
         XCTAssertEqual(reading.name, "Lemon Pasta", file: file, line: line)
+        XCTAssertTrue(reading.fromChat, "JSON is a chat's recipe (#355)", file: file, line: line)
         XCTAssertEqual(reading.recipe.ingredients, ["200 g spaghetti", "1 lemon", "2 tbsp butter"], file: file, line: line)
         XCTAssertEqual(reading.recipe.instructions, ["Boil the pasta.", "Toss with butter and lemon."], file: file, line: line)
         XCTAssertEqual(reading.recipe.yield, "4 servings", file: file, line: line)
@@ -65,6 +66,7 @@ final class SharedTextJsonTests: XCTestCase {
         let broken = String(json.dropLast(40))
         XCTAssertFalse(SharedText.read(broken).sorted)
         XCTAssertEqual(SharedText.read(broken).name, "")
+        XCTAssertFalse(SharedText.read(broken).fromChat)
         XCTAssertEqual(SharedText.kind(#"{"@type": "Person", "name": "Ann", "note": "recipe for disaster"}"#), .text)
         XCTAssertEqual(SharedText.kind(#"{"@type":"Recipe","name":"Empty"}"#), .text)
     }

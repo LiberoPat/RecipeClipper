@@ -29,7 +29,7 @@ struct ReadingView: View {
                 Text(recipe.name)
                     .textStyle(Typography.headlineSmall)
                     .foregroundStyle(Palette.onBackground)
-                    .padding(.bottom, sourceUrl == nil ? 14 : 0)
+                    .padding(.bottom, sourceUrl == nil && recipe.origin != .chat ? 14 : 0)
                 if let domain = content.sourceDomain, let sourceUrl {
                     SourceCredit(domain: domain, url: sourceUrl, clipped: recipe.origin == .clipped)
                         .padding(.bottom, 4)
@@ -42,6 +42,15 @@ struct ReadingView: View {
                             .padding(.bottom, 4)
                             .accessibilityIdentifier("recipe.extractedFromPage")
                     }
+                } else if recipe.origin == .chat {
+                    // Read from a chat (#355): the AI's words, so say so, quietly, where a site's
+                    // domain would sit. No link, so no Open original.
+                    Text(Strings.recipesViewChat)
+                        .textStyle(Typography.bodyMedium)
+                        .foregroundStyle(Palette.muted)
+                        .padding(.top, 2)
+                        .padding(.bottom, 14)
+                        .accessibilityIdentifier("recipe.fromAChat")
                 }
                 Times(prep: recipe.prepTime, cook: recipe.cookTime, total: recipe.totalTime)
                     .padding(.bottom, 16)

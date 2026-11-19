@@ -99,6 +99,7 @@ class OneCookbookDaoTest {
         val cooked = recipes.upsert(recipe("https://a.com/cooked"), LibraryLimit.Unlimited)
         val typed = recipes.upsert(recipe("manual:typed", origin = "MANUAL"), LibraryLimit.Unlimited)
         val sample = recipes.upsert(recipe(SampleRecipe.SOURCE_URL, origin = "MANUAL"), LibraryLimit.Unlimited)
+        val chat = recipes.upsert(recipe("manual:chat", origin = "CHAT"), LibraryLimit.Unlimited)
         db.openHelper.writableDatabase.execSQL(
             "INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (?, 1, 1)", arrayOf<Any>(inList)
         )
@@ -108,16 +109,20 @@ class OneCookbookDaoTest {
         )
 
         fun ids(rows: List<com.example.recipeclipper.data.local.dao.RecipeSummaryRow>) = rows.map { it.id }.toSet()
-        assertEquals(setOf(inList, cooked, typed, sample), ids(recipes.observeHistory("", RecipeDao.LISTED_ANY, 0, 0).first()))
-        assertEquals(setOf(cooked, typed, sample), ids(recipes.observeHistory("", RecipeDao.LISTED_NO, 0, 0).first()))
-        assertEquals(setOf(cooked), ids(recipes.observeHistory("", RecipeDao.LISTED_ANY, 1, 0).first()))
-        assertEquals("never the tour's sample", setOf(typed), ids(recipes.observeHistory("", RecipeDao.LISTED_ANY, 0, 1).first()))
-        assertEquals("the search still applies inside a view", emptySet<Long>(), ids(recipes.observeHistory("zzz", RecipeDao.LISTED_ANY, 0, 1).first()))
+        assertEquals(setOf(inList, cooked, typed, sample, chat), ids(recipes.observeHistory("", RecipeDao.LISTED_ANY, 0, 0, 0).first()))
+        assertEquals(setOf(cooked, typed, sample, chat), ids(recipes.observeHistory("", RecipeDao.LISTED_NO, 0, 0, 0).first()))
+        assertEquals(setOf(cooked), ids(recipes.observeHistory("", RecipeDao.LISTED_ANY, 1, 0, 0).first()))
+        assertEquals("never the tour's sample", setOf(typed), ids(recipes.observeHistory("", RecipeDao.LISTED_ANY, 0, 1, 0).first()))
+        assertEquals("the search still applies inside a view", emptySet<Long>(), ids(recipes.observeHistory("zzz", RecipeDao.LISTED_ANY, 0, 1, 0).first()))
+
+        assertEquals("a chat's recipe is its own view, not Typed by you", setOf(chat), ids(recipes.observeHistory("", RecipeDao.LISTED_ANY, 0, 0, 1).first()))
+        assertEquals(emptySet<Long>(), ids(recipes.observeHistory("zzz", RecipeDao.LISTED_ANY, 0, 0, 1).first()))
 
         val counts = recipes.observeLibraryCounts().first()
-        assertEquals(4, counts.total)
+        assertEquals(5, counts.total)
         assertEquals(1, counts.inList)
         assertEquals(1, counts.cooked)
         assertEquals(1, counts.typed)
+        assertEquals(1, counts.chat)
     }
 }

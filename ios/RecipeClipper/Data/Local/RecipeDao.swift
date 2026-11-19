@@ -13,7 +13,8 @@ struct RecipeDao {
         EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
         contentOrigin = 'CLIPPED' AS isClipped,
         (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-        sourceUrl
+        sourceUrl,
+        contentOrigin = 'CHAT' AS isFromChat
         """
 
     func get(_ id: Int64) throws -> RecipeRecord? {
@@ -214,9 +215,10 @@ struct RecipeDao {
     /// and the filter can't disagree; the search still applies inside it.
     /// `cooked` = 1 keeps the recipes with a cooking marked (the user's own photos, or "Mark as
     /// cooked", #116, #173); `typed` = 1 those typed, scanned or read in by hand (`contentOrigin`
-    /// MANUAL, not the tour's sample): V4's views.
+    /// MANUAL, not the tour's sample), `chat` = 1 those read from a chat's JSON (`contentOrigin`
+    /// CHAT, #355): V4's views.
     func history(
-        query: String, listed: Int = RecipeDao.listedAny, cooked: Int = 0, typed: Int = 0
+        query: String, listed: Int = RecipeDao.listedAny, cooked: Int = 0, typed: Int = 0, chat: Int = 0
     ) throws -> [RecipeSummaryRecord] {
         try db.query(
             """
@@ -231,9 +233,11 @@ struct RecipeDao {
                OR EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id))
               AND (?4 = 0
                OR (contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'))
+              AND (?5 = 0
+               OR contentOrigin = 'CHAT')
             ORDER BY lastViewedAt DESC, id DESC
             """,
-            query, listed, cooked, typed, map: RecipeSummaryRecord.init(row:)
+            query, listed, cooked, typed, chat, map: RecipeSummaryRecord.init(row:)
         )
     }
 
@@ -249,10 +253,11 @@ struct RecipeDao {
             SELECT COUNT(*),
                    COALESCE(SUM(EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)), 0),
                    COALESCE(SUM(EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id)), 0),
-                   COALESCE(SUM(contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'), 0)
+                   COALESCE(SUM(contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'), 0),
+                   COALESCE(SUM(contentOrigin = 'CHAT'), 0)
             FROM recipes
             """
-        ) { RecipeCounts(all: $0.int(0), inList: $0.int(1), cooked: $0.int(2), typed: $0.int(3)) }
+        ) { RecipeCounts(all: $0.int(0), inList: $0.int(1), cooked: $0.int(2), typed: $0.int(3), chat: $0.int(4)) }
             ?? RecipeCounts(all: 0, inList: 0)
     }
 
@@ -276,7 +281,7 @@ struct RecipeDao {
     /// viewed of them. A recipe in any list is never touched, and neither is one planned for
     /// `today` or later (#49; an epoch day, see `PlanDays`): both are outside the cap. A recipe
     /// planned only for past days is ordinary history again. Nor is one in a saved menu (#52),
-    /// nor one typed in by hand (#102, origin MANUAL): it has no link to bring it back, nor one
+    /// nor one typed in by hand (#102, origin MANUAL, or CHAT, #355): it has no link to bring it back, nor one
     /// with the user's own photos (#116).
     ///
     /// The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL is
@@ -290,7 +295,7 @@ struct RecipeDao {
                   AND id NOT IN (SELECT recipeId FROM meal_plan_entries
                                  WHERE recipeId IS NOT NULL AND day >= ?2)
                   AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
-                  AND contentOrigin != 'MANUAL'
+                  AND contentOrigin NOT IN ('MANUAL', 'CHAT')
                   AND id NOT IN (SELECT recipeId FROM cooked_photos)
                 ORDER BY lastViewedAt DESC, id DESC
                 LIMIT -1 OFFSET ?1
@@ -311,7 +316,7 @@ struct RecipeDao {
               AND id NOT IN (SELECT recipeId FROM meal_plan_entries
                              WHERE recipeId IS NOT NULL AND day >= ?1)
               AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
-              AND contentOrigin != 'MANUAL'
+              AND contentOrigin NOT IN ('MANUAL', 'CHAT')
               AND id NOT IN (SELECT recipeId FROM cooked_photos)
             ORDER BY lastViewedAt ASC, id ASC
             LIMIT 1

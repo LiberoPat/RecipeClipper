@@ -200,7 +200,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   switches, never a bare ✓. Reached from the gear beside the Home title;
   another entry point is the owner's call.
 - **Recipes** (#345, V4): under search, a strip of automatic views (Not in a
-  list, Cooked, Typed by you; each its own screen, Back to Recipes) then the
+  list, Cooked, Typed by you, From a chat; each its own screen, Back to Recipes) then the
   lists, in place of V1's All / In a list / Not in a list pills (those stay
   with `oneCookbook` off). Views are questions about stored data, never
   filing. Recently viewed is a sort, not a place.

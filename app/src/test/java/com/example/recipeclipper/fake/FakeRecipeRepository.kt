@@ -80,6 +80,7 @@ class FakeRecipeRepository : RecipeRepository {
     val addManualCalls = mutableListOf<RecipeDraft>()
     val addManualNotes = mutableListOf<String?>()
     val addManualLanguages = mutableListOf<String?>()
+    val addManualFromChat = mutableListOf<Boolean>()
 
     /** How many times [importFromUrl] has been called — for the reload-on-reconnect tests. */
     var importCalls = 0
@@ -139,7 +140,8 @@ class FakeRecipeRepository : RecipeRepository {
         return saveEditResult
     }
 
-    override suspend fun addManual(draft: RecipeDraft, language: String?, notes: String?): Recipe? {
+    override suspend fun addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Boolean): Recipe? {
+        addManualFromChat += fromChat
         addManualCalls += draft
         addManualLanguages += language
         addManualNotes += notes
@@ -205,18 +207,19 @@ class FakeRecipeRepository : RecipeRepository {
                 RecipeFilter.NOT_IN_A_LIST -> rows.filter { !it.isSaved }
                 RecipeFilter.COOKED -> rows.filter { it.lastCookedDay != null }
                 RecipeFilter.TYPED -> rows.filter { it.isTyped }
+                RecipeFilter.CHAT -> rows.filter { it.isFromChat }
             }
         }
     }
 
     /** Typed in by hand (a `manual:` link), never the tour's sample (#345). */
     private val RecipeSummary.isTyped: Boolean
-        get() = sourceUrl.startsWith("manual:") && sourceUrl != "manual:sample"
+        get() = sourceUrl.startsWith("manual:") && sourceUrl != "manual:sample" && !isFromChat
 
     /** Counted from what [history] holds (#345). */
     override fun observeRecipeCounts(): Flow<RecipeCounts> =
         history.map { rows ->
-            RecipeCounts(rows.size, rows.count { it.isSaved }, rows.count { it.lastCookedDay != null }, rows.count { it.isTyped })
+            RecipeCounts(rows.size, rows.count { it.isSaved }, rows.count { it.lastCookedDay != null }, rows.count { it.isTyped }, rows.count { it.isFromChat })
         }
 
     /**

@@ -65,6 +65,7 @@ internal fun filterLabel(filter: RecipeFilter): Int = when (filter) {
     RecipeFilter.NOT_IN_A_LIST -> R.string.recipes_filter_not_in_list
     RecipeFilter.COOKED -> R.string.recipes_view_cooked
     RecipeFilter.TYPED -> R.string.recipes_view_typed
+    RecipeFilter.CHAT -> R.string.recipes_view_chat
 }
 
 @Composable

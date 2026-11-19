@@ -185,6 +185,7 @@ struct RecipesScreen: View {
         case .notInAList: Strings.recipesEmptyNotInList
         case .cooked: Strings.recipesEmptyCooked
         case .typed: Strings.recipesEmptyTyped
+        case .chat: Strings.recipesEmptyChat
         }
     }
 

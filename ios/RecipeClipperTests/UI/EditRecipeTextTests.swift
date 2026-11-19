@@ -58,6 +58,7 @@ final class EditRecipeTextTests: XCTestCase {
         vm.onSave()
         await settleMain(until: { vm.uiState.savedId != nil })
         XCTAssertEqual(repository.addManualCalls.map(\.name), ["Lemon Pasta"])
+        XCTAssertEqual(repository.addManualFromChat, [true], "a chat's JSON is saved as from a chat (#355)")
         XCTAssertEqual(vm.uiState.savedId, 8)
     }
 
@@ -87,6 +88,7 @@ final class EditRecipeTextTests: XCTestCase {
         await settleMain(until: { vm.uiState.savedId != nil })
 
         XCTAssertEqual(repository.addManualCalls.map(\.name), ["Kuchen"])
+        XCTAssertEqual(repository.addManualFromChat, [false], "plain text is not from a chat (#355)")
         XCTAssertEqual(repository.addManualLanguages, ["de"])
         XCTAssertEqual(vm.uiState.savedId, 7)
     }

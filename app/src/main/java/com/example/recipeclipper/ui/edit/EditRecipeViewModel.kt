@@ -136,7 +136,8 @@ data class EditRecipeUiState(
  *
  * With text ([SHARED_TEXT_ARG], #306) it is the review of text shared in: split by the same
  * splitter, in the text's language ([SharedText.read]), or, when it doesn't split, every line as
- * a step to finish by hand. Saved as a typed-in recipe, like a scan; nothing until Save.
+ * a step to finish by hand. Saved as a typed-in recipe, like a scan; nothing until Save. A chat's
+ * recipe JSON (#350) is saved as from a chat (CHAT, #355): the same, with its own label and view.
  */
 @HiltViewModel
 class EditRecipeViewModel @Inject constructor(
@@ -198,6 +199,9 @@ class EditRecipeViewModel @Inject constructor(
     /** The language the photo's lines were read in (#208), or null when nothing was clear. */
     private var photoLanguage: String? = null
 
+    /** The shared text was a chat's recipe JSON (#355): it is saved as from a chat. */
+    private var fromChat = false
+
     init {
         if (recipeId != null) {
             viewModelScope.launch {
@@ -220,6 +224,7 @@ class EditRecipeViewModel @Inject constructor(
         viewModelScope.launch {
             val reading = read ?: withContext(sorting) { SharedText.read(text) }
             photoLanguage = reading.recipe.language
+            fromChat = reading.fromChat
             val recipe = reading.recipe
             _uiState.update {
                 it.copy(
@@ -373,7 +378,9 @@ class EditRecipeViewModel @Inject constructor(
                 return@launch
             }
             val saved = if (scanPages != null || sharedText != null) {
-                repository.addManual(state.draft, scannedLanguage(state.draft), state.note.takeIf { it.isNotBlank() })
+                repository.addManual(
+                    state.draft, scannedLanguage(state.draft), state.note.takeIf { it.isNotBlank() }, fromChat
+                )
             } else if (recipeId == null) {
                 repository.addManual(state.draft)
             } else {

@@ -103,6 +103,21 @@ class RecipeSourceCreditTest {
     }
 
     @Test
+    fun aRecipeFromAChatSaysSoWhereTheDomainWouldBeAndHasNoOpenOriginInstead() {
+        show(recipe.copy(origin = ContentOrigin.CHAT, sourceUrl = "manual:chat-1"))
+
+        compose.onNodeWithText("From a chat").assertIsDisplayed()
+        compose.onNodeWithText("Open original").assertDoesNotExist()
+    }
+
+    @Test
+    fun aTypedRecipeSaysNothingOfAChat() {
+        show(recipe.copy(origin = ContentOrigin.MANUAL, sourceUrl = "manual:typed-1"))
+
+        compose.onNodeWithText("From a chat").assertDoesNotExist()
+    }
+
+    @Test
     fun aParsedRecipeHasNoPickedLine() {
         show()
 

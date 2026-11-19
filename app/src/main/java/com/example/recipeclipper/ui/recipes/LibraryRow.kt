@@ -53,7 +53,11 @@ internal fun LibraryRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Details(sourceCreditText(recipe.sourceDomain, recipe.isClipped), recipe.totalTime)
+            Details(
+                sourceCreditText(recipe.sourceDomain, recipe.isClipped)
+                    ?: if (recipe.isFromChat) stringResource(R.string.recipes_view_chat) else null,
+                recipe.totalTime
+            )
         }
         if (recipe.isSaved) {
             Icon(

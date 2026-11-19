@@ -82,9 +82,15 @@ interface RecipeRepository {
      * On a full free library (#107) with nothing to make room, the recipe comes back with id 0:
      * not kept, and the editor stays open. [language] is a scanned recipe's (#226), as its
      * words said; a recipe typed in has none. [notes] is the recipe's note from the start (#334:
-     * shared text's lines the split left out), as the cook left it.
+     * shared text's lines the split left out), as the cook left it. [fromChat] saves it as read from
+     * a chat's JSON (#355): origin CHAT, otherwise the same as typed in.
      */
-    suspend fun addManual(draft: RecipeDraft, language: String? = null, notes: String? = null): Recipe?
+    suspend fun addManual(
+        draft: RecipeDraft,
+        language: String? = null,
+        notes: String? = null,
+        fromChat: Boolean = false
+    ): Recipe?
 
     /** Opens a recipe from history, a list or home. Counts as a view, so it moves to the top. */
     suspend fun open(id: Long): Recipe?

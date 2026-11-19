@@ -262,6 +262,20 @@ class RecipeDaoTest {
     }
 
     @Test
+    fun aRecipeFromAChatIsNeverCulledEither() = runBlocking {
+        val chat = recipes.upsert(
+            recipe("manual:chat", viewedAt = 1).copy(contentOrigin = "CHAT"), HISTORY_LIMIT
+        )
+
+        repeat(HISTORY_LIMIT + 5) { n ->
+            recipes.upsert(recipe("https://a.com/$n", viewedAt = 1000L + n), HISTORY_LIMIT)
+        }
+
+        assertNotNull("a recipe from a chat has no link to bring it back", recipes.get(chat))
+        assertEquals(HISTORY_LIMIT + 1, count())
+    }
+
+    @Test
     fun openingAnOldRecipeMovesItToTheTopSoItIsNotCulled() = runBlocking {
         val old = recipes.upsert(recipe("https://a.com/old", viewedAt = 1), HISTORY_LIMIT)
         repeat(HISTORY_LIMIT - 1) { n ->

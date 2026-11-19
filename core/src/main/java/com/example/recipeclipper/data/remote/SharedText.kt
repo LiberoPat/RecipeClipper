@@ -148,7 +148,9 @@ object SharedText {
         val sorted: Boolean,
         val leftovers: List<String> = emptyList(),
         /** The recipe's name when the text carried one (a schema.org Recipe, #350); else blank. */
-        val name: String = ""
+        val name: String = "",
+        /** Read from a schema.org Recipe's JSON (#350): the editor saves it as from a chat (#355). */
+        val fromChat: Boolean = false
     )
 
     /** How many places in the text that open a JSON value are tried before giving up. */
@@ -177,7 +179,7 @@ object SharedText {
                     recipe.ingredients, recipe.instructions, recipe.yield,
                     recipe.prepTime, recipe.cookTime, recipe.totalTime, recipe.language
                 )
-                return Reading(split, sorted = true, name = recipe.name)
+                return Reading(split, sorted = true, name = recipe.name, fromChat = true)
             }
             i = end
         }

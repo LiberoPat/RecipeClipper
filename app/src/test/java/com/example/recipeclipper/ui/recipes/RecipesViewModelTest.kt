@@ -627,7 +627,8 @@ class RecipesViewModelTest {
         val repository = FakeRecipeRepository().apply {
             history.value = listOf(
                 saved(1), summary(2).copy(lastCookedDay = 1), summary(3).copy(sourceUrl = "manual:x"),
-                summary(4).copy(sourceUrl = "manual:sample")
+                summary(4).copy(sourceUrl = "manual:sample"),
+                summary(5).copy(sourceUrl = "manual:chat", isFromChat = true)
             )
         }
         val lists = com.example.recipeclipper.fake.FakeListRepository().apply {
@@ -640,9 +641,10 @@ class RecipesViewModelTest {
         advanceUntilIdle()
 
         val counts = vm.uiState.value.counts!!
-        assertEquals(3, counts.notInList)
+        assertEquals(4, counts.notInList)
         assertEquals(1, counts.cooked)
-        assertEquals("never the tour's sample", 1, counts.typed)
+        assertEquals("never the tour's sample, nor a chat's recipe", 1, counts.typed)
+        assertEquals(1, counts.chat)
         assertEquals(listOf("Favorites"), vm.uiState.value.lists.map { it.name })
         assertTrue(vm.uiState.value.showsViewsStrip)
     }

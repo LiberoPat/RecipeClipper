@@ -155,6 +155,7 @@ class SharedTextTest {
         val reading = (SharedText.route(text) as Route.Editor).reading
         assertTrue(reading.sorted)
         assertEquals("Lemon Pasta", reading.name)
+        assertTrue("JSON is a chat's recipe (#355)", reading.fromChat)
         assertEquals(listOf("200 g spaghetti", "1 lemon", "2 tbsp butter"), reading.recipe.ingredients)
         assertEquals(listOf("Boil the pasta.", "Toss with butter and lemon."), reading.recipe.instructions)
         assertEquals("4 servings", reading.recipe.yield)
@@ -194,6 +195,8 @@ class SharedTextTest {
         val broken = json.dropLast(40)
         assertFalse(SharedText.read(broken).sorted)
         assertEquals("", SharedText.read(broken).name)
+        assertFalse(SharedText.read(broken).fromChat)
+        assertFalse("a plain-text recipe is not from a chat", SharedText.read(recipe).fromChat)
         val notRecipe = """{"@type": "Person", "name": "Ann", "note": "recipe for disaster"}"""
         assertEquals(Kind.TEXT, SharedText.kind(notRecipe))
         // A Recipe with a name and nothing to cook is not one.

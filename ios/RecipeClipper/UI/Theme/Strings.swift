@@ -334,6 +334,10 @@ enum Strings {
     static var recipesViewNotInListNote: String { String(localized: "recipes_view_not_in_list_note") }
     static var recipesViewCookedNote: String { String(localized: "recipes_view_cooked_note") }
     static var recipesViewTypedNote: String { String(localized: "recipes_view_typed_note") }
+    // From a chat (#355): the view, its note and its empty line; the view's name is the label too.
+    static var recipesViewChat: String { String(localized: "recipes_view_chat") }
+    static var recipesViewChatNote: String { String(localized: "recipes_view_chat_note") }
+    static var recipesEmptyChat: String { String(localized: "recipes_empty_chat") }
     static var recipesEmptyCooked: String { String(localized: "recipes_empty_cooked") }
     static var recipesEmptyTyped: String { String(localized: "recipes_empty_typed") }
     static var homeSeeAll: String { String(localized: "home_see_all") }

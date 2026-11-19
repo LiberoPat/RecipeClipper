@@ -66,12 +66,12 @@ internal class InMemoryRecipeDao : RecipeDao() {
     override suspend fun crossRefsFor(recipeId: Long) = emptyList<RecipeListCrossRef>()
     override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) {}
     override fun observeHistory(): Flow<List<RecipeSummaryRow>> = emptyFlow()
-    override fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
+    override fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int, chat: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override fun observeLibraryCounts(): Flow<LibraryCountsRow> = emptyFlow()
     override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override suspend fun cullHistory(keep: Int, today: Long) {}
     override suspend fun oldestCullable(today: Long): Long? = rows.values
-        .filter { it.contentOrigin != "MANUAL" }
+        .filter { it.contentOrigin != "MANUAL" && it.contentOrigin != "CHAT" }
         .minWithOrNull(compareBy<RecipeEntity>({ it.lastViewedAt }, { it.id }))?.id
     override suspend fun count() = rows.size
     override fun observeCount(): Flow<Int> = emptyFlow()

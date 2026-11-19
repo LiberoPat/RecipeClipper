@@ -36,7 +36,7 @@ object Routes {
     // The library of every recipe (#102); it replaced History, whose route was `history`.
     const val RECIPES = "recipes"
 
-    // An automatic view of the cookbook (#345): `NOT_IN_A_LIST`, `COOKED` or `TYPED`.
+    // An automatic view of the cookbook (#345): `NOT_IN_A_LIST`, `COOKED`, `TYPED` or `CHAT`.
     const val RECIPES_VIEW = "recipes/view/{${RecipesViewModel.VIEW_ARG}}"
     fun recipesView(view: RecipeFilter) = "recipes/view/${view.name}"
     const val SETTINGS = "settings"

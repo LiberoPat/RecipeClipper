@@ -1553,7 +1553,7 @@ lines in the differential corpus, with a `lang:` argument.
   behind a warning, then Delete): name, yield, three times, ingredients and
   steps one per line, a photo link. Saving needs a name plus ingredients or
   steps (the parsers' rule); nothing typed is converted or guessed.
-  `contentOrigin` (`PARSED` | `EDITED` | `CLIPPED` | `MANUAL` | `EXTRACTED`, by
+  `contentOrigin` (`PARSED` | `EDITED` | `CLIPPED` | `MANUAL` | `EXTRACTED` | `CHAT`, by
   name; an unknown name reads as `EDITED`) and `editedAt` (the last saved edit).
   Anything but `PARSED` or `EXTRACTED` (#103) is the user's: a re-share opens it
   without fetching and only counts as a view. "Update from source" is the one
@@ -3084,7 +3084,7 @@ off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, 
 - **Recipes is a cookbook.** Under search, a **strip of automatic views** followed by the lists, in
   place of V1's pills: Not in a list (the `isSaved` `EXISTS`, as the bookmark), Cooked (any
   `cooked_photos` row, so "Mark as cooked" counts, #173), Typed by you (`contentOrigin = 'MANUAL'`,
-  never the tour's sample, so scanned and shared-text recipes count too). Each is a card with its
+  never the tour's sample, so scanned and shared-text recipes count too), From a chat (`contentOrigin = 'CHAT'`, #355). Each is a card with its
   count; a view opens as **its own screen** (route `recipes/view/{view}`, Back to Recipes; iOS
   `Route.recipesView`) which is the Recipes screen over the same ViewModel with its filter fixed: title,
   a one-line note, search, sort, swipe to delete with the usual undo, no strip, no + menu. A list card
@@ -4741,6 +4741,22 @@ shares into the app. Behind the existing `photoText` flag, on both platforms.
   `ScanPages` writes them as files in `Scans/` in the App Group container; `ImageLoader` reads a
   file URL straight from disk (never into its `URLCache`); Vision is given the picture's EXIF
   orientation, so a phone's sideways-stored photo reads the right way up.
+- **From a chat** (#355): a recipe read from shared JSON (#350; `SharedText.Reading.fromChat`) is
+  saved with `contentOrigin` **`CHAT`**: AI recipes can be wrong (times, food-safety temperatures),
+  so the cook sees where one came from. It is `MANUAL` in every rule (a `manual:<uuid>` link, never
+  fetched or refreshed, "Update from source" absent, counted by the one `upsert`, never culled,
+  imported even on a full library, stays `CHAT` when edited, exported by name), and not `MANUAL` in
+  the label and the view. No migration: the column already stores the name, and an older app reads
+  the unknown `CHAT` as `EDITED` (the user's version, never overwritten). The reading view says
+  "From a chat" quietly under the title, where a site's domain would sit, with no Open original
+  (the recipe has no link); the Recipes and list rows say it where the site would be. The Recipes
+  strip's **From a chat** view (`RecipeFilter.CHAT`, route `recipes/view/CHAT`, speech-bubble icon)
+  sits after Typed by you, always shown like the others; it is disjoint from Typed by you (that
+  query stays `contentOrigin = 'MANUAL'`; iOS's `RecipeSummary.isTyped` excludes `isFromChat`). A
+  summary row carries `isFromChat` (`contentOrigin = 'CHAT'`). Every query that said
+  `contentOrigin != 'MANUAL'` (the two cull queries) or `= 'MANUAL'` (the import's listed test) now
+  names both. Text that only looks like a recipe, not JSON, stays `MANUAL`. Three strings
+  (`recipes_view_chat`, `_note`, `recipes_empty_chat`) in six languages, on both platforms.
 - **Saved as the cook's own** (`addManual`, now with a language): `MANUAL`, `manual:<uuid>`,
   never fetched or refreshed, no "Update from source", no source credit; the language is the
   one the lines were read in (#208), then the checked recipe's words, else English, as for a
@@ -4837,7 +4853,7 @@ scan (#226) are. Behind the `shareText` flag, on both platforms.
   ingredients, steps, yield and times; the prose around it is not kept (a chat's "Here you go!"
   is not the cook's note), and **its `url` and image are never used** (an AI may make either up;
   the recipe has no source credit). JSON that doesn't parse, or holds no recipe, falls through
-  to the rules above. Saved like any shared text: `MANUAL`, counted by the one `upsert`.
+  to the rules above. Saved like any shared text, but as **`CHAT`** (#355), counted by the one `upsert`.
 - **Saved as the cook's own** (`addManual` with the text's language, then the checked recipe's
   words, else English), like a scan: `MANUAL`, `manual:<uuid>`, no source credit, the note as
   the review left it. Nothing is saved until Save; Back discards.

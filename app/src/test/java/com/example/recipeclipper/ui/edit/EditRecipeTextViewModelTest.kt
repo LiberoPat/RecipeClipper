@@ -79,6 +79,7 @@ class EditRecipeTextViewModelTest {
             advanceUntilIdle()
             assertEquals(1, repository.addManualCalls.size)
             assertEquals(8L, vm.uiState.value.savedId)
+            assertEquals("a chat's JSON is saved as from a chat (#355)", listOf(true), repository.addManualFromChat)
         }
 
     @Test fun `text that doesn't split is every line a step, as written`() =
@@ -108,6 +109,7 @@ class EditRecipeTextViewModelTest {
 
             assertEquals("Kuchen", repository.addManualCalls.single().name)
             assertEquals("de", repository.addManualLanguages.single())
+            assertEquals("plain text is not from a chat (#355)", listOf(false), repository.addManualFromChat)
             assertEquals(7L, vm.uiState.value.savedId)
         }
 

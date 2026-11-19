@@ -55,5 +55,9 @@ class RecipeDraftTest {
         assertEquals(ContentOrigin.EDITED, ContentOrigin.PARSED.afterEdit())
         assertEquals(ContentOrigin.CLIPPED, ContentOrigin.CLIPPED.afterEdit())
         assertEquals(ContentOrigin.MANUAL, ContentOrigin.MANUAL.afterEdit())
+        assertEquals(ContentOrigin.CHAT, ContentOrigin.fromName("CHAT"))
+        assertEquals(ContentOrigin.CHAT, ContentOrigin.CHAT.afterEdit())
+        assertTrue(ContentOrigin.CHAT.isUsersVersion)
+        assertFalse(ContentOrigin.isSources("CHAT"))
     }
 }

@@ -123,7 +123,7 @@ class DefaultRecipeRepository @Inject constructor(
         }
     }
 
-    override suspend fun addManual(draft: RecipeDraft, language: String?, notes: String?): Recipe? {
+    override suspend fun addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Boolean): Recipe? {
         if (!draft.isValid) return null
         val now = clock.now()
         val recipe = draft.applyTo(
@@ -131,7 +131,7 @@ class DefaultRecipeRepository @Inject constructor(
                 name = "", image = null, ingredients = emptyList(), instructions = emptyList(),
                 prepTime = null, cookTime = null, totalTime = null, yield = null,
                 sourceUrl = ManualRecipe.newSourceUrl(newUid()),
-                origin = ContentOrigin.MANUAL,
+                origin = if (fromChat) ContentOrigin.CHAT else ContentOrigin.MANUAL,
                 editedAt = now,
                 language = language,
                 notes = notes?.trim()?.ifEmpty { null }
@@ -403,12 +403,13 @@ class DefaultRecipeRepository @Inject constructor(
         }
         val cooked = if (filter == RecipeFilter.COOKED) 1 else 0
         val typed = if (filter == RecipeFilter.TYPED) 1 else 0
-        return recipeDao.observeHistory(query, listed, cooked, typed).map { rows -> rows.map { it.toDomain() } }
+        val chat = if (filter == RecipeFilter.CHAT) 1 else 0
+        return recipeDao.observeHistory(query, listed, cooked, typed, chat).map { rows -> rows.map { it.toDomain() } }
             .orEmptyOnError(log, "observeHistory")
     }
 
     override fun observeRecipeCounts(): Flow<RecipeCounts> =
-        recipeDao.observeLibraryCounts().map { RecipeCounts(it.total, it.inList, it.cooked, it.typed) }.catch { e ->
+        recipeDao.observeLibraryCounts().map { RecipeCounts(it.total, it.inList, it.cooked, it.typed, it.chat) }.catch { e ->
             log.error("observeRecipeCounts failed", e)
             emit(RecipeCounts(0, 0))
         }

@@ -84,6 +84,22 @@ class BackupDaoTest {
         assertTrue(listId > 0)
     }
 
+    /** A recipe from a chat (#355) keeps its origin through an export and an import, and still comes in on a full free library. */
+    @Test
+    fun aRecipeFromAChatRoundTripsAsFromAChat() = runBlocking {
+        db.recipeDao().upsert(recipe("manual:chat-1", viewed = 5).copy(contentOrigin = "CHAT"), 50)
+
+        val exported = (repo(db).export() as BackupResult.Success<ExportedBackup>).value
+        val other = open()
+        try {
+            assertTrue(repo(other).import(exported.json) is BackupResult.Success)
+            assertEquals("CHAT", other.recipeDao().findByUrl("manual:chat-1")!!.contentOrigin)
+            assertEquals(1, other.recipeDao().observeLibraryCounts().first().chat)
+        } finally {
+            other.close()
+        }
+    }
+
     /** The pantry (#51) and the grocery list (#50) go into the file and come back whole, a grocery keeping its recipe. */
     @Test
     fun pantryAndGroceriesRoundTrip() = runBlocking {

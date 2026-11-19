@@ -521,6 +521,21 @@ final class RecipeDaoTests: XCTestCase {
         XCTAssertEqual(count, historyLimit + 1)
     }
 
+    func testARecipeFromAChatIsNeverCulledEither() async throws {
+        var chat = dataRecipeRecord("manual:chat", viewedAt: 1)
+        chat.contentOrigin = "CHAT"
+        let id = try await db.upsert(chat)
+
+        for n in 0..<(historyLimit + 5) {
+            try await db.upsert(dataRecipeRecord("https://a.com/\(n)", viewedAt: 1000 + Int64(n)))
+        }
+
+        let kept = try await db.get(id)
+        XCTAssertNotNil(kept, "a recipe from a chat has no link to bring it back (#355)")
+        let count = try await db.recipeCount()
+        XCTAssertEqual(count, historyLimit + 1)
+    }
+
     func testOpeningAnOldRecipeMovesItToTheTopSoItIsNotCulled() async throws {
         let old = try await db.upsert(dataRecipeRecord("https://a.com/old", viewedAt: 1))
         for n in 0..<(historyLimit - 1) {
