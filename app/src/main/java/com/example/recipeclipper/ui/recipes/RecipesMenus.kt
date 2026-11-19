@@ -154,34 +154,3 @@ internal fun PasteLinkDialog(
         }
     )
 }
-
-/** The strip's "New list" (#371): the Lists screen's create flow, as a dialog (same strings). */
-@Composable
-internal fun NewListDialog(
-    name: String,
-    onNameChange: (String) -> Unit,
-    onCreate: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.lists_new_list_tile)) },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = onNameChange,
-                label = { Text(stringResource(R.string.label_list_name)) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onCreate, enabled = name.isNotBlank()) {
-                Text(stringResource(R.string.action_create))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        }
-    )
-}

@@ -1,0 +1,14 @@
+<!-- The Recipes strip's Lists card (#371): a 2x2 grid, for the Lists screen's cover grid. Drawn here
+     for the same reason as the other strip icons (no material-icons-extended). Stroked, like its SF
+     Symbol (square.grid.2x2) on iOS; the Icon composable applies the tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineJoin="round"
+        android:pathData="M4,4h6v6H4z M14,4h6v6h-6z M4,14h6v6H4z M14,14h6v6h-6z" />
+</vector>

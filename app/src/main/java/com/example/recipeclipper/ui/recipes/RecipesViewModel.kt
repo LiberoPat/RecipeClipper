@@ -61,8 +61,6 @@ data class RecipesUiState(
     val cullKeep: Int? = null,
     val view: RecipeFilter? = null,
     val lists: List<RecipeList> = emptyList(),
-    /** The "New list" card's dialog (#371): the name typed, or null while it is closed. */
-    val newListName: String? = null,
     /** An Undo was refused, the free library being full (#345): the screen says so once, then clears it. */
     val restoreRefused: Boolean = false
 ) {
@@ -108,7 +106,7 @@ class RecipesViewModel @Inject constructor(
      *  delete (#333); none without it (tests that aren't about them). */
     private val countdowns: TimerCountdownSync? = null,
     /** The strip's lists (#345); none without it (tests that aren't about them). */
-    private val lists: ListRepository? = null,
+    lists: ListRepository? = null,
     /** The automatic view's route argument (V4), when opened on one. */
     savedStateHandle: SavedStateHandle? = null
 ) : ViewModel() {
@@ -126,7 +124,6 @@ class RecipesViewModel @Inject constructor(
         .distinctUntilChanged()
     private val linkInput = MutableStateFlow<String?>(null)
     private val restoreRefused = MutableStateFlow(false)
-    private val newListName = MutableStateFlow<String?>(null)
     // In the ViewModel, not `remember`, so it survives rotation; not stored, so Recipes opens on All.
     private val filter = MutableStateFlow(view ?: RecipeFilter.ALL)
 
@@ -168,12 +165,9 @@ class RecipesViewModel @Inject constructor(
             count,
             filter,
             counts,
-            combine(cullKeep, listsFlow, newListName) { keep, shelves, naming -> Triple(keep, shelves, naming) }
-        ) { state, saved, picked, all, (keep, shelves, naming) ->
-            state.copy(
-                count = saved, filter = picked, counts = all, cullKeep = keep, view = view, lists = shelves,
-                newListName = naming
-            )
+            combine(cullKeep, listsFlow) { keep, shelves -> keep to shelves }
+        ) { state, saved, picked, all, (keep, shelves) ->
+            state.copy(count = saved, filter = picked, counts = all, cullKeep = keep, view = view, lists = shelves)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipesUiState())
 
     fun onQueryChange(text: String) {
@@ -186,27 +180,6 @@ class RecipesViewModel @Inject constructor(
 
     fun onSortChange(value: RecipeSort) {
         preferences.recipeSort = value
-    }
-
-    /** The strip's "New list" card (#371): opens the name dialog, empty. */
-    fun onNewList() {
-        newListName.value = ""
-    }
-
-    fun onNewListNameChange(text: String) {
-        newListName.value = text
-    }
-
-    fun onNewListDismiss() {
-        newListName.value = null
-    }
-
-    /** Creates the list, empty as on the Lists screen (no recipe in hand); a blank name is ignored. */
-    fun onCreateList() {
-        val name = newListName.value?.trim().orEmpty()
-        if (name.isEmpty()) return
-        newListName.value = null
-        viewModelScope.launch { lists?.createList(name, addRecipeId = null) }
     }
 
     /** "Paste a link" from the + menu: opens the dialog, empty. */

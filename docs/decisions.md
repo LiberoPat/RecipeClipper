@@ -2868,17 +2868,15 @@ bends the settled link field: an always-visible field became a tile that opens i
   sample counts, as in its "N recipes" line); Lists is every list.
 - **Home's rows after #371 (owner, 2026-11-19):** the Recipes bottom tab opens Home, so Home's
   Recipes row (and the shelf's See all) was the only way into the Recipes screen: the row stays.
-  The Lists row goes **with `oneCookbook` on** (the lists are cards on Recipes' lists strip; redundant),
-  and stays with it off, where Recipes has no list cards. The Lists screen and its route stay.
-  The one thing the row alone offered, making a list with no recipe in hand, moved to a
-  fixed **"Lists" header** above Recipes' lists strip (owner, 2026-11-19; first drafted as two cards at
-  the end of the strip, which with many lists took forever to reach): the title (`nav_lists`) on the
-  left and on the right an **"All lists"** text action (`lists_all`, new in six languages) that
-  opens the Lists screen and its cover grid, Back returning to Recipes, and a **"+"** (labelled
-  `lists_new_list_tile`) that makes a list (Android a dialog, iOS an alert: the Lists screen's name
-  field, Cancel/Create and strings, creating an empty list). The header never scrolls sideways and
-  shows whenever the strip does, even with no lists; the views (Not in a list, Cooked, ...) are
-  their own strip above it. The Lists screen stays reachable with `oneCookbook` on.
+  The Lists row goes **with `oneCookbook` on** (redundant with Recipes), and stays with it off, where
+  Recipes has no Lists card. The Lists screen and its route stay. Reaching it from Recipes took
+  three tries (owner, 2026-11-19): two cards at the end of the strip (too far to scroll to with many
+  lists), then a fixed "Lists" header with "All lists" and "+" above a lists strip, then the final
+  one: **a single Lists card at the front of the views strip**, in the views' card style, its count
+  the number of lists, title `nav_lists`, opening the Lists screen (Back returns to Recipes). No
+  strip of the lists on Recipes and no "+" there: a list is made on the Lists screen (its New list
+  tile, last in the grid) or in the save-to-list sheet (needs a recipe). `lists_all` was added and
+  removed again. The card shows whenever the strip does.
 - **The tour:** `HOME_LINK` is anchored to the Paste a link tile, and now reads "…or tap here
   to paste one."
 - Unchanged: the empty-library hint and "Restore from a backup file", the one-time backup
@@ -3096,14 +3094,14 @@ off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, 
   to restore, so unlocking from there could only unlock, not bring the recipe back. Tests: Android
   `OneCookbookUndoTest`, `RecipesViewModelTest`, `RecipesScreenTest`; iOS `OneCookbookUndoTests`,
   `RecipesViewModelTests`.
-- **Recipes is a cookbook.** Under search, a **strip of automatic views** followed by the lists, in
-  place of V1's pills: Not in a list (the `isSaved` `EXISTS`, as the bookmark), Cooked (any
+- **Recipes is a cookbook.** Under search, a **strip of cards**, Lists first (#371, see Home's rows),
+  then the automatic views, in place of V1's pills: Not in a list (the `isSaved` `EXISTS`, as the bookmark), Cooked (any
   `cooked_photos` row, so "Mark as cooked" counts, #173), Typed by you (`contentOrigin = 'MANUAL'`,
   never the tour's sample, so scanned and shared-text recipes count too), From a chat (`contentOrigin = 'CHAT'`, #355). Each is a card with its
   count; a view opens as **its own screen** (route `recipes/view/{view}`, Back to Recipes; iOS
   `Route.recipesView`) which is the Recipes screen over the same ViewModel with its filter fixed: title,
-  a one-line note, search, sort, swipe to delete with the usual undo, no strip, no + menu. A list card
-  opens the list. Counts come from the one `observeRecipeCounts` query (no migration). Views are
+  a one-line note, search, sort, swipe to delete with the usual undo, no strip, no + menu. The Lists card
+  opens the Lists screen. Counts come from the one `observeRecipeCounts` query (no migration). Views are
   questions about what is stored, never a filing step: "Lists are deliberate", "Only Favorites is
   permanent", "No Saved section" and "Search is on Recipes only" are untouched, and Home keeps its
   Recipes row (its Lists row only with `oneCookbook` off, #371).

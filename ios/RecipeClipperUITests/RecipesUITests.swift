@@ -125,29 +125,18 @@ final class RecipesUITests: RecipeUITestCase {
         require(text("Save to"), "the save-to-list sheet")
     }
 
-    /// #371: with one cookbook, the fixed Lists header's "All lists" opens the Lists screen; Back returns here.
-    func testAllListsOpensTheListsScreenAndBackReturns() {
+    /// #371: with one cookbook the strip starts with a Lists card (no strip of the lists themselves);
+    /// it opens the Lists screen and Back returns here.
+    func testTheListsCardOpensTheListsScreenAndBackReturns() {
         launch(flags: ["oneCookbook"])
         openRecipes()
 
-        require(app.buttons["recipes.allLists"], "All lists").tap()
+        assertAbsent(app.scrollViews["recipes.listsStrip"])
+        require(app.buttons["recipes.lists"], "the Lists card").tap()
         require(app.buttons["lists.newList"], "the Lists screen")
 
         back()
         require(app.textFields["Search titles and ingredients"], "Recipes")
-    }
-
-    /// #371: the header's "+" makes an empty list, which then shows on the Lists strip.
-    func testThePlusMakesAnEmptyList() {
-        launch(flags: ["oneCookbook"])
-        openRecipes()
-
-        require(app.buttons["recipes.newList"], "the + in the Lists header").tap()
-        let field = require(app.alerts.textFields.firstMatch, "the New list alert's field")
-        field.typeText("Zucchini")
-        app.alerts.buttons["Create"].tap()
-
-        require(row("Zucchini"), "the new list's card")
     }
 
     func testSearchMatchesTitles() {

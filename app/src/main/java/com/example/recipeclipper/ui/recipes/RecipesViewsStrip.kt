@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -15,18 +14,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
@@ -42,87 +35,43 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
-import com.example.recipeclipper.data.model.RecipeList
 
 /**
- * One cookbook (#345, V4): under search, a strip of the automatic views (Not in a list, Cooked,
- * Typed by you, From a chat), each a small card with its count, then a fixed "Lists" header (#371:
- * "All lists" opens the Lists screen, "+" makes a new list) above a strip of the lists. A view
- * opens as its own screen (Back goes to Recipes); a list opens its own screen. The views never ask
- * the cook to file anything: they are questions about what is already stored. The header never
- * scrolls sideways, so making a list is always one tap, with any number of lists.
+ * One cookbook (#345, V4): under search, one strip of cards: Lists first (#371: it opens the Lists
+ * screen, its count the number of lists), then the automatic views (Not in a list, Cooked, Typed by
+ * you, From a chat), each with its count. A view opens as its own screen and so does Lists (Back
+ * goes to Recipes). The views never ask the cook to file anything: they are questions about what
+ * is already stored.
  */
 @Composable
 internal fun RecipesViewsStrip(
     counts: RecipeCounts?,
-    lists: List<RecipeList>,
+    listCount: Int,
     onOpenView: (RecipeFilter) -> Unit,
-    onOpenList: (Long) -> Unit,
     onOpenLists: () -> Unit,
-    onNewList: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier.fillMaxWidth()) {
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(top = 12.dp, bottom = 4.dp),
-            modifier = Modifier.fillMaxWidth().testTag("recipesViewsStrip")
-        ) {
-            items(RecipeFilter.views, key = { "view-${it.name}" }) { view ->
-                ViewCard(
-                    icon = viewIcon(view),
-                    name = stringResource(filterLabel(view)),
-                    count = counts?.of(view),
-                    onClick = { onOpenView(view) },
-                    modifier = Modifier.testTag("recipesView-${view.name}")
-                )
-            }
-        }
-        ListsHeader(onOpenLists, onNewList)
-        if (lists.isNotEmpty()) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 12.dp),
-                modifier = Modifier.fillMaxWidth().testTag("recipesListsStrip")
-            ) {
-                items(lists, key = { "list-${it.id}" }) { list ->
-                    ViewCard(
-                        icon = rememberVectorPainter(if (list.isFavorites) Icons.Default.Favorite else Icons.AutoMirrored.Filled.List),
-                        name = list.name,
-                        count = list.recipeCount,
-                        onClick = { onOpenList(list.id) },
-                        modifier = Modifier.testTag("recipesList-${list.id}")
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** The fixed "Lists" header (#371): title, "All lists" (the cover grid) and "+" (a new list). */
-@Composable
-private fun ListsHeader(onOpenLists: () -> Unit, onNewList: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(vertical = 12.dp),
+        modifier = modifier.fillMaxWidth().testTag("recipesViewsStrip")
     ) {
-        Text(
-            stringResource(R.string.nav_lists),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.weight(1f)
-        )
-        TextButton(onClick = onOpenLists, modifier = Modifier.testTag("recipesAllLists")) {
-            Text(
-                stringResource(R.string.lists_all),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.tertiary
+        item(key = "lists") {
+            ViewCard(
+                icon = painterResource(R.drawable.ic_view_lists),
+                name = stringResource(R.string.nav_lists),
+                count = listCount,
+                onClick = onOpenLists,
+                modifier = Modifier.testTag("recipesLists")
             )
         }
-        IconButton(onClick = onNewList, modifier = Modifier.testTag("recipesNewList")) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = stringResource(R.string.lists_new_list_tile),
-                tint = MaterialTheme.colorScheme.tertiary
+        items(RecipeFilter.views, key = { "view-${it.name}" }) { view ->
+            ViewCard(
+                icon = viewIcon(view),
+                name = stringResource(filterLabel(view)),
+                count = counts?.of(view),
+                onClick = { onOpenView(view) },
+                modifier = Modifier.testTag("recipesView-${view.name}")
             )
         }
     }

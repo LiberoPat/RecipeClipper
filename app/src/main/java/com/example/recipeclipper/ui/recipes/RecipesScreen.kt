@@ -77,8 +77,7 @@ fun RecipesScreen(
     onScan: (List<String>) -> Unit = {},
     /** A view's tile on the strip (#345): its own screen, Back to Recipes. */
     onOpenView: (RecipeFilter) -> Unit = {},
-    onOpenList: (Long) -> Unit = {},
-    /** The strip's "Lists" card (#371): the Lists screen, Back to here. */
+    /** The strip's Lists card (#371): the Lists screen, Back to here. */
     onOpenLists: () -> Unit = {},
     viewModel: RecipesViewModel = hiltViewModel(),
     scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
@@ -136,14 +135,6 @@ fun RecipesScreen(
                 onDismiss = viewModel::onLinkDismiss
             )
         }
-        state.newListName?.let { name ->
-            NewListDialog(
-                name = name,
-                onNameChange = viewModel::onNewListNameChange,
-                onCreate = viewModel::onCreateList,
-                onDismiss = viewModel::onNewListDismiss
-            )
-        }
         if (saveSheetOpen && saveViewModel != null) {
             SaveToListBottomSheet(saveViewModel, onDismiss = { saveSheetOpen = false })
         }
@@ -190,7 +181,7 @@ fun RecipesScreen(
                         when {
                             // One cookbook (#345): the views, then the lists, in place of the pills.
                             oneCookbook && state.showsViewsStrip ->
-                                RecipesViewsStrip(state.counts, state.lists, onOpenView, onOpenList, onOpenLists, viewModel::onNewList)
+                                RecipesViewsStrip(state.counts, state.lists.size, onOpenView, onOpenLists)
                             !oneCookbook && state.showsFilter ->
                                 RecipeFilterPills(state.filter, state.counts, viewModel::onFilterChange)
                         }

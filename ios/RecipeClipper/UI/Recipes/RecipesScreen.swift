@@ -15,8 +15,7 @@ struct RecipesScreen: View {
     var oneCookbook = false
     var saveVM: SaveToListViewModel? = nil
     var onOpenView: (RecipeFilter) -> Void = { _ in }
-    var onOpenList: (Int64) -> Void = { _ in }
-    /// The strip's "Lists" card (#371): the Lists screen, Back to here.
+    /// The strip's Lists card (#371): the Lists screen, Back to here.
     var onOpenLists: () -> Void = {}
 
     @State private var scanSource: ScanSource?
@@ -40,8 +39,8 @@ struct RecipesScreen: View {
                     // One cookbook (#345): the views, then the lists, in place of the pills.
                     if state.showsViewsStrip {
                         RecipesViewsStrip(
-                            counts: state.counts, lists: state.lists, onOpenView: onOpenView, onOpenList: onOpenList,
-                            onOpenLists: onOpenLists, onNewList: vm.onNewList
+                            counts: state.counts, listCount: state.lists.count, onOpenView: onOpenView,
+                            onOpenLists: onOpenLists
                         )
                         .listRowSeparator(.hidden)
                     }
@@ -137,16 +136,6 @@ struct RecipesScreen: View {
             Button(Strings.cancel, role: .cancel, action: vm.onLinkDismissed)
             Button(Strings.go) { if let url = vm.onOpenLink() { onOpenUrl(url) } }
                 .disabled(!state.canOpenLink)
-        }
-        // The strip's "New list" card (#371): the Lists screen's create flow, as an alert.
-        .alert(Strings.newListTile, isPresented: Binding(
-            get: { vm.uiState.creatingList },
-            set: { presented in if !presented { vm.onNewListDismissed() } }
-        )) {
-            TextField(Strings.listName, text: Binding(get: { vm.uiState.newListName }, set: vm.onNewListNameChange))
-            Button(Strings.cancel, role: .cancel, action: vm.onNewListDismissed)
-            Button(Strings.create) { vm.onCreateList() }
-                .disabled(vm.uiState.newListName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .overlay(alignment: .bottom) {
             if state.restoreRefused {
