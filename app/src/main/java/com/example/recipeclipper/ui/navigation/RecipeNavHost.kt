@@ -213,7 +213,8 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onOpenUrl = { navController.navigate(Routes.import(it)) },
             onScan = { navController.navigate(Routes.scan(it)) },
             onOpenView = { navController.navigate(Routes.recipesView(it)) },
-            onOpenList = { navController.navigate(Routes.list(it)) }
+            onOpenList = { navController.navigate(Routes.list(it)) },
+            onOpenLists = { navController.navigate(Routes.LISTS) }
         )
     }
 

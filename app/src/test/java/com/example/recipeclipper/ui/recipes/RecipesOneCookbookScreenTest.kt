@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.recipes
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -47,6 +48,7 @@ class RecipesOneCookbookScreenTest {
 
     private var openedView: RecipeFilter? = null
     private var openedList: Long? = null
+    private var openedLists = 0
 
     init {
         repository.history.value = listOf(adobo, carbonara, bread)
@@ -71,6 +73,7 @@ class RecipesOneCookbookScreenTest {
                 onOpenRecipe = {},
                 onOpenView = { openedView = it },
                 onOpenList = { openedList = it },
+                onOpenLists = { openedLists++ },
                 viewModel = viewModel,
                 oneCookbook = oneCookbook,
                 saveViewModel = save,
@@ -91,10 +94,21 @@ class RecipesOneCookbookScreenTest {
         compose.onNodeWithText("Not in a list").assertIsDisplayed()
         compose.onNodeWithText("Typed by you").assertIsDisplayed()
         // The lists follow on the same strip, which scrolls.
-        compose.onNodeWithTag("recipesViewsStrip").performScrollToNode(hasTestTag("recipesList-2"))
+        compose.onNodeWithTag("recipesListsStrip").performScrollToNode(hasTestTag("recipesList-2"))
         compose.onNodeWithTag("recipesList-1").assertExists()
         compose.onNodeWithTag("recipesList-2").assertIsDisplayed()
         compose.onNodeWithText("Favorites").assertExists()
+    }
+
+    /** #371: the fixed Lists header's "All lists" opens the Lists screen, whatever the strips scroll to. */
+    @Test
+    fun theAllListsActionOpensTheListsScreen() {
+        show()
+        waitForText("Banana Bread")
+        compose.onNodeWithTag("recipesAllLists").assertIsDisplayed()
+        compose.onNodeWithTag("recipesAllLists").performClick()
+
+        assertEquals(1, openedLists)
     }
 
     @Test
@@ -120,7 +134,7 @@ class RecipesOneCookbookScreenTest {
         waitForText("Banana Bread")
         compose.onNodeWithTag("recipesView-COOKED").performClick()
         assertEquals(RecipeFilter.COOKED, openedView)
-        compose.onNodeWithTag("recipesViewsStrip").performScrollToNode(hasTestTag("recipesList-2"))
+        compose.onNodeWithTag("recipesListsStrip").performScrollToNode(hasTestTag("recipesList-2"))
         compose.onNodeWithTag("recipesList-2").performClick()
         assertEquals(2L, openedList)
     }
@@ -148,8 +162,10 @@ class RecipesOneCookbookScreenTest {
         compose.onNodeWithTag("saveToList-2").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Save to").assertIsDisplayed()
-        compose.onNodeWithText("Dinner").assertIsDisplayed()
-        compose.onNodeWithText("Dinner").performClick()
+        // The sheet's row, not the Dinner card of the strip behind it.
+        val sheetRow = hasText("Dinner") and !hasTestTag("recipesList-2")
+        compose.onNode(sheetRow).assertIsDisplayed()
+        compose.onNode(sheetRow).performClick()
         compose.waitForIdle()
         // One tick writes at once, as in the reading view.
         assertEquals(setOf(1L to 1L, 2L to 2L), lists.membership.value)

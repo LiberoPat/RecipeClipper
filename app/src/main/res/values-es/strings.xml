@@ -208,6 +208,7 @@
     <string name="lists_title">Listas</string>
     <string name="action_new_list">+  Nueva lista</string>
     <string name="lists_new_list_tile">Nueva lista</string>
+    <string name="lists_all">Todas las listas</string>
     <string name="action_create">Crear</string>
     <string name="action_rename">Cambiar nombre</string>
     <string name="action_save">Guardar</string>

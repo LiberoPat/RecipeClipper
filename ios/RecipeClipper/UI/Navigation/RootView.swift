@@ -224,7 +224,8 @@ struct RootView: View {
                     oneCookbook: container.featureFlags.isOn(.oneCookbook),
                     saveVM: saveVM,
                     onOpenView: { push(.recipesView($0)) },
-                    onOpenList: { push(.listDetail(id: $0)) }
+                    onOpenList: { push(.listDetail(id: $0)) },
+                    onOpenLists: { push(.lists) }
                 )
             }
         case .recipesView(let view):

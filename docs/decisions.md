@@ -2868,11 +2868,17 @@ bends the settled link field: an always-visible field became a tile that opens i
   sample counts, as in its "N recipes" line); Lists is every list.
 - **Home's rows after #371 (owner, 2026-11-19):** the Recipes bottom tab opens Home, so Home's
   Recipes row (and the shelf's See all) was the only way into the Recipes screen: the row stays.
-  The Lists row goes **with `oneCookbook` on** (the lists are cards on Recipes' strip; redundant),
+  The Lists row goes **with `oneCookbook` on** (the lists are cards on Recipes' lists strip; redundant),
   and stays with it off, where Recipes has no list cards. The Lists screen and its route stay.
   The one thing the row alone offered, making a list with no recipe in hand, moved to a
-  **"+ New list" card** at the end of Recipes' strip (Android a dialog, iOS an alert: the Lists
-  screen's name field, Cancel/Create and strings, creating an empty list).
+  fixed **"Lists" header** above Recipes' lists strip (owner, 2026-11-19; first drafted as two cards at
+  the end of the strip, which with many lists took forever to reach): the title (`nav_lists`) on the
+  left and on the right an **"All lists"** text action (`lists_all`, new in six languages) that
+  opens the Lists screen and its cover grid, Back returning to Recipes, and a **"+"** (labelled
+  `lists_new_list_tile`) that makes a list (Android a dialog, iOS an alert: the Lists screen's name
+  field, Cancel/Create and strings, creating an empty list). The header never scrolls sideways and
+  shows whenever the strip does, even with no lists; the views (Not in a list, Cooked, ...) are
+  their own strip above it. The Lists screen stays reachable with `oneCookbook` on.
 - **The tour:** `HOME_LINK` is anchored to the Paste a link tile, and now reads "…or tap here
   to paste one."
 - Unchanged: the empty-library hint and "Restore from a backup file", the one-time backup

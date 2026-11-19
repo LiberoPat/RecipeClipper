@@ -201,7 +201,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   another entry point is the owner's call.
 - **Recipes** (#345, V4): under search, a strip of automatic views (Not in a
   list, Cooked, Typed by you, From a chat; each its own screen, Back to Recipes) then the
-  lists and a "+ New list" card (#371), in place of V1's All / In a list / Not in a list pills (those stay
+  lists under a fixed "Lists" header ("All lists" opens the Lists screen, "+" makes a list, #371), in place of V1's All / In a list / Not in a list pills (those stay
   with `oneCookbook` off). Views are questions about stored data, never
   filing. Recently viewed is a sort, not a place.
 - **Home** (#286): "Continue cooking" (the most recent) as a resume card;

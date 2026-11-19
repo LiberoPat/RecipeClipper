@@ -133,7 +133,7 @@ class FeaturesWalkthroughTest : WalkthroughBase() {
         back()
         // One cookbook (#371): Home has no Lists row; Dinner is a card on Recipes' strip.
         tapScrolling(hasText("Recipes") and hasText("›"))
-        compose.onNodeWithTag("recipesViewsStrip").performScrollToNode(hasText("Dinner"))
+        compose.onNodeWithTag("recipesListsStrip").performScrollToNode(hasText("Dinner"))
         tap("Dinner", 2000)
         menu("Make a cookbook")
         waitForSystemScreen() // the share sheet, with "Dinner.pdf"

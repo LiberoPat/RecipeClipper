@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -20,9 +21,12 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
@@ -42,10 +46,11 @@ import com.example.recipeclipper.data.model.RecipeList
 
 /**
  * One cookbook (#345, V4): under search, a strip of the automatic views (Not in a list, Cooked,
- * Typed by you, From a chat) followed by the lists, each a small card with its count, then a
- * "New list" card (#371). A view opens as its own
- * screen (Back goes to Recipes); a list opens its own screen. The views never ask the cook to
- * file anything: they are questions about what is already stored.
+ * Typed by you, From a chat), each a small card with its count, then a fixed "Lists" header (#371:
+ * "All lists" opens the Lists screen, "+" makes a new list) above a strip of the lists. A view
+ * opens as its own screen (Back goes to Recipes); a list opens its own screen. The views never ask
+ * the cook to file anything: they are questions about what is already stored. The header never
+ * scrolls sideways, so making a list is always one tap, with any number of lists.
  */
 @Composable
 internal fun RecipesViewsStrip(
@@ -53,40 +58,71 @@ internal fun RecipesViewsStrip(
     lists: List<RecipeList>,
     onOpenView: (RecipeFilter) -> Unit,
     onOpenList: (Long) -> Unit,
-    /** The "New list" card after the lists (#371). */
+    onOpenLists: () -> Unit,
     onNewList: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(vertical = 12.dp),
-        modifier = modifier.fillMaxWidth().testTag("recipesViewsStrip")
+    Column(modifier.fillMaxWidth()) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(top = 12.dp, bottom = 4.dp),
+            modifier = Modifier.fillMaxWidth().testTag("recipesViewsStrip")
+        ) {
+            items(RecipeFilter.views, key = { "view-${it.name}" }) { view ->
+                ViewCard(
+                    icon = viewIcon(view),
+                    name = stringResource(filterLabel(view)),
+                    count = counts?.of(view),
+                    onClick = { onOpenView(view) },
+                    modifier = Modifier.testTag("recipesView-${view.name}")
+                )
+            }
+        }
+        ListsHeader(onOpenLists, onNewList)
+        if (lists.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 12.dp),
+                modifier = Modifier.fillMaxWidth().testTag("recipesListsStrip")
+            ) {
+                items(lists, key = { "list-${it.id}" }) { list ->
+                    ViewCard(
+                        icon = rememberVectorPainter(if (list.isFavorites) Icons.Default.Favorite else Icons.AutoMirrored.Filled.List),
+                        name = list.name,
+                        count = list.recipeCount,
+                        onClick = { onOpenList(list.id) },
+                        modifier = Modifier.testTag("recipesList-${list.id}")
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The fixed "Lists" header (#371): title, "All lists" (the cover grid) and "+" (a new list). */
+@Composable
+private fun ListsHeader(onOpenLists: () -> Unit, onNewList: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
     ) {
-        items(RecipeFilter.views, key = { "view-${it.name}" }) { view ->
-            ViewCard(
-                icon = viewIcon(view),
-                name = stringResource(filterLabel(view)),
-                count = counts?.of(view),
-                onClick = { onOpenView(view) },
-                modifier = Modifier.testTag("recipesView-${view.name}")
+        Text(
+            stringResource(R.string.nav_lists),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onOpenLists, modifier = Modifier.testTag("recipesAllLists")) {
+            Text(
+                stringResource(R.string.lists_all),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.tertiary
             )
         }
-        items(lists, key = { "list-${it.id}" }) { list ->
-            ViewCard(
-                icon = rememberVectorPainter(if (list.isFavorites) Icons.Default.Favorite else Icons.AutoMirrored.Filled.List),
-                name = list.name,
-                count = list.recipeCount,
-                onClick = { onOpenList(list.id) },
-                modifier = Modifier.testTag("recipesList-${list.id}")
-            )
-        }
-        item(key = "new-list") {
-            ViewCard(
-                icon = rememberVectorPainter(Icons.Default.Add),
-                name = stringResource(R.string.lists_new_list_tile),
-                count = null,
-                onClick = onNewList,
-                modifier = Modifier.testTag("recipesNewList")
+        IconButton(onClick = onNewList, modifier = Modifier.testTag("recipesNewList")) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = stringResource(R.string.lists_new_list_tile),
+                tint = MaterialTheme.colorScheme.tertiary
             )
         }
     }

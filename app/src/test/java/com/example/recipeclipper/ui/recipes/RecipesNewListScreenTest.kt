@@ -3,13 +3,12 @@ package com.example.recipeclipper.ui.recipes
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -24,7 +23,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * #371: with one cookbook, the Recipes strip ends in a "New list" card that makes an empty list
+ * #371: with one cookbook, the Recipes strip has a "+" in its fixed Lists header that makes an empty list
  * as the Lists screen's New list does (its own class: a dialog does not settle under
  * `RecipesOneCookbookScreenTest`'s tall window).
  */
@@ -53,12 +52,11 @@ class RecipesNewListScreenTest {
     }
 
     @Test
-    fun theNewListCardMakesAnEmptyList() {
+    fun thePlusMakesAnEmptyList() {
         show()
         compose.waitUntil(timeoutMillis = 5_000) {
             compose.onAllNodesWithText("Chicken Adobo").fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithTag("recipesViewsStrip").performScrollToNode(hasTestTag("recipesNewList"))
         compose.onNodeWithTag("recipesNewList").performClick()
 
         compose.onNodeWithText("List name").assertIsDisplayed()
@@ -77,7 +75,6 @@ class RecipesNewListScreenTest {
         compose.waitUntil(timeoutMillis = 5_000) {
             compose.onAllNodesWithText("Chicken Adobo").fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithTag("recipesViewsStrip").performScrollToNode(hasTestTag("recipesNewList"))
         compose.onNodeWithTag("recipesNewList").performClick()
         compose.onNodeWithText("Cancel").performClick()
 
@@ -87,8 +84,8 @@ class RecipesNewListScreenTest {
     }
 
     @Test
-    fun withTheFlagOffThereIsNoNewListCard() {
+    fun withTheFlagOffThereIsNoListsHeader() {
         show(oneCookbook = false)
-        compose.onAllNodesWithText("New list").assertCountEquals(0)
+        compose.onAllNodesWithTag("recipesNewList").assertCountEquals(0)
     }
 }
