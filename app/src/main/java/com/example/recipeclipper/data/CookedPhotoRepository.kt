@@ -40,7 +40,7 @@ interface CookedPhotoRepository {
     suspend fun forget(photos: List<CookedPhoto>)
 
     /**
-     * Removes stored files no entry names, except very recent ones (an add in flight). Never an
+     * Removes stored files no entry names (and no recipe, #386), except very recent ones (an add in flight). Never an
      * entry: one whose file is missing (restored from Android's backup) keeps its day and note.
      */
     suspend fun sweep()
@@ -99,7 +99,8 @@ class DefaultCookedPhotoRepository @Inject constructor(
     }
 
     override suspend fun sweep() {
-        val named = log.guard("sweepCookedPhotos", null) { dao.fileNames().toHashSet() } ?: return
+        // A recipe's own picture (#386) is named by its recipe, not by a cooking.
+        val named = log.guard("sweepCookedPhotos", null) { (dao.fileNames() + dao.recipePhotoFileNames()).toHashSet() } ?: return
         val cutoff = clock.now() - PhotoStore.SWEEP_GRACE_MILLIS
         val orphans = store.files().filter { (name, written) -> name !in named && written < cutoff }.keys
         store.delete(orphans)

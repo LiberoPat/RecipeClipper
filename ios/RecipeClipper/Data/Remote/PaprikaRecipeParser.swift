@@ -4,8 +4,13 @@ import Foundation
 /// Every text is as Paprika holds it, trimmed: nothing here is converted or guessed. `uid` is
 /// Paprika's own id (the identity of the recipe in an export, which a re-import uses), `sourceUrl`
 /// a real web link (cleaned) or nil, `imageUrl` a web picture link or nil. `hasPhoto` is whether
-/// the file carries the recipe's picture itself (`photo_data`), which the app doesn't keep.
-/// `categories` are Paprika's own filing, read but never turned into lists ("Lists are deliberate").
+/// the file carries the recipe's picture itself (`photo_data`, or the first of `photos`).
+/// `categories` are Paprika's own filing; the cook may have them become lists (#387). `favorite` is
+/// Paprika's own flag (`on_favorites`).
+///
+/// `photoData` is that picture as the base64 text the file holds it, only until the zip reader has
+/// handed it to the photo store (#386): it is then nil, and `photoFile` names the stored file (nil
+/// if the picture was left out: too big, or not an image).
 struct PaprikaRecipe: Equatable {
     var uid: String?
     var name: String
@@ -20,6 +25,9 @@ struct PaprikaRecipe: Equatable {
     var imageUrl: String?
     var categories: [String]
     var hasPhoto: Bool
+    var photoData: String? = nil
+    var photoFile: String? = nil
+    var favorite = false
 }
 
 /// What one entry of the export said.
@@ -52,6 +60,8 @@ enum PaprikaRecipeParser {
         if name.isEmpty || (ingredients.isEmpty && directions.isEmpty) { return .notARecipe }
 
         let photos = json["photos"] as? [Any]
+        // The picture: photo_data, else the first of the photos' data (libpaprika's RecipePhoto).
+        let photoData = string(json["photo_data"]) ?? (photos ?? []).lazy.compactMap { ($0 as? [String: Any]).flatMap { string($0["data"]) } }.first
         return .recipe(PaprikaRecipe(
             uid: string(json["uid"]),
             name: name,
@@ -67,13 +77,22 @@ enum PaprikaRecipeParser {
             categories: (json["categories"] as? [Any])?.compactMap { item in
                 (item as? String).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : $0 }
             } ?? [],
-            hasPhoto: string(json["photo_data"]) != nil || !(photos?.isEmpty ?? true)
+            hasPhoto: photoData != nil || !(photos?.isEmpty ?? true),
+            photoData: photoData,
+            favorite: flag(json["on_favorites"])
         ))
     }
 
     /// A real web link, cleaned as every saved link is; anything else ("", "n/a", a name) is none.
     private static func webLink(_ text: String) -> String? {
         WebImageUrl.of(text).map { UrlCleaner.clean($0) }
+    }
+
+    /// A switch as Paprika writes it: a boolean, or a number that isn't 0 (`on_favorites` is 0 or 1).
+    private static func flag(_ value: Any?) -> Bool {
+        guard let number = value as? NSNumber else { return false }
+        if CFGetTypeID(number) == CFBooleanGetTypeID() { return number.boolValue }
+        return number.doubleValue != 0
     }
 
     /// A text field, trimmed; nil if absent, JSON null, blank or not text (a whole number is its

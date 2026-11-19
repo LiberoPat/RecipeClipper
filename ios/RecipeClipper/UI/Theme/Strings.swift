@@ -186,6 +186,8 @@ enum Strings {
     static var paprikaImportTitle: String { String(localized: "paprika_import_title") }
     static var paprikaImportDescription: String { String(localized: "paprika_import_description") }
     static var paprikaImporting: String { String(localized: "paprika_importing") }
+    static var paprikaFilingTitle: String { String(localized: "paprika_filing_title") }
+    static var paprikaFilingDescription: String { String(localized: "paprika_filing_description") }
 
     /// What an import from Paprika did, one sentence per count that isn't zero: imported (or "nothing
     /// new" / "nothing could be read"), already here, left out for the limit, entries that weren't
@@ -209,7 +211,8 @@ enum Strings {
         }
         if s.notRecipes > 0 { parts.append(String(localized: "paprika_not_recipes \(s.notRecipes)")) }
         if s.unreadable > 0 { parts.append(String(localized: "paprika_unreadable \(s.unreadable)")) }
-        if s.photosNotImported && s.imported > 0 { parts.append(String(localized: "paprika_photos_not_imported")) }
+        if s.photosLeftOut > 0 { parts.append(String(localized: "paprika_photos_left_out \(s.photosLeftOut)")) }
+        if s.listsMade > 0 { parts.append(String(localized: "paprika_lists_made \(s.listsMade)")) }
         return parts.joined(separator: " ")
     }
 

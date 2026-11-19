@@ -25,7 +25,7 @@ data class ListRow(
     val containsRecipe: Boolean
 )
 
-/** One photo on a list's cover (#286): a recipe in [listId] that has an [imageUrl]. */
+/** One photo on a list's cover (#286): a recipe in [listId] that has a picture; [imageUrl] is its stored photo's `photo://` model (#386), else its link. */
 data class ListCoverPhotoRow(
     val listId: Long,
     val imageUrl: String
@@ -70,7 +70,7 @@ abstract class ListDao {
      */
     @Query(
         """
-        SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
+        SELECT r.id, r.title, COALESCE('photo://' || r.photoFile, r.imageUrl) AS imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
                r.contentOrigin = 'CLIPPED' AS isClipped, r.sourceUrl,
                r.contentOrigin = 'CHAT' AS isFromChat
         FROM recipes r
@@ -91,14 +91,15 @@ abstract class ListDao {
      */
     @Query(
         """
-        SELECT c.listId, r.imageUrl
+        SELECT c.listId, COALESCE('photo://' || r.photoFile, r.imageUrl) AS imageUrl
         FROM recipe_list_cross_ref c
         JOIN recipes r ON r.id = c.recipeId
-        WHERE r.imageUrl IS NOT NULL AND r.imageUrl != ''
+        WHERE (r.photoFile IS NOT NULL OR (r.imageUrl IS NOT NULL AND r.imageUrl != ''))
           AND r.id IN (
               SELECT c2.recipeId FROM recipe_list_cross_ref c2
               JOIN recipes r2 ON r2.id = c2.recipeId
-              WHERE c2.listId = c.listId AND r2.imageUrl IS NOT NULL AND r2.imageUrl != ''
+              WHERE c2.listId = c.listId
+                AND (r2.photoFile IS NOT NULL OR (r2.imageUrl IS NOT NULL AND r2.imageUrl != ''))
               ORDER BY c2.addedAt DESC, r2.id DESC
               LIMIT $COVER_PHOTOS)
         ORDER BY c.listId, c.addedAt DESC, r.id DESC

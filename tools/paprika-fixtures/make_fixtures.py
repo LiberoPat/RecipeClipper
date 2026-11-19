@@ -32,7 +32,7 @@ def recipe(**fields) -> bytes:
         "uid": "", "name": "", "ingredients": "", "directions": "", "notes": "", "servings": "",
         "prep_time": "", "cook_time": "", "total_time": "", "source": "", "source_url": "",
         "categories": [], "photo_data": None, "image_url": None, "rating": 0, "difficulty": "",
-        "nutritional_info": "", "description": "", "created": "2024-01-01 09:00:00", "hash": "0" * 64,
+        "nutritional_info": "", "description": "", "on_favorites": 0, "created": "2024-01-01 09:00:00", "hash": "0" * 64,
     }
     base.update(fields)
     return gz(json.dumps(base, ensure_ascii=False).encode("utf-8"))
@@ -61,12 +61,15 @@ brownies = recipe(
 soup = recipe(
     uid="0A9B8C7D-6E5F-4A3B-8C2D-1E0F9A8B7C6D", name="Gran's Lentil Soup",
     ingredients="1 cup red lentils\n1 onion\n4 cups water\nsalt", directions="Simmer everything for 25 minutes.\nBlend.",
-    servings="Serves 4", prep_time="PT10M", cook_time="0 mins", categories=["Soup"], photo_data=PHOTO,
+    servings="Serves 4", prep_time="PT10M", cook_time="0 mins", categories=["dinner", "Soup"], photo_data=PHOTO,
 )
-tea = recipe(name="Mint Tea", directions="Steep mint leaves in hot water for 5 minutes.")
+tea = recipe(
+    name="Mint Tea", directions="Steep mint leaves in hot water for 5 minutes.", categories=["Drinks", "Baking"], on_favorites=1
+)
 dupe = recipe(
     uid="11111111-2222-3333-4444-555555555555", name="Brownies again",
     ingredients="1 cup butter", directions="Bake.", source_url="https://www.example.com/brownies?id=7&utm_medium=x",
+    categories=["holiday", "BAKING"],
 )
 no_name = recipe(uid="22222222-0000-0000-0000-000000000000", ingredients="1 egg", directions="Boil it.")
 no_content = recipe(uid="33333333-0000-0000-0000-000000000000", name="Just A Title")
@@ -111,4 +114,14 @@ with open(f"{OUT}/paprika-huge-declared.paprikarecipes", "wb") as f:
 # A small file that unpacks to 40 MB of zeros (over the 32 MiB an entry may hold), beside a good one.
 write_zip("paprika-bomb.paprikarecipes", [
     ("Bomb.paprikarecipe", gz(b"\x00" * (40 * 1024 * 1024))), ("Fine.paprikarecipe", tea),
+])
+
+# Pictures (#386): a good one, one that isn't an image, one that isn't base64, one over the 8 MiB a picture may be.
+b64 = lambda data: base64.b64encode(data).decode()
+write_zip("paprika-photos.paprikarecipes", [
+    ("Good photo.paprikarecipe", recipe(uid="P1", name="Toast", ingredients="1 slice bread", photo_data=b64(b"\xff\xd8\xff\xe0 a real-enough picture"))),
+    ("Not an image.paprikarecipe", recipe(uid="P2", name="Jam", ingredients="1 jar jam", photo_data=b64(b"bad picture, not an image"))),
+    ("Not base64.paprikarecipe", recipe(uid="P3", name="Butter", ingredients="1 pat butter", photo_data="!!! this is not base64 !!!")),
+    ("Too big.paprikarecipe", recipe(uid="P4", name="Honey", ingredients="1 spoon honey", photo_data=b64(b"\xff\xd8" + b"\x00" * (9 * 1024 * 1024)))),
+    ("No photo.paprikarecipe", recipe(uid="P5", name="Salt", ingredients="1 pinch salt")),
 ])

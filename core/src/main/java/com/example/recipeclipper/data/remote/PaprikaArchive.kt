@@ -43,7 +43,9 @@ data class PaprikaLimits(
     /** Every recipe's unpacked JSON together. */
     val maxTotalBytes: Long = 2L * 1024 * 1024 * 1024,
     /** The file itself, which the data layer copies before reading it. */
-    val maxFileBytes: Long = 2L * 1024 * 1024 * 1024
+    val maxFileBytes: Long = 2L * 1024 * 1024 * 1024,
+    /** One recipe's picture once decoded from base64 (#386): bigger is left out, the recipe kept. */
+    val maxPhotoBytes: Int = 8 * 1024 * 1024
 )
 
 /** What a Paprika file held: its readable recipes, and how many entries weren't. */
@@ -52,7 +54,9 @@ data class PaprikaContents(
     /** Entries that read as JSON objects but are no recipe (no name, or no ingredients and steps). */
     val notRecipes: Int,
     /** Entries that couldn't be unpacked or read as JSON. */
-    val unreadable: Int
+    val unreadable: Int,
+    /** Pictures the file carried that were left out: too big, not an image, or not stored (#386). The recipe stays. */
+    val photosLeftOut: Int = 0
 )
 
 sealed interface PaprikaRead {
@@ -80,8 +84,19 @@ object PaprikaArchive {
         return !file.startsWith(".") && file.lowercase().endsWith(EXTENSION)
     }
 
-    /** Throws [IOException] only when [file] can't be read at all; a bad zip is a [PaprikaRead.Failure]. */
-    fun read(file: File, limits: PaprikaLimits = PaprikaLimits()): PaprikaRead {
+    /**
+     * Throws [IOException] only when [file] can't be read at all; a bad zip is a [PaprikaRead.Failure].
+     *
+     * [storePhoto] (#386) is handed each recipe's picture, decoded from base64 and within
+     * [PaprikaLimits.maxPhotoBytes], as it is read, so no picture waits in memory for the rest of the
+     * file; it answers the stored file's name, or null for a picture that isn't one (that photo is
+     * left out and counted, the recipe stays). Called on this thread, once per recipe.
+     */
+    fun read(
+        file: File,
+        limits: PaprikaLimits = PaprikaLimits(),
+        storePhoto: ((ByteArray) -> String?)? = null
+    ): PaprikaRead {
         val head = ByteArray(4)
         val got = file.inputStream().use { it.read(head) }
         if (got < 4 || !head.contentEquals(ZIP_HEAD)) return PaprikaRead.Failure(PaprikaError.NOT_A_PAPRIKA_FILE)
@@ -97,6 +112,7 @@ object PaprikaArchive {
             var notRecipes = 0
             var unreadable = 0
             var candidates = 0
+            var photosLeftOut = 0
             var total = 0L
             val entries = zip.entries()
             while (entries.hasMoreElements()) {
@@ -131,13 +147,35 @@ object PaprikaArchive {
                     continue
                 }
                 when (val parsed = PaprikaRecipeParser.parse(json)) {
-                    is PaprikaEntry.Recipe -> recipes += parsed.recipe
+                    is PaprikaEntry.Recipe -> {
+                        val recipe = parsed.recipe
+                        val data = recipe.photoData
+                        if (data == null) {
+                            recipes += recipe
+                        } else {
+                            val stored = decodePhoto(data, limits.maxPhotoBytes)?.let { storePhoto?.invoke(it) }
+                            if (stored == null) photosLeftOut++
+                            recipes += recipe.copy(photoData = null, photoFile = stored)
+                        }
+                    }
                     PaprikaEntry.NotARecipe -> notRecipes++
                     PaprikaEntry.Unreadable -> unreadable++
                 }
             }
             if (candidates == 0) return PaprikaRead.Failure(PaprikaError.NOT_A_PAPRIKA_FILE)
-            return PaprikaRead.Success(PaprikaContents(recipes, notRecipes, unreadable))
+            return PaprikaRead.Success(PaprikaContents(recipes, notRecipes, unreadable, photosLeftOut))
+        }
+    }
+
+    /** A picture's bytes from its base64 text (line breaks allowed), or null if it isn't base64 or would decode past [max]. */
+    private fun decodePhoto(text: String, max: Int): ByteArray? {
+        // Four characters make at most three bytes: refuse before decoding what could not fit.
+        if (text.length / 4L * 3 > max + 3) return null
+        // Line breaks are allowed; any other character that isn't base64 makes it no picture.
+        return try {
+            java.util.Base64.getDecoder().decode(text.filterNot { it.isWhitespace() }).takeIf { it.isNotEmpty() && it.size <= max }
+        } catch (e: IllegalArgumentException) {
+            null
         }
     }
 

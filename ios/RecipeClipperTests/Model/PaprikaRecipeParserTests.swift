@@ -72,6 +72,28 @@ final class PaprikaRecipeParserTests: XCTestCase {
         XCTAssertFalse(try recipe(#"{"name": "A", "ingredients": "1 egg", "photos": []}"#).hasPhoto)
     }
 
+    func testThePicturesTextIsCarriedUntilTheArchiveStoresIt() throws {
+        XCTAssertEqual(try recipe(full).photoData, "AAAA")
+        // Else the first of the photos' data (libpaprika's RecipePhoto).
+        let r = try recipe(#"{"name": "A", "ingredients": "1 egg", "photos": [{"filename": "a.jpg"}, {"filename": "b.jpg", "data": "BBBB"}]}"#)
+        XCTAssertEqual(r.photoData, "BBBB")
+        XCTAssertNil(try recipe(#"{"name": "A", "ingredients": "1 egg"}"#).photoData)
+        XCTAssertNil(try recipe(full).photoFile)
+    }
+
+    func testPaprikasFavouriteFlagIsABooleanOrANumberThatIsntZero() throws {
+        func fav(_ value: String) throws -> Bool {
+            try recipe(#"{"name": "A", "ingredients": "1 egg", "on_favorites": \#(value)}"#).favorite
+        }
+        XCTAssertTrue(try fav("1"))
+        XCTAssertTrue(try fav("true"))
+        XCTAssertFalse(try fav("0"))
+        XCTAssertFalse(try fav("false"))
+        XCTAssertFalse(try fav("null"))
+        XCTAssertFalse(try fav("\"yes\""))
+        XCTAssertFalse(try recipe(#"{"name": "A", "ingredients": "1 egg"}"#).favorite)
+    }
+
     func testANumberWhereTextGoesIsKeptAsItsText() throws {
         XCTAssertEqual(try recipe(#"{"name": "A", "ingredients": "1 egg", "servings": 4}"#).servings, "4")
         XCTAssertNil(try recipe(#"{"name": "A", "ingredients": "1 egg", "servings": true}"#).servings)

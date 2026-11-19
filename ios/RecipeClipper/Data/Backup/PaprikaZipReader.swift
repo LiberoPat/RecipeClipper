@@ -41,7 +41,13 @@ enum PaprikaZipReader {
         let localOffset: UInt32
     }
 
-    static func read(_ zip: Data, limits: PaprikaLimits = PaprikaLimits()) -> PaprikaRead {
+    /// `storePhoto` (#386) is handed each recipe's picture, decoded from base64 and within
+    /// `PaprikaLimits.maxPhotoBytes`, as it is read, so no picture waits in memory for the rest of the
+    /// file; it answers the stored file's name, or nil for a picture that isn't one (that photo is left
+    /// out and counted, the recipe stays). Called on this thread, once per recipe.
+    static func read(
+        _ zip: Data, limits: PaprikaLimits = PaprikaLimits(), storePhoto: ((Data) -> String?)? = nil
+    ) -> PaprikaRead {
         guard zip.count >= 4, u32(zip, 0) == localSignature else { return .failure(.notAPaprikaFile) }
         guard zip.count <= limits.maxFileBytes else { return .failure(.tooLarge) }
         guard let (entries, declared) = centralDirectory(zip) else { return .failure(.damaged) }
@@ -51,6 +57,7 @@ enum PaprikaZipReader {
         var notRecipes = 0
         var unreadable = 0
         var candidates = 0
+        var photosLeftOut = 0
         var total = 0
         for entry in entries {
             guard isRecipeEntry(entry.name) else { continue }
@@ -72,13 +79,31 @@ enum PaprikaZipReader {
                 continue
             }
             switch PaprikaRecipeParser.parse(json) {
-            case .recipe(let recipe): recipes.append(recipe)
+            case .recipe(var recipe):
+                if let data = recipe.photoData {
+                    let stored = decodePhoto(data, max: limits.maxPhotoBytes).flatMap { storePhoto?($0) }
+                    if stored == nil { photosLeftOut += 1 }
+                    recipe.photoData = nil
+                    recipe.photoFile = stored
+                }
+                recipes.append(recipe)
             case .notARecipe: notRecipes += 1
             case .unreadable: unreadable += 1
             }
         }
         if candidates == 0 { return .failure(.notAPaprikaFile) }
-        return .success(PaprikaContents(recipes: recipes, notRecipes: notRecipes, unreadable: unreadable))
+        return .success(PaprikaContents(recipes: recipes, notRecipes: notRecipes, unreadable: unreadable, photosLeftOut: photosLeftOut))
+    }
+
+    /// A picture's bytes from its base64 text (line breaks allowed), or nil if it isn't base64 or would decode past `max`.
+    private static func decodePhoto(_ text: String, max: Int) -> Data? {
+        // Four characters make at most three bytes: refuse before decoding what could not fit.
+        if text.utf8.count / 4 * 3 > max + 3 { return nil }
+        var clean = String(text.filter { !$0.isWhitespace })
+        // Padding is optional, as Java's decoder has it.
+        if clean.utf8.count % 4 != 1 { clean += String(repeating: "=", count: (4 - clean.utf8.count % 4) % 4) }
+        guard let data = Data(base64Encoded: clean), !data.isEmpty, data.count <= max else { return nil }
+        return data
     }
 
     // MARK: Zip structure

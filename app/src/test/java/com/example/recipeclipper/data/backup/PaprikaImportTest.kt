@@ -20,16 +20,19 @@ class PaprikaImportTest {
         total: String? = null,
         notes: String? = null,
         servings: String? = null,
-        imageUrl: String? = null
+        imageUrl: String? = null,
+        categories: List<String> = listOf("Dinner"),
+        photoFile: String? = null,
+        favorite: Boolean = false
     ) = PaprikaRecipe(
         uid = uid, name = name, ingredients = ingredients, directions = directions, notes = notes, servings = servings,
         prepTime = prep, cookTime = cook, totalTime = total, sourceUrl = sourceUrl, imageUrl = imageUrl,
-        categories = listOf("Dinner"), hasPhoto = true
+        categories = categories, hasPhoto = true, photoFile = photoFile, favorite = favorite
     )
 
     private var uids = 0
-    private fun map(vararg recipes: PaprikaRecipe, now: Long = 1_000_000L) =
-        PaprikaImport.toBackup(recipes.toList(), now) { "uid-${uids++}" }
+    private fun map(vararg recipes: PaprikaRecipe, now: Long = 1_000_000L, filing: Boolean = false) =
+        PaprikaImport.toBackup(recipes.toList(), now, filing) { "uid-${uids++}" }
 
     @Test fun `a recipe with a link is keyed by the link and kept as the cook's version`() {
         val mapped = map(recipe(sourceUrl = "https://www.example.com/soup?id=1", uid = "ABC"))
@@ -108,10 +111,56 @@ class PaprikaImportTest {
         assertEquals("en", map(recipe(ingredients = listOf("1 cup rice"))).backup.recipes.single().language)
     }
 
-    @Test fun `categories are not filed into lists`() {
-        val backup = map(recipe(), recipe(name = "B", uid = "b")).backup
+    @Test fun `with the switch off categories are not filed into lists`() {
+        val backup = map(recipe(), recipe(name = "B", uid = "b", favorite = true)).backup
         assertTrue(backup.lists.isEmpty())
         assertTrue(backup.memberships.isEmpty())
+    }
+
+    @Test fun `with it on, a category is a list, case-insensitive, the first spelling kept`() {
+        val backup = map(
+            recipe(name = "A", uid = "a", categories = listOf("Dessert", " baking ")),
+            recipe(name = "B", uid = "b", categories = listOf("BAKING", "", "Soup")),
+            filing = true
+        ).backup
+        assertEquals(listOf("Dessert", "baking", "Soup"), backup.lists.map { it.name })
+        assertTrue(backup.lists.none { it.isFavorites })
+        val ids = backup.recipes.associate { it.title to it.id }
+        val named = backup.lists.associate { it.id to it.name }
+        fun inLists(title: String) = backup.memberships.filter { it.recipeId == ids.getValue(title) }.map { named.getValue(it.listId) }
+        assertEquals(listOf("Dessert", "baking"), inLists("A"))
+        assertEquals(listOf("baking", "Soup"), inLists("B"))
+    }
+
+    @Test fun `Paprika's favourite flag files into Favorites by isFavorites, never by name, one list for all`() {
+        val backup = map(
+            recipe(name = "A", uid = "a", categories = emptyList(), favorite = true),
+            recipe(name = "B", uid = "b", categories = listOf("favorites")),
+            recipe(name = "C", uid = "c", categories = emptyList(), favorite = true),
+            filing = true
+        ).backup
+        val favorites = backup.lists.single { it.isFavorites }
+        assertEquals(setOf("A", "C"), backup.memberships.filter { it.listId == favorites.id }.map { m -> backup.recipes.first { it.id == m.recipeId }.title }.toSet())
+        // A category called favorites is a list of its own, not that one.
+        val own = backup.lists.single { !it.isFavorites }
+        assertEquals("favorites", own.name)
+        assertEquals(listOf("B"), backup.memberships.filter { it.listId == own.id }.map { m -> backup.recipes.first { it.id == m.recipeId }.title })
+    }
+
+    @Test fun `a repeat in the file adds its categories and its favourite flag to the first`() {
+        val backup = map(
+            recipe(name = "First", uid = "x", categories = listOf("Dinner")),
+            recipe(name = "Second", uid = "X", categories = listOf("Quick"), favorite = true),
+            filing = true
+        ).backup
+        assertEquals(1, backup.recipes.size)
+        assertEquals(setOf("Dinner", "Quick", "Favorites"), backup.lists.map { it.name }.toSet())
+        assertEquals(3, backup.memberships.size)
+    }
+
+    @Test fun `the picture the archive stored is the recipe's own, under that name`() {
+        assertEquals("stored-1.jpg", map(recipe(uid = "a", photoFile = "stored-1.jpg")).backup.recipes.single().photo)
+        assertNull(map(recipe(uid = "a")).backup.recipes.single().photo)
     }
 
     @Test fun `the file's order is kept, the first being the most recently viewed`() {

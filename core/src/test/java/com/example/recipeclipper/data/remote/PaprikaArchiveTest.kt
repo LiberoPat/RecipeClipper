@@ -60,6 +60,35 @@ class PaprikaArchiveTest {
         assertEquals(0, contents.unreadable)
     }
 
+    @Test fun `each picture is handed to the store as it is read, and the recipe names the file it got`() {
+        val seen = mutableListOf<String>()
+        val read = PaprikaArchive.read(fixture("paprika-photos.paprikarecipes"), PaprikaLimits()) { bytes ->
+            // The store's answer: a name for a picture, null for what isn't one.
+            if (String(bytes).startsWith("bad")) null else "stored-${seen.size + 1}.jpg".also { seen += String(bytes, Charsets.ISO_8859_1) }
+        }
+        val contents = success(read)
+        assertEquals(listOf("Toast", "Jam", "Butter", "Honey", "Salt"), contents.recipes.map { it.name })
+        // Only the good picture reached the store as a stored file; Honey's is over the 8 MiB and
+        // Butter's isn't base64, so neither was even offered, and Jam's was refused by the store.
+        assertEquals(listOf("stored-1.jpg", null, null, null, null), contents.recipes.map { it.photoFile })
+        assertEquals(1, seen.size)
+        assertEquals(3, contents.photosLeftOut)
+        assertTrue(contents.recipes.all { it.photoData == null })
+    }
+
+    @Test fun `with no store every picture is left out and counted, the recipes stay`() {
+        val contents = success(PaprikaArchive.read(fixture("paprika-photos.paprikarecipes")))
+        assertEquals(5, contents.recipes.size)
+        assertEquals(4, contents.photosLeftOut)
+    }
+
+    @Test fun `a lowered picture cap leaves a picture out`() {
+        val contents = success(PaprikaArchive.read(fixture("paprika-photos.paprikarecipes"), PaprikaLimits(maxPhotoBytes = 8)) { "kept.jpg" })
+        // Toast's 31 bytes and Jam's 25 are over 8; the others were never offered.
+        assertEquals(4, contents.photosLeftOut)
+        assertTrue(contents.recipes.all { it.photoFile == null })
+    }
+
     @Test fun `folders, macOS copies and other files are ignored, not counted`() {
         val contents = success(PaprikaArchive.read(fixture("paprika-valid.paprikarecipes")))
         assertEquals(0, contents.unreadable)

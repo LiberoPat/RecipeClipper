@@ -21,19 +21,24 @@ import javax.inject.Inject
  */
 interface PaprikaFiles {
 
-    /** The picked file's recipes, or why not ([PaprikaError.READ_FAILED] if it couldn't be opened). */
+    /**
+     * The picked file's recipes, or why not ([PaprikaError.READ_FAILED] if it couldn't be opened).
+     * Each recipe's picture is stored as it is read (#386): the recipe names the stored file.
+     */
     suspend fun read(uri: String): PaprikaRead
 }
 
 /**
  * Copies the picked file into the app's cache (a zip is read from its directory at the end, so it
  * needs a file, not a stream; the copy stops at [PaprikaLimits.maxFileBytes]), reads it with
- * [PaprikaArchive] on the IO dispatcher, and deletes the copy. The copy's name is the app's own,
+ * [PaprikaArchive] on the IO dispatcher, storing each recipe's picture in the [PhotoStore] as it goes,
+ * and deletes the copy. The copy's name is the app's own,
  * never anything the file says.
  */
 class AndroidPaprikaFiles @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val log: ErrorLog
+    private val log: ErrorLog,
+    private val photos: PhotoStore
 ) : PaprikaFiles {
 
     override suspend fun read(uri: String): PaprikaRead = withContext(Dispatchers.IO) {
@@ -61,7 +66,7 @@ class AndroidPaprikaFiles @Inject constructor(
                     within
                 }
             }
-            if (!copied) PaprikaRead.Failure(PaprikaError.TOO_LARGE) else PaprikaArchive.read(copy, limits)
+            if (!copied) PaprikaRead.Failure(PaprikaError.TOO_LARGE) else PaprikaArchive.read(copy, limits, photos::importBytes)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

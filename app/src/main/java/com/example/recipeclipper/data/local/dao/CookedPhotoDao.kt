@@ -24,6 +24,10 @@ abstract class CookedPhotoDao {
     @Query("SELECT fileName FROM cooked_photos WHERE fileName IS NOT NULL")
     abstract suspend fun fileNames(): List<String>
 
+    /** Every picture file a recipe names (#386): the sweep leaves these alone too, though no cooking names them. */
+    @Query("SELECT photoFile FROM recipes WHERE photoFile IS NOT NULL")
+    abstract suspend fun recipePhotoFileNames(): List<String>
+
     @Insert
     abstract suspend fun insert(photo: CookedPhotoEntity): Long
 

@@ -151,6 +151,7 @@ final class AppDatabase: @unchecked Sendable {
         allowCookedWithoutPhoto,
         addRunningLow,
         addBasedOn,
+        addPhotoFile,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -462,6 +463,12 @@ final class AppDatabase: @unchecked Sendable {
     /// existing recipe.
     private static func addBasedOn(_ db: SQLiteConnection) throws {
         try db.execute("ALTER TABLE recipes ADD COLUMN basedOnUid TEXT")
+    }
+
+    /// Version 17 (Android's Room version 18, `MIGRATION_17_18`): a recipe's own stored picture
+    /// (#386), `recipes.photoFile`, the name of a file in the photo store. Null for every existing recipe.
+    private static func addPhotoFile(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN photoFile TEXT")
     }
 
     private static func addMenus(_ db: SQLiteConnection) throws {

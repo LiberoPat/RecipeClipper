@@ -98,7 +98,7 @@
     },
     {
       "key": "paprikaImport",
-      "description": "Import from Paprika: Settings, Your recipes gains a row that reads a Paprika export (.paprikarecipes, a zip of gzipped JSON recipes) into the library. Each recipe is kept as the cook's own version (never refreshed from its link), nothing here is replaced or deleted, the free limit says how many were left out, and the pictures inside the file are not kept. Off, the row is not shown.",
+      "description": "Import from Paprika: Settings, Your recipes gains a row that reads a Paprika export (.paprikarecipes, a zip of gzipped JSON recipes) into the library. Each recipe is kept as the cook's own version (never refreshed from its link) with its picture stored on the phone, nothing here is replaced or deleted, the free limit says how many were left out, and a switch (on) files recipes in lists by their Paprika categories. Off, the row is not shown.",
       "defaults": { "debug": true, "release": true },
       "issue": 382
     }

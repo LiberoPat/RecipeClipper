@@ -73,7 +73,9 @@ data class SettingsUiState(
     /** The automatic backup copy's rows (#150); null without one (tests that don't care). */
     val autoBackup: AutoBackupRow? = null,
     /** The "Import from Paprika" row (#382): only with the `paprikaImport` flag on. */
-    val showsPaprikaImport: Boolean = false
+    val showsPaprikaImport: Boolean = false,
+    /** "Put recipes in lists by their Paprika categories" (#387): on by default; this visit's choice, not a saved setting. */
+    val paprikaFiling: Boolean = true
 ) {
     val chefModeAvailable: Boolean get() = chefSupport is ChefSupport.Available
 
@@ -285,7 +287,8 @@ class SettingsViewModel @Inject constructor(
         unlockNotice = previous?.unlockNotice,
         autoBackup = previous?.autoBackup,
         showsPaprikaImport = previous?.showsPaprikaImport
-            ?: (paprika != null && featureFlags?.isOn(Flag.PAPRIKA_IMPORT) == true)
+            ?: (paprika != null && featureFlags?.isOn(Flag.PAPRIKA_IMPORT) == true),
+        paprikaFiling = previous?.paprikaFiling ?: true
     )
 
     // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.
@@ -375,13 +378,19 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** The switch under "Import from Paprika" (#387): whether the next import files recipes by their categories. */
+    fun onPaprikaFilingChange(enabled: Boolean) {
+        _uiState.update { it.copy(paprikaFiling = enabled) }
+    }
+
     /** Import from the Paprika export the user picked in the system file picker (#382). */
     fun onPaprikaPicked(uri: String) {
         val importer = paprika ?: return
         if (_uiState.value.backup.isBusy) return
+        val filing = _uiState.value.paprikaFiling
         _uiState.update { it.copy(backup = BackupStatus.ImportingPaprika) }
         viewModelScope.launch {
-            val status = when (val result = importer.import(uri)) {
+            val status = when (val result = importer.import(uri, filing)) {
                 is PaprikaResult.Success -> BackupStatus.ImportedPaprika(result.summary)
                 is PaprikaResult.Failure -> BackupStatus.PaprikaFailed(result.error)
             }

@@ -256,6 +256,14 @@ private fun YourRecipesRows(state: SettingsUiState, viewModel: SettingsViewModel
             enabled = !state.backup.isBusy,
             onClick = actions.onImportPaprika
         )
+        // What the import does with Paprika's categories (#387); on unless the cook turns it off.
+        SwitchRow(
+            title = stringResource(R.string.paprika_filing_title),
+            description = stringResource(R.string.paprika_filing_description),
+            checked = state.paprikaFiling,
+            onCheckedChange = viewModel::onPaprikaFilingChange,
+            enabled = !state.backup.isBusy
+        )
     }
     BackupStatusText(state.backup)
 }

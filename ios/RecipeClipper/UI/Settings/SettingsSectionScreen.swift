@@ -179,6 +179,13 @@ private extension SettingsSectionScreen {
                 enabled: !state.backup.isBusy
             ) { importingPaprika = true }
             .accessibilityIdentifier("settings.importPaprika")
+            // What the import does with Paprika's categories (#387); on unless the cook turns it off.
+            SwitchRow(
+                title: Strings.paprikaFilingTitle,
+                description: Strings.paprikaFilingDescription,
+                isOn: Binding(get: { state.paprikaFiling }, set: vm.onPaprikaFilingChange)
+            )
+            .accessibilityIdentifier("settings.paprikaFiling")
         }
         if let status = backupStatusText(state.backup) {
             Text(status.text)

@@ -4,14 +4,17 @@ import Foundation
 /// Answers an import with whatever the test staged, recording what it was given.
 final class FakePaprikaImportRepository: PaprikaImportRepository {
     var result: PaprikaResult = .success(PaprikaSummary(
-        imported: 0, alreadyHere: 0, skippedForLimit: 0, notRecipes: 0, unreadable: 0, photosNotImported: false, freeLimit: nil
+        imported: 0, alreadyHere: 0, skippedForLimit: 0, notRecipes: 0, unreadable: 0, photosLeftOut: 0, freeLimit: nil
     ))
     /// When set, `importPaprika` waits for it: lets a test look at the state mid-import.
     var gate: AsyncGate?
     private(set) var imported: [URL] = []
+    /// The `filing` each import was asked for (#387).
+    private(set) var filings: [Bool] = []
 
-    func importPaprika(_ url: URL) async -> PaprikaResult {
+    func importPaprika(_ url: URL, filing: Bool) async -> PaprikaResult {
         imported.append(url)
+        filings.append(filing)
         await gate?.wait()
         return result
     }
@@ -34,12 +37,15 @@ actor AsyncGate {
     }
 }
 
-/// A `PaprikaFiles` that reads fixture bytes by URL through the real zip reader.
+/// A `PaprikaFiles` that reads fixture bytes by URL through the real zip reader, storing pictures in `photos`.
 final class FakePaprikaFiles: PaprikaFiles {
     var files: [URL: Data] = [:]
     var limits = PaprikaLimits()
+    var photos: PhotoStore?
 
     func read(_ url: URL) async -> PaprikaRead {
-        files[url].map { PaprikaZipReader.read($0, limits: limits) } ?? .failure(.readFailed)
+        files[url].map { data in
+            PaprikaZipReader.read(data, limits: limits, storePhoto: photos.map { store in { store.importData($0) } })
+        } ?? .failure(.readFailed)
     }
 }

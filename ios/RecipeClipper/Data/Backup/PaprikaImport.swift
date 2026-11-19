@@ -27,6 +27,8 @@ struct PaprikaLimits: Equatable {
     var maxTotalBytes = 2 * 1024 * 1024 * 1024
     /// The file itself.
     var maxFileBytes = 2 * 1024 * 1024 * 1024
+    /// One recipe's picture once decoded from base64 (#386): bigger is left out, the recipe kept.
+    var maxPhotoBytes = 8 * 1024 * 1024
 }
 
 /// What a Paprika file held: its readable recipes, and how many entries weren't.
@@ -36,6 +38,8 @@ struct PaprikaContents: Equatable {
     var notRecipes: Int
     /// Entries that couldn't be unpacked or read as JSON.
     var unreadable: Int
+    /// Pictures the file carried that were left out: too big, not an image, or not stored (#386). The recipe stays.
+    var photosLeftOut = 0
 }
 
 /// What an import from Paprika did (#382; Android's `PaprikaSummary`). Counts only; the screen
@@ -51,10 +55,12 @@ struct PaprikaSummary: Equatable {
     var notRecipes: Int
     /// Entries that couldn't be unpacked or read.
     var unreadable: Int
-    /// The file carried pictures of its own, which the app doesn't keep.
-    var photosNotImported: Bool
+    /// Pictures the file carried that were left out (#386): too big, or not an image. The recipe came in.
+    var photosLeftOut: Int
     /// The free library's size when `skippedForLimit` ran into it, else nil.
     var freeLimit: Int?
+    /// New lists made from the categories (#387); a list that was already here doesn't count.
+    var listsMade = 0
 }
 
 /// Paprika's recipes as a `Backup` (#382; Android's `PaprikaImport`), so they merge like any
@@ -64,13 +70,21 @@ struct PaprikaSummary: Equatable {
 ///   source link when it has a real one, so it also meets the same recipe shared or clipped here;
 ///   else `manual:paprika-<uid>` from Paprika's own id; else `manual:paprika-h<hash>` of its name
 ///   and text, for a file with no ids. A recipe already here is never changed (the merger keeps
-///   what is here, and only fills an empty note).
+///   what is here, and only fills an empty note and a missing picture).
 /// - **Origin:** `EDITED` for a recipe with a link (the cook's version: a re-share of its link
 ///   opens it as imported, never fetched over it; "Update from source" is the way back) and
 ///   `MANUAL` for one with none (Paprika's typed-in recipes, like the ones typed in here).
 /// - **Text stays as written:** names, lines, notes and servings are Paprika's, trimmed. A time
 ///   that is a whole phrase ("1 hour 30 minutes") renders like ISO ("1h 30m") through
-///   `Durations`; any other ("Overnight") stays. Categories are not filed into lists.
+///   `Durations`; any other ("Overnight") stays.
+/// - **Pictures** (#386): `PaprikaRecipe.photoFile`, already stored, becomes `BackupRecipe.photo`
+///   under its own name (the repository maps each name to itself for the merger).
+/// - **Lists** (#387), only when `filing` is on: each category puts the recipe in the list of that
+///   name (the merger finds one here with the same name, trimmed and case-insensitive, else makes
+///   one; categories that differ only in case are one list, the first spelling kept), and Paprika's
+///   own favourite flag puts it in Favorites, which the merger finds by `isFavorites`, never by
+///   name. A repeat of a recipe in the same file adds its categories to the first's. Nothing is
+///   taken out of a list (memberships are insert-or-ignore).
 /// - **Order:** the first recipe in the file is the most recently viewed, one millisecond apart,
 ///   so the file's order is kept in Recipes and decides which fit at the free limit.
 enum PaprikaImport {
@@ -106,14 +120,36 @@ enum PaprikaImport {
         return String(repeating: "0", count: 16 - hex.count) + hex
     }
 
-    static func toBackup(_ recipes: [PaprikaRecipe], now: Int64, newUid: () -> String) -> Mapped {
-        var seen = Set<String>()
-        var mapped: [BackupRecipe] = []
+    private final class Entry {
+        let recipe: PaprikaRecipe
+        let backup: BackupRecipe
+        var categories: [(key: String, name: String)] = []
+        var favorite: Bool
+
+        init(recipe: PaprikaRecipe, backup: BackupRecipe) {
+            self.recipe = recipe
+            self.backup = backup
+            favorite = recipe.favorite
+        }
+
+        func add(_ names: [String]) {
+            for name in names where !name.kIsBlank {
+                let key = BackupMerger.nameKey(name)
+                if !categories.contains(where: { $0.key == key }) { categories.append((key, name)) }
+            }
+        }
+    }
+
+    static func toBackup(_ recipes: [PaprikaRecipe], now: Int64, filing: Bool = false, newUid: () -> String) -> Mapped {
+        var order: [String] = []
+        var entries: [String: Entry] = [:]
         var repeated = 0
         for recipe in recipes {
             let key = identity(recipe)
-            if !seen.insert(key).inserted {
+            if let seen = entries[key] {
                 repeated += 1
+                seen.add(recipe.categories)
+                if recipe.favorite { seen.favorite = true }
                 continue
             }
             let language = LanguageWords.resolve(declared: nil, page: nil) {
@@ -122,7 +158,7 @@ enum PaprikaImport {
             let words = LanguageWords.forTag(language)
             func time(_ text: String?) -> String? { text.flatMap { Durations.format($0, words: words) } }
             let hasLink = recipe.sourceUrl != nil
-            mapped.append(BackupRecipe(
+            let backup = BackupRecipe(
                 id: newUid(),
                 sourceUrl: key,
                 sourceType: "BLOG",
@@ -134,16 +170,51 @@ enum PaprikaImport {
                 cookTime: time(recipe.cookTime),
                 totalTime: time(recipe.totalTime),
                 servings: recipe.servings,
-                lastViewedAt: now - Int64(mapped.count),
+                lastViewedAt: now - Int64(order.count),
                 checkedIngredients: [],
                 notes: recipe.notes,
                 language: language,
                 contentOrigin: (hasLink ? ContentOrigin.edited : ContentOrigin.manual).rawValue,
-                editedAt: now
-            ))
+                editedAt: now,
+                photo: recipe.photoFile
+            )
+            let entry = Entry(recipe: recipe, backup: backup)
+            entry.add(recipe.categories)
+            entries[key] = entry
+            order.append(key)
+        }
+
+        var lists: [BackupList] = []
+        var memberships: [BackupMembership] = []
+        if filing {
+            var byName: [String: BackupList] = [:]
+            var favorites: BackupList?
+            for key in order {
+                guard let entry = entries[key] else { continue }
+                if entry.favorite {
+                    let list = favorites ?? BackupList(
+                        id: newUid(), name: "Favorites", isFavorites: true, isBuiltIn: true, sortOrder: 0, createdAt: now
+                    )
+                    if favorites == nil {
+                        favorites = list
+                        lists.append(list)
+                    }
+                    memberships.append(BackupMembership(recipeId: entry.backup.id, listId: list.id, addedAt: now))
+                }
+                for category in entry.categories {
+                    let list = byName[category.key] ?? BackupList(
+                        id: newUid(), name: category.name.kTrimmed, isFavorites: false, isBuiltIn: false, sortOrder: 0, createdAt: now
+                    )
+                    if byName[category.key] == nil {
+                        byName[category.key] = list
+                        lists.append(list)
+                    }
+                    memberships.append(BackupMembership(recipeId: entry.backup.id, listId: list.id, addedAt: now))
+                }
+            }
         }
         return Mapped(
-            backup: Backup(exportedAt: now, recipes: mapped, lists: [], memberships: []),
+            backup: Backup(exportedAt: now, recipes: order.compactMap { entries[$0]?.backup }, lists: lists, memberships: memberships),
             repeated: repeated
         )
     }

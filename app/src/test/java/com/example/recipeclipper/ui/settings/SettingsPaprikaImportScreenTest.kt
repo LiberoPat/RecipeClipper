@@ -1,6 +1,8 @@
 package com.example.recipeclipper.ui.settings
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -42,7 +44,7 @@ class SettingsPaprikaImportScreenTest {
 
     private val summary = PaprikaSummary(
         imported = 12, alreadyHere = 2, skippedForLimit = 0, notRecipes = 1, unreadable = 0,
-        photosNotImported = true, freeLimit = null
+        photosLeftOut = 2, freeLimit = null, listsMade = 3
     )
 
     private fun show(viewModel: SettingsViewModel) {
@@ -59,6 +61,17 @@ class SettingsPaprikaImportScreenTest {
         scrollTo("Import from Paprika")
         compose.onNodeWithText("Import from Paprika").assertIsDisplayed()
         compose.onNodeWithText("Import recipes").assertIsDisplayed()
+    }
+
+    @Test fun `the filing switch is under the row, on by default, and turns off`() {
+        show(viewModel())
+        compose.waitForIdle()
+        scrollTo("Put recipes in lists by their Paprika categories")
+        compose.onNodeWithText("Put recipes in lists by their Paprika categories").assertIsDisplayed()
+        compose.onNode(androidx.compose.ui.test.isToggleable() and hasText("Put recipes in lists", substring = true))
+            .assertIsOn()
+            .performClick()
+            .assertIsOff()
     }
 
     @Test fun `with the flag off there is no row`() {
@@ -78,13 +91,13 @@ class SettingsPaprikaImportScreenTest {
         compose.onNodeWithText(
             "Imported 12 recipes from Paprika. 2 recipes were already here. " +
                 "1 entry with no name, or with no ingredients or steps, was left out. " +
-                "The pictures stored inside the file weren't imported."
+                "2 pictures couldn't be read and were left out. 3 new lists were made from the categories."
         ).assertIsDisplayed()
     }
 
     @Test fun `a full free library says how many were left out`() {
         paprika.result = PaprikaResult.Success(
-            PaprikaSummary(3, 0, skippedForLimit = 40, notRecipes = 0, unreadable = 2, photosNotImported = false, freeLimit = 50)
+            PaprikaSummary(3, 0, skippedForLimit = 40, notRecipes = 0, unreadable = 2, photosLeftOut = 0, freeLimit = 50)
         )
         val vm = viewModel()
         vm.onPaprikaPicked("content://picked")
@@ -97,7 +110,7 @@ class SettingsPaprikaImportScreenTest {
     }
 
     @Test fun `nothing new, nothing found and a refused file each have their own sentence`() {
-        paprika.result = PaprikaResult.Success(PaprikaSummary(0, 5, 0, 0, 0, true, null))
+        paprika.result = PaprikaResult.Success(PaprikaSummary(0, 5, 0, 0, 0, 0, null))
         val vm = viewModel()
         vm.onPaprikaPicked("content://picked")
         show(vm)

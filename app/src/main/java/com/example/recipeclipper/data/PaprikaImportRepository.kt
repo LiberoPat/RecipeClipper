@@ -23,9 +23,10 @@ interface PaprikaImportRepository {
 
     /**
      * Merges the recipes of the picked `.paprikarecipes` file in (never replaces, never deletes;
-     * see [PaprikaImport]). A file that can't be read writes nothing and says why.
+     * see [PaprikaImport]). A file that can't be read writes nothing and says why. With [filing]
+     * (#387) each recipe's Paprika categories put it in lists of those names.
      */
-    suspend fun import(uri: String): PaprikaResult
+    suspend fun import(uri: String, filing: Boolean = false): PaprikaResult
 }
 
 /**
@@ -41,26 +42,40 @@ class DefaultPaprikaImportRepository @Inject constructor(
     private val backupDao: BackupDao,
     private val clock: Clock,
     private val log: ErrorLog,
-    private val library: LibraryPolicy
+    private val library: LibraryPolicy,
+    private val photos: PhotoStore = NoPhotoStore
 ) : PaprikaImportRepository {
 
-    override suspend fun import(uri: String): PaprikaResult {
+    override suspend fun import(uri: String, filing: Boolean): PaprikaResult {
         val contents = when (val read = files.read(uri)) {
             is PaprikaRead.Failure -> return PaprikaResult.Failure(read.error)
             is PaprikaRead.Success -> read.contents
         }
-        val photos = contents.recipes.any { it.hasPhoto }
         if (contents.recipes.isEmpty()) {
             return PaprikaResult.Success(
-                PaprikaSummary(0, 0, 0, contents.notRecipes, contents.unreadable, photos, freeLimit = null)
+                PaprikaSummary(0, 0, 0, contents.notRecipes, contents.unreadable, contents.photosLeftOut, freeLimit = null)
             )
         }
         val now = clock.now()
-        val mapped = PaprikaImport.toBackup(contents.recipes, now) { UUID.randomUUID().toString() }
+        val mapped = PaprikaImport.toBackup(contents.recipes, now, filing) { UUID.randomUUID().toString() }
         val limit = library.limit
+        // The pictures are already in the store (named for the merger by their own names). Those no
+        // recipe ends up with (a recipe already here, one the limit left out, a failed write) go.
+        val stored = contents.recipes.mapNotNullTo(LinkedHashSet()) { it.photoFile }
         val summary = log.guard("paprikaImport", null) {
-            backupDao.importBackup(mapped.backup, limit, today = null, newUid = { UUID.randomUUID().toString() }, now = now)
-        } ?: return PaprikaResult.Failure(PaprikaError.SAVE_FAILED)
+            backupDao.importBackup(
+                mapped.backup, limit, today = null, newUid = { UUID.randomUUID().toString() },
+                storedPhotos = stored.associateWith { it }, now = now, dropEmptyNewLists = true
+            )
+        }
+        if (summary == null) {
+            photos.delete(stored)
+            return PaprikaResult.Failure(PaprikaError.SAVE_FAILED)
+        }
+        if (stored.isNotEmpty()) {
+            val named = log.guard("paprikaImport", null) { backupDao.recipePhotoFiles().toSet() }
+            if (named != null) photos.delete(stored - named)
+        }
         return PaprikaResult.Success(
             PaprikaSummary(
                 imported = summary.recipesAdded,
@@ -68,8 +83,9 @@ class DefaultPaprikaImportRepository @Inject constructor(
                 skippedForLimit = summary.recipesSkipped,
                 notRecipes = contents.notRecipes,
                 unreadable = contents.unreadable,
-                photosNotImported = photos,
-                freeLimit = summary.freeLimit
+                photosLeftOut = contents.photosLeftOut,
+                freeLimit = summary.freeLimit,
+                listsMade = summary.listsAdded
             )
         )
     }

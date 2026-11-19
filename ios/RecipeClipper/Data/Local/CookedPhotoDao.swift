@@ -74,6 +74,11 @@ struct CookedPhotoDao {
         Set(try db.query("SELECT fileName FROM cooked_photos WHERE fileName IS NOT NULL") { $0.string(0) })
     }
 
+    /// Every picture file a recipe names (#386): the sweep leaves these alone too, though no cooking names them.
+    func recipePhotoFileNames() throws -> Set<String> {
+        Set(try db.query("SELECT photoFile FROM recipes WHERE photoFile IS NOT NULL") { $0.string(0) })
+    }
+
     /// An `id` of 0 lets SQLite assign one; a non-zero id is honoured (what undo relies on).
     @discardableResult
     func insert(_ p: CookedPhotoRecord) throws -> Int64 {

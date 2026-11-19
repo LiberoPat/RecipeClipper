@@ -31,6 +31,39 @@ final class PaprikaZipReaderTests: XCTestCase {
         XCTAssertEqual(c.unreadable, 0)
     }
 
+    func testEachPictureIsHandedToTheStoreAsItIsReadAndTheRecipeNamesTheFileItGot() throws {
+        var seen: [Data] = []
+        let read = PaprikaZipReader.read(try fixture("paprika-photos"), storePhoto: { data in
+            // The store's answer: a name for a picture, nil for what isn't one.
+            if String(decoding: data, as: UTF8.self).hasPrefix("bad") { return nil }
+            seen.append(data)
+            return "stored-\(seen.count).jpg"
+        })
+        let c = try contents(read)
+        XCTAssertEqual(c.recipes.map(\.name), ["Toast", "Jam", "Butter", "Honey", "Salt"])
+        // Only the good picture reached the store as a stored file; Honey's is over the 8 MiB and
+        // Butter's isn't base64, so neither was even offered, and Jam's was refused by the store.
+        XCTAssertEqual(c.recipes.map(\.photoFile), ["stored-1.jpg", nil, nil, nil, nil])
+        XCTAssertEqual(seen.count, 1)
+        XCTAssertEqual(c.photosLeftOut, 3)
+        XCTAssertTrue(c.recipes.allSatisfy { $0.photoData == nil })
+    }
+
+    func testWithNoStoreEveryPictureIsLeftOutAndCountedTheRecipesStay() throws {
+        let c = try contents(PaprikaZipReader.read(fixture("paprika-photos")))
+        XCTAssertEqual(c.recipes.count, 5)
+        XCTAssertEqual(c.photosLeftOut, 4)
+    }
+
+    func testALoweredPictureCapLeavesAPictureOut() throws {
+        var limits = PaprikaLimits()
+        limits.maxPhotoBytes = 8
+        let c = try contents(PaprikaZipReader.read(fixture("paprika-photos"), limits: limits, storePhoto: { _ in "kept.jpg" }))
+        // Toast's 31 bytes and Jam's 25 are over 8; the others were never offered.
+        XCTAssertEqual(c.photosLeftOut, 4)
+        XCTAssertTrue(c.recipes.allSatisfy { $0.photoFile == nil })
+    }
+
     func testFoldersMacOSCopiesAndOtherFilesAreIgnoredNotCounted() throws {
         XCTAssertEqual(try contents(PaprikaZipReader.read(fixture("paprika-valid"))).unreadable, 0)
         XCTAssertFalse(PaprikaZipReader.isRecipeEntry("__MACOSX/._A.paprikarecipe"))
@@ -52,7 +85,7 @@ final class PaprikaZipReaderTests: XCTestCase {
     }
 
     func testAZipWithNoRecipeEntriesIsNotAPaprikaFile() {
-        XCTAssertEqual(PaprikaZipReader.read(zip(["readme.txt": Data("hi".utf8)])), .failure(.notAPaprikaFile))
+        XCTAssertEqual(PaprikaZipReader.read(PaprikaZipTestSupport.storedZip(["readme.txt": Data("hi".utf8)])), .failure(.notAPaprikaFile))
     }
 
     func testEntriesThatAreNotGzipNotJsonOrNotAnObjectAreCountedAndTheRestStillImport() throws {
@@ -99,52 +132,7 @@ final class PaprikaZipReaderTests: XCTestCase {
 
     func testAnEntryNameIsOnlyComparedSoAPathNameDoesNothing() throws {
         let json = Data(#"{"name": "Soup", "ingredients": "1 onion"}"#.utf8)
-        let archive = zip(["../../etc/passwd.paprikarecipe": gzip(json), "/abs/Soup2.paprikarecipe": gzip(json)])
+        let archive = PaprikaZipTestSupport.storedZip(["../../etc/passwd.paprikarecipe": PaprikaZipTestSupport.gzip(json), "/abs/Soup2.paprikarecipe": PaprikaZipTestSupport.gzip(json)])
         XCTAssertEqual(try contents(PaprikaZipReader.read(archive)).recipes.count, 2)
-    }
-
-    // MARK: A tiny STORED zip writer and a stored-block gzip writer, for tests that need their own bytes
-
-    private func gzip(_ data: Data) -> Data {
-        // A DEFLATE "stored" block: no compression, so no encoder is needed.
-        var out = Data([0x1F, 0x8B, 8, 0, 0, 0, 0, 0, 0, 0xFF])
-        out.append(contentsOf: [0x01, UInt8(data.count & 0xFF), UInt8(data.count >> 8),
-                                UInt8(~data.count & 0xFF), UInt8((~data.count >> 8) & 0xFF)])
-        out.append(data)
-        var crc = CRC32.checksum(data).littleEndian
-        out.append(Data(bytes: &crc, count: 4))
-        var size = UInt32(data.count).littleEndian
-        out.append(Data(bytes: &size, count: 4))
-        return out
-    }
-
-    private func zip(_ entries: [String: Data]) -> Data { storedZip(entries) }
-
-    private func storedZip(_ entries: [String: Data]) -> Data {
-        func le16(_ v: Int) -> Data { Data([UInt8(v & 0xFF), UInt8((v >> 8) & 0xFF)]) }
-        func le32(_ v: UInt32) -> Data { Data([UInt8(v & 0xFF), UInt8((v >> 8) & 0xFF), UInt8((v >> 16) & 0xFF), UInt8(v >> 24)]) }
-        var out = Data()
-        var central = Data()
-        for (name, data) in entries.sorted(by: { $0.key < $1.key }) {
-            let nameBytes = Data(name.utf8)
-            let crc = CRC32.checksum(data)
-            let offset = UInt32(out.count)
-            out.append(le32(0x0403_4B50)); out.append(le16(20)); out.append(le16(0)); out.append(le16(0))
-            out.append(le16(0)); out.append(le16(0x21)); out.append(le32(crc))
-            out.append(le32(UInt32(data.count))); out.append(le32(UInt32(data.count)))
-            out.append(le16(nameBytes.count)); out.append(le16(0)); out.append(nameBytes); out.append(data)
-            central.append(le32(0x0201_4B50)); central.append(le16(20)); central.append(le16(20))
-            central.append(le16(0)); central.append(le16(0)); central.append(le16(0)); central.append(le16(0x21))
-            central.append(le32(crc)); central.append(le32(UInt32(data.count))); central.append(le32(UInt32(data.count)))
-            central.append(le16(nameBytes.count)); central.append(le16(0)); central.append(le16(0))
-            central.append(le16(0)); central.append(le16(0)); central.append(le32(0)); central.append(le32(offset))
-            central.append(nameBytes)
-        }
-        let centralOffset = UInt32(out.count)
-        out.append(central)
-        out.append(le32(0x0605_4B50)); out.append(le16(0)); out.append(le16(0))
-        out.append(le16(entries.count)); out.append(le16(entries.count))
-        out.append(le32(UInt32(central.count))); out.append(le32(centralOffset)); out.append(le16(0))
-        return out
     }
 }

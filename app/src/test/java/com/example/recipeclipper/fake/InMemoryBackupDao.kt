@@ -33,11 +33,17 @@ open class InMemoryBackupDao : BackupDao() {
     override suspend fun existingRecipes() = recipes.map { r ->
         ExistingRecipe(
             r.id, r.uid, r.sourceUrl, !r.notes.isNullOrBlank(),
-            refs.any { it.recipeId == r.id } || r.contentOrigin in listOf("MANUAL", "CHAT")
+            refs.any { it.recipeId == r.id } || r.contentOrigin in listOf("MANUAL", "CHAT"), r.photoFile != null
         )
     }
     override suspend fun existingLists() = allLists().map { ExistingList(it.id, it.uid, it.name, it.isFavorites) }
     override suspend fun maxSortOrder() = lists.maxOfOrNull { it.sortOrder } ?: -1
+    override suspend fun fillPhotoFile(id: Long, file: String) {
+        writes++
+        val i = recipes.indexOfFirst { it.id == id }
+        if (i >= 0 && recipes[i].photoFile == null) recipes[i] = recipes[i].copy(photoFile = file)
+    }
+    override suspend fun recipePhotoFiles() = recipes.mapNotNull { it.photoFile }
     override suspend fun insertRecipe(recipe: RecipeEntity): Long {
         writes++
         val id = nextId++

@@ -5100,40 +5100,93 @@ flag (on by default in debug and release), on both platforms. Other apps' format
   source" is the way to the site's. One with no link is `MANUAL` with its `manual:` key: it appears
   under Typed by you, which is what Paprika's typed-in recipes are, and the old clean-up (with
   `oneCookbook` off) never removes it. Both are exactly the values a backup keeps (#29).
-- **The one limit.** The recipes become a `Backup` with no lists and no memberships and go through
-  `BackupDao.importBackup`, the route every import takes (`BackupMerger`, `capsEveryRecipe`: #345), in one
+- **The one limit.** The recipes become a `Backup` (with the lists and memberships of #387 when the
+  switch is on) and go through `BackupDao.importBackup`, the route every import takes (`BackupMerger`, `capsEveryRecipe`: #345), in one
   transaction: at the free limit what fits comes in (in the file's order: the first recipe is the most
   recently viewed, a millisecond apart, so Recipes keeps the file's order, listed ones first as for any
   import), the rest are counted in `skippedForLimit` with "the free app keeps 50 recipes" (the existing
   strings), and **nothing old is removed**. Unlimited, every recipe comes in. A database failure writes
   nothing (`SAVE_FAILED`). The result is `PaprikaSummary`: imported, already here, skipped for the limit,
-  not recipes, unreadable, and whether the file carried pictures.
-- **Photos are not imported (decision for the owner).** The app has no storage for a recipe's own
-  picture: `imageUrl` is a web link, and the only local photo store is "I made this" (#116), whose rows
-  are cookings (the Cooked view counts any of them), so putting Paprika's `photo_data` there would be
-  wrong, and a new scheme (a column, a file store, backup rules and an export field) is a feature of
-  its own. So the recipe keeps `image_url` when Paprika has one (a web link, as a parsed recipe's), and
-  `photo_data` is dropped; when the file carried pictures, the summary says "The pictures stored inside
-  the file weren't imported."
-- **Categories are not filed into lists (decision for the owner).** "Lists are deliberate": adding
-  to one is an explicit second act, and `docs/decisions.md` settles nothing for imports from other
-  apps, so Paprika's categories are read and left. Mapping them (a list per category, by name, as the
-  backup merges lists) is a small follow-up if the owner wants it. `source`, `description`, `rating`,
-  `difficulty`, `nutritional_info`, `scale` and `created` are not kept either.
-- **Strings.** 12 new, in six languages on both platforms (`paprika_*`; drafts for a native speaker,
+  not recipes, unreadable, pictures left out (#386) and lists made (#387).
+- **Photos come through** (#386, the owner's decision after the first version left them out): each
+  recipe's `photo_data` (else the first of `photos`' `data`) is the recipe's own stored photo, see "A
+  recipe's own photo" below. The archive reader hands each picture to the photo store as it reads
+  the recipe (so none waits in memory for the rest of the file); a picture over 8 MiB decoded, not
+  base64, or not an image is **left out and counted** (`photosLeftOut`), never the recipe. A recipe
+  already here with no photo of its own gains the file's; one with a photo keeps it. Pictures no
+  recipe ends up with (already here, left out by the limit, a failed write) are deleted again. The
+  file name is the store's (a fresh uuid), never the entry's. `image_url` is still kept as the recipe's
+  web link, under the stored photo.
+- **Categories become lists** (#387, the owner's decision; "Lists are deliberate" is kept by this
+  being the cook's choice): a switch under the Import from Paprika row, **"Put recipes in lists by their
+  Paprika categories"**, on by default, this visit's choice (not a saved setting). With it on, each
+  category puts the recipe in the list of that name: one already here with the same name, trimmed
+  and case-insensitive (the seeded Dinner is found by "dinner"), else a new list; categories that
+  differ only in case are one list, the first spelling kept; blank ones are none. Paprika's own
+  `on_favorites` flag (a boolean or a number that isn't 0) files the recipe in Favorites, found by
+  `isFavorites`, never by name: a category called "Favorites" is a list of its own. A recipe already
+  here gains the lists too; adding is insert-or-ignore, so an `addedAt` is never rewritten and nothing
+  is taken out of a list. A recipe the free limit leaves out is filed nowhere, and a new list none of the
+  recipes that came in belong to is not made (`BackupMerger`'s `dropEmptyNewLists`, which a backup
+  import leaves off). The summary says how many lists were made. A repeat of a recipe in the same file
+  adds its categories to the first's. `source`, `description`, `rating`, `difficulty`,
+  `nutritional_info`, `scale` and `created` are not kept.
+- **Strings.** 15 in six languages on both platforms (`paprika_*`; drafts for a native speaker,
   `docs/translations.md`); the already-here and free-limit sentences are the backup's.
 - **Tests.** The shared fixtures `shared/fixtures/paprika/*.paprikarecipes` (made by
   `tools/paprika-fixtures/make_fixtures.py`: valid, truncated, bad entries, a declared 4 GB entry, a
-  small file that unpacks to 40 MB) are read by `PaprikaArchiveTest` and `PaprikaZipReaderTests` with the
+  small file that unpacks to 40 MB, one with pictures that are good, not images, not base64 and too big) are read by `PaprikaArchiveTest` and `PaprikaZipReaderTests` with the
   same counts, the parser by `PaprikaRecipeParserTest`/`PaprikaRecipeParserTests`, the mapping by
   `PaprikaImportTest`/`PaprikaImportTests`, the repository (identity, a second import, a recipe already
   here, the free limit, failures) by `DefaultPaprikaImportRepositoryTest` over an in-memory DAO and
   `PaprikaImportRepositoryTests` over in-memory SQLite, and the Settings state and words by
-  `SettingsPaprikaImportViewModelTest`, `SettingsPaprikaImportScreenTest` and `SettingsPaprikaImportTests`.
-  Nothing here is under the differential corpus's scope.
+  `SettingsPaprikaImportViewModelTest`, `SettingsPaprikaImportScreenTest` and `SettingsPaprikaImportTests`;
+  lists and photos in the repository tests above. Nothing here is under the differential corpus's scope.
 - **Not verified.** A real Paprika export (the fixtures follow the format as libpaprika documents it, not
-  a file Paprika made), the system file picker choosing a `.paprikarecipes` file from Drive or iCloud on a
+  a file Paprika made; the fixtures' pictures are not images, so a real decoder only meets a real picture
+  in the by-hand run), the system file picker choosing a `.paprikarecipes` file from Drive or iCloud on a
   phone, and a very large export (hundreds of MB) on a low-memory phone.
+
+## A recipe's own photo (#386, 2026-11-19)
+
+The owner's decision, from the Paprika import: a recipe can have a picture of its own, stored on the
+phone, not only a web link. Both platforms, no flag (it changes nothing until something stores one;
+the Paprika import is the first user, behind `paprikaImport`).
+
+- **A column, a file.** `recipes.photoFile`, the name of a file in the photo store (Android
+  `filesDir/cooked_photos/`, iOS `CookedPhotos/` beside the database: the store "I made this" uses, so
+  its downscale to 2048 px and JPEG rules, and its random-uuid names, apply). Room 17 to 18
+  (`MIGRATION_17_18`, `MigrationTest`, schema `18.json` committed), iOS `user_version` 16 to 17
+  (`addPhotoFile`): a nullable column, every recipe comes across with none. **It is not a cooking**: no
+  `cooked_photos` row, so the Cooked view, "I made this" and the cull's protections never see it.
+  `PhotoStore.importBytes` / `importData` stores picture bytes in hand: refused if over 8 MiB, not an
+  image, or declaring over 100 megapixels; a fresh name, never one from a file.
+- **Shown wherever the recipe's picture shows, in preference to `imageUrl`.** One string names it to
+  the image loader (`StoredPhoto`, core / `Data/Model`): `photo://<file name>` (only a plain name; a
+  name with a path in it is none). The list queries return it in place of the link
+  (`COALESCE('photo://' || photoFile, imageUrl)`: Recipes, a list's rows and cover, a planned meal), the
+  recipe screen and the print use `Recipe.displayImage`, and the image loader turns the string into the file
+  (Android: `StoredPhotoMapper`, registered in `RecipeApp`'s Coil loader; iOS: `ImageLoader`, which reads
+  `photo://` from the photo store's folder). The editor still shows and saves only the web link
+  (`Recipe.image`). A phone restored from Android's own backup has the rows without the files (as for "I made
+  this" photos): the picture is blank until an import brings it back.
+- **Kept, deleted, restored.** A re-share, "Update from source" and an edit never change it
+  (`keepingUserState`; iOS's `update` doesn't write the column). Deleting a recipe deletes the row; its
+  file stays while the Undo may still come (the delete's snapshot is the whole row, so Undo brings the
+  name back) and goes with `forget`, once the delete stands; every other delete path (the cull, the free
+  swap) leaves the file to the **sweep**, which at each start removes files no cooking and no recipe names
+  (`CookedPhotoDao.recipePhotoFileNames`), after its 10-minute grace.
+- **Export, import and the automatic copy.** `BackupRecipe.photo` (`"photo"` in the file: a path
+  `photos/recipe-<row id>.jpg` in the zip, only for a recipe whose file is here; absent in a plain JSON
+  export, a shared file (#149) and older files, which an older app ignores). The same zip as "I made this" photos
+  (`BackupArchive`), so the automatic backup copy (#150) carries them too. An import takes the picture
+  only with its file and only for a recipe with none: a new recipe gets it, a recipe already here with
+  none gains it (`PhotoUpdate`; it never replaces one). The Android backup include list is unchanged:
+  photo files stay out of Google's Auto Backup, as the cooked ones do.
+- **Tests.** `StoredPhotoTest`/`StoredPhotoTests`, `StoredPhotoMapperTest`; `RecipePhotoTest` (Room) and
+  `RecipePhotoTests` (SQLite): lists show it, a re-share and an edit keep it, Undo and `forget`, the sweep,
+  never a cooking, the export round trip, a photo without its picture, a recipe with none gains the
+  file's; `MigrationTest` 17 to 18 (device) and the iOS 16 to 17 migration test.
 
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
@@ -5610,9 +5663,9 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 17** (iOS `user_version` 16): `recipes`
-(with nullable `notes`, `language`, `cookState`, `servingsTarget`, `editedAt` and `basedOnUid`,
-#354, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
+Room database `recipe_clipper.db`, **version 18** (iOS `user_version` 17): `recipes`
+(with nullable `notes`, `language`, `cookState`, `servingsTarget`, `editedAt`, `basedOnUid`,
+#354, and `photoFile`, #386, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
 `meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51; `runningLow`, #194), `menus` and
 `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never
 exported), `cooked_photos` (#116, cascading; no `fileName` for "Mark as cooked", #173). Recipes, lists, the plan, grocery,

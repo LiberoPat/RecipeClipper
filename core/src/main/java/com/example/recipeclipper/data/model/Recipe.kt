@@ -90,8 +90,15 @@ data class Recipe(
     /** Whose words the content is; see [ContentOrigin]. */
     val origin: ContentOrigin = ContentOrigin.PARSED,
     /** When the user last saved an edit, or null if never. */
-    val editedAt: Long? = null
+    val editedAt: Long? = null,
+    /** The recipe's own picture, stored on the phone (#386): a file name in the photo store, or null.
+     *  Not part of [image] (a web link, which the editor shows and saves). */
+    val photoFile: String? = null
 ) {
+    /** What the screens show as the recipe's picture (#386): its stored photo, else its link. */
+    val displayImage: String?
+        get() = photoFile?.let(StoredPhoto::model) ?: image
+
     /** "Update from source" applies: the user's version of a recipe that has a real link. */
     val canUpdateFromSource: Boolean
         get() = origin.isUsersVersion && origin != ContentOrigin.MANUAL && !ManualRecipe.isManual(sourceUrl)

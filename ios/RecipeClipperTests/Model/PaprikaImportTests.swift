@@ -8,18 +8,19 @@ final class PaprikaImportTests: XCTestCase {
         name: String = "Soup", uid: String? = nil, sourceUrl: String? = nil,
         ingredients: [String] = ["1 onion"], directions: [String] = ["Simmer."],
         prep: String? = nil, cook: String? = nil, total: String? = nil,
-        notes: String? = nil, servings: String? = nil, imageUrl: String? = nil
+        notes: String? = nil, servings: String? = nil, imageUrl: String? = nil,
+        categories: [String] = ["Dinner"], photoFile: String? = nil, favorite: Bool = false
     ) -> PaprikaRecipe {
         PaprikaRecipe(
             uid: uid, name: name, ingredients: ingredients, directions: directions, notes: notes, servings: servings,
             prepTime: prep, cookTime: cook, totalTime: total, sourceUrl: sourceUrl, imageUrl: imageUrl,
-            categories: ["Dinner"], hasPhoto: true
+            categories: categories, hasPhoto: true, photoFile: photoFile, favorite: favorite
         )
     }
 
     private var uids = 0
-    private func map(_ recipes: [PaprikaRecipe], now: Int64 = 1_000_000) -> PaprikaImport.Mapped {
-        PaprikaImport.toBackup(recipes, now: now) { defer { uids += 1 }; return "uid-\(uids)" }
+    private func map(_ recipes: [PaprikaRecipe], now: Int64 = 1_000_000, filing: Bool = false) -> PaprikaImport.Mapped {
+        PaprikaImport.toBackup(recipes, now: now, filing: filing) { defer { uids += 1 }; return "uid-\(uids)" }
     }
 
     func testARecipeWithALinkIsKeyedByTheLinkAndKeptAsTheCooksVersion() throws {
@@ -97,10 +98,57 @@ final class PaprikaImportTests: XCTestCase {
         XCTAssertEqual(map([recipe(ingredients: ["1 cup rice"])]).backup.recipes.first?.language, "en")
     }
 
-    func testCategoriesAreNotFiledIntoLists() {
-        let backup = map([recipe(), recipe(name: "B", uid: "b")]).backup
+    func testWithTheSwitchOffCategoriesAreNotFiledIntoLists() {
+        let backup = map([recipe(), recipe(name: "B", uid: "b", favorite: true)]).backup
         XCTAssertTrue(backup.lists.isEmpty)
         XCTAssertTrue(backup.memberships.isEmpty)
+    }
+
+    func testWithItOnACategoryIsAListCaseInsensitiveTheFirstSpellingKept() {
+        let backup = map([
+            recipe(name: "A", uid: "a", categories: ["Dessert", " baking "]),
+            recipe(name: "B", uid: "b", categories: ["BAKING", "", "Soup"]),
+        ], filing: true).backup
+        XCTAssertEqual(backup.lists.map(\.name), ["Dessert", "baking", "Soup"])
+        XCTAssertTrue(backup.lists.allSatisfy { !$0.isFavorites })
+        let ids = Dictionary(uniqueKeysWithValues: backup.recipes.map { ($0.title, $0.id) })
+        let named = Dictionary(uniqueKeysWithValues: backup.lists.map { ($0.id, $0.name) })
+        func inLists(_ title: String) -> [String] {
+            backup.memberships.filter { $0.recipeId == ids[title] }.map { named[$0.listId]! }
+        }
+        XCTAssertEqual(inLists("A"), ["Dessert", "baking"])
+        XCTAssertEqual(inLists("B"), ["baking", "Soup"])
+    }
+
+    func testPaprikasFavouriteFlagFilesIntoFavoritesByIsFavoritesNeverByNameOneListForAll() throws {
+        let backup = map([
+            recipe(name: "A", uid: "a", categories: [], favorite: true),
+            recipe(name: "B", uid: "b", categories: ["favorites"]),
+            recipe(name: "C", uid: "c", categories: [], favorite: true),
+        ], filing: true).backup
+        let favorites = try XCTUnwrap(backup.lists.filter(\.isFavorites).first)
+        XCTAssertEqual(backup.lists.filter(\.isFavorites).count, 1)
+        let titles = Set(backup.memberships.filter { $0.listId == favorites.id }.map { m in backup.recipes.first { $0.id == m.recipeId }!.title })
+        XCTAssertEqual(titles, ["A", "C"])
+        // A category called favorites is a list of its own, not that one.
+        let own = try XCTUnwrap(backup.lists.first { !$0.isFavorites })
+        XCTAssertEqual(own.name, "favorites")
+        XCTAssertEqual(backup.memberships.filter { $0.listId == own.id }.map { m in backup.recipes.first { $0.id == m.recipeId }!.title }, ["B"])
+    }
+
+    func testARepeatInTheFileAddsItsCategoriesAndItsFavouriteFlagToTheFirst() {
+        let backup = map([
+            recipe(name: "First", uid: "x", categories: ["Dinner"]),
+            recipe(name: "Second", uid: "X", categories: ["Quick"], favorite: true),
+        ], filing: true).backup
+        XCTAssertEqual(backup.recipes.count, 1)
+        XCTAssertEqual(Set(backup.lists.map(\.name)), ["Dinner", "Quick", "Favorites"])
+        XCTAssertEqual(backup.memberships.count, 3)
+    }
+
+    func testThePictureTheArchiveStoredIsTheRecipesOwnUnderThatName() {
+        XCTAssertEqual(map([recipe(uid: "a", photoFile: "stored-1.jpg")]).backup.recipes.first?.photo, "stored-1.jpg")
+        XCTAssertNil(map([recipe(uid: "a")]).backup.recipes.first?.photo)
     }
 
     func testTheFilesOrderIsKeptTheFirstBeingTheMostRecentlyViewed() {

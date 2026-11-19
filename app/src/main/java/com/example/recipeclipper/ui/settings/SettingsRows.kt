@@ -138,7 +138,7 @@ internal fun BackupStatusText(status: BackupStatus) {
 /**
  * What an import from Paprika did (#382), one sentence per count that isn't zero: imported (or
  * "nothing new" / "nothing could be read"), already here, left out for the limit, entries that
- * weren't recipes or couldn't be read, and that the pictures inside the file weren't kept.
+ * weren't recipes or couldn't be read, the pictures left out (#386) and the lists made (#387).
  */
 private fun paprikaSummaryText(resources: android.content.res.Resources, s: PaprikaSummary): String {
     val parts = mutableListOf<String>()
@@ -157,7 +157,8 @@ private fun paprikaSummaryText(resources: android.content.res.Resources, s: Papr
     }
     if (s.notRecipes > 0) parts += resources.getQuantityString(R.plurals.paprika_not_recipes, s.notRecipes, s.notRecipes)
     if (s.unreadable > 0) parts += resources.getQuantityString(R.plurals.paprika_unreadable, s.unreadable, s.unreadable)
-    if (s.photosNotImported && s.imported > 0) parts += resources.getString(R.string.paprika_photos_not_imported)
+    if (s.photosLeftOut > 0) parts += resources.getQuantityString(R.plurals.paprika_photos_left_out, s.photosLeftOut, s.photosLeftOut)
+    if (s.listsMade > 0) parts += resources.getQuantityString(R.plurals.paprika_lists_made, s.listsMade, s.listsMade)
     return parts.joinToString(" ")
 }
 

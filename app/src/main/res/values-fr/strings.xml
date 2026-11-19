@@ -210,10 +210,21 @@
     <string name="paprika_importing">Lecture du fichier Paprika…</string>
     <string name="paprika_imported_nothing">Rien de nouveau : toutes les recettes de ce fichier sont déjà là.</string>
     <string name="paprika_nothing_found">Aucune recette n\'a pu être lue dans ce fichier.</string>
-    <string name="paprika_photos_not_imported">Les photos stockées dans le fichier n\'ont pas été importées.</string>
     <string name="paprika_error_not_paprika">Ce fichier n\'est pas une exportation Paprika. Choisissez un fichier .paprikarecipes.</string>
     <string name="paprika_error_damaged">Ce fichier est endommagé ou incomplet. Rien n\'a été importé.</string>
     <string name="paprika_error_too_large">Ce fichier est bien plus volumineux qu\'une exportation Paprika ne devrait l\'être. Rien n\'a été importé.</string>
+    <string name="paprika_filing_title">Ranger les recettes dans des listes selon leurs catégories Paprika</string>
+    <string name="paprika_filing_description">Une liste du même nom, ou une nouvelle. Rien n\'est retiré d\'une liste.</string>
+    <plurals name="paprika_photos_left_out">
+        <item quantity="one">%d photo n\'a pas pu être lue et a été laissée de côté.</item>
+        <item quantity="many">%d de photos n\'ont pas pu être lues et ont été laissées de côté.</item>
+        <item quantity="other">%d photos n\'ont pas pu être lues et ont été laissées de côté.</item>
+    </plurals>
+    <plurals name="paprika_lists_made">
+        <item quantity="one">%d nouvelle liste a été créée à partir des catégories.</item>
+        <item quantity="many">%d de nouvelles listes ont été créées à partir des catégories.</item>
+        <item quantity="other">%d nouvelles listes ont été créées à partir des catégories.</item>
+    </plurals>
     <plurals name="paprika_imported">
         <item quantity="one">%d recette importée depuis Paprika.</item>
         <item quantity="many">%d de recettes importées depuis Paprika.</item>

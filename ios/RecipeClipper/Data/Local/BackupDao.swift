@@ -104,6 +104,11 @@ struct BackupDao {
         }
     }
 
+    /// Every picture file a recipe names (#386): what an import that fails leaves alone.
+    func recipePhotoFiles() throws -> Set<String> {
+        Set(try db.query("SELECT photoFile FROM recipes WHERE photoFile IS NOT NULL") { $0.string(0) })
+    }
+
     func existingGroceryUids() throws -> Set<String> {
         Set(try db.query("SELECT uid FROM grocery_items") { $0.string(0) })
     }
@@ -115,13 +120,14 @@ struct BackupDao {
                    (notes IS NOT NULL AND trim(notes) != '') AS hasNotes,
                    (EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)
                     OR contentOrigin IN ('MANUAL', 'CHAT')
-                    OR EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id)) AS isListed
+                    OR EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id)) AS isListed,
+                   (photoFile IS NOT NULL) AS hasPhoto
             FROM recipes
             """
         ) { row in
             ExistingRecipe(
                 id: row.int64(0), uid: row.string(1), sourceUrl: row.string(2),
-                hasNotes: row.bool(3), isListed: row.bool(4)
+                hasNotes: row.bool(3), isListed: row.bool(4), hasPhoto: row.bool(5)
             )
         }
     }
@@ -140,6 +146,8 @@ struct BackupDao {
     /// the photo store, to their stored names.
     func importBackup(
         _ backup: Backup, limit: LibraryLimit, today: Int64?, storedPhotos: [String: String] = [:], now: Int64 = 0,
+        /// A new list no recipe comes into is not made (#387): the Paprika import's, which files by category.
+        dropEmptyNewLists: Bool = false,
         newUid: () -> String
     ) throws -> ImportSummary {
         // Unlimited (#107) leaves nothing out: every recipe comes in.
@@ -171,7 +179,8 @@ struct BackupDao {
             countsEveryRecipe: countsEveryRecipe,
             capsEveryRecipe: capsEveryRecipe,
             existingCookedPhotoUids: Set(try db.query("SELECT uid FROM cooked_photos") { $0.string(0) }),
-            availablePhotoFiles: Set(storedPhotos.keys)
+            availablePhotoFiles: Set(storedPhotos.keys),
+            dropEmptyNewLists: dropEmptyNewLists
         )
 
         let recipes = RecipeDao(db: db)
@@ -183,7 +192,8 @@ struct BackupDao {
                 prepTime: r.prepTime, cookTime: r.cookTime, totalTime: r.totalTime, servings: r.servings,
                 sourceType: r.sourceType, lastViewedAt: r.lastViewedAt,
                 checkedIngredients: r.checkedIngredients, notes: r.notes, uid: r.id, language: r.language,
-                contentOrigin: r.contentOrigin, editedAt: r.editedAt, basedOnUid: r.basedOn
+                contentOrigin: r.contentOrigin, editedAt: r.editedAt, basedOnUid: r.basedOn,
+                photoFile: r.photo.flatMap { storedPhotos[$0] }
             ))
         }
         for update in plan.noteUpdates {
@@ -192,6 +202,12 @@ struct BackupDao {
                 "UPDATE recipes SET notes = ? WHERE id = ? AND (notes IS NULL OR trim(notes) = '')",
                 update.notes, update.recipeId
             )
+        }
+
+        for update in plan.photoUpdates {
+            // Only ever fills a missing picture (#386); the plan never names a recipe that has one.
+            guard let name = storedPhotos[update.file] else { continue }
+            try db.run("UPDATE recipes SET photoFile = ? WHERE id = ? AND photoFile IS NULL", name, update.recipeId)
         }
 
         var newListIds: [String: Int64] = [:]

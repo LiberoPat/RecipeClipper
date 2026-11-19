@@ -21,7 +21,7 @@ final class SettingsPaprikaImportTests: XCTestCase {
     }
 
     private let summary = PaprikaSummary(
-        imported: 12, alreadyHere: 2, skippedForLimit: 0, notRecipes: 1, unreadable: 0, photosNotImported: true, freeLimit: nil
+        imported: 12, alreadyHere: 2, skippedForLimit: 0, notRecipes: 1, unreadable: 0, photosLeftOut: 2, freeLimit: nil, listsMade: 3
     )
 
     func testTheRowShowsOnlyWithTheFlagOnAndAnImporter() {
@@ -44,6 +44,27 @@ final class SettingsPaprikaImportTests: XCTestCase {
 
         XCTAssertEqual(paprika.imported, [picked])
         XCTAssertEqual(vm.uiState.backup, .importedPaprika(summary))
+    }
+
+    func testTheFilingSwitchIsOnByDefaultIsThisVisitsChoiceAndGoesToTheImport() async {
+        let vm = vm()
+        XCTAssertTrue(vm.uiState.paprikaFiling)
+        await vm.onPaprikaPicked(picked)?.value
+        vm.onPaprikaFilingChange(false)
+        await vm.onPaprikaPicked(URL(fileURLWithPath: "/tmp/two"))?.value
+        XCTAssertEqual(paprika.filings, [true, false])
+        XCTAssertFalse(vm.uiState.paprikaFiling)
+    }
+
+    func testTheSwitchSurvivesAPreferenceChange() async {
+        let preferences = FakeAppPreferences()
+        let vm = SettingsViewModel(
+            preferences: preferences, backups: backups, files: FakeBackupFiles(), flags: flags(), paprika: paprika
+        )
+        vm.onPaprikaFilingChange(false)
+        preferences.darkWhileCooking = true
+        try? await Task.sleep(for: .milliseconds(50))
+        XCTAssertFalse(vm.uiState.paprikaFiling)
     }
 
     func testARefusedFileShowsItsCause() async {
@@ -75,13 +96,13 @@ final class SettingsPaprikaImportTests: XCTestCase {
             Strings.paprikaSummary(summary),
             "Imported 12 recipes from Paprika. 2 recipes were already here. "
                 + "1 entry with no name, or with no ingredients or steps, was left out. "
-                + "The pictures stored inside the file weren't imported."
+                + "2 pictures couldn't be read and were left out. 3 new lists were made from the categories."
         )
     }
 
     func testAFullFreeLibrarySaysHowManyWereLeftOut() {
         let full = PaprikaSummary(
-            imported: 3, alreadyHere: 0, skippedForLimit: 40, notRecipes: 0, unreadable: 2, photosNotImported: false, freeLimit: 50
+            imported: 3, alreadyHere: 0, skippedForLimit: 40, notRecipes: 0, unreadable: 2, photosLeftOut: 0, freeLimit: 50
         )
         XCTAssertEqual(
             Strings.paprikaSummary(full),
@@ -92,13 +113,13 @@ final class SettingsPaprikaImportTests: XCTestCase {
     func testNothingNewAndNothingFoundEachHaveTheirOwnSentence() {
         XCTAssertEqual(
             Strings.paprikaSummary(PaprikaSummary(
-                imported: 0, alreadyHere: 5, skippedForLimit: 0, notRecipes: 0, unreadable: 0, photosNotImported: true, freeLimit: nil
+                imported: 0, alreadyHere: 5, skippedForLimit: 0, notRecipes: 0, unreadable: 0, photosLeftOut: 0, freeLimit: nil
             )),
             "Nothing new: every recipe in that file is already here."
         )
         XCTAssertEqual(
             Strings.paprikaSummary(PaprikaSummary(
-                imported: 0, alreadyHere: 0, skippedForLimit: 0, notRecipes: 0, unreadable: 0, photosNotImported: false, freeLimit: nil
+                imported: 0, alreadyHere: 0, skippedForLimit: 0, notRecipes: 0, unreadable: 0, photosLeftOut: 0, freeLimit: nil
             )),
             "No recipes could be read from that file."
         )

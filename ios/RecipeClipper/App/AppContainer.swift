@@ -193,6 +193,8 @@ final class AppContainer {
         let photoStore = testing
             ? FilePhotoStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("TestHostPhotos"))
             : FilePhotoStore(databasePath: AppDatabase.defaultPath())
+        // A recipe's own picture (#386) reaches the image loader as `photo://<name>`, a file in this store.
+        ImageLoader.photoDirectory = URL(fileURLWithPath: photoStore.path(""))
         let backupRepository = DefaultBackupRepository(db: database, clock: clock, library: libraryLimit, photos: photoStore)
         let decisions = DefaultDecisionRepository(
             db: database, model: FoundationModelsDecisionModel(), clock: clock,
@@ -251,7 +253,9 @@ final class AppContainer {
                 backups: backupRepository, folder: ICloudBackupFolder(),
                 store: UserDefaultsAutoBackupStore(defaults: defaults), clock: clock
             ),
-            paprikaImportRepository: DefaultPaprikaImportRepository(db: database, clock: clock, library: libraryLimit),
+            paprikaImportRepository: DefaultPaprikaImportRepository(
+                files: FilePaprikaFiles(photos: photoStore), db: database, clock: clock, library: libraryLimit, photos: photoStore
+            ),
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             // Under XCTest (the unit tests' host) every tooltip is seen, as for any test container.
             tourPreferences: testing ? MemoryTourPreferences() : preferences,

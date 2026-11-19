@@ -69,6 +69,26 @@ class PaprikaRecipeParserTest {
         assertFalse(recipe("""{"name": "A", "ingredients": "1 egg", "photos": []}""").hasPhoto)
     }
 
+    @Test fun `the picture's text is carried until the archive stores it`() {
+        assertEquals("AAAA", recipe(full).photoData)
+        // Else the first of the photos' data (libpaprika's RecipePhoto).
+        val r = recipe("""{"name": "A", "ingredients": "1 egg", "photos": [{"filename": "a.jpg"}, {"filename": "b.jpg", "data": "BBBB"}]}""")
+        assertEquals("BBBB", r.photoData)
+        assertNull(recipe("""{"name": "A", "ingredients": "1 egg"}""").photoData)
+        assertNull(recipe(full).photoFile)
+    }
+
+    @Test fun `Paprika's favourite flag is a boolean or a number that isn't zero`() {
+        fun fav(value: String) = recipe("""{"name": "A", "ingredients": "1 egg", "on_favorites": $value}""").favorite
+        assertTrue(fav("1"))
+        assertTrue(fav("true"))
+        assertFalse(fav("0"))
+        assertFalse(fav("false"))
+        assertFalse(fav("null"))
+        assertFalse(fav("\"yes\""))
+        assertFalse(recipe("""{"name": "A", "ingredients": "1 egg"}""").favorite)
+    }
+
     @Test fun `a number where text goes is kept as its text`() {
         assertEquals("4", recipe("""{"name": "A", "ingredients": "1 egg", "servings": 4}""").servings)
     }

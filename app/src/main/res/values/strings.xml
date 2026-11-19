@@ -293,10 +293,19 @@
     <string name="paprika_importing">Reading the Paprika file…</string>
     <string name="paprika_imported_nothing">Nothing new: every recipe in that file is already here.</string>
     <string name="paprika_nothing_found">No recipes could be read from that file.</string>
-    <string name="paprika_photos_not_imported">The pictures stored inside the file weren\'t imported.</string>
     <string name="paprika_error_not_paprika">That isn\'t a Paprika export. Choose a .paprikarecipes file.</string>
     <string name="paprika_error_damaged">That file is damaged or cut short. Nothing was imported.</string>
     <string name="paprika_error_too_large">That file is far larger than a Paprika export should be. Nothing was imported.</string>
+    <string name="paprika_filing_title">Put recipes in lists by their Paprika categories</string>
+    <string name="paprika_filing_description">A list of that name, or a new one. Nothing is taken out of a list.</string>
+    <plurals name="paprika_photos_left_out">
+        <item quantity="one">%d picture couldn\'t be read and was left out.</item>
+        <item quantity="other">%d pictures couldn\'t be read and were left out.</item>
+    </plurals>
+    <plurals name="paprika_lists_made">
+        <item quantity="one">%d new list was made from the categories.</item>
+        <item quantity="other">%d new lists were made from the categories.</item>
+    </plurals>
     <plurals name="paprika_imported">
         <item quantity="one">Imported %d recipe from Paprika.</item>
         <item quantity="other">Imported %d recipes from Paprika.</item>

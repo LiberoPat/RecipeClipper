@@ -199,10 +199,19 @@
     <string name="paprika_importing">Paprika-Datei wird gelesen…</string>
     <string name="paprika_imported_nothing">Nichts Neues: Alle Rezepte in dieser Datei sind schon vorhanden.</string>
     <string name="paprika_nothing_found">Aus dieser Datei konnte kein Rezept gelesen werden.</string>
-    <string name="paprika_photos_not_imported">Die in der Datei gespeicherten Bilder wurden nicht importiert.</string>
     <string name="paprika_error_not_paprika">Das ist keine Paprika-Exportdatei. Wähle eine .paprikarecipes-Datei.</string>
     <string name="paprika_error_damaged">Diese Datei ist beschädigt oder unvollständig. Es wurde nichts importiert.</string>
     <string name="paprika_error_too_large">Diese Datei ist viel größer, als ein Paprika-Export sein sollte. Es wurde nichts importiert.</string>
+    <string name="paprika_filing_title">Rezepte nach ihren Paprika-Kategorien in Listen legen</string>
+    <string name="paprika_filing_description">Eine Liste mit diesem Namen, sonst eine neue. Aus keiner Liste wird etwas entfernt.</string>
+    <plurals name="paprika_photos_left_out">
+        <item quantity="one">%d Bild konnte nicht gelesen werden und wurde ausgelassen.</item>
+        <item quantity="other">%d Bilder konnten nicht gelesen werden und wurden ausgelassen.</item>
+    </plurals>
+    <plurals name="paprika_lists_made">
+        <item quantity="one">%d neue Liste wurde aus den Kategorien erstellt.</item>
+        <item quantity="other">%d neue Listen wurden aus den Kategorien erstellt.</item>
+    </plurals>
     <plurals name="paprika_imported">
         <item quantity="one">%d Rezept aus Paprika importiert.</item>
         <item quantity="other">%d Rezepte aus Paprika importiert.</item>

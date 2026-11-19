@@ -22,6 +22,18 @@ final class ImageLoader {
         shared = ImageLoader(cache: cache)
     }
 
+    /// Where the photo store keeps its files (#386): `photo://<name>` is one of them. Set at app
+    /// start beside the database; nil (tests that don't care) reads no such picture.
+    static var photoDirectory: URL?
+
+    /// The file `url` names in the photo store (`photo://<name>`), or nil for anything else. Only a
+    /// plain name is a file in the store: one with a path in it is none.
+    static func storedFile(for url: URL) -> URL? {
+        guard url.scheme == "photo", let directory = photoDirectory,
+              let name = StoredPhoto.fileName(url.absoluteString) else { return nil }
+        return directory.appendingPathComponent(name)
+    }
+
     let cache: URLCache
     private let session: URLSession
 
@@ -41,6 +53,10 @@ final class ImageLoader {
     /// and those are exactly the ones that would then be missing offline. A local file (a
     /// scan's page, #226) is read where it is and never cached: a scan isn't kept.
     func data(for url: URL) async throws -> Data {
+        if url.scheme == "photo" {
+            guard let file = Self.storedFile(for: url) else { throw URLError(.fileDoesNotExist) }
+            return try await Task.detached(priority: .userInitiated) { try Data(contentsOf: file) }.value
+        }
         if url.isFileURL {
             return try await Task.detached(priority: .userInitiated) { try Data(contentsOf: url) }.value
         }
@@ -57,6 +73,7 @@ final class ImageLoader {
     /// The image's bytes only if they are already on the phone (a local file, or the cache),
     /// never fetched: a printed recipe (#318) prints its photo only when it is cached.
     func cachedData(for url: URL) -> Data? {
+        if url.scheme == "photo" { return Self.storedFile(for: url).flatMap { try? Data(contentsOf: $0) } }
         if url.isFileURL { return try? Data(contentsOf: url) }
         return cache.cachedResponse(for: URLRequest(url: url))?.data
     }

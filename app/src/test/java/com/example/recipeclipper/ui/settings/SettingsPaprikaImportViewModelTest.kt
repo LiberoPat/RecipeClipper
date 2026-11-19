@@ -41,7 +41,7 @@ class SettingsPaprikaImportViewModelTest {
 
     private val summary = PaprikaSummary(
         imported = 12, alreadyHere = 2, skippedForLimit = 0, notRecipes = 1, unreadable = 0,
-        photosNotImported = true, freeLimit = null
+        photosLeftOut = 2, freeLimit = null, listsMade = 3
     )
 
     @Test fun `the row shows only with the flag on and an importer`() = runTest(mainDispatcherRule.dispatcher) {
@@ -67,6 +67,29 @@ class SettingsPaprikaImportViewModelTest {
 
         assertEquals(listOf("content://picked"), paprika.imported)
         assertEquals(BackupStatus.ImportedPaprika(summary), vm.uiState.value.backup)
+    }
+
+    @Test fun `the filing switch is on by default, is this visit's choice, and goes to the import`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.paprikaFiling)
+
+        vm.onPaprikaPicked("content://one")
+        advanceUntilIdle()
+        vm.onPaprikaFilingChange(false)
+        vm.onPaprikaPicked("content://two")
+        advanceUntilIdle()
+        assertEquals(listOf(true, false), paprika.filings)
+        assertFalse(vm.uiState.value.paprikaFiling)
+    }
+
+    @Test fun `the switch survives a preference change`() = runTest(mainDispatcherRule.dispatcher) {
+        val preferences = FakeAppPreferences()
+        val vm = SettingsViewModel(preferences, backups, FakeBackupFiles(), FakeAppInfo(), flags(), paprika = paprika)
+        vm.onPaprikaFilingChange(false)
+        preferences.darkWhileCooking = true
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.paprikaFiling)
     }
 
     @Test fun `a refused file shows its cause`() = runTest(mainDispatcherRule.dispatcher) {

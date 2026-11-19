@@ -7,6 +7,7 @@ import android.graphics.pdf.PdfDocument
 import androidx.core.graphics.withClip
 import androidx.core.graphics.withTranslation
 import coil.imageLoader
+import com.example.recipeclipper.data.model.StoredPhoto
 import coil.request.CachePolicy
 import coil.size.Precision
 import coil.size.Scale
@@ -118,7 +119,8 @@ internal class PrintPdf(private val context: Context) {
     }
 
     /** Whether Coil has [url] on disk, without decoding it (a picture is never fetched for paper). */
-    private fun cached(url: String): Boolean = context.imageLoader.diskCache?.openSnapshot(url)?.use { true } == true
+    private fun cached(url: String): Boolean =
+        StoredPhoto.fileName(url) != null || context.imageLoader.diskCache?.openSnapshot(url)?.use { true } == true
 
     /** [url] from Coil's disk cache, decoded at the photo band's size and cropped to it. */
     private suspend fun load(url: String): Bitmap? {

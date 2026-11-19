@@ -12,8 +12,13 @@ import org.json.JSONTokener
  * holds it, trimmed: nothing here is converted or guessed. [uid] is Paprika's own id (the
  * identity of the recipe in an export, which a re-import uses), [sourceUrl] a real web link
  * (cleaned) or null, [imageUrl] a web picture link or null. [hasPhoto] is whether the file
- * carries the recipe's picture itself (`photo_data`), which the app doesn't keep.
- * [categories] are Paprika's own filing, read but never turned into lists ("Lists are deliberate").
+ * carries the recipe's picture itself (`photo_data`, or the first of `photos`). [categories] are
+ * Paprika's own filing; the cook may have them become lists (#387). [favorite] is Paprika's own
+ * flag (`on_favorites`).
+ *
+ * [photoData] is that picture as the base64 text the file holds it, only until the archive reader
+ * has handed it to the photo store (#386): it is then null, and [photoFile] names the stored file
+ * (null if the picture was left out: too big, or not an image).
  */
 data class PaprikaRecipe(
     val uid: String?,
@@ -28,7 +33,10 @@ data class PaprikaRecipe(
     val sourceUrl: String?,
     val imageUrl: String?,
     val categories: List<String>,
-    val hasPhoto: Boolean
+    val hasPhoto: Boolean,
+    val photoData: String? = null,
+    val photoFile: String? = null,
+    val favorite: Boolean = false
 )
 
 /** What one entry of the export said. */
@@ -68,6 +76,10 @@ object PaprikaRecipeParser {
         if (name.isEmpty() || (ingredients.isEmpty() && directions.isEmpty())) return PaprikaEntry.NotARecipe
 
         val photos = json.optJSONArray("photos")
+        // The picture: photo_data, else the first of the photos' data (libpaprika's RecipePhoto).
+        val photoData = json.string("photo_data") ?: (0 until (photos?.length() ?: 0)).firstNotNullOfOrNull { i ->
+            (photos?.opt(i) as? JSONObject)?.string("data")
+        }
         return PaprikaEntry.Recipe(
             PaprikaRecipe(
                 uid = json.string("uid"),
@@ -82,7 +94,9 @@ object PaprikaRecipeParser {
                 sourceUrl = json.string("source_url")?.let(::webLink),
                 imageUrl = WebImageUrl.of(json.string("image_url")),
                 categories = json.optJSONArray("categories")?.strings().orEmpty(),
-                hasPhoto = json.string("photo_data") != null || (photos != null && photos.length() > 0)
+                hasPhoto = photoData != null || (photos != null && photos.length() > 0),
+                photoData = photoData,
+                favorite = json.flag("on_favorites")
             )
         )
     }
@@ -100,6 +114,14 @@ object PaprikaRecipeParser {
             is Number -> value.toString()
             else -> null
         }?.trim()?.takeIf { it.isNotEmpty() }
+
+    /** A switch as Paprika writes it: a boolean, or a number that isn't 0 (`on_favorites` is 0 or 1). */
+    private fun JSONObject.flag(key: String): Boolean =
+        when (val value = opt(key)) {
+            is Boolean -> value
+            is Number -> value.toDouble() != 0.0
+            else -> false
+        }
 
     private fun JSONArray.strings(): List<String> =
         (0 until length()).mapNotNull { (opt(it) as? String)?.trim()?.takeIf { s -> s.isNotEmpty() } }
