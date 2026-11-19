@@ -853,6 +853,12 @@ enum Strings {
     static var askAiCopy: String { String(localized: "ask_ai_copy") }
     static var askAiCopied: String { String(localized: "ask_ai_copied") }
     static var askAiShare: String { String(localized: "ask_ai_share") }
+    static var askAiPaste: String { String(localized: "ask_ai_paste") }
+    static var askAiPasteEmpty: String { String(localized: "ask_ai_paste_empty") }
+    static var askAiPasteNone: String { String(localized: "ask_ai_paste_none") }
+    static var pasteDialogTitle: String { String(localized: "paste_dialog_title") }
+    static var labelLinkOrRecipe: String { String(localized: "label_link_or_recipe") }
+    static var pasteNoRecipe: String { String(localized: "paste_no_recipe") }
     static var changeRecipe: String { String(localized: "action_change_recipe") }
     static var menuDescChangeRecipe: String { String(localized: "menu_desc_change_recipe") }
     static var changeRecipeTitle: String { String(localized: "change_recipe_title") }

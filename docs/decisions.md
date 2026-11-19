@@ -4992,6 +4992,45 @@ Behind the `mealPlanImport` flag (on by default; off, the first recipe opens the
   `MealPlanReviewScreenTest` (Android, through a NavHost route), `TextIntentTest`, `PlanHandOffTests`
   (iOS). The share sheet/extension on a real phone, and a real AI's answer, need a device.
 
+## Paste an AI's answer in the app (#372, 2026-11-19)
+
+An AI's answer used to come in only by Share (or Android's text-selection menu). Most chat apps
+offer Copy on a code block, so pasting is the natural step; the owner asked where in the app to
+paste the JSON. Two entries, both platforms, both **through the one shared-text route**
+(`TextIntent.target`: #306 text, #350 JSON, #352 a week, #354 versions), so a paste lands exactly
+where the same text shared would. Nothing new in the parsers, and **nothing is saved before the
+editor's or the review's Save** (the free limit as everywhere).
+
+- **Paste a link takes a link or recipe text** (Home's tile, the Recipes + menu; the tile says
+  "A link or a recipe's text", the dialog "Paste a link or recipe"). **Go is on for any text.** A
+  lone link (one token: a URL, or `host.tld/path` with the scheme left off, never JSON or "1.5
+  cups") imports as before; anything else goes through the route: one recipe opens the editor, a
+  week the meal-plan review, a bulleted list Groceries' "Add this list" sheet, a link with a short
+  caption imports. Text the route doesn't read (too long, and neither link nor list) leaves the
+  dialog open with "No recipe found in that text."; the next keystroke clears it. Android's field
+  is multi-line; **iOS replaced the alert with a sheet** (`PasteLinkSheet`), because an alert's
+  field is one line and would flatten a recipe's lines.
+- **Ask an AI: "Paste the answer"**, under Copy prompt and Share. It reads the clipboard **once,
+  on the tap, in the view layer** (never on its own; the ViewModel gets the text), and routes it
+  the same way, closing the sheet first. An empty clipboard says "Nothing to paste. Copy the
+  answer first."; text with nothing to open says "No recipe found in what you copied."; both clear
+  when anything changes. (iOS asks the system's "Allow paste" once per copy when the text came
+  from another app; the system's own control would avoid that but cannot carry this label.)
+- **Code.** Android: `PastedTextRouter` (`ui/edit`, a Hilt singleton over the flags, `SharedTextInbox`
+  and `ReceivedListInbox`) returns a `PasteTarget` (`Link`, `Review(key)`, `Plan(key)`,
+  `Groceries`); `MainActivity.routeFor` uses the same router for shares, so there is one decision.
+  `HomeViewModel` / `RecipesViewModel.onOpenLink(onTarget)` and `AskAiViewModel.onPasteAnswer`
+  call it; `NavHostController.openPasted` maps a target to the route. iOS: `PastedTextRouter` /
+  `PasteTarget` (`Data/Remote/PastedText.swift`), the same three ViewModel entry points, and
+  `RootView.openPasted` (a list waits in `AppContainer.pendingListText` for Groceries to open its
+  sheet). Six strings changed or added in six languages on both platforms.
+- **Not here:** "Change this recipe" has no paste button (its answer still comes back by Share or
+  Paste a link); a recipe's `url` and image are never used, as for a share.
+- **Tests:** `PastedTextRouterTest` and `PasteTextViewModelsTest` (link, JSON, week, recipe
+  written out, empty, over all three entries), `AskAiSheetTest` and the screen tests (Android);
+  `PasteTextViewModelsTests` and `PasteAnswerUITests` (iOS, with the clipboard the app's own copy,
+  `-uiTestPasteboard`).
+
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
 The owner's report: a card's fraction symbol came out as "%". Measured first, on two cards drawn

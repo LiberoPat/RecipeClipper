@@ -13,6 +13,8 @@ import SwiftUI
 struct GroceriesScreen: View {
     let vm: GroceriesViewModel
     var receiveVM: ReceiveListViewModel? = nil
+    /// A list pasted elsewhere in the app (#372), waiting for its sheet; taken once when this appears.
+    var takePendingList: (() -> String?)? = nil
     var onOpenPantry: () -> Void = {}
     /// Makes "Send as file" (#149, phase 2); nil leaves it out. Made on first use.
     var makeSendFileVM: (() -> SendFileViewModel)? = nil
@@ -161,6 +163,9 @@ struct GroceriesScreen: View {
         // Leaving the screen ends the visit: the list tidies for the next (#219).
         .onDisappear(perform: vm.onLeave)
         .modifier(ReceiveListSheet(vm: receiveVM, onAddedToPantry: onOpenPantry))
+        .onAppear {
+            if let text = takePendingList?() { receiveVM?.open(text) }
+        }
         .modifier(SendFileEffect(vm: sendFileVM))
     }
 }

@@ -94,6 +94,7 @@ struct RootView: View {
                 HomeScreen(
                     vm: vm,
                     onOpenUrl: { router.push(.importUrl($0)) },
+                    onOpenPasted: { openPasted($0, push: router.push) },
                     onOpenRecipe: { router.push(.recipe(id: $0)) },
                     onResumeCooking: { router.push(.cookRecipe(id: $0)) },
                     onOpenRecipes: { router.push(.recipes) },
@@ -166,7 +167,8 @@ struct RootView: View {
         NavigationStack {
             ScreenHost2(makeA: container.makeGroceriesViewModel, makeB: container.makeReceiveListViewModel) { vm, receiveVM in
                 GroceriesScreen(
-                    vm: vm, receiveVM: receiveVM, onOpenPantry: { router.select(.pantry) },
+                    vm: vm, receiveVM: receiveVM, takePendingList: container.takePendingList,
+                    onOpenPantry: { router.select(.pantry) },
                     makeSendFileVM: container.makeSendFileViewModel
                 )
             }
@@ -224,6 +226,7 @@ struct RootView: View {
                     onOpenRecipe: { push(.recipe(id: $0)) },
                     onNewRecipe: { push(.editRecipe(id: nil)) },
                     onOpenUrl: { push(.importUrl($0)) },
+                    onOpenPasted: { openPasted($0, push: push) },
                     onScan: scanHandler(push: push),
                     oneCookbook: container.featureFlags.isOn(.oneCookbook),
                     saveVM: saveVM,
@@ -309,6 +312,20 @@ struct RootView: View {
                 })
             }
             .toolbar(.hidden, for: .tabBar)
+        }
+    }
+
+    /// Where pasted text leads (#372, `PastedTextRouter`): the routes a share opens, from inside
+    /// the app. A link imports, text opens the editor or the meal-plan review, a list is offered
+    /// on Groceries.
+    private func openPasted(_ target: PasteTarget, push: (Route) -> Void) {
+        switch target {
+        case .link(let url): push(.importUrl(url))
+        case .review(let reading): push(.textRecipe(reading))
+        case .plan(let text): push(.mealPlan(text))
+        case .list(let text):
+            container.pendingListText = text
+            router.select(.groceries)
         }
     }
 

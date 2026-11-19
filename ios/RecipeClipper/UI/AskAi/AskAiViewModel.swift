@@ -8,6 +8,9 @@ enum AskAiKind: Equatable {
     case describe, whatCanIMake, planMyWeek
 }
 
+/// Why "Paste the answer" opened nothing (#372): the clipboard was empty, or held no recipe.
+enum PasteProblem: Equatable { case empty, noRecipe }
+
 /// `request` is the field's text. `pantryCount` counts what is in stock, `useUpCount` the items to
 /// use up first, `favouriteCount` and `cookedCount` what "Plan my week" draws on. `copied` is true
 /// after Copy until anything changes. Android's `AskAiUiState`.
@@ -19,6 +22,8 @@ struct AskAiUiState: Equatable {
     var favouriteCount = 0
     var cookedCount = 0
     var copied = false
+    /// What "Paste the answer" found wrong (#372), until anything changes; nil when nothing.
+    var pasteProblem: PasteProblem?
 
     /// "What can I make?" needs something in the pantry to make it from.
     var canAskWhatCanIMake: Bool { pantryCount > 0 }
@@ -46,6 +51,8 @@ final class AskAiViewModel {
     private(set) var uiState = AskAiUiState()
 
     @ObservationIgnored private let clock: Clock
+    // "Paste the answer" (#372) goes where a shared text would; nil opens nothing.
+    @ObservationIgnored private let pasted: PastedTextRouter?
     @ObservationIgnored private var cancellables = Set<AnyCancellable>()
     @ObservationIgnored private var pantry: [PantryItem] = []
     @ObservationIgnored private var favourites: [String] = []
@@ -54,9 +61,10 @@ final class AskAiViewModel {
 
     init(
         pantry: PantryRepository, lists: ListRepository, recipes: RecipeRepository, preferences: AppPreferences,
-        clock: Clock = SystemClock()
+        clock: Clock = SystemClock(), pasted: PastedTextRouter? = nil
     ) {
         self.clock = clock
+        self.pasted = pasted
         settings = preferences.current
         pantry.observeItems()
             .receive(on: DispatchQueue.main)
@@ -103,17 +111,35 @@ final class AskAiViewModel {
     func onRequestChange(_ text: String) {
         uiState.request = text
         uiState.copied = false
+        uiState.pasteProblem = nil
     }
 
     /// The prompt to send: the cook's own words, or a ready one.
     func onKind(_ kind: AskAiKind) {
         uiState.kind = kind
         uiState.copied = false
+        uiState.pasteProblem = nil
     }
 
     /// The prompt was copied: the button says so until something changes.
     func onCopied() {
         uiState.copied = true
+    }
+
+    /// "Paste the answer" (#372): `clip` is what the view layer read from the clipboard, once, on
+    /// the tap (nil: nothing there). It goes exactly where the same text shared would: the editor
+    /// for a recipe, the review for a week. Returns where; with nothing to open the sheet says why
+    /// (`PasteProblem`). Nothing is saved here.
+    func onPasteAnswer(_ clip: String?) -> PasteTarget? {
+        guard let clip, !clip.kIsBlank else {
+            uiState.pasteProblem = .empty
+            return nil
+        }
+        guard let target = pasted?.open(clip) else {
+            uiState.pasteProblem = .noRecipe
+            return nil
+        }
+        return target
     }
 
     /// The sheet closed: the next one opens empty.
