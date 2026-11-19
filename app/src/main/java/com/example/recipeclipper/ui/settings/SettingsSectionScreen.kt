@@ -67,6 +67,10 @@ fun SettingsSectionScreen(
     val paprikaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.onPaprikaPicked(it.toString()) }
     }
+    // Import from Mealie (#391): the same system picker; a Mealie zip or .json has no MIME type worth filtering on.
+    val mealiePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { viewModel.onMealiePicked(it.toString()) }
+    }
     // The automatic backup copy's folder (#150): the system's folder picker, kept by permission.
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         viewModel.onBackupFolderPicked(uri?.toString())
@@ -87,6 +91,7 @@ fun SettingsSectionScreen(
         onShowTips = onShowTips,
         onImport = { importPicker.launch(IMPORT_MIME_TYPES) },
         onImportPaprika = { paprikaPicker.launch(PAPRIKA_MIME_TYPES) },
+        onImportMealie = { mealiePicker.launch(MEALIE_MIME_TYPES) },
         onChooseFolder = { folderPicker.launch(null) },
         onExpiryRemindersChange = { on ->
             // Asking is a platform effect, so it lives here: only when the cook turns reminders
@@ -136,6 +141,7 @@ private class SectionActions(
     val onShowTips: () -> Unit,
     val onImport: () -> Unit,
     val onImportPaprika: () -> Unit,
+    val onImportMealie: () -> Unit,
     val onChooseFolder: () -> Unit,
     val onExpiryRemindersChange: (Boolean) -> Unit
 )
@@ -262,6 +268,22 @@ private fun YourRecipesRows(state: SettingsUiState, viewModel: SettingsViewModel
             description = stringResource(R.string.paprika_filing_description),
             checked = state.paprikaFiling,
             onCheckedChange = viewModel::onPaprikaFilingChange,
+            enabled = !state.backup.isBusy
+        )
+    }
+    // Mealie's export (#391), the same way.
+    if (state.showsMealieImport) {
+        ActionRow(
+            title = stringResource(R.string.mealie_import_title),
+            description = stringResource(R.string.mealie_import_description),
+            enabled = !state.backup.isBusy,
+            onClick = actions.onImportMealie
+        )
+        SwitchRow(
+            title = stringResource(R.string.mealie_filing_title),
+            description = stringResource(R.string.mealie_filing_description),
+            checked = state.mealieFiling,
+            onCheckedChange = viewModel::onMealieFilingChange,
             enabled = !state.backup.isBusy
         )
     }

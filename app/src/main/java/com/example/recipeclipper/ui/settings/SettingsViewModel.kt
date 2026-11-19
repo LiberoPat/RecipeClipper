@@ -12,9 +12,13 @@ import com.example.recipeclipper.data.backup.BackupDestination
 import com.example.recipeclipper.data.BackupFiles
 import com.example.recipeclipper.data.BackupRepository
 import com.example.recipeclipper.data.ChefSupport
+import com.example.recipeclipper.data.MealieImportRepository
+import com.example.recipeclipper.data.MealieResult
 import com.example.recipeclipper.data.PaprikaImportRepository
 import com.example.recipeclipper.data.PaprikaResult
+import com.example.recipeclipper.data.backup.MealieSummary
 import com.example.recipeclipper.data.backup.PaprikaSummary
+import com.example.recipeclipper.data.remote.MealieError
 import com.example.recipeclipper.data.remote.PaprikaError
 import com.example.recipeclipper.data.Entitlements
 import com.example.recipeclipper.data.PurchaseOutcome
@@ -75,7 +79,11 @@ data class SettingsUiState(
     /** The "Import from Paprika" row (#382): only with the `paprikaImport` flag on. */
     val showsPaprikaImport: Boolean = false,
     /** "Put recipes in lists by their Paprika categories" (#387): on by default; this visit's choice, not a saved setting. */
-    val paprikaFiling: Boolean = true
+    val paprikaFiling: Boolean = true,
+    /** The "Import from Mealie" row (#391): only with the `mealieImport` flag on. */
+    val showsMealieImport: Boolean = false,
+    /** "Put recipes in lists by their Mealie categories and tags" (#391, #387): on by default; this visit's choice. */
+    val mealieFiling: Boolean = true
 ) {
     val chefModeAvailable: Boolean get() = chefSupport is ChefSupport.Available
 
@@ -153,8 +161,13 @@ sealed class BackupStatus {
     data class ImportedPaprika(val summary: PaprikaSummary) : BackupStatus()
     data class PaprikaFailed(val error: PaprikaError) : BackupStatus()
 
+    /** Import from Mealie (#391) is reading the file; shares the one-at-a-time rule above. */
+    object ImportingMealie : BackupStatus()
+    data class ImportedMealie(val summary: MealieSummary) : BackupStatus()
+    data class MealieFailed(val error: MealieError) : BackupStatus()
+
     val isBusy: Boolean
-        get() = this == Exporting || this == Importing || this == ImportingPaprika || this is ReadyToShare
+        get() = this == Exporting || this == Importing || this == ImportingPaprika || this == ImportingMealie || this is ReadyToShare
 }
 
 /**
@@ -182,7 +195,9 @@ class SettingsViewModel @Inject constructor(
     private val autoBackup: AutoBackup? = null,
     private val clock: Clock = Clock { System.currentTimeMillis() },
     // Import from Paprika (#382); without it the row isn't shown.
-    private val paprika: PaprikaImportRepository? = null
+    private val paprika: PaprikaImportRepository? = null,
+    // Import from Mealie (#391); without it the row isn't shown.
+    private val mealie: MealieImportRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
@@ -214,7 +229,8 @@ class SettingsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             showsChefMode = values.isOn(Flag.CHEF_MODE),
-                            showsPaprikaImport = paprika != null && values.isOn(Flag.PAPRIKA_IMPORT)
+                            showsPaprikaImport = paprika != null && values.isOn(Flag.PAPRIKA_IMPORT),
+                            showsMealieImport = mealie != null && values.isOn(Flag.MEALIE_IMPORT)
                         )
                     }
                     if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
@@ -288,7 +304,10 @@ class SettingsViewModel @Inject constructor(
         autoBackup = previous?.autoBackup,
         showsPaprikaImport = previous?.showsPaprikaImport
             ?: (paprika != null && featureFlags?.isOn(Flag.PAPRIKA_IMPORT) == true),
-        paprikaFiling = previous?.paprikaFiling ?: true
+        paprikaFiling = previous?.paprikaFiling ?: true,
+        showsMealieImport = previous?.showsMealieImport
+            ?: (mealie != null && featureFlags?.isOn(Flag.MEALIE_IMPORT) == true),
+        mealieFiling = previous?.mealieFiling ?: true
     )
 
     // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.
@@ -393,6 +412,26 @@ class SettingsViewModel @Inject constructor(
             val status = when (val result = importer.import(uri, filing)) {
                 is PaprikaResult.Success -> BackupStatus.ImportedPaprika(result.summary)
                 is PaprikaResult.Failure -> BackupStatus.PaprikaFailed(result.error)
+            }
+            _uiState.update { it.copy(backup = status) }
+        }
+    }
+
+    /** The switch under "Import from Mealie" (#391): whether the next import files recipes by their categories and tags. */
+    fun onMealieFilingChange(enabled: Boolean) {
+        _uiState.update { it.copy(mealieFiling = enabled) }
+    }
+
+    /** Import from the Mealie file the user picked in the system file picker (#391). */
+    fun onMealiePicked(uri: String) {
+        val importer = mealie ?: return
+        if (_uiState.value.backup.isBusy) return
+        val filing = _uiState.value.mealieFiling
+        _uiState.update { it.copy(backup = BackupStatus.ImportingMealie) }
+        viewModelScope.launch {
+            val status = when (val result = importer.import(uri, filing)) {
+                is MealieResult.Success -> BackupStatus.ImportedMealie(result.summary)
+                is MealieResult.Failure -> BackupStatus.MealieFailed(result.error)
             }
             _uiState.update { it.copy(backup = status) }
         }

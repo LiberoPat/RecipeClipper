@@ -52,6 +52,12 @@ abstract class PlatformModule {
         impl: com.example.recipeclipper.data.AndroidPaprikaFiles
     ): com.example.recipeclipper.data.PaprikaFiles
 
+    /** The picked Mealie file (#391). */
+    @Binds
+    abstract fun mealieFiles(
+        impl: com.example.recipeclipper.data.AndroidMealieFiles
+    ): com.example.recipeclipper.data.MealieFiles
+
     // The automatic copy (#150): the chosen folder, its record, and WorkManager.
     @Binds
     abstract fun backupFolder(impl: com.example.recipeclipper.data.AndroidBackupFolder): com.example.recipeclipper.data.BackupFolder

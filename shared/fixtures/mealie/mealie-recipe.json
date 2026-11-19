@@ -1,0 +1,48 @@
+{
+  "id": "11111111-2222-4333-8444-555555555555",
+  "name": "Mint Tea",
+  "slug": "mint-tea",
+  "recipeServings": 1.0,
+  "recipeYield": "",
+  "prepTime": "",
+  "performTime": "5 minutes",
+  "totalTime": "PT10M",
+  "orgURL": null,
+  "recipeCategory": [
+    {
+      "id": "c",
+      "name": "Drinks",
+      "slug": "drinks"
+    }
+  ],
+  "tags": [
+    {
+      "id": "t",
+      "name": "Quick",
+      "slug": "quick"
+    }
+  ],
+  "recipeIngredient": [
+    {
+      "quantity": 1.0,
+      "unit": null,
+      "food": {
+        "name": "mint"
+      },
+      "note": "a handful",
+      "display": "1 handful mint",
+      "title": null,
+      "originalText": "a handful of fresh mint",
+      "referenceId": "t-1"
+    }
+  ],
+  "recipeInstructions": [
+    {
+      "id": "s",
+      "title": null,
+      "text": "Steep the mint in hot water for 5 minutes."
+    }
+  ],
+  "notes": [],
+  "description": "Not kept."
+}

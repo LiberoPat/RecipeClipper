@@ -48,7 +48,9 @@ enum class Flag(val key: String) {
     /** Recipe versions (#354): an AI's change to a recipe is saved linked to its original. */
     RECIPE_VERSIONS("recipeVersions"),
     /** Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library. */
-    PAPRIKA_IMPORT("paprikaImport");
+    PAPRIKA_IMPORT("paprikaImport"),
+    /** Import from Mealie (#391): Settings' Your recipes reads a Mealie export (a zip, or one recipe's .json) into the library. */
+    MEALIE_IMPORT("mealieImport");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

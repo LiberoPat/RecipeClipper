@@ -64,6 +64,13 @@ abstract class RepositoryModule {
         impl: com.example.recipeclipper.data.DefaultPaprikaImportRepository
     ): com.example.recipeclipper.data.PaprikaImportRepository
 
+    /** Import from Mealie (#391). */
+    @Binds
+    @Singleton
+    abstract fun mealieImportRepository(
+        impl: com.example.recipeclipper.data.DefaultMealieImportRepository
+    ): com.example.recipeclipper.data.MealieImportRepository
+
     /** The shared file that carries recipes and items to someone else (#149). */
     @Binds
     @Singleton

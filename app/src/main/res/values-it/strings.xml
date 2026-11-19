@@ -239,6 +239,42 @@
         <item quantity="many">Non è stato possibile leggere %d di voci.</item>
         <item quantity="other">Non è stato possibile leggere %d voci.</item>
     </plurals>
+    <!-- Settings → Your recipes: import from Mealie (#391) -->
+    <string name="mealie_import_title">Importa da Mealie</string>
+    <string name="mealie_import_description">Aggiunge le ricette di un\'esportazione di Mealie: lo .zip dell\'esportazione completa, lo .zip di una ricetta scaricata o il .json di una ricetta. Niente di ciò che c\'è già viene sostituito o eliminato.</string>
+    <string name="mealie_importing">Lettura del file Mealie…</string>
+    <string name="mealie_imported_nothing">Niente di nuovo: tutte le ricette di quel file sono già qui.</string>
+    <string name="mealie_nothing_found">Non è stato possibile leggere nessuna ricetta da quel file.</string>
+    <string name="mealie_error_not_mealie">Quel file non è un\'esportazione di Mealie. Scegli lo .zip esportato da Mealie o il .json di una ricetta. Per portare una ricetta da una pagina di Mealie, condividi il suo link.</string>
+    <string name="mealie_error_damaged">Quel file è danneggiato o incompleto. Non è stato importato nulla.</string>
+    <string name="mealie_error_too_large">Quel file è molto più grande di quanto dovrebbe essere un\'esportazione di Mealie. Non è stato importato nulla.</string>
+    <string name="mealie_filing_title">Metti le ricette in liste secondo le loro categorie e tag di Mealie</string>
+    <string name="mealie_filing_description">Una lista con quel nome, o una nuova. Non viene tolto nulla da nessuna lista.</string>
+    <plurals name="mealie_photos_left_out">
+        <item quantity="one">%d foto non è stata letta ed è stata esclusa.</item>
+        <item quantity="many">%d di foto non sono state lette e sono state escluse.</item>
+        <item quantity="other">%d foto non sono state lette e sono state escluse.</item>
+    </plurals>
+    <plurals name="mealie_lists_made">
+        <item quantity="one">È stata creata %d nuova lista dalle categorie e dai tag.</item>
+        <item quantity="many">Sono state create %d di nuove liste dalle categorie e dai tag.</item>
+        <item quantity="other">Sono state create %d nuove liste dalle categorie e dai tag.</item>
+    </plurals>
+    <plurals name="mealie_imported">
+        <item quantity="one">%d ricetta importata da Mealie.</item>
+        <item quantity="many">%d di ricette importate da Mealie.</item>
+        <item quantity="other">%d ricette importate da Mealie.</item>
+    </plurals>
+    <plurals name="mealie_not_recipes">
+        <item quantity="one">%d voce che non è una ricetta di Mealie, o senza nome, ingredienti né passaggi, è stata esclusa.</item>
+        <item quantity="many">%d di voci che non sono ricette di Mealie, o senza nome, ingredienti né passaggi, sono state escluse.</item>
+        <item quantity="other">%d voci che non sono ricette di Mealie, o senza nome, ingredienti né passaggi, sono state escluse.</item>
+    </plurals>
+    <plurals name="mealie_unreadable">
+        <item quantity="one">Non è stato possibile leggere %d voce.</item>
+        <item quantity="many">Non è stato possibile leggere %d di voci.</item>
+        <item quantity="other">Non è stato possibile leggere %d voci.</item>
+    </plurals>
     <string name="temperature_as_written">Come nella ricetta</string>
     <string name="temperature_as_written_description">Esattamente la temperatura della ricetta</string>
     <string name="temperature_celsius">Celsius (°C)</string>
