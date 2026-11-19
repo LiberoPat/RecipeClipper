@@ -136,7 +136,15 @@ struct RecipesScreen: View {
                 .disabled(!state.canOpenLink)
         }
         .overlay(alignment: .bottom) {
-            if let message = Strings.deletedMessage(state.pendingDeletes) {
+            if state.restoreRefused {
+                // The Undo the full free library refused (#345): its own outcome, said once.
+                Snackbar(message: Strings.restoreFull, actionLabel: nil)
+                    .frame(maxWidth: ReadableWidth.column)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .accessibilityIdentifier("recipes.restoreRefused")
+            } else if let message = Strings.deletedMessage(state.pendingDeletes) {
                 Snackbar(message: message, actionLabel: Strings.undo, action: vm.onUndoDelete)
                     .frame(maxWidth: ReadableWidth.column)
                     .padding(.horizontal, 12)
@@ -145,6 +153,12 @@ struct RecipesScreen: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: state.pendingDeletes.isEmpty)
+        .animation(.easeOut(duration: 0.2), value: state.restoreRefused)
+        .task(id: state.restoreRefused) {
+            guard state.restoreRefused else { return }
+            do { try await Sleeps.real(SnackbarTimeout.duration) } catch { return }
+            vm.onRestoreRefusedShown()
+        }
         // Keyed on the burst, as Android's snackbar is (#268): a further swipe joins the batch
         // and updates the one snackbar's count in place; the window runs from the first swipe.
         .task(id: state.deleteBatch) {

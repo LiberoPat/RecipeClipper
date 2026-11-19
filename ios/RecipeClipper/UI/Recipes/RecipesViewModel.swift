@@ -26,6 +26,8 @@ struct RecipesUiState: Equatable {
     var counts: RecipeCounts?
     var view: RecipeFilter?
     var lists: [RecipeList] = []
+    /// An Undo was refused, the free library being full (#345): the screen says so once.
+    var restoreRefused = false
 
     /// The strip shows once there is a recipe or a list to show (V4), never inside a view.
     var showsViewsStrip: Bool { view == nil && ((counts?.all ?? 0) > 0 || !lists.isEmpty) }
@@ -242,6 +244,7 @@ final class RecipesViewModel {
     func onDelete(_ recipe: RecipeSummary) {
         Task {
             guard let removed = await repository.delete(id: recipe.id) else { return }
+            uiState.restoreRefused = false // a new swipe's Undo snackbar takes the place
             // Its countdown goes with it; Undo brings the timer back when the recipe is opened.
             await countdowns?.reconcile()
             if captured[recipe.id] == nil { capturedOrder.append(recipe.id) }
@@ -256,15 +259,24 @@ final class RecipesViewModel {
     }
 
     /// Restores everything still pending, oldest first. All or nothing: one snackbar covers
-    /// the batch, so there is no way to pick one out of it.
+    /// the batch, so there is no way to pick one out of it. On the free tier at its limit (#345)
+    /// none comes back: `RecipesUiState.restoreRefused`.
     func onUndoDelete() {
         guard !capturedOrder.isEmpty else { return }
         let removed = capturedOrder.compactMap { captured[$0] }
         clearCaptured()
         Task {
-            for deleted in removed { await repository.restore(deleted) }
+            // The free library's limit is checked in the repository's transaction (#345): a burst
+            // that wouldn't fit restores none, and the deletes stand, photo files included.
+            if await repository.restoreAll(removed) == .libraryFull {
+                uiState.restoreRefused = true
+                for deleted in removed { await repository.forget(deleted) }
+            }
         }
     }
+
+    /// The screen has said the Undo was refused.
+    func onRestoreRefusedShown() { uiState.restoreRefused = false }
 
     /// The snackbar timed out: the deletes stand.
     func onSnackbarDismissed() {
