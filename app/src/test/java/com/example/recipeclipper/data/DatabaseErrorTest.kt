@@ -70,7 +70,7 @@ class DatabaseErrorTest {
         override suspend fun crossRefsFor(recipeId: Long): List<RecipeListCrossRef> = throw throwable()
         override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) = throw throwable()
         override fun observeHistory(): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
-        override fun observeHistory(query: String, listed: Int): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
+        override fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override fun observeLibraryCounts(): Flow<LibraryCountsRow> = flow { throw throwable() }
         override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override suspend fun cullHistory(keep: Int, today: Long) = throw throwable()

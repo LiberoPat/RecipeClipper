@@ -98,6 +98,14 @@
     <string name="recipes_filter_not_in_list">Em nenhuma lista</string>
     <string name="recipes_empty_in_list">Nenhuma receita está em uma lista ainda. Salve uma em uma lista com o marcador dela.</string>
     <string name="recipes_empty_not_in_list">Todas as receitas estão em uma lista.</string>
+    <string name="recipes_view_cooked">Feitas</string>
+    <string name="recipes_view_typed">Digitadas por você</string>
+    <string name="recipes_view_not_in_list_note">Receitas que você salvou ou abriu, mas não colocou em nenhuma lista. Elas ficam até você excluí-las.</string>
+    <string name="recipes_view_cooked_note">Receitas que você marcou como feitas ou das quais guardou uma foto.</string>
+    <string name="recipes_view_typed_note">Receitas que você digitou, escaneou ou colou por conta própria.</string>
+    <string name="recipes_empty_cooked">Nada feito ainda. Marque uma receita como feita e ela aparece aqui.</string>
+    <string name="recipes_empty_typed">Nada digitado ainda. Com + você digita ou escaneia uma receita.</string>
+    <string name="home_see_all">Ver todas</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
     <string name="recipes_cull_note">As receitas sem lista são mantidas até %1$d. Depois disso, as abertas há mais tempo são removidas primeiro. Salve uma receita em uma lista para mantê-la.</string>
     <string name="label_search_recipes">Buscar títulos e ingredientes</string>
@@ -605,15 +613,15 @@
     <string name="unlimited_pending">Compra pendente: o desbloqueio acontece quando o pagamento for concluído.</string>
     <string name="unlock_failed">Não foi possível acessar a loja. Tente de novo mais tarde.</string>
     <string name="unlock_nothing">Nenhuma compra para restaurar nesta conta.</string>
-    <string name="recipe_not_kept">Não salva: suas %1$d receitas estão todas em listas, planos ou foram digitadas por você.</string>
+    <string name="recipe_not_kept">Não salva: o app gratuito guarda %1$d receitas.</string>
     <string name="library_full_title">Sua biblioteca está cheia</string>
-    <string name="library_full_body">O app gratuito guarda %1$d receitas, e as suas estão todas em listas, planos ou foram digitadas por você. Desbloqueie receitas ilimitadas ou exclua uma para abrir espaço.</string>
+    <string name="library_full_body">O app gratuito guarda %1$d receitas. Desbloqueie receitas ilimitadas ou exclua uma para abrir espaço.</string>
     <string name="recipes_count">%1$d de %2$d receitas</string>
     <string name="recipes_count_over">%1$d receitas, mais que as %2$d gratuitas</string>
     <plurals name="backup_skipped_free">
-        <item quantity="one">%1$d receita antiga sem lista não foi adicionada: o app gratuito guarda %2$d receitas.</item>
-        <item quantity="many">%1$d de receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
-        <item quantity="other">%1$d receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
+        <item quantity="one">%1$d receita não foi adicionada: o app gratuito guarda %2$d receitas.</item>
+        <item quantity="many">%1$d de receitas não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
+        <item quantity="other">%1$d receitas não foram adicionadas: o app gratuito guarda %2$d receitas.</item>
     </plurals>
     <!-- "I made this" (#116) -->
     <string name="sort_recently_cooked">Feitas recentemente</string>

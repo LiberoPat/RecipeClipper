@@ -176,6 +176,14 @@
     <string name="recipes_filter_not_in_list">Not in a list</string>
     <string name="recipes_empty_in_list">No recipes are in a list yet. Save one to a list with its bookmark.</string>
     <string name="recipes_empty_not_in_list">Every recipe is in a list.</string>
+    <string name="recipes_view_cooked">Cooked</string>
+    <string name="recipes_view_typed">Typed by you</string>
+    <string name="recipes_view_not_in_list_note">Recipes you clipped or opened but haven\'t put in a list. They stay until you delete them.</string>
+    <string name="recipes_view_cooked_note">Recipes you\'ve marked as cooked or kept a photo of.</string>
+    <string name="recipes_view_typed_note">Recipes you typed, scanned or pasted in yourself.</string>
+    <string name="recipes_empty_cooked">Nothing cooked yet. Mark a recipe as cooked and it shows up here.</string>
+    <string name="recipes_empty_typed">Nothing typed in yet. Use + to type or scan a recipe.</string>
+    <string name="home_see_all">See all</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
     <string name="recipes_cull_note">Recipes in no list are kept up to %1$d. Past that, the ones you opened longest ago go first. Save one to a list to keep it.</string>
     <string name="label_search_recipes">Search titles and ingredients</string>
@@ -634,14 +642,14 @@
     <string name="unlimited_pending">Purchase pending: it unlocks once the payment goes through.</string>
     <string name="unlock_failed">Couldn\'t reach the store. Try again later.</string>
     <string name="unlock_nothing">No purchase to restore on this account.</string>
-    <string name="recipe_not_kept" tools:ignore="PluralsCandidate">Not saved: your %1$d recipes are all in lists, plans or typed in.</string>
+    <string name="recipe_not_kept" tools:ignore="PluralsCandidate">Not saved: the free app keeps %1$d recipes.</string>
     <string name="library_full_title">Your library is full</string>
-    <string name="library_full_body" tools:ignore="PluralsCandidate">The free app keeps %1$d recipes, and yours are all in lists, plans or typed in. Unlock unlimited recipes, or delete one to make room.</string>
+    <string name="library_full_body" tools:ignore="PluralsCandidate">The free app keeps %1$d recipes. Unlock unlimited recipes, or delete one to make room.</string>
     <string name="recipes_count" tools:ignore="PluralsCandidate">%1$d of %2$d recipes</string>
     <string name="recipes_count_over" tools:ignore="PluralsCandidate">%1$d recipes, more than the free %2$d</string>
     <plurals name="backup_skipped_free">
-        <item quantity="one">%1$d older recipe in no list wasn\'t added: the free app keeps %2$d recipes.</item>
-        <item quantity="other">%1$d older recipes in no list weren\'t added: the free app keeps %2$d recipes.</item>
+        <item quantity="one">%1$d recipe wasn\'t added: the free app keeps %2$d recipes.</item>
+        <item quantity="other">%1$d recipes weren\'t added: the free app keeps %2$d recipes.</item>
     </plurals>
     <!-- "I made this" (#116) -->
     <string name="sort_recently_cooked">Recently cooked</string>

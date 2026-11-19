@@ -113,6 +113,9 @@ struct RecipeSummary: Equatable, Identifiable {
 
     /// The site, as the reading view credits it; nil for a typed or scanned recipe.
     var sourceDomain: String? { ManualRecipe.isManual(sourceUrl) ? nil : SourceDomain.of(sourceUrl) }
+
+    /// Typed, scanned or read in by hand (a `manual:` link), never the tour's sample (#345).
+    var isTyped: Bool { ManualRecipe.isManual(sourceUrl) && !SampleRecipe.isSample(sourceUrl) }
 }
 
 /// How the Recipes screen orders its rows (#102). Remembered in `AppPreferences` by its
@@ -128,16 +131,28 @@ enum RecipeSort: String, CaseIterable {
     }
 }
 
-/// Which recipes the Recipes screen lists (#345, V1): all, those in at least one list ("saved",
-/// derived from the cross-ref table), or those in none. Not remembered: it opens on `.all`.
+/// Which recipes the Recipes screen lists (#345): all, those in at least one list ("saved",
+/// derived from the cross-ref table), or those in none (V1's filter pills, and V4's first view);
+/// and V4's other automatic views: `.cooked` (the user's own photos or "Mark as cooked", #116,
+/// #173) and `.typed` (typed, scanned or read in by hand, `contentOrigin` MANUAL, never the tour's
+/// sample). Not remembered: it opens on `.all`. Android's `RecipeFilter`.
 enum RecipeFilter: String, CaseIterable {
-    case all = "ALL", inAList = "IN_A_LIST", notInAList = "NOT_IN_A_LIST"
+    case all = "ALL", inAList = "IN_A_LIST", notInAList = "NOT_IN_A_LIST", cooked = "COOKED", typed = "TYPED"
+
+    /// The three pills with `oneCookbook` off (V1).
+    static let pills: [RecipeFilter] = [.all, .inAList, .notInAList]
+
+    /// The strip's automatic views with `oneCookbook` on (V4), in the order the strip shows them.
+    static let views: [RecipeFilter] = [.notInAList, .cooked, .typed]
 }
 
-/// How many recipes there are, and how many of them are in at least one list (#345).
+/// How many recipes there are, how many of them are in at least one list, and how many are cooked
+/// or typed in (#345): the Recipes filter's and the views strip's counts.
 struct RecipeCounts: Equatable {
     let all: Int
     let inList: Int
+    var cooked: Int = 0
+    var typed: Int = 0
 
     var notInList: Int { all - inList }
 
@@ -146,6 +161,8 @@ struct RecipeCounts: Equatable {
         case .all: all
         case .inAList: inList
         case .notInAList: notInList
+        case .cooked: cooked
+        case .typed: typed
         }
     }
 }

@@ -98,6 +98,14 @@
     <string name="recipes_filter_not_in_list">Dans aucune liste</string>
     <string name="recipes_empty_in_list">Aucune recette n\'est encore dans une liste. Enregistrez-en une dans une liste avec son marque-page.</string>
     <string name="recipes_empty_not_in_list">Toutes les recettes sont dans une liste.</string>
+    <string name="recipes_view_cooked">Cuisinées</string>
+    <string name="recipes_view_typed">Saisies par vous</string>
+    <string name="recipes_view_not_in_list_note">Recettes que vous avez enregistrées ou ouvertes sans les mettre dans une liste. Elles restent jusqu\'à ce que vous les supprimiez.</string>
+    <string name="recipes_view_cooked_note">Recettes que vous avez marquées comme cuisinées ou dont vous avez gardé une photo.</string>
+    <string name="recipes_view_typed_note">Recettes que vous avez saisies, numérisées ou collées vous-même.</string>
+    <string name="recipes_empty_cooked">Rien de cuisiné pour l\'instant. Marquez une recette comme cuisinée et elle apparaîtra ici.</string>
+    <string name="recipes_empty_typed">Rien de saisi pour l\'instant. Avec +, saisissez ou numérisez une recette.</string>
+    <string name="home_see_all">Tout voir</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
     <string name="recipes_cull_note">Les recettes sans liste sont conservées jusqu\'à %1$d. Au-delà, celles que vous avez ouvertes il y a le plus longtemps sont supprimées en premier. Enregistrez-en une dans une liste pour la garder.</string>
     <string name="label_search_recipes">Rechercher par titre ou ingrédient</string>
@@ -605,15 +613,15 @@
     <string name="unlimited_pending">Achat en attente : le déblocage se fera dès que le paiement aura abouti.</string>
     <string name="unlock_failed">Impossible de joindre la boutique. Réessayez plus tard.</string>
     <string name="unlock_nothing">Aucun achat à restaurer sur ce compte.</string>
-    <string name="recipe_not_kept">Non enregistrée : vos %1$d recettes sont toutes dans des listes, dans le planning ou saisies à la main.</string>
+    <string name="recipe_not_kept">Non enregistrée : la version gratuite conserve %1$d recettes.</string>
     <string name="library_full_title">Votre bibliothèque est pleine</string>
-    <string name="library_full_body">La version gratuite conserve %1$d recettes, et les vôtres sont toutes dans des listes, dans le planning ou saisies à la main. Débloquez les recettes illimitées, ou supprimez-en une pour faire de la place.</string>
+    <string name="library_full_body">La version gratuite conserve %1$d recettes. Débloquez les recettes illimitées, ou supprimez-en une pour faire de la place.</string>
     <string name="recipes_count">%1$d sur %2$d recettes</string>
     <string name="recipes_count_over">%1$d recettes, plus que les %2$d gratuites</string>
     <plurals name="backup_skipped_free">
-        <item quantity="one">%1$d ancienne recette sans liste n\'a pas été ajoutée : la version gratuite conserve %2$d recettes.</item>
-        <item quantity="many">%1$d d\'anciennes recettes sans liste n\'ont pas été ajoutées : la version gratuite conserve %2$d recettes.</item>
-        <item quantity="other">%1$d anciennes recettes sans liste n\'ont pas été ajoutées : la version gratuite conserve %2$d recettes.</item>
+        <item quantity="one">%1$d recette n\'a pas été ajoutée : la version gratuite conserve %2$d recettes.</item>
+        <item quantity="many">%1$d de recettes n\'ont pas été ajoutées : la version gratuite conserve %2$d recettes.</item>
+        <item quantity="other">%1$d recettes n\'ont pas été ajoutées : la version gratuite conserve %2$d recettes.</item>
     </plurals>
     <!-- "I made this" (#116) -->
     <string name="sort_recently_cooked">Cuisinées récemment</string>

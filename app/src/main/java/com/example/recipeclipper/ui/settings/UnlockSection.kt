@@ -12,6 +12,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.PurchaseOutcome
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.ui.common.noticeMessage
 
@@ -34,7 +36,7 @@ internal fun UnlockSection(
         )
         return
     }
-    val body = stringResource(R.string.unlimited_body, LibraryLimit.FREE_RECIPES)
+    val body = stringResource(R.string.unlimited_body, LibraryLimit.freeRecipes(LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK)))
     ActionRow(
         title = row.price?.let { stringResource(R.string.unlock_price, it) } ?: stringResource(R.string.unlock),
         description = body,

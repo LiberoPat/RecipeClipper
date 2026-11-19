@@ -58,8 +58,8 @@ struct FixedLibraryLimit: LibraryLimitSource {
     func current() -> LibraryLimit { limit }
 }
 
-/// The mirrored limit in a `UserDefaults` suite, under `library_limit`: "free", "unlimited",
-/// or anything else (nothing yet) for the history cap.
+/// The mirrored limit in a `UserDefaults` suite, under `library_limit`: "free", "capped" (#345),
+/// "unlimited", or anything else (nothing yet) for the history cap.
 struct DefaultsLibraryLimit: LibraryLimitSource, @unchecked Sendable {
     static let key = "library_limit"
     let defaults: UserDefaults
@@ -67,6 +67,7 @@ struct DefaultsLibraryLimit: LibraryLimitSource, @unchecked Sendable {
     func current() -> LibraryLimit {
         switch defaults.string(forKey: Self.key) {
         case "free": .free(max: LibraryLimit.freeRecipes)
+        case "capped": .capped(max: LibraryLimit.cappedRecipes)
         case "unlimited": .unlimited
         default: .history(keep: LibraryLimit.historyRecipes)
         }
@@ -75,6 +76,7 @@ struct DefaultsLibraryLimit: LibraryLimitSource, @unchecked Sendable {
     func store(_ limit: LibraryLimit) {
         let value: String = switch limit {
         case .free: "free"
+        case .capped: "capped"
         case .unlimited: "unlimited"
         case .history: "history"
         }

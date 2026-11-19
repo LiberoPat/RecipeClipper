@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,9 +34,25 @@ import androidx.compose.ui.platform.testTag
  * cooking's recipe is never in this row, but the next section to hold one might be.
  */
 @Composable
-internal fun RecentlyViewed(recipes: List<RecipeSummary>, onOpenRecipe: (Long) -> Unit) {
+internal fun RecentlyViewed(
+    recipes: List<RecipeSummary>,
+    onOpenRecipe: (Long) -> Unit,
+    /** One cookbook (#345): "See all" opens Recipes in this order; null without the flag. */
+    onSeeAll: (() -> Unit)? = null
+) {
     Column(Modifier.padding(top = 24.dp)) {
-        SectionHeading(stringResource(R.string.section_recently_viewed))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { SectionHeading(stringResource(R.string.section_recently_viewed)) }
+            if (onSeeAll != null) {
+                TextButton(onClick = onSeeAll, modifier = Modifier.testTag("home.seeAll")) {
+                    Text(
+                        stringResource(R.string.home_see_all),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+            }
+        }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(top = 10.dp),

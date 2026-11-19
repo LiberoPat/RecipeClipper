@@ -14,7 +14,9 @@ import com.example.recipeclipper.ui.clip.ClipScreen
 import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.edit.EditRecipeScreen
 import com.example.recipeclipper.ui.edit.EditRecipeViewModel
+import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.ui.recipes.RecipesScreen
+import com.example.recipeclipper.ui.recipes.RecipesViewModel
 import com.example.recipeclipper.ui.home.HomeScreen
 import com.example.recipeclipper.ui.listdetail.ListDetailScreen
 import com.example.recipeclipper.ui.listdetail.ListDetailViewModel
@@ -33,6 +35,10 @@ object Routes {
     const val HOME = "home"
     // The library of every recipe (#102); it replaced History, whose route was `history`.
     const val RECIPES = "recipes"
+
+    // An automatic view of the cookbook (#345): `NOT_IN_A_LIST`, `COOKED` or `TYPED`.
+    const val RECIPES_VIEW = "recipes/view/{${RecipesViewModel.VIEW_ARG}}"
+    fun recipesView(view: RecipeFilter) = "recipes/view/${view.name}"
     const val SETTINGS = "settings"
 
     // Hidden: seven taps on the version in Settings (#87).
@@ -172,7 +178,20 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
             onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) },
             onOpenUrl = { navController.navigate(Routes.import(it)) },
-            onScan = { navController.navigate(Routes.scan(it)) }
+            onScan = { navController.navigate(Routes.scan(it)) },
+            onOpenView = { navController.navigate(Routes.recipesView(it)) },
+            onOpenList = { navController.navigate(Routes.list(it)) }
+        )
+    }
+
+    // One cookbook (#345): Not in a list, Cooked or Typed by you, as a screen of its own.
+    composable(
+        route = Routes.RECIPES_VIEW,
+        arguments = listOf(navArgument(RecipesViewModel.VIEW_ARG) { type = NavType.StringType })
+    ) {
+        RecipesScreen(
+            onBack = { navController.popBackStack() },
+            onOpenRecipe = { navController.navigate(Routes.recipe(it)) }
         )
     }
 

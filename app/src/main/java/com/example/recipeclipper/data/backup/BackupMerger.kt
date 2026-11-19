@@ -106,6 +106,10 @@ data class ImportPlan(
  *   or uid match for them.
  * - **Memberships** are planned once per recipe and list; writing them is insert-or-ignore, so
  *   one that already exists keeps its `addedAt`.
+ * - **One cookbook** (#345, [capsEveryRecipe]): on the free tier every recipe counts and none is
+ *   exempt; only the places under [historyLimit] are filled (listed recipes first, then the most
+ *   recently viewed), the rest are skipped and counted, and a skipped recipe's list memberships,
+ *   plan entries, menu meals and photos stay out with it.
  * - **History.** Importing never deletes anything, and never culls. Recipes in a list always
  *   come in. Imported recipes in no list join history at their original last view, but only
  *   into free places under [historyLimit] (counting what's here and not in a list once the
@@ -158,6 +162,12 @@ object BackupMerger {
         existingMenuUids: Set<String> = emptySet(),
         existingMenuEntryUids: Set<String> = emptySet(),
         countsEveryRecipe: Boolean = false,
+        /**
+         * One cookbook (#345), the free tier: every recipe counts and nothing is exempt, so a
+         * listed, planned or typed-in recipe is limited too, and only [historyLimit] minus what is
+         * here come in. Implies [countsEveryRecipe].
+         */
+        capsEveryRecipe: Boolean = false,
         existingCookedPhotoUids: Set<String> = emptySet(),
         /** The pictures the package holds, by path in the zip; null takes every file as there. */
         availablePhotoFiles: Set<String>? = null
@@ -262,21 +272,32 @@ object BackupMerger {
         val unlistedHere = existingRecipes.count { !it.isListed && Target.Existing(it.id) !in listedTargets }
         // The free tier (#107) counts every recipe, here and coming in protected, not only history;
         // never the tour's sample (#151).
-        val taken = if (countsEveryRecipe) {
-            existingRecipes.count { !SampleRecipe.isSample(it.sourceUrl) } +
-                newByUrl.values.count { Target.New(it.id) in listedTargets && !SampleRecipe.isSample(it.sourceUrl) }
-        } else {
-            unlistedHere
+        val taken = when {
+            capsEveryRecipe -> existingRecipes.count { !SampleRecipe.isSample(it.sourceUrl) }
+            countsEveryRecipe ->
+                existingRecipes.count { !SampleRecipe.isSample(it.sourceUrl) } +
+                    newByUrl.values.count { Target.New(it.id) in listedTargets && !SampleRecipe.isSample(it.sourceUrl) }
+            else -> unlistedHere
         }
         val freePlaces = (historyLimit.toLong() - taken).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
-        val unlistedNew = newByUrl.values.filter { Target.New(it.id) !in listedTargets }
-        val kept = unlistedNew
+        // Capped: none is exempt; the listed ones go first (their lists come with them), then the
+        // most recently viewed. Otherwise the listed ones always come in and only the rest compete.
+        val competing = if (capsEveryRecipe) {
+            newByUrl.values.toList()
+        } else {
+            newByUrl.values.filter { Target.New(it.id) !in listedTargets }
+        }
+        val kept = competing
             .withIndex()
-            .sortedWith(compareByDescending<IndexedValue<BackupRecipe>> { it.value.lastViewedAt }.thenBy { it.index })
+            .sortedWith(
+                compareByDescending<IndexedValue<BackupRecipe>> { capsEveryRecipe && Target.New(it.value.id) in listedTargets }
+                    .thenByDescending { it.value.lastViewedAt }
+                    .thenBy { it.index }
+            )
             .take(freePlaces)
             .mapTo(HashSet()) { it.value.id }
-        val skipped = unlistedNew.count { it.id !in kept }
-        val newRecipes = newByUrl.values.filter { Target.New(it.id) in listedTargets || it.id in kept }
+        val skipped = competing.count { it.id !in kept }
+        val newRecipes = newByUrl.values.filter { (!capsEveryRecipe && Target.New(it.id) in listedTargets) || it.id in kept }
 
         val noteUpdates = matched.values
             .filter { !it.hasNotes && importedNote[it.id] != null }
@@ -360,7 +381,8 @@ object BackupMerger {
             newRecipes = newRecipes,
             noteUpdates = noteUpdates,
             newLists = newListsByName.values.toList(),
-            memberships = memberships,
+            // A recipe left out by the cap (#345) takes no list membership with it.
+            memberships = memberships.filter { it.recipe is Target.Existing || it.recipe in written },
             summary = ImportSummary(
                 recipesAdded = newRecipes.size,
                 listsAdded = newListsByName.size,
@@ -372,7 +394,7 @@ object BackupMerger {
                 mealTypesAdded = newTypesByName.size,
                 menusAdded = newMenus.size,
                 photosAdded = newCookedPhotos.count { it.photo.file != null },
-                freeLimit = historyLimit.takeIf { countsEveryRecipe && skipped > 0 }
+                freeLimit = historyLimit.takeIf { (countsEveryRecipe || capsEveryRecipe) && skipped > 0 }
             ),
             newPantry = newPantry,
             newGroceries = newGroceries,

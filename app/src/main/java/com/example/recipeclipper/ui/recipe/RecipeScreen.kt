@@ -146,7 +146,9 @@ fun RecipeScreen(
 
     // A full free library (#107): shown, not kept. Stays up until dismissed or unlocked, and
     // comes back after a pending or failed purchase has been explained.
-    val notKeptMessage = stringResource(R.string.recipe_not_kept, LibraryLimit.FREE_RECIPES)
+    val notKeptMessage = stringResource(
+        R.string.recipe_not_kept, LibraryLimit.freeRecipes(LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK))
+    )
     val unlockLabel = stringResource(R.string.unlock)
     LaunchedEffect(state.notKept, state.unlockNotice) {
         if (state.notKept && state.unlockNotice == null) {

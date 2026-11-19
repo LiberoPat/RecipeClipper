@@ -185,6 +185,7 @@ abstract class BackupDao {
         val historyLimit = when (limit) {
             is LibraryLimit.History -> limit.keep
             is LibraryLimit.Free -> limit.max
+            is LibraryLimit.Capped -> limit.max
             LibraryLimit.Unlimited -> Int.MAX_VALUE
         }
         val plan = BackupMerger.plan(
@@ -195,6 +196,7 @@ abstract class BackupDao {
             historyLimit = historyLimit,
             newUid = newUid,
             countsEveryRecipe = limit is LibraryLimit.Free,
+            capsEveryRecipe = limit is LibraryLimit.Capped,
             existingPantry = existingPantry(),
             existingGroceryUids = existingGroceryUids().toSet(),
             existingMealTypes = existingMealTypes(),
@@ -236,9 +238,14 @@ abstract class BackupDao {
             existingRecipes = existingRecipes(),
             existingLists = existingLists(),
             maxSortOrder = maxSortOrder(),
-            historyLimit = if (limit is LibraryLimit.Free) limit.max else Int.MAX_VALUE,
+            historyLimit = when (limit) {
+                is LibraryLimit.Free -> limit.max
+                is LibraryLimit.Capped -> limit.max
+                else -> Int.MAX_VALUE
+            },
             newUid = newUid,
             countsEveryRecipe = limit is LibraryLimit.Free,
+            capsEveryRecipe = limit is LibraryLimit.Capped,
             existingPantry = existingPantry(),
             existingGroceryUids = existingGroceryUids().toSet()
         )

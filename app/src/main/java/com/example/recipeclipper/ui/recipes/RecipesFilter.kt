@@ -48,7 +48,7 @@ internal fun RecipeFilterPills(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier.fillMaxWidth().padding(top = 4.dp)
     ) {
-        RecipeFilter.entries.forEach { filter ->
+        RecipeFilter.pills.forEach { filter ->
             FilterPill(
                 label = stringResource(filterLabel(filter)) + counts?.let { " ${it.of(filter)}" }.orEmpty(),
                 selected = filter == selected,
@@ -59,10 +59,12 @@ internal fun RecipeFilterPills(
     }
 }
 
-private fun filterLabel(filter: RecipeFilter): Int = when (filter) {
+internal fun filterLabel(filter: RecipeFilter): Int = when (filter) {
     RecipeFilter.ALL -> R.string.recipes_filter_all
     RecipeFilter.IN_A_LIST -> R.string.recipes_filter_in_list
     RecipeFilter.NOT_IN_A_LIST -> R.string.recipes_filter_not_in_list
+    RecipeFilter.COOKED -> R.string.recipes_view_cooked
+    RecipeFilter.TYPED -> R.string.recipes_view_typed
 }
 
 @Composable

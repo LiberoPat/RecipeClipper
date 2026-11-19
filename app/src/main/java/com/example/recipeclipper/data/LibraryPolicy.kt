@@ -11,8 +11,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Which [LibraryLimit] applies (#107): the `freeTier` flag, then the unlock, bought or the
- * Developer settings override. An interface so repository tests can fix one.
+ * Which [LibraryLimit] applies (#107, #345): the `oneCookbook` and `freeTier` flags, then the unlock,
+ * bought or the Developer settings override. An interface so repository tests can fix one.
  */
 interface LibraryPolicy {
     val limit: LibraryLimit
@@ -34,11 +34,12 @@ class DefaultLibraryPolicy @Inject constructor(
     override val limit: LibraryLimit
         get() = LibraryLimit.of(
             freeTier = flags.isOn(Flag.FREE_TIER),
-            unlocked = entitlements.state.value.unlocked || flags.unlockedOverride
+            unlocked = entitlements.state.value.unlocked || flags.unlockedOverride,
+            oneCookbook = flags.isOn(Flag.ONE_COOKBOOK)
         )
 
     override val limits: Flow<LibraryLimit> =
         combine(flags.values, flags.unlockedOverrides, entitlements.state) { values, override, state ->
-            LibraryLimit.of(values.isOn(Flag.FREE_TIER), state.unlocked || override)
+            LibraryLimit.of(values.isOn(Flag.FREE_TIER), state.unlocked || override, values.isOn(Flag.ONE_COOKBOOK))
         }.distinctUntilChanged()
 }

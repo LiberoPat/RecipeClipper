@@ -9,7 +9,7 @@ enum class Flag(val key: String) {
     /** Chef mode (#100): the Settings switch for short steps written on the device. */
     CHEF_MODE("chefMode"),
 
-    /** The free tier (#107): 20 recipes, and the one-time unlock for unlimited ones. */
+    /** The free tier (#107): 50 recipes (20 with [ONE_COOKBOOK] off), and the one-time unlock for unlimited ones. */
     FREE_TIER("freeTier"),
 
     /** A recipe picked from the page's text by the on-device model when the page has no recipe data (#103). */
@@ -37,6 +37,8 @@ enum class Flag(val key: String) {
     PRINT("print"),
     /** Text shared in with no link (#306): split into a recipe and opened in the editor to check. */
     SHARE_TEXT("shareText"),
+    /** One cookbook (#345): nothing is removed automatically; the free tier (50) opens a new recipe unsaved at the limit; Recipes' views strip. */
+    ONE_COOKBOOK("oneCookbook"),
     /** "Use it up" (#305): the saved recipes that use a pantry item about to expire. */
     USE_IT_UP("useItUp");
 

@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -29,7 +31,13 @@ import com.example.recipeclipper.ui.recipe.sourceCreditText
  * The site is credited as the reading view credits it. Home and List detail keep `RecipeRow`.
  */
 @Composable
-internal fun LibraryRow(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun LibraryRow(
+    recipe: RecipeSummary,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** One cookbook (#345): an outlined bookmark on a recipe in no list, opening the save-to-list sheet. */
+    onSaveToList: (() -> Unit)? = null
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -54,6 +62,15 @@ internal fun LibraryRow(recipe: RecipeSummary, onClick: () -> Unit, modifier: Mo
                 tint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.padding(start = 12.dp).size(20.dp)
             )
+        } else if (onSaveToList != null) {
+            IconButton(onClick = onSaveToList, modifier = Modifier.testTag("saveToList-${recipe.id}")) {
+                Icon(
+                    painterResource(R.drawable.ic_bookmark_border),
+                    contentDescription = stringResource(R.string.cd_save_to_list),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

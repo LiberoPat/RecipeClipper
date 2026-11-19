@@ -130,19 +130,39 @@ enum class RecipeSort {
 }
 
 /**
- * Which recipes the Recipes screen lists (#345, V1): all, those in at least one list ("saved",
- * derived from the cross-ref table), or those in none. Not remembered: it opens on [ALL].
+ * Which recipes the Recipes screen lists (#345): all, those in at least one list ("saved",
+ * derived from the cross-ref table), or those in none (V1's filter pills, and V4's first view);
+ * and V4's other automatic views: [COOKED] (the user's own photos or "Mark as cooked", #116,
+ * #173) and [TYPED] (typed, scanned or read in by hand, `contentOrigin` MANUAL, never the tour's
+ * sample). Not remembered: it opens on [ALL].
  */
-enum class RecipeFilter { ALL, IN_A_LIST, NOT_IN_A_LIST }
+enum class RecipeFilter {
+    ALL, IN_A_LIST, NOT_IN_A_LIST, COOKED, TYPED;
 
-/** How many recipes there are, and how many of them are in at least one list (#345). */
-data class RecipeCounts(val all: Int, val inList: Int) {
+    companion object {
+        /** The three pills with `oneCookbook` off (V1). */
+        val pills: List<RecipeFilter> = listOf(ALL, IN_A_LIST, NOT_IN_A_LIST)
+
+        /** The strip's automatic views with `oneCookbook` on (V4), in the order the strip shows them. */
+        val views: List<RecipeFilter> = listOf(NOT_IN_A_LIST, COOKED, TYPED)
+
+        fun fromRouteName(name: String?): RecipeFilter? = views.firstOrNull { it.name == name }
+    }
+}
+
+/**
+ * How many recipes there are, how many of them are in at least one list, and how many are
+ * cooked or typed in (#345): the Recipes filter's and the views strip's counts.
+ */
+data class RecipeCounts(val all: Int, val inList: Int, val cooked: Int = 0, val typed: Int = 0) {
     val notInList: Int get() = all - inList
 
     fun of(filter: RecipeFilter): Int = when (filter) {
         RecipeFilter.ALL -> all
         RecipeFilter.IN_A_LIST -> inList
         RecipeFilter.NOT_IN_A_LIST -> notInList
+        RecipeFilter.COOKED -> cooked
+        RecipeFilter.TYPED -> typed
     }
 }
 

@@ -47,7 +47,7 @@ class RecipeNotKeptScreenTest {
         }
 
         compose.onNodeWithText("Soup").assertIsDisplayed()
-        compose.onNodeWithText("Not saved: your 20 recipes are all in lists, plans or typed in.").assertIsDisplayed()
+        compose.onNodeWithText("Not saved: the free app keeps 20 recipes.").assertIsDisplayed()
         compose.onNodeWithContentDescription("Save to a list").assertDoesNotExist()
 
         compose.onNodeWithText("Unlock").performClick()

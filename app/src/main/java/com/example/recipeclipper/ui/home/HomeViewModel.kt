@@ -11,6 +11,8 @@ import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.backup.AutoBackupPolicy
 import com.example.recipeclipper.data.importFile
+import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.recipe.CookController
@@ -107,7 +109,9 @@ class HomeViewModel @Inject constructor(
     // The Lists row's count (#286); null shows none.
     private val lists: ListRepository? = null,
     // The resume card's timer counts down from its saved deadline against this (#286).
-    private val clock: Clock = Clock { System.currentTimeMillis() }
+    private val clock: Clock = Clock { System.currentTimeMillis() },
+    // "See all" (#345) opens Recipes in Recently viewed order, the sort it remembers; null leaves it.
+    private val preferences: AppPreferences? = null
 ) : ViewModel() {
 
     private val link = MutableStateFlow<String?>(null)
@@ -208,6 +212,11 @@ class HomeViewModel @Inject constructor(
     }
 
     /** "Restore from a backup file" (#150): the file the user picked, merged in like Import. */
+    /** "See all" on Recently viewed (#345): Recipes opens in that order, whatever it was left on. */
+    fun onSeeAllRecent() {
+        preferences?.recipeSort = RecipeSort.RECENTLY_VIEWED
+    }
+
     fun onRestorePicked(uri: String) {
         val backups = backups ?: return
         val files = files ?: return

@@ -508,11 +508,15 @@ final class DefaultRecipeRepository: RecipeRepository {
 
     func observeHistory(query: String, filter: RecipeFilter) -> AnyPublisher<[RecipeSummary], Never> {
         let listed = switch filter {
-        case .all: RecipeDao.listedAny
         case .inAList: RecipeDao.listedYes
         case .notInAList: RecipeDao.listedNo
+        default: RecipeDao.listedAny
         }
-        return db.observe { conn in try RecipeDao(db: conn).history(query: query, listed: listed).map { $0.toDomain() } }
+        let cooked = filter == .cooked ? 1 : 0
+        let typed = filter == .typed ? 1 : 0
+        return db.observe { conn in
+            try RecipeDao(db: conn).history(query: query, listed: listed, cooked: cooked, typed: typed).map { $0.toDomain() }
+        }
     }
 
     func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never> {

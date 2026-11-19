@@ -254,6 +254,40 @@ class BackupMergerTest {
         assertEquals(20, plan.summary.freeLimit)
     }
 
+    @Test fun `with every recipe capped (#345) none is exempt, listed ones go first, and a skipped one's list stays out`() {
+        val here = (1..46L).map { ExistingRecipe(it, "u$it", "https://h.example/$it", false, isListed = false) }
+        val incoming = (1..6).map { i ->
+            BackupRecipe("f$i", "https://f.example/$i", "BLOG", "F$i", null, emptyList(), emptyList(),
+                null, null, null, null, lastViewedAt = i * 10L, checkedIngredients = emptySet(), notes = null)
+        }
+        // f1 is the oldest viewed, but listed: it takes one of the four free places before the newer ones.
+        val lists = listOf(BackupList("l1", "Soups", false, false, 9, 0), BackupList("l2", "Stews", false, false, 10, 0))
+        val memberships = listOf(BackupMembership("f1", "l1", 1), BackupMembership("f6", "l2", 1))
+        val plan = BackupMerger.plan(
+            Backup(0, incoming, lists, memberships), here, emptyList(), 0, 50, uids(), capsEveryRecipe = true
+        )
+        assertEquals(listOf("f1", "f6", "f4", "f5").sorted(), plan.newRecipes.map { it.id }.sorted())
+        assertEquals(2, plan.summary.recipesSkipped)
+        assertEquals(50, plan.summary.freeLimit)
+        assertEquals(2, plan.memberships.size)
+    }
+
+    @Test fun `with every recipe capped a skipped listed recipe takes its membership with it`() {
+        val here = (1..50L).map { ExistingRecipe(it, "u$it", "https://h.example/$it", false, isListed = false) }
+        val incoming = listOf(
+            BackupRecipe("f1", "https://f.example/1", "BLOG", "F1", null, emptyList(), emptyList(),
+                null, null, null, null, 0, emptySet(), null)
+        )
+        val lists = listOf(BackupList("l1", "Soups", false, false, 9, 0))
+        val plan = BackupMerger.plan(
+            Backup(0, incoming, lists, listOf(BackupMembership("f1", "l1", 1))), here, emptyList(), 0, 50, uids(),
+            capsEveryRecipe = true
+        )
+        assertTrue(plan.newRecipes.isEmpty())
+        assertTrue(plan.memberships.isEmpty())
+        assertEquals(1, plan.summary.recipesSkipped)
+    }
+
     @Test fun `a library over the free limit takes no unlisted recipes, and loses none (#107)`() {
         val here = (1..30L).map { ExistingRecipe(it, "u$it", "https://h.example/$it", false, isListed = false) }
         val incoming = listOf(

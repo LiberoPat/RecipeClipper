@@ -23,7 +23,8 @@ final class LibraryPolicy {
     var limit: LibraryLimit {
         LibraryLimit.of(
             freeTier: flags.isOn(.freeTier),
-            unlocked: entitlements.state.unlocked || flags.unlockedOverride
+            unlocked: entitlements.state.unlocked || flags.unlockedOverride,
+            oneCookbook: flags.isOn(.oneCookbook)
         )
     }
 
