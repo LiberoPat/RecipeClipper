@@ -41,7 +41,7 @@ private final class GatedRecipeRepository: RecipeRepository {
     @MainActor func setCookProgress(id: Int64, progress: CookProgress) async {}
     @MainActor func setServingsTarget(id: Int64, target: Int?) async {}
     @MainActor func delete(id: Int64) async -> DeletedRecipe? { nil }
-    @MainActor func restore(_ deleted: DeletedRecipe) async {}
+    @MainActor func restoreAll(_ deleted: [DeletedRecipe]) async -> RestoreOutcome { .restored }
     func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> { Just([]).eraseToAnyPublisher() }
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never> { Just([]).eraseToAnyPublisher() }
 }
