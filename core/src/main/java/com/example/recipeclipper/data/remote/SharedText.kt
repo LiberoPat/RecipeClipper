@@ -191,7 +191,7 @@ object SharedText {
     }
 
     /** The index after the bracket that closes the one at [start], or -1. Strings are skipped. */
-    private fun jsonEnd(text: String, start: Int): Int {
+    internal fun jsonEnd(text: String, start: Int): Int {
         var depth = 0
         var inString = false
         var escaped = false

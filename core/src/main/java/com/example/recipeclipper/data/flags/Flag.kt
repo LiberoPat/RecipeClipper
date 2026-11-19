@@ -43,6 +43,8 @@ enum class Flag(val key: String) {
     USE_IT_UP("useItUp"),
     /** "Ask an AI" (#351, #353): prompts that come back as schema.org Recipe JSON, from Home and the recipe's menu. */
     ASK_AI("askAi"),
+    /** Meal-plan import (#352): a week of AI recipes shared in opens a review, kept and planned on their days in Week. */
+    MEAL_PLAN_IMPORT("mealPlanImport"),
     /** Recipe versions (#354): an AI's change to a recipe is saved linked to its original. */
     RECIPE_VERSIONS("recipeVersions");
 

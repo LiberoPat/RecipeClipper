@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.edit
 
+import com.example.recipeclipper.data.remote.MealPlanImport
 import com.example.recipeclipper.data.remote.SharedText
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
@@ -27,10 +28,30 @@ class SharedTextInbox @Inject constructor() {
     @Synchronized
     fun offer(text: String, reading: SharedText.Reading): String {
         entries.clear()
+        plans.clear()
         val key = "t${keys.incrementAndGet()}"
         entries[key] = Entry(text, reading)
         return key
     }
+
+    /** A week of recipes (#352), read once: the meal-plan review's text and its [plan]. */
+    class PlanEntry(val text: String, val plan: MealPlanImport.Plan)
+
+    private val plans = HashMap<String, PlanEntry>()
+
+    /** Leaves a meal-plan [plan] read from [text] for its review; the key for its route. */
+    @Synchronized
+    fun offerPlan(text: String, plan: MealPlanImport.Plan): String {
+        entries.clear()
+        plans.clear()
+        val key = "p${keys.incrementAndGet()}"
+        plans[key] = PlanEntry(text, plan)
+        return key
+    }
+
+    /** The plan left under [key], once. */
+    @Synchronized
+    fun takePlan(key: String): PlanEntry? = plans.remove(key)
 
     /** The entry left under [key], once: taking it empties the inbox. */
     @Synchronized

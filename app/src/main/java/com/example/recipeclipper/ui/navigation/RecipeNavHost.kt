@@ -14,6 +14,8 @@ import com.example.recipeclipper.ui.clip.ClipScreen
 import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.edit.EditRecipeScreen
 import com.example.recipeclipper.ui.edit.EditRecipeViewModel
+import com.example.recipeclipper.ui.mealplan.MealPlanReviewScreen
+import com.example.recipeclipper.ui.mealplan.MealPlanReviewViewModel
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.ui.recipes.RecipesScreen
 import com.example.recipeclipper.ui.recipes.RecipesViewModel
@@ -109,6 +111,11 @@ object Routes {
     const val EDIT_TEXT = "edit/text?${EditRecipeViewModel.SHARED_TEXT_ARG}={${EditRecipeViewModel.SHARED_TEXT_ARG}}"
 
     fun editText(key: String) = "edit/text?${EditRecipeViewModel.SHARED_TEXT_ARG}=${Uri.encode(key)}"
+
+    // A week of recipes shared in (#352): the review, found by the inbox key the route carries.
+    const val MEAL_PLAN = "mealplan?${MealPlanReviewViewModel.PLAN_ARG}={${MealPlanReviewViewModel.PLAN_ARG}}"
+
+    fun mealPlan(key: String) = "mealplan?${MealPlanReviewViewModel.PLAN_ARG}=${Uri.encode(key)}"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
 }
@@ -133,6 +140,31 @@ fun NavGraphBuilder.editTextDestination(
             onSaved = { id ->
                 navController.popBackStack()
                 navController.navigate(Routes.recipe(id))
+            },
+            viewModel = viewModel(entry)
+        )
+    }
+}
+
+/**
+ * A week of recipes shared in (#352): the meal-plan review. Saving replaces it with Week when any
+ * recipe was planned, else with where it came from.
+ */
+fun NavGraphBuilder.mealPlanDestination(
+    navController: NavHostController,
+    viewModel: @Composable (NavBackStackEntry) -> MealPlanReviewViewModel = { hiltViewModel() }
+) {
+    composable(
+        route = Routes.MEAL_PLAN,
+        arguments = listOf(
+            navArgument(MealPlanReviewViewModel.PLAN_ARG) { type = NavType.StringType; defaultValue = "" }
+        )
+    ) { entry ->
+        MealPlanReviewScreen(
+            onBack = { navController.popBackStack() },
+            onFinished = { planned ->
+                navController.popBackStack()
+                if (planned) navController.selectTab(Tab.WEEK)
             },
             viewModel = viewModel(entry)
         )
@@ -344,6 +376,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     }
 
     editTextDestination(navController)
+    mealPlanDestination(navController)
 
     composable(
         route = Routes.CLIP,

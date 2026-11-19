@@ -107,6 +107,48 @@ internal object JsonLdRecipeParser {
     }
 
     /**
+     * Every Recipe in one JSON [block], in order, each with the raw text of its `day` property
+     * (#352: the meal-plan format, `AskAiPrompt.DAY_FIELD`), null when it has none. Only what a
+     * list holds is walked: a top-level array, `@graph`, an ItemList's `itemListElement` and a
+     * ListItem's `item` (the day may sit on either). Each Recipe is read by [parseRecipeJson], as
+     * [parse] reads the first. The depth cap and the one `Throwable` catch are [parse]'s.
+     */
+    fun parseEach(block: String, sourceUrl: String = "", pageLanguage: String? = null): List<Pair<Recipe, String?>> {
+        val root = try {
+            JSONTokener(block).nextValue()
+        } catch (e: Throwable) {
+            // As in [parse]: nested deep enough to overflow the stack is a block that isn't one.
+            return emptyList()
+        }
+        val found = mutableListOf<Pair<Recipe, String?>>()
+        collectRecipes(root, 0, null, found, sourceUrl, pageLanguage)
+        return found
+    }
+
+    private fun collectRecipes(
+        node: Any?, depth: Int, outerDay: String?, into: MutableList<Pair<Recipe, String?>>,
+        sourceUrl: String, pageLanguage: String?
+    ) {
+        if (depth > MAX_DEPTH) return
+        when (node) {
+            is JSONArray -> for (i in 0 until node.length()) {
+                collectRecipes(node.opt(i), depth + 1, null, into, sourceUrl, pageLanguage)
+            }
+            is JSONObject ->
+                if (isRecipeType(node.opt("@type"))) {
+                    parseRecipeJson(node, sourceUrl, pageLanguage)?.let { into += it to (dayOf(node) ?: outerDay) }
+                } else {
+                    val day = dayOf(node) ?: outerDay
+                    for (key in listOf("@graph", "itemListElement", "item")) {
+                        if (node.has(key)) collectRecipes(node.opt(key), depth + 1, day, into, sourceUrl, pageLanguage)
+                    }
+                }
+        }
+    }
+
+    private fun dayOf(node: JSONObject): String? = (node.opt("day") as? String)?.trim()?.ifEmpty { null }
+
+    /**
      * The `isBasedOn` of the first Recipe in [jsonLdBlocks] (#354): what an AI's reply names as
      * the recipe it changed. A string, or a schema.org thing's `@id` or `url`, or the first of an
      * array of them; trimmed; null when absent or blank. Found as [parse] finds the Recipe, under

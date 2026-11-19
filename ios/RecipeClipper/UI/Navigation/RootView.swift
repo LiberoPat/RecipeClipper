@@ -47,6 +47,10 @@ struct RootView: View {
                 if phase == .active, let reading = container.takePendingText() {
                     router.openInRecipes(.textRecipe(reading))
                 }
+                // A week of recipes it left (#352) opens the meal-plan review.
+                if phase == .active, let text = container.takePendingPlan() {
+                    router.openInRecipes(.mealPlan(text))
+                }
             }
             // The share extension saves from its own process; catch up on coming back.
             .onChange(of: scenePhase) { _, phase in
@@ -293,6 +297,16 @@ struct RootView: View {
             // Text shared in (#306): the saved recipe replaces the review, as a scan's does.
             ScreenHost({ container.makeEditRecipeViewModel(shared: reading) }) { vm in
                 EditRecipeScreen(vm: vm, onSaved: { saved in replace(1, .recipe(id: saved)) })
+            }
+            .toolbar(.hidden, for: .tabBar)
+        case .mealPlan(let text):
+            // A week of recipes shared in (#352): saving replaces the review with Week when any
+            // recipe was planned, else goes back to where it came from.
+            ScreenHost({ container.makeMealPlanReviewViewModel(text: text) }) { vm in
+                MealPlanReviewScreen(vm: vm, onFinished: { planned in
+                    router.path.removeAll { $0 == route }
+                    if planned { router.select(.week) }
+                })
             }
             .toolbar(.hidden, for: .tabBar)
         }

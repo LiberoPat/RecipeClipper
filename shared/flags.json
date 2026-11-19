@@ -85,6 +85,12 @@
       "issue": 351
     },
     {
+      "key": "mealPlanImport",
+      "description": "Meal-plan import: shared text holding a week of recipes (the answer to Ask an AI's Plan my week, one JSON array of schema.org Recipes, each with a day) opens a review instead of the single-recipe editor: the recipes with their days, each ticked, kept as from a chat and planned on its day in Week. Nothing is saved before Save; the free limit says how many fit. Off, the first recipe opens the editor as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 352
+    },
+    {
       "key": "recipeVersions",
       "description": "Recipe versions: JSON shared in whose isBasedOn names a recipe in the library (its link, as Change this recipe wrote it) is saved as a version of it, linked by the original's uid. The version shows Based on the original (a tap opens it) and the original lists its versions. Off, the link is neither saved nor shown, and the recipe is a plain chat recipe.",
       "defaults": { "debug": true, "release": true },

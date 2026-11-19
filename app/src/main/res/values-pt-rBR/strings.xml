@@ -289,6 +289,18 @@
     <string name="text_read">Organizado a partir do texto compartilhado. Confira cada linha, principalmente as quantidades, antes de salvar.</string>
     <string name="text_leftovers">As linhas que não se encaixaram em nada estão em Anotações, como foram escritas.</string>
     <string name="text_not_sorted">Não foi possível encontrar ingredientes e passos no texto, então está tudo em Passos, como escrito: termine à mão.</string>
+    <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
+    <string name="mealplan_title">Sua semana</string>
+    <string name="mealplan_intro">Escolha as receitas que quer manter. Cada uma é salva como “De um chat” e planejada no seu dia em Semana. Nada é salvo até você tocar em Salvar.</string>
+    <string name="mealplan_day_none">Sem dia</string>
+    <string name="mealplan_day_dont_plan">Não planejar</string>
+    <string name="mealplan_day_for">Dia para %1$s</string>
+    <string name="mealplan_day_passed">Esse dia já passou. Escolha outro dia ou deixe sem planejamento.</string>
+    <string name="mealplan_keeping">Mantendo %1$d de %2$d</string>
+    <string name="mealplan_room">Sua biblioteca tem espaço para mais %1$d. As primeiras que você mantiver são salvas e as outras esperam aqui; nada do que você tem é removido. Desbloqueie para manter todas.</string>
+    <string name="mealplan_wont_fit">Ainda não há espaço para esta</string>
+    <string name="mealplan_kept">Salvas até agora: %1$d</string>
+    <string name="mealplan_open_week">Abrir Semana</string>
     <string name="photo_failed">Não foi possível carregar a foto. Verifique a conexão e tente de novo.</string>
     <string name="photo_not_ready">O leitor de fotos ainda não está pronto neste celular: os Serviços do Google Play fazem o download uma vez, pela internet. Tente de novo em alguns minutos ou termine a receita à mão abaixo.</string>
     <string name="photo_check_heading">Confira estas linhas: ali a foto estava difícil de ler</string>

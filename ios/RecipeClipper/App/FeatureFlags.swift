@@ -36,6 +36,8 @@ enum Flag: String, CaseIterable {
     case oneCookbook
     /// "Ask an AI" (#351, #353): prompts that come back as schema.org Recipe JSON, from Home and the recipe's menu.
     case askAi
+    /// Meal-plan import (#352): a week of AI recipes shared in opens a review, kept and planned on their days in Week.
+    case mealPlanImport
     /// Recipe versions (#354): an AI's change to a recipe is saved linked to its original.
     case recipeVersions
 }

@@ -3,6 +3,7 @@ package com.example.recipeclipper.data.model
 import com.example.recipeclipper.data.remote.CardHeadings
 import com.example.recipeclipper.data.remote.CheckReason
 import com.example.recipeclipper.data.remote.JsonLdRecipeParser
+import com.example.recipeclipper.data.remote.MealPlanImport
 import com.example.recipeclipper.data.remote.PhotoBox
 import com.example.recipeclipper.data.remote.PhotoLine
 import com.example.recipeclipper.data.remote.PhotoTextSorter
@@ -135,6 +136,9 @@ import java.io.File
  * yield, prep, cook and total times, and the lines left over ([SharedText.read]); write only
  * the text.
  *
+ * `PlanText("text")` rows (#352) pin [MealPlanImport.read]: shared text as a week of recipes, each
+ * `Meal("name", epochDay or nil, [ingredients], [steps])` in order, or `[]` when it holds no plan;
+ * write only the text.
  * `Based("text")` rows (#354) pin [SharedText.Reading.basedOn]: text shared into the app, then the
  * recipe its JSON's `isBasedOn` names (nil for none); write only the text.
  *
@@ -231,6 +235,8 @@ class DifferentialCorpusTest {
     private val splitRow = Regex("""^(\s*)Split\("((?:[^"\\]|\\.)*)"""")
     // A shared-text row (#306): text shared into the app.
     private val sharedRow = Regex("""^(\s*)Shared\("((?:[^"\\]|\\.)*)"""")
+    // A meal-plan row (#352): text shared in as a week of recipes.
+    private val planTextRow = Regex("""^(\s*)PlanText\("((?:[^"\\]|\\.)*)"""")
     // A shared-text version row (#354): text shared into the app, then its JSON's isBasedOn.
     private val basedRow = Regex("""^(\s*)Based\("((?:[^"\\]|\\.)*)"""")
     // A photo row (#208): the lines read from a photo.
@@ -416,6 +422,13 @@ class DifferentialCorpusTest {
             val extras = optionalList(listOf(r.yield, r.prepTime, r.cookTime, r.totalTime))
             return m.groupValues[1] + "Shared(${q(text)}, $kind, ${reading.sorted}, $language, ${q(reading.name)}, " +
                 "${list(r.ingredients)}, ${list(r.instructions)}, $extras, ${list(reading.leftovers)}),"
+        }
+        planTextRow.find(line)?.let { m ->
+            val text = unescape(m.groupValues[2])
+            val meals = MealPlanImport.read(text)?.items.orEmpty().joinToString(", ", "[", "]") {
+                "Meal(${q(it.recipe.name)}, ${it.day?.toString() ?: "nil"}, ${list(it.recipe.ingredients)}, ${list(it.recipe.instructions)})"
+            }
+            return m.groupValues[1] + "PlanText(${q(text)}, $meals),"
         }
         basedRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])

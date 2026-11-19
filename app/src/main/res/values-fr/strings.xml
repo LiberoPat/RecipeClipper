@@ -289,6 +289,18 @@
     <string name="text_read">Recette triée à partir du texte partagé. Vérifiez chaque ligne, surtout les quantités, avant d\'enregistrer.</string>
     <string name="text_leftovers">Les lignes qui n\'avaient leur place nulle part sont dans Notes, telles quelles.</string>
     <string name="text_not_sorted">Impossible de trouver des ingrédients et des étapes dans le texte : tout est dans Étapes, tel quel. Terminez-la à la main.</string>
+    <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
+    <string name="mealplan_title">Votre semaine</string>
+    <string name="mealplan_intro">Choisissez les recettes à garder. Chacune est enregistrée comme « Depuis un chat » et planifiée à son jour dans Semaine. Rien n\'est enregistré avant que vous touchiez Enregistrer.</string>
+    <string name="mealplan_day_none">Aucun jour</string>
+    <string name="mealplan_day_dont_plan">Ne pas planifier</string>
+    <string name="mealplan_day_for">Jour pour %1$s</string>
+    <string name="mealplan_day_passed">Ce jour est passé. Choisissez un autre jour, ou laissez-la sans planification.</string>
+    <string name="mealplan_keeping">%1$d sur %2$d gardées</string>
+    <string name="mealplan_room">Votre bibliothèque a de la place pour %1$d de plus. Les premières gardées sont enregistrées et les autres attendent ici ; rien de ce que vous avez n\'est supprimé. Débloquez pour toutes les garder.</string>
+    <string name="mealplan_wont_fit">Pas encore de place pour celle-ci</string>
+    <string name="mealplan_kept">Enregistrées jusqu\'ici : %1$d</string>
+    <string name="mealplan_open_week">Ouvrir Semaine</string>
     <string name="photo_failed">Impossible de charger la photo. Vérifiez votre connexion et réessayez.</string>
     <string name="photo_not_ready">Le lecteur de photos n\'est pas encore prêt sur ce téléphone : les services Google Play le téléchargent une fois, par Internet. Réessayez dans quelques minutes, ou terminez la recette à la main ci-dessous.</string>
     <string name="photo_check_heading">Vérifiez ces lignes : la photo y était difficile à lire</string>

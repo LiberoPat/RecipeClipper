@@ -57,6 +57,21 @@ class TextIntentTest {
     }
 
     @Test
+    fun aWeekOfRecipesOpensTheMealPlanReviewOnlyWithItsFlagOn() {
+        fun meal(name: String, day: String) = """{"@type": "Recipe", "name": "$name", "day": "$day", """ +
+            """"recipeIngredient": ["1 egg"], "recipeInstructions": ["Cook."]}"""
+        val week = "```json\n[${meal("Omelette", "2026-11-23")}, ${meal("Soup", "2026-11-24")}]\n```"
+        val plan = TextIntent.target(week, shareTextOn = true, mealPlanOn = true) as Target.Plan
+        assertEquals(listOf("Omelette", "Soup"), plan.plan.items.map { it.recipe.name })
+        // Flag off: the first recipe opens the editor, as before (#350).
+        assertTrue(TextIntent.target(week, shareTextOn = true, mealPlanOn = false) is Target.Review)
+        // One recipe is the editor's, with the flag on.
+        assertTrue(TextIntent.target(meal("Omelette", "2026-11-23"), shareTextOn = true, mealPlanOn = true) is Target.Review)
+        // Share text off: as before #306, nothing here applies.
+        assertTrue(TextIntent.target(week, shareTextOn = false, mealPlanOn = true) !is Target.Plan)
+    }
+
+    @Test
     fun aLinkImportsAndAListIsOffered() {
         val link = "Look! https://example.com/scones"
         assertEquals(Target.Open(Routes.import("https://example.com/scones")), TextIntent.target(link, shareTextOn = true))

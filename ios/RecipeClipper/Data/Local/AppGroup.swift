@@ -51,6 +51,11 @@ typealias DefaultsRedditSwitch = DefaultsFlagSwitch<RedditFlag>
 enum ShareTextFlag: MirroredFlag { static let key = "share_text_on" }
 typealias DefaultsShareTextSwitch = DefaultsFlagSwitch<ShareTextFlag>
 
+/// Whether a week of recipes in shared text goes to the meal-plan review (the `mealPlanImport`
+/// flag, #352), as the share extension reads it.
+enum MealPlanFlag: MirroredFlag { static let key = "meal_plan_on" }
+typealias DefaultsMealPlanSwitch = DefaultsFlagSwitch<MealPlanFlag>
+
 /// What a hand-off from the share extension stores: a value and the time it was left, under
 /// `valueKey` and `atKey` in the App Group suite.
 protocol HandOffKind {
@@ -108,3 +113,13 @@ enum TextHandOff: HandOffKind {
     static let atKey = "pending_text_at"
 }
 typealias PendingText = PendingHandOff<TextHandOff>
+
+/// Text the share extension was given that holds a week of recipes (#352), as the text itself:
+/// the app reads it again (`MealPlanImport.read`) for its review, which needs the app (nothing is
+/// saved unreviewed).
+enum PlanHandOff: HandOffKind {
+    typealias Value = String
+    static let valueKey = "pending_plan"
+    static let atKey = "pending_plan_at"
+}
+typealias PendingPlan = PendingHandOff<PlanHandOff>
