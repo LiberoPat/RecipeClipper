@@ -147,8 +147,7 @@ final class HomeUITests: RecipeUITestCase {
         require(text("Stub Chicken Soup"))
 
         back()
-        let stub = require(row("Stub Chicken Soup"))
-        XCTAssertLessThan(stub.frame.minY, row("Chicken Adobo").frame.minY,
-                          "the import is now the most recent recipe")
+        require(row("Stub Chicken Soup"))
+        assertAbsent(row("Chicken Adobo")) // the previous newest is Recipes' to show now (#371)
     }
 }
