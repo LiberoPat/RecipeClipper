@@ -94,6 +94,9 @@ final class WeekUITests: RecipeUITestCase {
         XCTAssertFalse(menuItem("What I need").exists)
         XCTAssertFalse(menuItem("Add this week's ingredients").exists)
         shop.tap()
+        // The screen's title follows the menu item (#384); its sections keep their names.
+        require(app.staticTexts["Shop for this week"], "the screen's title")
+        require(app.staticTexts["To buy"], "the To buy section")
         require(app.staticTexts["garlic"], "the first row to buy")
         require(app.staticTexts["You have 3 lb · this week's recipes use 2 lb"], "the pantry's amount, beside the week's")
         require(app.buttons["Add to groceries"], "Add to groceries")

@@ -5061,9 +5061,10 @@ exactly), on both platforms.
   `week/need/{weekStart}`, iOS `.whatINeed`). "Add this week's ingredients" is not in the menu.
   Both are still week-only: the month view has neither. With an empty pantry every line is under
   To buy, so nothing is lost; sending a list stays Groceries' "Send list".
-- **The screen is unchanged and keeps its title, "What I need":** it names what the screen shows
-  (To buy, In your pantry), the menu item names the act that opens it, and the two read as a verb
-  and its page. The old strings stay (flag off, and the screen's title).
+- **The screen is unchanged but for its title** (owner, 2026-11-19): with the flag on it reads
+  "Shop for this week", as the menu item that opens it (the same string); off, it stays "What I
+  need". The sections (To buy, In your pantry) keep their names. `WhatINeedScreen` takes
+  `shopForWeek` as `WeekScreen` does. The old strings stay (flag off).
 - **No other entry** pointed at either item: the tour's tooltips, empty states and widgets don't
   mention them. The grocery sheet itself (`AddToGroceriesSheet`) stays for the recipe's "Add to
   groceries"; only the Week's way into it is gone with the flag on.

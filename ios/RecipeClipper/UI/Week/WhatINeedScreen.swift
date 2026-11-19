@@ -7,13 +7,15 @@ import SwiftUI
 /// use, when that adds up exactly (#302): the two side by side, never compared.
 struct WhatINeedScreen: View {
     let vm: WhatINeedViewModel
+    /// The `shopForWeek` flag (#384): the title is "Shop for this week", as the menu item that opens it.
+    var shopForWeek = false
 
     var body: some View {
         let state = vm.uiState
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 4) {
-                    ScreenTitle(Strings.whatINeedTitle)
+                    ScreenTitle(shopForWeek ? Strings.shopForWeek : Strings.whatINeedTitle)
                     Text(PlanDayFormat.weekRange(state.weekStart))
                         .textStyle(Typography.titleMedium)
                         .foregroundStyle(Palette.muted)

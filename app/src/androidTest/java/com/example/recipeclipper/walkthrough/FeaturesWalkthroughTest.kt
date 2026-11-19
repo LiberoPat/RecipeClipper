@@ -60,7 +60,7 @@ class FeaturesWalkthroughTest : WalkthroughBase() {
         tap("Week")
         plan(today, "Chicken Adobo")
         plan(today + 1, "Chicken Adobo")
-        menu("What I need")
+        menu("Shop for this week")
         show("this week's recipes use", 4000)
     }
 

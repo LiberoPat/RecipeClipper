@@ -37,12 +37,12 @@ class WhatINeedScreenTest {
         )
     }
 
-    private fun show(vararg pantry: PantryItem) {
+    private fun show(vararg pantry: PantryItem, shopForWeek: Boolean = false) {
         val viewModel = WhatINeedViewModel(
             SavedStateHandle(mapOf(WhatINeedViewModel.WEEK_START_ARG to 100L)),
             groceries, FakePantryRepository(pantry.toList()), FakeAppPreferences()
         )
-        compose.setContent { WhatINeedScreen(onBack = {}, viewModel = viewModel) }
+        compose.setContent { WhatINeedScreen(onBack = {}, viewModel = viewModel, shopForWeek = shopForWeek) }
     }
 
     @Test
@@ -55,6 +55,22 @@ class WhatINeedScreenTest {
         compose.onNodeWithText("In your pantry").assertIsDisplayed()
         compose.onNodeWithText("not that there's enough", substring = true).assertIsDisplayed()
         compose.onNodeWithText("2 cups flour").assertIsDisplayed()
+    }
+
+    /** The title follows the menu item that opens it (#384); the sections keep their names. */
+    @Test
+    fun theTitleIsShopForThisWeekWithItsFlagAndWhatINeedWithout() {
+        show(shopForWeek = true)
+        compose.onNodeWithText("Shop for this week").assertIsDisplayed()
+        compose.onNodeWithText("What I need").assertDoesNotExist()
+        compose.onNodeWithText("To buy").assertIsDisplayed()
+    }
+
+    @Test
+    fun withTheFlagOffTheTitleIsWhatINeed() {
+        show(shopForWeek = false)
+        compose.onNodeWithText("What I need").assertIsDisplayed()
+        compose.onNodeWithText("Shop for this week").assertDoesNotExist()
     }
 
     private fun item(id: Long, name: String, quantity: String?, inStock: Boolean = true) =
