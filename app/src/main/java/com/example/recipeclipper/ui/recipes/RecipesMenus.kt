@@ -125,25 +125,38 @@ private val SORT_LABELS = linkedMapOf(
     RecipeSort.RECENTLY_COOKED to R.string.sort_recently_cooked
 )
 
-/** "Paste a link" (here and on Home, #286): one field, opened only when it reads as a link. */
+/**
+ * "Paste a link" (here and on Home, #286), which takes a link or, since #372, any recipe text
+ * (an AI's answer, a note): Go is on for any text, and a link imports while anything else goes
+ * where the same text shared would. [noRecipe]: Go found nothing to open.
+ */
 @Composable
 internal fun PasteLinkDialog(
     value: String,
     canOpen: Boolean,
     onValueChange: (String) -> Unit,
     onOpen: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    noRecipe: Boolean = false
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.action_paste_link)) },
+        title = { Text(stringResource(R.string.paste_dialog_title)) },
         text = {
             OutlinedTextField(
                 value = value,
                 onValueChange = onValueChange,
-                label = { Text(stringResource(R.string.label_recipe_url)) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                label = { Text(stringResource(R.string.label_link_or_recipe)) },
+                minLines = 1,
+                maxLines = 6,
+                isError = noRecipe,
+                supportingText = if (noRecipe) {
+                    { Text(stringResource(R.string.paste_no_recipe)) }
+                } else {
+                    null
+                },
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.testTag("pasteField")
             )
         },
         confirmButton = {

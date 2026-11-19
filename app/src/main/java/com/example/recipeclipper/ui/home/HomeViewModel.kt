@@ -12,6 +12,8 @@ import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.backup.AutoBackupPolicy
 import com.example.recipeclipper.data.importFile
 import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.ui.edit.PasteTarget
+import com.example.recipeclipper.ui.edit.PastedTextRouter
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -45,6 +47,8 @@ import javax.inject.Inject
 data class HomeUiState(
     val loaded: Boolean = false,
     val linkInput: String? = null,
+    /** Go found nothing to open in the pasted text (#372); cleared by the next keystroke. */
+    val linkNoRecipe: Boolean = false,
     /** The "Ask an AI" sheet (#351) is open. */
     val askAiOpen: Boolean = false,
     val continueCooking: RecipeSummary? = null,
@@ -66,8 +70,8 @@ data class HomeUiState(
     /** The restore row shows on an empty library, and stays to say how the restore went. */
     val showsRestore: Boolean get() = libraryEmpty || restore != BackupStatus.Idle
 
-    /** The dialog's Go is enabled only for what reads as a link (`UrlInput`). */
-    val canOpenLink: Boolean get() = linkInput?.let(UrlInput::normalize) != null
+    /** The dialog's Go is enabled for any text (#372): a link imports, anything else goes where a share would. */
+    val canOpenLink: Boolean get() = !linkInput.isNullOrBlank()
 }
 
 /**
@@ -113,10 +117,13 @@ class HomeViewModel @Inject constructor(
     // The resume card's timer counts down from its saved deadline against this (#286).
     private val clock: Clock = Clock { System.currentTimeMillis() },
     // "See all" (#345) opens Recipes in Recently viewed order, the sort it remembers; null leaves it.
-    private val preferences: AppPreferences? = null
+    private val preferences: AppPreferences? = null,
+    // "Paste a link" takes any text (#372): where it goes is the shared-text route's; null opens links only.
+    private val pasted: PastedTextRouter? = null
 ) : ViewModel() {
 
     private val link = MutableStateFlow<String?>(null)
+    private val linkNoRecipe = MutableStateFlow(false)
     private val restore = MutableStateFlow<BackupStatus>(BackupStatus.Idle)
     private val askAi = MutableStateFlow(false)
 
@@ -166,10 +173,10 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = combine(
         combine(recentRecipes, resume, askAi, ::Triple),
         counts,
-        link,
+        combine(link, linkNoRecipe, ::Pair),
         restore,
         backupState
-    ) { (recentAndSample, resume, askAiOpen), (recipeCount, listCount), linkInput, restoring, backup ->
+    ) { (recentAndSample, resume, askAiOpen), (recipeCount, listCount), (linkInput, noRecipe), restoring, backup ->
         // The sample alone (#151) still offers the restore row, and no folder card: there is
         // nothing of the user's to restore over or to lose.
         val (recent, onlySample) = recentAndSample
@@ -177,6 +184,7 @@ class HomeViewModel @Inject constructor(
         HomeUiState(
             loaded = true,
             linkInput = linkInput,
+            linkNoRecipe = noRecipe,
             askAiOpen = askAiOpen,
             continueCooking = latest,
             // Only the latest recipe's own place: never the one before it, for a moment.
@@ -211,17 +219,30 @@ class HomeViewModel @Inject constructor(
 
     fun onLinkChange(text: String) {
         link.value = text
+        linkNoRecipe.value = false
     }
 
     fun onLinkDismiss() {
         link.value = null
+        linkNoRecipe.value = false
     }
 
-    /** The link to import, closing the dialog; null, and the dialog stays, if it isn't one. */
-    fun onOpenLink(): String? {
-        val url = link.value?.let(UrlInput::normalize) ?: return null
-        link.value = null
-        return url
+    /**
+     * Go (#372): a link imports, any other text goes where the same text shared would (the
+     * editor, the meal-plan review, Groceries' list sheet). [onTarget] gets where, and the dialog
+     * closes; with nothing to open the dialog stays, saying so. Nothing is saved here.
+     */
+    fun onOpenLink(onTarget: (PasteTarget) -> Unit) {
+        val text = link.value?.takeIf { it.isNotBlank() } ?: return
+        viewModelScope.launch {
+            val target = pasted?.open(text) ?: UrlInput.normalize(text)?.let { PasteTarget.Link(it) }
+            if (target == null) {
+                linkNoRecipe.value = true
+            } else {
+                link.value = null
+                onTarget(target)
+            }
+        }
     }
 
     /** "Restore from a backup file" (#150): the file the user picked, merged in like Import. */

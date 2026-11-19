@@ -1,6 +1,8 @@
 package com.example.recipeclipper.ui.home
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -21,7 +23,11 @@ import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SavedTimer
 import com.example.recipeclipper.fake.FakeListRepository
+import com.example.recipeclipper.data.remote.SharedText
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.ui.edit.PasteTarget
+import com.example.recipeclipper.ui.edit.PastedTextFixtures
+import com.example.recipeclipper.ui.edit.PastedTextRouter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -69,18 +75,20 @@ class HomeScreenTest {
         var settings = 0
         var newRecipe = 0
         var url: String? = null
+        var pasted: PasteTarget? = null
     }
 
     private val preferences = com.example.recipeclipper.fake.FakeAppPreferences()
 
-    private fun show(oneCookbook: Boolean = false, askAi: Boolean = false): Taps {
+    private fun show(oneCookbook: Boolean = false, askAi: Boolean = false, pasted: PastedTextRouter? = null): Taps {
         val taps = Taps()
         // Built outside setContent: a ViewModel constructed inside a composable would be
         // rebuilt on every recomposition. A fixed clock, so a timer's time left is known.
-        val viewModel = HomeViewModel(repository, lists = lists, clock = Clock { NOW }, preferences = preferences)
+        val viewModel = HomeViewModel(repository, lists = lists, clock = Clock { NOW }, preferences = preferences, pasted = pasted)
         compose.setContent {
             HomeScreen(
                 onOpenUrl = { taps.url = it },
+                onOpenPasted = { taps.pasted = it },
                 onOpenRecipe = { taps.recipe = it },
                 onOpenRecipes = { taps.recipes++ },
                 onOpenLists = { taps.lists++ },
@@ -237,14 +245,38 @@ class HomeScreenTest {
     // "Add a recipe" (#286): three equal tiles in place of the link field.
 
     @Test
-    fun somethingThatIsNotALinkCannotBeOpened() {
-        val taps = show()
+    fun textWithNoRecipeInItOpensNothingAndSaysSo() {
+        val taps = show(pasted = PastedTextFixtures().router)
 
         compose.onNodeWithText("Paste a link").performClick()
-        compose.onNodeWithText("Recipe URL").performTextInput("not a link")
-
         compose.onNodeWithText("Go").assertIsNotEnabled()
+        compose.onNodeWithText("Link or recipe text").performTextInput("   ")
+        compose.onNodeWithText("Go").assertIsNotEnabled()
+        // Too long for the editor, and neither a link nor a list: nothing to open.
+        compose.onNodeWithText("Link or recipe text").performTextInput("x".repeat(SharedText.MAX_LENGTH + 1))
+        compose.onNodeWithText("Go").assertIsEnabled().performClick()
+
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("No recipe found in that text.").fetchSemanticsNodes().isNotEmpty() }
         assertNull(taps.url)
+        assertNull(taps.pasted)
+    }
+
+    /** #372: Paste a link takes an AI's answer as it takes a share: a recipe opens the editor. */
+    @Test
+    fun aPastedJsonRecipeIsHandedUpForTheEditor() {
+        val fixtures = PastedTextFixtures()
+        val taps = show(pasted = fixtures.router)
+
+        compose.onNodeWithText("Paste a link").performClick()
+        compose.onNodeWithText("Link or recipe text").performTextInput(PastedTextFixtures.json)
+        compose.onNodeWithText("Go").assertIsEnabled().performClick()
+
+        compose.waitUntil(5_000) { taps.pasted != null }
+        val review = taps.pasted as PasteTarget.Review
+        assertEquals("Lemon Pasta", fixtures.inbox.take(review.key)!!.reading.name)
+        assertNull(taps.url)
+        compose.waitForIdle()
+        compose.onNodeWithText("Link or recipe text").assertDoesNotExist()
     }
 
     @Test
@@ -252,11 +284,11 @@ class HomeScreenTest {
         val taps = show()
 
         compose.onNodeWithText("Paste a link").performClick()
-        compose.onNodeWithText("Recipe URL").performTextInput("example.com/chicken")
+        compose.onNodeWithText("Link or recipe text").performTextInput("example.com/chicken")
         compose.onNodeWithText("Go").performClick()
 
         assertEquals("https://example.com/chicken", taps.url)
-        compose.onNodeWithText("Recipe URL").assertDoesNotExist()
+        compose.onNodeWithText("Link or recipe text").assertDoesNotExist()
     }
 
     @Test
