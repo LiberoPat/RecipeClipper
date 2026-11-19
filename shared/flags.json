@@ -83,6 +83,12 @@
       "description": "Ask an AI: Home's fourth tile opens a sheet that copies or shares a prompt for any chat app (what to cook; What can I make from the pantry, items to use up first; Plan my week from favourites and recently cooked), and the recipe screen's menu gains Change this recipe (the recipe as schema.org JSON plus the cook's request). Every prompt asks for schema.org Recipe JSON in a json block, with the servings and the units from Settings, in the UI language; the answer comes back as shared text. No AI runs in the app. Off, neither entry is shown.",
       "defaults": { "debug": true, "release": true },
       "issue": 351
+    },
+    {
+      "key": "mealPlanImport",
+      "description": "Meal-plan import: shared text holding a week of recipes (the answer to Ask an AI's Plan my week, one JSON array of schema.org Recipes, each with a day) opens a review instead of the single-recipe editor: the recipes with their days, each ticked, kept as from a chat and planned on its day in Week. Nothing is saved before Save; the free limit says how many fit. Off, the first recipe opens the editor as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 352
     }
   ]
 }
