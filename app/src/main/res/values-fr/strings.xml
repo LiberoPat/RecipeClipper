@@ -78,7 +78,6 @@
     </plurals>
     <string name="timer_start">⏱  Minuteur de %1$s</string>
     <string name="timers_up">Temps écoulé</string>
-    <string name="label_recipe_url">URL de la recette</string>
     <string name="section_continue_cooking">Reprendre la recette</string>
     <string name="section_recently_viewed">Consultées récemment</string>
     <string name="home_empty_hint">Les recettes que vous ouvrez apparaîtront ici.</string>

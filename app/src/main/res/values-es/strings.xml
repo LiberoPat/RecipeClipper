@@ -78,7 +78,6 @@
     </plurals>
     <string name="timer_start">⏱  Temporizador de %1$s</string>
     <string name="timers_up">Se acabó el tiempo</string>
-    <string name="label_recipe_url">URL de la receta</string>
     <string name="section_continue_cooking">Seguir cocinando</string>
     <string name="section_recently_viewed">Vistas recientemente</string>
     <string name="home_empty_hint">Las recetas que abras aparecerán aquí.</string>

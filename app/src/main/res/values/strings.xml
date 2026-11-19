@@ -154,7 +154,6 @@
 
     <!-- Home screen -->
     <string name="home_title" translatable="false">Recipe Clipper</string>
-    <string name="label_recipe_url">Recipe URL</string>
     <string name="section_continue_cooking">Continue cooking</string>
     <string name="section_recently_viewed">Recently viewed</string>
     <string name="home_empty_hint">Recipes you open will show up here.</string>

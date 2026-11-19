@@ -76,7 +76,6 @@
     </plurals>
     <string name="timer_start">⏱  Timer für %1$s starten</string>
     <string name="timers_up">Zeit ist um</string>
-    <string name="label_recipe_url">Rezept-URL</string>
     <string name="section_continue_cooking">Weiterkochen</string>
     <string name="section_recently_viewed">Zuletzt angesehen</string>
     <string name="home_empty_hint">Rezepte, die du öffnest, erscheinen hier.</string>
