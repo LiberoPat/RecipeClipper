@@ -10,6 +10,7 @@ import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.entity.AiDecisionEntity
 import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.ShortStepEntity
+import com.example.recipeclipper.data.model.LibraryLimit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -715,12 +716,57 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Recipe versions (#354): a new nullable `recipes.basedOnUid`. Every recipe comes across as it
+     * was with no link, a version can then be written, the link follows its original's uid, and a
+     * delete clears it.
+     */
+    @Test
+    fun migration16To17KeepsEveryRecipeAndAddsTheLink() {
+        helper.createDatabase(name, 16).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[]', NULL,
+                   'recipe-uid', 'en', NULL, NULL, 'PARSED', NULL)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 17, true, RecipeDatabase.MIGRATION_16_17)
+
+        val db = openMigrated()
+        runBlocking {
+            val original = db.recipeDao().get(7)!!
+            assertEquals("Adobo", original.title)
+            assertEquals("recipe-uid", original.uid)
+            assertNull(original.basedOnUid)
+
+            val version = original.copy(
+                id = 0, sourceUrl = "manual:v1", title = "Spicier adobo", uid = "version-uid",
+                contentOrigin = "CHAT", basedOnUid = original.uid
+            )
+            val id = db.recipeDao().upsert(version, LibraryLimit.Unlimited)
+            assertEquals("recipe-uid", db.recipeDao().get(id)!!.basedOnUid)
+            assertEquals(listOf("Spicier adobo"), db.recipeDao().observeVersions(7).first().map { it.title })
+            assertEquals("Adobo", db.recipeDao().observeOriginal(id).first()!!.title)
+
+            db.recipeDao().deleteWithLinks(7)
+            assertNull(db.recipeDao().get(id)!!.basedOnUid)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 16, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 17, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

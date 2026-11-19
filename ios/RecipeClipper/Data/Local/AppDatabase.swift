@@ -150,6 +150,7 @@ final class AppDatabase: @unchecked Sendable {
         addCookedPhotos,
         allowCookedWithoutPhoto,
         addRunningLow,
+        addBasedOn,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -454,6 +455,13 @@ final class AppDatabase: @unchecked Sendable {
     /// stock state beside `inStock`. Every existing item keeps its stock.
     private static func addRunningLow(_ db: SQLiteConnection) throws {
         try db.execute("ALTER TABLE pantry_items ADD COLUMN runningLow INTEGER NOT NULL DEFAULT 0")
+    }
+
+    /// Version 16 (Android's Room version 17, `MIGRATION_16_17`): recipe versions (#354),
+    /// `recipes.basedOnUid`, the uid of the recipe this one is a version of. Null for every
+    /// existing recipe.
+    private static func addBasedOn(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN basedOnUid TEXT")
     }
 
     private static func addMenus(_ db: SQLiteConnection) throws {

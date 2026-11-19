@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
+import com.example.recipeclipper.data.model.RecipeLink
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
@@ -82,6 +83,7 @@ class FakeRecipeRepository : RecipeRepository {
     val addManualNotes = mutableListOf<String?>()
     val addManualLanguages = mutableListOf<String?>()
     val addManualFromChat = mutableListOf<Boolean>()
+    val addManualBasedOn = mutableListOf<String?>()
 
     /** How many times [importFromUrl] has been called — for the reload-on-reconnect tests. */
     var importCalls = 0
@@ -141,8 +143,15 @@ class FakeRecipeRepository : RecipeRepository {
         return saveEditResult
     }
 
-    override suspend fun addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Boolean): Recipe? {
+    override suspend fun addManual(
+        draft: RecipeDraft,
+        language: String?,
+        notes: String?,
+        fromChat: Boolean,
+        basedOn: String?
+    ): Recipe? {
         addManualFromChat += fromChat
+        addManualBasedOn += basedOn
         addManualCalls += draft
         addManualLanguages += language
         addManualNotes += notes
@@ -243,6 +252,14 @@ class FakeRecipeRepository : RecipeRepository {
         byIdsQueries += ids
         return ids.mapNotNull { recipes.value[it] }
     }
+
+    /** What [observeBasedOn] and [observeVersions] emit, by recipe id (#354). */
+    val basedOn = MutableStateFlow<Map<Long, RecipeLink>>(emptyMap())
+    val versions = MutableStateFlow<Map<Long, List<RecipeLink>>>(emptyMap())
+
+    override fun observeBasedOn(id: Long): Flow<RecipeLink?> = basedOn.map { it[id] }
+
+    override fun observeVersions(id: Long): Flow<List<RecipeLink>> = versions.map { it[id].orEmpty() }
 
     /** What [observeCount] emits (#107). */
     val count = MutableStateFlow(0)

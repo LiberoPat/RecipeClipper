@@ -15,7 +15,7 @@ import org.json.JSONTokener
  *   "recipes":     [{ "id", "sourceUrl", "sourceType", "title", "imageUrl", "ingredients",
  *                     "instructions", "prepTime", "cookTime", "totalTime", "servings",
  *                     "lastViewedAt", "checkedIngredients", "notes", "language",
- *                     "contentOrigin", "editedAt" }],
+ *                     "contentOrigin", "editedAt", "basedOn" }],
  *   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
  *   "memberships": [{ "recipeId", "listId", "addedAt" }],
  *   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
@@ -139,7 +139,8 @@ object BackupJson {
                 notes = r.string(o, "notes"),
                 language = r.string(o, "language"),
                 contentOrigin = r.string(o, "contentOrigin")?.takeIf { it.isNotBlank() } ?: "PARSED",
-                editedAt = r.long(o, "editedAt")
+                editedAt = r.long(o, "editedAt"),
+                basedOn = r.string(o, "basedOn")?.takeIf { it.isNotBlank() }
             )
         }
         requireUniqueIds(recipes.map { it.id }, "recipes")
@@ -407,6 +408,7 @@ object BackupJson {
         put("language", language.orNull())
         put("contentOrigin", contentOrigin)
         put("editedAt", editedAt ?: JSONObject.NULL)
+        put("basedOn", basedOn.orNull())
     }
 
     private fun BackupList.toJson() = JSONObject().apply {

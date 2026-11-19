@@ -10,6 +10,7 @@ import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeDraft
+import com.example.recipeclipper.data.model.RecipeLink
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -83,13 +84,17 @@ interface RecipeRepository {
      * not kept, and the editor stays open. [language] is a scanned recipe's (#226), as its
      * words said; a recipe typed in has none. [notes] is the recipe's note from the start (#334:
      * shared text's lines the split left out), as the cook left it. [fromChat] saves it as read from
-     * a chat's JSON (#355): origin CHAT, otherwise the same as typed in.
+     * a chat's JSON (#355): origin CHAT, otherwise the same as typed in. [basedOn] (#354) is the
+     * JSON's `isBasedOn`, a recipe's link as written: when it names a recipe here (by its saved
+     * link, or cleaned), the new recipe is saved as a version of it; anything else is ignored.
+     * Only with [fromChat] and the `recipeVersions` flag.
      */
     suspend fun addManual(
         draft: RecipeDraft,
         language: String? = null,
         notes: String? = null,
-        fromChat: Boolean = false
+        fromChat: Boolean = false,
+        basedOn: String? = null
     ): Recipe?
 
     /** Opens a recipe from history, a list or home. Counts as a view, so it moves to the top. */
@@ -146,7 +151,9 @@ interface RecipeRepository {
         val planEntries: List<MealPlanEntryEntity> = emptyList(),
         val menuEntries: List<MenuEntryEntity> = emptyList(),
         /** The user's own photos (#116): their rows; the files stay until [forget]. */
-        val cookedPhotos: List<CookedPhotoEntity> = emptyList()
+        val cookedPhotos: List<CookedPhotoEntity> = emptyList(),
+        /** The rows that were versions of it (#354): an undo links them to it again. */
+        val versionIds: List<Long> = emptyList()
     )
 
     /**
@@ -193,6 +200,12 @@ interface RecipeRepository {
      * the cook's saved place and timers); null once it is gone.
      */
     fun observeRecipe(id: Long): Flow<Recipe?>
+
+    /** The recipe [id] is a version of (#354), as it changes: null for none, or once it is deleted. */
+    fun observeBasedOn(id: Long): Flow<RecipeLink?>
+
+    /** The versions saved from recipe [id] (#354), newest first, as they change. */
+    fun observeVersions(id: Long): Flow<List<RecipeLink>>
 
     /** How many recipes are saved, of every kind but the tour's sample (#107: the Recipes screen's count; #151). */
     fun observeCount(): Flow<Int>

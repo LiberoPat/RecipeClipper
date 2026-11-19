@@ -96,6 +96,9 @@ struct BackupRecipe: Equatable {
     var contentOrigin: String = "PARSED"
     /// When the user last saved an edit, or nil.
     var editedAt: Int64? = nil
+    /// The `id` of the recipe this one is a version of (#354), or nil. Absent in older files. An
+    /// import keeps it only if that recipe is here after it.
+    var basedOn: String? = nil
 }
 
 struct BackupList: Equatable {

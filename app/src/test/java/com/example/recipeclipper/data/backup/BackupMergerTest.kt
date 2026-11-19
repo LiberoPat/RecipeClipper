@@ -415,4 +415,82 @@ class BackupMergerTest {
         assertEquals(listOf("menu-b"), plan.newMenus.map { it.menu.id })
         assertEquals("gen-1", plan.newMenus.single().entries.single().entry.id)
     }
+
+    // --- Versions (#354): the shared fixture's links, the same expectations as iOS's BackupMergerTests ---
+
+    private fun links(plan: ImportPlan) = plan.newRecipes.associate { it.id to it.basedOn }
+
+    private fun versionRecipe(id: String, url: String, origin: String, basedOn: String?) = BackupRecipe(
+        id, url, "BLOG", id, null, listOf("1 egg"), listOf("Cook."), null, null, null, null,
+        lastViewedAt = 5, checkedIngredients = emptySet(), notes = null, contentOrigin = origin, basedOn = basedOn
+    )
+
+    @Test fun `versions keep their links to originals that come in too`() {
+        val plan = plan(
+            decodeOrFail(fixture("backup-v1-versions.json")),
+            recipes = emptyList(), lists = emptyList(), historyLimit = 50
+        )
+        // The soup and its versions come in with the file's uids. A link to a recipe that isn't in
+        // the file, or to itself, is dropped.
+        assertEquals(
+            mapOf(
+                "r-soup" to null, "r-spicy" to "r-soup", "r-spicier" to "r-spicy",
+                "r-lost" to null, "r-self" to null
+            ),
+            links(plan)
+        )
+    }
+
+    @Test fun `a version links to the matching recipe already here, by its uid here`() {
+        val here = listOf(
+            ExistingRecipe(id = 1, uid = "e-soup", sourceUrl = "https://example.com/soup", hasNotes = false, isListed = false)
+        )
+        val plan = plan(
+            decodeOrFail(fixture("backup-v1-versions.json")),
+            recipes = here, lists = emptyList(), historyLimit = 50
+        )
+        assertEquals(listOf("r-spicy", "r-spicier", "r-lost", "r-self"), plan.newRecipes.map { it.id })
+        assertEquals("e-soup", links(plan).getValue("r-spicy"))
+        assertEquals("r-spicy", links(plan).getValue("r-spicier"))
+    }
+
+    @Test fun `a version whose original is only here, not in the file, links to it by uid`() {
+        val backup = Backup(
+            0,
+            listOf(
+                versionRecipe("r-version", "manual:v", "CHAT", "e-bread"),
+                versionRecipe("r-other", "manual:o", "CHAT", "e-nothing")
+            ),
+            emptyList(), emptyList()
+        )
+        assertEquals(mapOf("r-version" to "e-bread", "r-other" to null), links(plan(backup)))
+    }
+
+    @Test fun `a version's original left out by the limit drops the link, not the version`() {
+        val backup = Backup(
+            0,
+            listOf(
+                versionRecipe("r-soup", "https://example.com/soup", "PARSED", null),
+                versionRecipe("r-v", "manual:v", "CHAT", "r-soup")
+            ),
+            emptyList(), emptyList()
+        )
+        // No free place in history: the unlisted soup is skipped; the typed-in version still comes in.
+        val plan = plan(backup, recipes = emptyList(), historyLimit = 0)
+        assertEquals(mapOf("r-v" to null), links(plan))
+        assertEquals(1, plan.summary.recipesSkipped)
+    }
+
+    @Test fun `a recipe already here keeps what it has, and a version of it links to its uid here`() {
+        val here = listOf(
+            ExistingRecipe(id = 1, uid = "e-spicy", sourceUrl = "manual:aaaa", hasNotes = false, isListed = true)
+        )
+        val plan = plan(
+            decodeOrFail(fixture("backup-v1-versions.json")),
+            recipes = here, lists = emptyList(), historyLimit = 50
+        )
+        assertTrue("r-spicy" !in links(plan))
+        assertEquals(1, plan.summary.recipesAlreadyHere)
+        assertEquals("e-spicy", links(plan).getValue("r-spicier"))
+    }
 }

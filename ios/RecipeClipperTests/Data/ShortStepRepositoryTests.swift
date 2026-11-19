@@ -69,7 +69,7 @@ final class ShortStepRepositoryTests: XCTestCase {
             let old = try SQLiteConnection(path: path)
             try old.execute("PRAGMA foreign_keys = ON")
             try AppDatabase.migrate(old, upTo: 10)
-            try RecipeDao(db: old).insert(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
+            try RecipeDao(db: old).insertBeforeVersions(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
             XCTAssertEqual(try old.queryOne("PRAGMA user_version") { $0.int(0) }, 10)
         }
 

@@ -46,7 +46,7 @@ mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
 (`reddit` flag, #11), or the photo read on the device and checked by the cook (`photoText`,
-#198), and your own photos scanned the same way (#226), or text shared in (#306); "Ask an AI" prompts that come back as recipe JSON (#351, #353), a week of them reviewed into Week (#352), the answer shared or pasted (#372); running timers outside the app
+#198), and your own photos scanned the same way (#226), or text shared in (#306); "Ask an AI" prompts that come back as recipe JSON (#351, #353), a week of them reviewed into Week (#352), and changes saved as versions of the recipe they changed (#354), the answer shared or pasted (#372); running timers outside the app
 (a Live Activity, an ongoing notification) and the Tonight and Groceries widgets (#309); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
@@ -231,7 +231,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 16** (iOS `user_version` 15),
+- Room database `recipe_clipper.db`, **version 17** (iOS `user_version` 16),
   schema exported to `app/schemas/`: commit it. **Never use destructive
   migration**, and give every migration a `MigrationTest`. iOS mirrors the
   schema in SQLite, with `PRAGMA user_version` migrations, in the App Group
@@ -252,6 +252,9 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   re-share without fetching; "Update from source" is the one way back. A
   typed-in recipe's `sourceUrl` is `manual:<uuid>`, never fetched or
   cleaned.
+- **A version's link is `recipes.basedOnUid`** (#354), the original's `uid`, never a row id, and no
+  foreign key: every delete path clears it by hand (`clearOrphanedLinks`), so deleting the original
+  keeps its versions. An `isBasedOn` that matches nothing is ignored.
 - `isFavorites` is a column, never a name match: names change on rename and
   translation; seeded meal types go by `builtInKey` the same way. Built-in
   lists are seeded in `onCreate`, so adding one later needs a migration.

@@ -94,7 +94,7 @@ final class DecisionRepositoryTests: XCTestCase {
         do {
             let old = try SQLiteConnection(path: path)
             try AppDatabase.migrate(old, upTo: 11)
-            try RecipeDao(db: old).insert(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
+            try RecipeDao(db: old).insertBeforeVersions(dataRecipeRecord("https://example.com/cake", viewedAt: 1))
         }
         let db = try AppDatabase(path: path)
         let version = try await db.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }

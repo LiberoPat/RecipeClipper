@@ -30,6 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -60,7 +61,7 @@ class RecipeViewModel @Inject constructor(
     // Chef mode (#100) and the free tier (#107). Optional, so a test that doesn't care leaves
     // them out (chef mode off, nothing to unlock); pass them by name.
     shortSteps: ShortStepRepository? = null,
-    featureFlags: FeatureFlags? = null,
+    private val featureFlags: FeatureFlags? = null,
     private val entitlements: Entitlements = Entitlements.Unavailable,
     // The on-device model's decisions (#104: count brackets; junk after an ingredient, #174);
     // none without it.
@@ -97,6 +98,7 @@ class RecipeViewModel @Inject constructor(
     val uiState: StateFlow<RecipeUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+    private var versionsJob: Job? = null
     private var reconnectJob: Job? = null
 
     // The `reddit` flag (#11), read at each load as the source reads it at each fetch; on when
@@ -205,6 +207,7 @@ class RecipeViewModel @Inject constructor(
             if (result is ParseResult.Success) {
                 cookMode.restore(result.recipe)
                 chef.start()
+                if (result.kept) observeVersions(result.recipe.id)
                 askModel()
                 if (openInCookMode) {
                     openInCookMode = false
@@ -214,6 +217,20 @@ class RecipeViewModel @Inject constructor(
                 if (shareUrl != null) countdowns?.reconcile()
             }
             if (result is ParseResult.Error && result.error.reloadsOnReconnect) reloadOnReconnect()
+        }
+    }
+
+    /**
+     * The recipe it is a version of and its own versions (#354), as they change, behind the
+     * `recipeVersions` flag (on when a test passes no flags, as it is by default).
+     */
+    private fun observeVersions(id: Long) {
+        versionsJob?.cancel()
+        if (featureFlags?.isOn(Flag.RECIPE_VERSIONS) == false) return
+        versionsJob = viewModelScope.launch {
+            combine(repository.observeBasedOn(id), repository.observeVersions(id)) { basedOn, versions ->
+                basedOn to versions
+            }.collect { (basedOn, versions) -> _uiState.update { it.copy(basedOn = basedOn, versions = versions) } }
         }
     }
 

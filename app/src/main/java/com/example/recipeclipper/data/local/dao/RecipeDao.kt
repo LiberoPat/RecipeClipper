@@ -41,6 +41,9 @@ data class LibraryCountsRow(
     val chat: Int = 0
 )
 
+/** A recipe named by another (#354): its original, or one of its versions. */
+data class RecipeLinkRow(val id: Long, val title: String)
+
 /** A recipe's saved cook progress, with what a timer alert needs to name it. */
 data class CookStateRow(
     val id: Long,
@@ -99,6 +102,54 @@ abstract class RecipeDao {
 
     @Query("DELETE FROM recipes WHERE id = :id")
     abstract suspend fun delete(id: Long)
+
+    /**
+     * [delete] for a recipe the cook deleted (#354): the versions of it keep their place, but
+     * their link clears, so none points at a recipe that is gone.
+     */
+    @Transaction
+    open suspend fun deleteWithLinks(id: Long) {
+        delete(id)
+        clearOrphanedLinks()
+    }
+
+    /** Clears every version link whose original is no longer here (#354): after any delete. */
+    @Query(
+        """
+        UPDATE recipes SET basedOnUid = NULL
+        WHERE basedOnUid IS NOT NULL AND basedOnUid NOT IN (SELECT uid FROM recipes)
+        """
+    )
+    abstract suspend fun clearOrphanedLinks()
+
+    /** The versions of the recipe with [uid], read before its delete so an undo can link them again. */
+    @Query("SELECT id FROM recipes WHERE basedOnUid = :uid")
+    abstract suspend fun versionIdsOf(uid: String): List<Long>
+
+    /** Links the recipes [ids] to the original [uid] again: an undo of its delete. */
+    @Query("UPDATE recipes SET basedOnUid = :uid WHERE id IN (:ids)")
+    abstract suspend fun relink(ids: List<Long>, uid: String)
+
+    /** The recipe [id] is a version of, as it changes (#354); null for none. */
+    @Query(
+        """
+        SELECT o.id AS id, o.title AS title FROM recipes v
+        JOIN recipes o ON o.uid = v.basedOnUid
+        WHERE v.id = :id
+        """
+    )
+    abstract fun observeOriginal(id: Long): Flow<RecipeLinkRow?>
+
+    /** The versions of recipe [id], newest first, as they change (#354). */
+    @Query(
+        """
+        SELECT v.id AS id, v.title AS title FROM recipes v
+        JOIN recipes o ON o.uid = v.basedOnUid
+        WHERE o.id = :id
+        ORDER BY v.id DESC
+        """
+    )
+    abstract fun observeVersions(id: Long): Flow<List<RecipeLinkRow>>
 
     /** Read before [delete] so undo has something to restore. */
     @Query("SELECT * FROM recipe_list_cross_ref WHERE recipeId = :recipeId")
@@ -162,9 +213,13 @@ abstract class RecipeDao {
         crossRefs: List<RecipeListCrossRef>,
         planEntries: List<MealPlanEntryEntity> = emptyList(),
         menuEntries: List<MenuEntryEntity> = emptyList(),
-        cookedPhotos: List<CookedPhotoEntity> = emptyList()
+        cookedPhotos: List<CookedPhotoEntity> = emptyList(),
+        versionIds: List<Long> = emptyList()
     ) {
         insert(recipe)
+        // Its versions link to it again (#354); its own link only if its original is still here.
+        if (versionIds.isNotEmpty()) relink(versionIds, recipe.uid)
+        clearOrphanedLinks()
         if (cookedPhotos.isNotEmpty()) insertCookedPhotos(cookedPhotos)
         if (crossRefs.isNotEmpty()) insertCrossRefs(crossRefs)
         planEntries.forEach {
@@ -184,7 +239,9 @@ abstract class RecipeDao {
         val crossRefs: List<RecipeListCrossRef>,
         val planEntries: List<MealPlanEntryEntity>,
         val menuEntries: List<MenuEntryEntity>,
-        val cookedPhotos: List<CookedPhotoEntity>
+        val cookedPhotos: List<CookedPhotoEntity>,
+        /** The rows that were versions of it (#354), linked again by an undo. */
+        val versionIds: List<Long> = emptyList()
     )
 
     /**
@@ -200,7 +257,7 @@ abstract class RecipeDao {
             val adding = rows.count { it.recipe.sourceUrl != SAMPLE_SOURCE_URL }
             if (count() + adding > limit.max) return false
         }
-        rows.forEach { restore(it.recipe, it.crossRefs, it.planEntries, it.menuEntries, it.cookedPhotos) }
+        rows.forEach { restore(it.recipe, it.crossRefs, it.planEntries, it.menuEntries, it.cookedPhotos, it.versionIds) }
         return true
     }
 
@@ -381,7 +438,7 @@ abstract class RecipeDao {
             // One cookbook (#345): at the limit a new recipe is shown, not kept; nothing is removed.
             if (limit is LibraryLimit.Capped && count() >= limit.max) return NOT_KEPT
             if (limit is LibraryLimit.Free && count() >= limit.max) {
-                delete(oldestCullable(today) ?: return NOT_KEPT)
+                deleteWithLinks(oldestCullable(today) ?: return NOT_KEPT)
             }
             insert(fresh)
         } else if (!ContentOrigin.isSources(existing.contentOrigin) && !replaceUsersVersion) {
@@ -391,7 +448,10 @@ abstract class RecipeDao {
             update(keepingUserState(existing, fresh))
             existing.id
         }
-        if (limit is LibraryLimit.History) cullHistory(limit.keep, today)
+        if (limit is LibraryLimit.History) {
+            cullHistory(limit.keep, today)
+            clearOrphanedLinks()
+        }
         return id
     }
 
@@ -443,7 +503,8 @@ abstract class RecipeDao {
             checkedIngredients = ticked,
             notes = existing.notes,
             cookState = cook,
-            servingsTarget = existing.servingsTarget
+            servingsTarget = existing.servingsTarget,
+            basedOnUid = existing.basedOnUid
         )
     }
 

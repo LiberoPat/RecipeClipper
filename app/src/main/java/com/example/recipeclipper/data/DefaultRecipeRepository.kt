@@ -14,6 +14,7 @@ import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
+import com.example.recipeclipper.data.model.RecipeLink
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SampleRecipe
 import com.example.recipeclipper.data.model.StepAlarm
@@ -123,7 +124,13 @@ class DefaultRecipeRepository @Inject constructor(
         }
     }
 
-    override suspend fun addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Boolean): Recipe? {
+    override suspend fun addManual(
+        draft: RecipeDraft,
+        language: String?,
+        notes: String?,
+        fromChat: Boolean,
+        basedOn: String?
+    ): Recipe? {
         if (!draft.isValid) return null
         val now = clock.now()
         val recipe = draft.applyTo(
@@ -138,10 +145,35 @@ class DefaultRecipeRepository @Inject constructor(
             )
         )
         return log.guard("addManual", null) {
-            val id = recipeDao.upsert(recipe.toEntity(now), library.limit, today = today(now))
+            val original = if (fromChat) originalUid(basedOn) else null
+            val id = recipeDao.upsert(recipe.toEntity(now).copy(basedOnUid = original), library.limit, today = today(now))
             if (id == RecipeDao.NOT_KEPT) recipe else recipeDao.get(id)?.toDomain()
         }
     }
+
+    /**
+     * The uid of the recipe here that [basedOn] (an AI reply's `isBasedOn`, #354) names: the
+     * recipe's saved link as written, else cleaned (a clipped page's link, with the tracking an
+     * AI may have kept or dropped). Null when the flag is off, or nothing here matches: the
+     * claim is ignored and the recipe is a plain one from a chat.
+     */
+    private suspend fun originalUid(basedOn: String?): String? {
+        if (flags?.isOn(Flag.RECIPE_VERSIONS) != true) return null
+        val link = basedOn?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val found = recipeDao.findByUrl(link)
+            ?: link.takeIf { it.startsWith("http", ignoreCase = true) }?.let { recipeDao.findByUrl(UrlCleaner.clean(it)) }
+        return found?.uid
+    }
+
+    override fun observeBasedOn(id: Long): Flow<RecipeLink?> =
+        recipeDao.observeOriginal(id).map { row -> row?.let { RecipeLink(it.id, it.title) } }.catch { e ->
+            log.error("observeBasedOn failed", e)
+            emit(null)
+        }
+
+    override fun observeVersions(id: Long): Flow<List<RecipeLink>> =
+        recipeDao.observeVersions(id).map { rows -> rows.map { RecipeLink(it.id, it.title) } }
+            .orEmptyOnError(log, "observeVersions")
 
     /**
      * [fetchWithOneRetry], then, only if that still ends [ParseError.Blocked] or
@@ -375,13 +407,14 @@ class DefaultRecipeRepository @Inject constructor(
         val planEntries = recipeDao.planEntriesFor(id)
         val menuEntries = recipeDao.menuEntriesFor(id)
         val cookedPhotos = recipeDao.cookedPhotosFor(id)
-        recipeDao.delete(id)
-        RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries, menuEntries, cookedPhotos)
+        val versionIds = recipeDao.versionIdsOf(entity.uid)
+        recipeDao.deleteWithLinks(id)
+        RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries, menuEntries, cookedPhotos, versionIds)
     }
 
     override suspend fun restoreAll(deleted: List<RecipeRepository.DeletedRecipe>): RecipeRepository.RestoreOutcome =
         log.guard("restore", RecipeRepository.RestoreOutcome.FAILED) {
-            val rows = deleted.map { RecipeDao.DeletedRows(it.entity, it.crossRefs, it.planEntries, it.menuEntries, it.cookedPhotos) }
+            val rows = deleted.map { RecipeDao.DeletedRows(it.entity, it.crossRefs, it.planEntries, it.menuEntries, it.cookedPhotos, it.versionIds) }
             if (recipeDao.restoreAll(rows, library.limit)) {
                 RecipeRepository.RestoreOutcome.RESTORED
             } else {

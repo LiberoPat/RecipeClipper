@@ -330,4 +330,21 @@ final class BackupJsonTests: XCTestCase {
             .malformed("memberships[0].recipeId")
         )
     }
+
+    /// Recipe versions (#354): the shared fixture, read the same way by Android's `BackupJsonTest`.
+    func testAVersionsLinkToItsOriginalReadsRoundTripsAndOlderFilesHaveNone() throws {
+        let backup = try decodeOrFail(backupFixture("backup-v1-versions"))
+        XCTAssertEqual(backup.recipes.map(\.basedOn), [nil, "r-soup", "r-spicy", "r-deleted", "r-self"])
+        XCTAssertEqual(backup, try decodeOrFail(BackupJson.encode(backup)))
+        let older = try decodeOrFail(backupFixture("backup-v1"))
+        XCTAssertTrue(older.recipes.allSatisfy { $0.basedOn == nil })
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(BackupJson.encode(older).utf8)) as? [String: Any])
+        let first = try XCTUnwrap((root["recipes"] as? [[String: Any]])?[0])
+        XCTAssertTrue(first["basedOn"] is NSNull)
+    }
+
+    func testABlankBasedOnReadsAsNone() throws {
+        let text = try backupFixture("backup-v1-versions").replacingOccurrences(of: "\"basedOn\": \"r-soup\"", with: "\"basedOn\": \"  \"")
+        XCTAssertNil(try decodeOrFail(text).recipes[1].basedOn)
+    }
 }

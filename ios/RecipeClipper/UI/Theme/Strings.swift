@@ -352,6 +352,10 @@ enum Strings {
     static var recipesViewChat: String { String(localized: "recipes_view_chat") }
     static var recipesViewChatNote: String { String(localized: "recipes_view_chat_note") }
     static var recipesEmptyChat: String { String(localized: "recipes_empty_chat") }
+    // Recipe versions (#354): a version says what it is based on, an original lists its versions.
+    static func recipeBasedOn(_ title: String) -> String { String(localized: "recipe_based_on \(title)") }
+    static var recipeVersionsHeading: String { String(localized: "recipe_versions_heading") }
+    static func openRecipeNamed(_ title: String) -> String { String(localized: "cd_open_recipe_named \(title)") }
     static var recipesEmptyCooked: String { String(localized: "recipes_empty_cooked") }
     static var recipesEmptyTyped: String { String(localized: "recipes_empty_typed") }
     static var homeSeeAll: String { String(localized: "home_see_all") }
