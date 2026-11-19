@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.recipeclipper.data.model.CutOffMessage
 import javax.inject.Inject
 
 /**
@@ -53,6 +54,10 @@ data class ReviewItem(
 data class MealPlanReviewUiState(
     val loading: Boolean = true,
     val items: List<ReviewItem> = emptyList(),
+    /** The answer stopped mid-recipe: only the whole recipes before it are listed. */
+    val cutOff: Boolean = false,
+    /** The message for the AI was copied: the note says to paste it into the chat. */
+    val copied: Boolean = false,
     /** The days the pickers offer: today and the next 13. */
     val days: List<Long> = emptyList(),
     val room: Int? = null,
@@ -120,7 +125,12 @@ class MealPlanReviewViewModel @Inject constructor(
             val found = entry?.plan ?: text?.let { withContext(reading) { MealPlanImport.read(it) } }
             read = found?.items.orEmpty()
             _uiState.update { state ->
-                fitted(state.copy(loading = false, items = read.mapIndexed { i, item -> rowOf(i, item) }))
+                fitted(
+                    state.copy(
+                        loading = false, cutOff = found?.cutOff == true,
+                        items = read.mapIndexed { i, item -> rowOf(i, item) }
+                    )
+                )
             }
         }
         viewModelScope.launch {
@@ -205,6 +215,15 @@ class MealPlanReviewViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * The message that asks the AI for the rest of a cut-off week (#352): the days the answer's
+     * whole recipes leave out ([CutOffMessage]), in the UI language's [words]. The screen copies it.
+     */
+    fun followUp(words: CutOffMessage.Words): String = CutOffMessage.forPlan(read.map { it.day }, words)
+
+    /** The screen copied [followUp]: the note says to paste it into the chat. */
+    fun onCopied() = _uiState.update { it.copy(copied = true) }
 
     /** Unlock from the review (#107): a purchase makes room, which the limit and count then say. */
     fun onUnlock() {

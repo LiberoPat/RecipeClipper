@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.mealplan
 
 import androidx.lifecycle.SavedStateHandle
 import com.example.recipeclipper.MainDispatcherRule
+import com.example.recipeclipper.data.model.CutOffMessage
 import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.Recipe
@@ -56,6 +57,35 @@ class MealPlanReviewViewModelTest {
     private fun savedAs(vararg ids: Long) = ids.forEach { recipes.addManualQueue.add(recipe("saved", it)) }
 
     private val dinner get() = MealType.defaultTypeId(week.types.value)
+
+    @Test fun `a cut-off answer is flagged, and its follow-up names the days that are missing`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val whole = MealPlanImport.Plan(
+                listOf(MealPlanImport.Item(recipe("A"), today), MealPlanImport.Item(recipe("B"), today + 1),
+                    MealPlanImport.Item(recipe("C"), today + 3)),
+                cutOff = true
+            )
+            val vm = viewModel(whole)
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.cutOff)
+            assertFalse(vm.uiState.value.copied)
+
+            val words = CutOffMessage.Words({ "plan:$it" }, "rest", "recipe")
+            // The week is a block of seven from the first day: days 2, 4, 5 and 6 have no recipe.
+            val missing = listOf(2L, 4L, 5L, 6L).joinToString(", ") { CutOffMessage.iso(today + it) }
+            assertEquals("plan:$missing", vm.followUp(words))
+
+            vm.onCopied()
+            assertTrue(vm.uiState.value.copied)
+            // Nothing is saved by it.
+            assertTrue(recipes.addManualCalls.isEmpty())
+        }
+
+    @Test fun `a whole answer is not flagged`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = viewModel(plan("A" to today, "B" to today + 1))
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.cutOff)
+    }
 
     @Test fun `every recipe is ticked with its day, and nothing is saved before Save`() =
         runTest(mainDispatcherRule.dispatcher) {

@@ -1,6 +1,7 @@
 package com.example.recipeclipper
 
 import android.content.Intent
+import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ReceivedList
 import com.example.recipeclipper.data.remote.MealPlanImport
 import com.example.recipeclipper.data.remote.SharedText
@@ -24,6 +25,9 @@ object TextIntent {
 
         /** A week of recipes with days (#352): the meal-plan review, on [plan] read once from [text]. */
         data class Plan(val text: String, val plan: MealPlanImport.Plan) : Target
+
+        /** The text could not be used, for [error] (a cut-off AI answer, [ParseError.CutOff]): the screen picks the words. */
+        data class Failed(val error: ParseError) : Target
     }
 
     /** The text [intent] carries, or null. A picture's text (#334) and a selection need the flag. */
@@ -50,8 +54,12 @@ object TextIntent {
         if (shareTextOn) {
             if (mealPlanOn) MealPlanImport.read(text)?.let { return Target.Plan(text, it) }
             return when (val route = SharedText.route(text)) {
-                is SharedText.Route.Editor ->
-                    if (route.reading.sorted || !withPictures) Target.Review(text, route.reading) else null
+                is SharedText.Route.Editor -> when {
+                    // An AI's answer that stopped inside its first recipe: a fragment is no recipe (#352).
+                    !route.reading.fromChat && SharedText.isCutOff(text) -> Target.Failed(ParseError.CutOff)
+                    route.reading.sorted || !withPictures -> Target.Review(text, route.reading)
+                    else -> null
+                }
                 is SharedText.Route.Link -> if (withPictures) null else Target.Open(Routes.import(route.url))
                 SharedText.Route.List -> if (withPictures) null else Target.OfferList(text)
                 SharedText.Route.None -> null

@@ -48,6 +48,27 @@ final class PlanHandOffTests: XCTestCase {
         XCTAssertEqual(MealPlanImport.read(left ?? "")?.items.count, 2)
     }
 
+    func testAnAnswerCutOffBeforeItsFirstRecipeEndedIsACauseAndLeavesNothing() async {
+        let suite = defaults()
+        let pendingText = PendingText(defaults: suite)
+        let pendingPlan = PendingPlan(defaults: suite)
+        let vm = viewModel(pendingText: pendingText, pendingPlan: pendingPlan)
+        let cut = "```json\n[\n  {\n    \"@type\": \"Recipe\",\n    \"name\": \"Mon\",\n    \"day\": \"2026-11-19\",\n"
+            + "    \"recipeInstructions\": [\n      { \"@type\": \"HowToStep\","
+
+        vm.start(with: nil, text: cut)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState, .failed(.cutOff))
+        XCTAssertNil(pendingText.take(now: 5_000))
+        XCTAssertNil(pendingPlan.take(now: 5_000))
+        // A cut-off week with whole recipes is still left for the review, which flags it.
+        let meal = "{\"@type\": \"Recipe\", \"name\": \"Omelette\", \"day\": \"2026-11-23\", \"recipeIngredient\": [\"1 egg\"], \"recipeInstructions\": [\"Cook.\"]}"
+        vm.start(with: nil, text: "[\(meal), \(meal.replacingOccurrences(of: "Omelette", with: "Soup")), {\"@type\": \"Recipe\", \"name\": \"X\", \"re")
+        await settleMain()
+        XCTAssertEqual(vm.uiState, .planInApp)
+    }
+
     func testWithTheFlagOffTheFirstRecipeIsLeftForTheEditorAsBefore() async {
         let suite = defaults()
         let pendingText = PendingText(defaults: suite)

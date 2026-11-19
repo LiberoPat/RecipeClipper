@@ -23,6 +23,10 @@ struct ReviewItem: Equatable, Identifiable {
 struct MealPlanReviewUiState: Equatable {
     var loading = true
     var items: [ReviewItem] = []
+    /// The answer stopped mid-recipe: only the whole recipes before it are listed.
+    var cutOff = false
+    /// The message for the AI was copied: the note says to paste it into the chat.
+    var copied = false
     /// The days the pickers offer: today and the next 13.
     var days: [Int64] = []
     var room: Int?
@@ -78,7 +82,9 @@ final class MealPlanReviewViewModel {
         self.entitlements = entitlements
         let today = calendar.today()
         uiState.days = (0..<PlanDays.sheetDays).map { today + Int64($0) }
-        read = MealPlanImport.read(text)?.items ?? []
+        let found = MealPlanImport.read(text)
+        read = found?.items ?? []
+        uiState.cutOff = found?.cutOff ?? false
         uiState.items = read.enumerated().map { Self.row($0.offset, $0.element, today: today) }
         uiState.loading = false
         plan.observeMealTypes()
@@ -186,6 +192,13 @@ final class MealPlanReviewViewModel {
     }
 
     /// Unlock from the review (#107): a purchase makes room, which the limit and count then say.
+    /// The message that asks the AI for the rest of a cut-off week (#352): the days the answer's
+    /// whole recipes leave out (`CutOffMessage`), in the UI language's `words`. The screen copies it.
+    func followUp(_ words: CutOffMessage.Words) -> String { CutOffMessage.forPlan(read.map(\.day), words) }
+
+    /// The screen copied `followUp`: the note says to paste it into the chat.
+    func onCopied() { uiState.copied = true }
+
     func onUnlock() {
         Task {
             let outcome = await entitlements.purchase()

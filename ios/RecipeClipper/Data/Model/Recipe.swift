@@ -224,6 +224,10 @@ enum ParseError: Equatable, Error {
     /// out ("Verify you are human"). The import screen opens the page visibly instead, for the
     /// cook to pass the check once. Never retried automatically, never reloaded on reconnect.
     case humanCheck
+    /// An AI's answer shared in (#350, #352) stopped in the middle of its recipe JSON: a schema.org
+    /// Recipe began and never closed, and no whole recipe came before it. The editor would only
+    /// hold a fragment, so the screen says so and offers a message to ask the AI for the rest.
+    case cutOff
     case saveFailed
     case notSaved
     case nothingToShow

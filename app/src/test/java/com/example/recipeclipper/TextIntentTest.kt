@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.TextIntent.Target
+import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.ui.navigation.Routes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -69,6 +70,21 @@ class TextIntentTest {
         assertTrue(TextIntent.target(meal("Omelette", "2026-11-23"), shareTextOn = true, mealPlanOn = true) is Target.Review)
         // Share text off: as before #306, nothing here applies.
         assertTrue(TextIntent.target(week, shareTextOn = false, mealPlanOn = true) !is Target.Plan)
+    }
+
+    @Test
+    fun anAnswerCutOffBeforeItsFirstRecipeEndedIsACauseNotAFragmentInTheEditor() {
+        val cut = "```json\n[\n  {\n    \"@type\": \"Recipe\",\n    \"name\": \"Mon\",\n    \"day\": \"2026-11-19\",\n" +
+            "    \"recipeInstructions\": [\n      { \"@type\": \"HowToStep\","
+        assertEquals(Target.Failed(ParseError.CutOff), TextIntent.target(cut, shareTextOn = true, mealPlanOn = true))
+        assertEquals(Target.Failed(ParseError.CutOff), TextIntent.target(cut, shareTextOn = true, mealPlanOn = false))
+        // A cut-off week with whole recipes before it is still a plan, flagged.
+        val meal = """{"@type": "Recipe", "name": "Omelette", "day": "2026-11-23", "recipeIngredient": ["1 egg"], "recipeInstructions": ["Cook."]}"""
+        val plan = TextIntent.target("[$meal, ${meal.replace("Omelette", "Soup")}, {\"@type\": \"Recipe\", \"name\": \"X\", \"re", shareTextOn = true, mealPlanOn = true) as Target.Plan
+        assertTrue(plan.plan.cutOff)
+        // Not JSON, or whole: as before.
+        assertTrue(TextIntent.target("milk\neggs [see below", shareTextOn = true) is Target.Review)
+        assertTrue(TextIntent.target(meal, shareTextOn = true, mealPlanOn = true) is Target.Review)
     }
 
     @Test

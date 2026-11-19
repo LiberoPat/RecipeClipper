@@ -237,6 +237,12 @@ sealed class ParseError {
      * cook to pass the check once. Never retried automatically, never reloaded on reconnect.
      */
     object HumanCheck : ParseError()
+    /**
+     * An AI's answer shared in (#350, #352) stopped in the middle of its recipe JSON: a schema.org
+     * Recipe began and never closed, and no whole recipe came before it. The editor would only
+     * hold a fragment, so the screen says so and offers a message to ask the AI for the rest.
+     */
+    object CutOff : ParseError()
     object SaveFailed : ParseError()
     object NotSaved : ParseError()
     object NothingToShow : ParseError()

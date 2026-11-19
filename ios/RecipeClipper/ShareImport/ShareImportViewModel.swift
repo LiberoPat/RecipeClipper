@@ -198,6 +198,16 @@ final class ShareImportViewModel {
             uiState = .planInApp
             return true
         }
+        // An AI's answer that stopped inside its first recipe (#352): a fragment is no recipe, so
+        // the card says why (a cause) and offers a message to ask the AI for it again.
+        if shareTextOn(), let text, case .editor(let reading) = textRoute, !reading.fromChat, SharedText.isCutOff(text) {
+            pendingClip?.clear()
+            pendingScan?.clear()
+            pendingText?.clear()
+            pendingPlan?.clear()
+            uiState = .failed(.cutOff)
+            return true
+        }
         guard shareTextOn(), let pendingText, let text, case .editor(let reading) = textRoute,
               reading.sorted || (!withPictures && (input == nil || SharedText.link(text) != nil)) else { return false }
         pendingClip?.clear()

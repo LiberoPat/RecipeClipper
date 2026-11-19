@@ -4954,14 +4954,53 @@ with `"day": "YYYY-MM-DD"`. Shared in, it opens a **review** instead of the sing
 Behind the `mealPlanImport` flag (on by default; off, the first recipe opens the editor as in
 #350), on both platforms.
 
+- **A cut-off answer is the case that matters most** (found on a real phone: seven recipes asked
+  for, one saved). A long answer often stops mid-recipe: the ```json array never closes, so the
+  old reader (the first closed value only) found no plan and the editor kept one recipe.
+  `MealPlanImport.read` now steps into an unclosed bracket and takes **every whole recipe before
+  the unfinished one** (the unfinished object is never a value, and the HowToStep objects inside a
+  recipe are not recipes); `Plan.cutOff` is true when a JSON-looking value (`{`/`[` followed by
+  `{`, `[` or `"`) never closed. The review then shows a muted note ("The answer was cut off, so
+  only these recipes came through. Ask the AI to continue for the rest.") and **"Copy a message
+  for the AI"**: `CutOffMessage` (`:core`; iOS the same) builds "Your answer was cut off. Please
+  send the rest of the plan: one recipe for each of these days: <YYYY-MM-DD, ...>. Use the same
+  JSON format as before, in one ```json code block." in the UI language. The days are **derived**:
+  the review knows only the text, so the week is the block of `PlanDays.BLOCK_DAYS` days from the
+  earliest day read, and the days of it with no whole recipe are named; with no readable day, or
+  nothing missing in the block, it asks for "the remaining days". The view layer copies it
+  (clipboard / `UIPasteboard`) and the note becomes "Copied. Paste it into the chat, then share
+  the reply with this app." (no snackbar). The reply (prose and a fence first, a plan of the
+  missing days) reads as a normal plan; **one** missing day makes a single recipe, which opens the
+  editor as any single recipe does.
+- **Cut off with no whole recipe** (the text ends inside the first recipe, or inside the one recipe
+  asked for): no editor on a fragment. `SharedText.isCutOff` (an unclosed JSON-looking value with
+  `"@type": "Recipe"` after it, asked only of text that read as no recipe) gives
+  `ParseError.CutOff`; the screen picks the words ("That answer was cut off before the recipe
+  ended. Ask the AI to send it again, or to continue.") and offers the same copy action with
+  "Your answer was cut off. Please send the whole recipe again as schema.org Recipe JSON in one
+  ```json code block." Android: `TextIntent.Target.Failed` -> the `cutoff` route (`CutOffScreen`);
+  iOS: the share card's `.failed(.cutOff)` (no Try again, the text fails the same way). One whole
+  recipe followed by a cut-off one stays the editor's (a single recipe is never a plan).
 - **What counts as a plan** (`MealPlanImport`, `:core`, `data/remote`; iOS `MealPlanImport.swift`):
-  the first JSON value in the text (candidates cut by their matching bracket, as #350) from which
-  `JsonLdRecipeParser.parseEach` reads **at least two recipes, at least one with a `day`**. It
-  walks only what a list holds (a top-level array, `@graph`, an ItemList's `itemListElement`, a
-  ListItem's `item`, the day on either) and reads each recipe with the one parser. One recipe, or
-  recipes with no day at all (say, "three dinner ideas"), open the editor as before. At most 31 are
-  kept. A recipe's `url` and image are never used, as for one recipe. A `day` is a real calendar
-  date `YYYY-MM-DD` (a time after it is ignored): anything else ("Monday", "2026-02-30") is no day.
+  the recipes of **every whole JSON value in the text** (candidates cut by their matching bracket,
+  as #350; up to 100 tried, so seven code blocks with prose and braces between work), gathered in
+  order through `JsonLdRecipeParser.parseEach` with its `deep` option, **at least two**, and
+  either **a `day` on at least one** or, with no day anywhere, **all of them in one value** (an
+  array, a wrapper, or one that was cut off) **and none naming `isBasedOn`** (a changed recipe,
+  #354, is not a week). The shapes: one array (the prompt's), several separate values (a chat's
+  code blocks, one recipe each), `@graph` / ItemList, and for `deep` a wrapper object walked
+  through every array and object under any key, in sorted key order (`{"mealPlan": [...]}`,
+  `{"days": [{"day": ..., "recipe": {...}}]}`): a wrapper's `day`, or its `date` when it reads as
+  `YYYY-MM-DD`, or a key that is such a date, is carried to the object directly under it (not
+  through an array), a recipe's own `date` stands for a missing `day`, and an object with
+  `recipeIngredient`/`recipeInstructions` counts as a recipe without `@type`. **Page parsing is
+  unchanged** (`deep` is off for every other caller). Recipes with no day in separate blocks, one
+  recipe, and a changed recipe open the editor as before. **No day on any recipe** is a plan with
+  "No day" rows (nothing is planned until the cook picks a day; the review already does that), the
+  rule chosen so a list of ideas in one array is not cut to its first recipe, while loose blocks
+  stay the editor's. At most 31 are kept. A recipe's `url` and image are never used, as for one
+  recipe. A `day` is a real calendar date `YYYY-MM-DD` (a time after it is ignored): anything else
+  ("Monday", "2026-02-30") is no day.
 - **The review** (`mealplan?key=`, `MealPlanReviewViewModel`; iOS the same name, route
   `.mealPlan(text)`): a recipe per row, **all ticked**, its name, its first three ingredients
   and a day button (a menu of today and the next 13 days, the answer's own later day, and *Don't

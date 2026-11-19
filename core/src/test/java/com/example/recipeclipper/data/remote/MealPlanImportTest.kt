@@ -2,8 +2,10 @@ package com.example.recipeclipper.data.remote
 
 import com.example.recipeclipper.data.model.PlanDays
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** A week of AI recipes in shared text (#352): the "Plan my week" answer, read for the review. */
@@ -34,11 +36,131 @@ class MealPlanImportTest {
         assertEquals(2, MealPlanImport.read(week.replace("\n", "\r\n"))!!.items.size)
     }
 
-    @Test fun `one recipe, or recipes with no day, are not a plan`() {
+    @Test fun `one recipe is not a plan`() {
         assertNull(MealPlanImport.read(recipe("Fried rice", "2026-11-23")))
         assertNull(MealPlanImport.read("[" + recipe("Fried rice", "2026-11-23") + "]"))
-        assertNull(MealPlanImport.read("[" + recipe("A", null) + "," + recipe("B", null) + "]"))
+        assertNull(MealPlanImport.read("[" + recipe("Fried rice", null) + "]"))
         assertNull(MealPlanImport.read("No recipe here, just 2026-11-23."))
+    }
+
+    // --- What real chat apps produce for the prompt ---
+
+    /** A recipe as an AI writes it for the prompt: the prompt's fields, pretty-printed, a day. */
+    private fun pretty(name: String, day: String?, key: String = "day", indent: String = "  "): String {
+        val dayLine = day?.let { "$indent  \"$key\": \"$it\",\n" } ?: ""
+        return "{\n$indent  \"@context\": \"https://schema.org\",\n$indent  \"@type\": \"Recipe\",\n" +
+            "$indent  \"name\": \"$name\",\n$indent  \"description\": \"A quick dinner.\",\n$dayLine" +
+            "$indent  \"recipeYield\": \"2 servings\",\n$indent  \"prepTime\": \"PT10M\",\n$indent  \"cookTime\": \"PT20M\",\n" +
+            "$indent  \"recipeIngredient\": [\"1 cup rice\", \"2 eggs\"],\n$indent  \"recipeInstructions\": [\n" +
+            "$indent    { \"@type\": \"HowToStep\", \"text\": \"Cook.\" },\n" +
+            "$indent    { \"@type\": \"HowToStep\", \"text\": \"Serve.\" }\n$indent  ]\n$indent}"
+    }
+
+    private val names = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    private fun dayN(n: Int) = "2026-11-%02d".format(19 + n)
+
+    /** The owner's answer: one fenced array, five whole recipes, the sixth stopped inside its steps. */
+    private val cutOffArray: String = (0 until 5).joinToString(",\n", "[\n", ",\n") { pretty(names[it], dayN(it)) } +
+        "  {\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"Recipe\",\n    \"name\": \"Sat\",\n" +
+        "    \"day\": \"2026-11-24\",\n    \"recipeIngredient\": [\"1 cup rice\", \"2 eggs\"],\n" +
+        "    \"recipeInstructions\": [\n      { \"@type\": \"HowToStep\","
+
+    @Test fun `a cut-off answer gives every whole recipe, and says it was cut off`() {
+        for (text in listOf("Here is your week:\n\n```json\n$cutOffArray", cutOffArray)) {
+            val plan = MealPlanImport.read(text)!!
+            assertEquals(names.take(5), plan.items.map { it.recipe.name })
+            assertEquals((0 until 5).map { day(2026, 11, 19 + it) }, plan.items.map { it.day })
+            assertEquals(listOf("Cook.", "Serve."), plan.items[4].recipe.instructions)
+            assertTrue(plan.cutOff)
+        }
+    }
+
+    @Test fun `a whole answer is not cut off, and one whole recipe in a cut-off answer is not a plan`() {
+        assertFalse(MealPlanImport.read(week)!!.cutOff)
+        val oneThenCut = "```json\n[" + pretty("Mon", dayN(0)) + ",\n{\"@type\": \"Recipe\", \"name\": \"Tue\", \"recipeIngredient\": [\"1 egg\""
+        assertNull(MealPlanImport.read(oneThenCut))
+    }
+
+    @Test fun `seven code blocks with prose between are one plan`() {
+        val text = (0 until 7).joinToString("\n\n") {
+            "**${names[it]}**: dinner [see below] {just a note}\n\n```json\n${pretty(names[it], dayN(it), indent = "")}\n```"
+        } + "\n\nEnjoy! Want a shopping list?"
+        val plan = MealPlanImport.read(text)!!
+        assertEquals(names, plan.items.map { it.recipe.name })
+        assertEquals((0 until 7).map { day(2026, 11, 19 + it) }, plan.items.map { it.day })
+        assertFalse(plan.cutOff)
+    }
+
+    @Test fun `seven blocks with the last one cut off give six`() {
+        val blocks = (0 until 6).joinToString("\n\n") { "```json\n${pretty(names[it], dayN(it))}\n```" }
+        val last = "{\"@type\": \"Recipe\", \"name\": \"Sun\", \"day\": \"2026-11-25\", \"recipeInstructions\": [{ \"@type\": \"HowToStep\","
+        val plan = MealPlanImport.read("$blocks\n\n```json\n$last")!!
+        assertEquals(names.take(6), plan.items.map { it.recipe.name })
+        assertTrue(plan.cutOff)
+    }
+
+    @Test fun `a month of separate blocks is read, no more than a month is kept`() {
+        val many = (1..40).joinToString("\n") { "```json\n${recipe("R$it", "2026-11-23")}\n```" }
+        assertEquals(MealPlanImport.MAX_RECIPES, MealPlanImport.read(many)!!.items.size)
+    }
+
+    @Test fun `a wrapper object around the recipes is walked`() {
+        for (key in listOf("mealPlan", "recipes", "plan")) {
+            val text = "{\"title\": \"Your week\", \"$key\": [" + recipe("A", "2026-11-23") + "," + recipe("B", "2026-11-24") + "]}"
+            assertEquals(listOf("A", "B"), MealPlanImport.read(text)!!.items.map { it.recipe.name })
+        }
+        val nested = "{\"plan\": {\"meals\": [" + recipe("A", "2026-11-23") + "," + recipe("B", "2026-11-24") + "]}}"
+        assertEquals(2, MealPlanImport.read(nested)!!.items.size)
+    }
+
+    @Test fun `a days wrapper carries the day down to the recipe inside it`() {
+        val text = """{"days": [
+            {"day": "2026-11-20", "recipe": ${recipe("A", null)}},
+            {"date": "2026-11-21", "meal": "dinner", "recipe": ${recipe("B", null)}},
+            {"day": "2026-11-22", "recipe": ${recipe("C", "2026-11-25")}}
+        ]}"""
+        val plan = MealPlanImport.read(text)!!
+        assertEquals(listOf("A", "B", "C"), plan.items.map { it.recipe.name })
+        assertEquals(listOf(day(2026, 11, 20), day(2026, 11, 21), day(2026, 11, 25)), plan.items.map { it.day })
+        val byKey = """{"2026-11-21": ${recipe("B", null)}, "2026-11-20": ${recipe("A", null)}}"""
+        assertEquals(listOf(day(2026, 11, 20), day(2026, 11, 21)), MealPlanImport.read(byKey)!!.items.map { it.day })
+    }
+
+    @Test fun `date stands for day on a recipe, but only when it is a date`() {
+        val text = "[" + pretty("A", "2026-11-23", key = "date") + "," + pretty("B", "tomorrow", key = "date") + "," +
+            pretty("C", "2026-11-25", key = "date") + "]"
+        assertEquals(listOf(day(2026, 11, 23), null, day(2026, 11, 25)), MealPlanImport.read(text)!!.items.map { it.day })
+    }
+
+    @Test fun `a recipe object without its type is read inside a wrapper`() {
+        val bare = """{"name": "A", "day": "2026-11-23", "recipeIngredient": ["1 egg"]}"""
+        val text = "{\"mealPlan\": [$bare, ${bare.replace("\"A\"", "\"B\"")}]}"
+        assertEquals(listOf("A", "B"), MealPlanImport.read(text)!!.items.map { it.recipe.name })
+    }
+
+    @Test fun `recipes with no day in one array or wrapper are a plan with no days`() {
+        val array = "[" + recipe("A", null) + "," + recipe("B", null) + "," + recipe("C", null) + "]"
+        val plan = MealPlanImport.read("Three dinners:\n```json\n$array\n```")!!
+        assertEquals(listOf("A", "B", "C"), plan.items.map { it.recipe.name })
+        assertEquals(listOf<Long?>(null, null, null), plan.items.map { it.day })
+        assertEquals(2, MealPlanImport.read("{\"mealPlan\": [" + recipe("A", null) + "," + recipe("B", null) + "]}")!!.items.size)
+        val cut = "```json\n" + array.dropLast(1) + ",{\"@type\": \"Recipe\", \"name\": \"D\", \"recipeInstructions\": [{"
+        val cutPlan = MealPlanImport.read(cut)!!
+        assertEquals(3, cutPlan.items.size)
+        assertTrue(cutPlan.cutOff)
+    }
+
+    @Test fun `recipes with no day in separate blocks, or a changed recipe, are not a plan`() {
+        assertNull(MealPlanImport.read("```json\n" + recipe("A", null) + "\n```\nand\n```json\n" + recipe("B", null) + "\n```"))
+        val changed = recipe("A", null).replace("\"name\"", "\"isBasedOn\": \"manual:1\", \"name\"")
+        assertNull(MealPlanImport.read("[$changed, " + recipe("B", null) + "]"))
+        assertNull(MealPlanImport.read("Original:\n$changed\nChanged:\n" + recipe("B", null)))
+    }
+
+    @Test fun `a stray bracket in the prose does not hide the plan`() {
+        val plan = MealPlanImport.read("Your week [note: a draft\n```json\n$week\n```")!!
+        assertEquals(2, plan.items.size)
+        assertFalse(plan.cutOff)
     }
 
     @Test fun `a plan may leave some recipes without a usable day`() {

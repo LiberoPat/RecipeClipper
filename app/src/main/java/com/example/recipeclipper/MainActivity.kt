@@ -203,6 +203,7 @@ class MainActivity : ComponentActivity() {
         when (target) {
             is TextIntent.Target.Review -> return Routes.editText(sharedTexts.offer(target.text, target.reading))
             is TextIntent.Target.Plan -> return Routes.mealPlan(sharedTexts.offerPlan(target.text, target.plan))
+            is TextIntent.Target.Failed -> return Routes.CUT_OFF
             is TextIntent.Target.Open -> return target.route
             is TextIntent.Target.OfferList -> {
                 receivedLists.offer(target.text)

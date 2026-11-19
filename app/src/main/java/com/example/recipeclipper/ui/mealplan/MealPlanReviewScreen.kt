@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -59,6 +60,9 @@ fun MealPlanReviewScreen(
     viewModel: MealPlanReviewViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val words = cutOffWords()
+    val copyLabel = stringResource(R.string.cutoff_copy_action)
 
     LaunchedEffect(state.finished) {
         if (state.finished) onFinished(state.planned > 0)
@@ -95,6 +99,19 @@ fun MealPlanReviewScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (state.cutOff) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.mealplan_cut_off),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("mealplan_cut_off")
+                    )
+                    CutOffCopy(state.copied) {
+                        copyToClipboard(context, copyLabel, viewModel.followUp(words))
+                        viewModel.onCopied()
+                    }
+                }
                 Spacer(Modifier.height(16.dp))
                 if (state.kept > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

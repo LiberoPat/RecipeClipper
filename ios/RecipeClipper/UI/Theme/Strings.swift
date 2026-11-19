@@ -200,6 +200,7 @@ enum Strings {
         case .noTranscription: return errorNoTranscription
         case .blocked(let status): return errorBlocked(status)
         case .humanCheck: return String(localized: "error_human_check")
+        case .cutOff: return String(localized: "error_cut_off")
         case .offline: return errorOffline
         case .fetchFailed(let detail, _): return errorFetchFailed(detail)
         case .saveFailed: return errorSaveFailed
@@ -227,6 +228,17 @@ enum Strings {
     static var mealPlanWontFit: String { String(localized: "mealplan_wont_fit") }
     static func mealPlanKept(_ n: Int) -> String { String(localized: "mealplan_kept \(n)") }
     static var mealPlanOpenWeek: String { String(localized: "mealplan_open_week") }
+    static var mealPlanCutOff: String { String(localized: "mealplan_cut_off") }
+    static var cutOffCopyAction: String { String(localized: "cutoff_copy_action") }
+    static var cutOffCopied: String { String(localized: "cutoff_copied") }
+    /// The follow-up message's sentences in the UI language, for `CutOffMessage`.
+    static var cutOffWords: CutOffMessage.Words {
+        CutOffMessage.Words(
+            plan: { days in String(localized: "cutoff_ask_plan \(days)") },
+            planRest: String(localized: "cutoff_ask_plan_rest"),
+            recipe: String(localized: "cutoff_ask_recipe")
+        )
+    }
     static var shareSaved: String { String(localized: "share_saved") }
     static var shareOpenToCook: String { String(localized: "share_open_to_cook") }
     static var shareNoLink: String { String(localized: "share_no_link") }
