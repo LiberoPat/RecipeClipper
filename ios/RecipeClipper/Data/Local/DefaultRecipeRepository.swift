@@ -481,17 +481,22 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
-    func restore(_ deleted: DeletedRecipe) async {
+    func restoreAll(_ deleted: [DeletedRecipe]) async -> RestoreOutcome {
+        let limit = library.current()
+        let rows = deleted.map { one -> RecipeDao.DeletedRows in
+            var record = one.recipe.toRecord(viewedAt: one.recipe.lastViewedAt)
+            if let uid = one.uid { record.uid = uid }
+            return RecipeDao.DeletedRows(
+                recipe: record, crossRefs: one.memberships, planEntries: one.planEntries,
+                menuEntries: one.menuEntries, cookedPhotos: one.cookedPhotos
+            )
+        }
         do {
-            var record = deleted.recipe.toRecord(viewedAt: deleted.recipe.lastViewedAt)
-            if let uid = deleted.uid { record.uid = uid }
-            try await db.write { [record] conn in
-                try RecipeDao(db: conn).restore(record, crossRefs: deleted.memberships, planEntries: deleted.planEntries,
-                    menuEntries: deleted.menuEntries, cookedPhotos: deleted.cookedPhotos
-                )
-            }
+            let restored = try await db.write { conn in try RecipeDao(db: conn).restoreAll(rows, limit: limit) }
+            return restored ? .restored : .libraryFull
         } catch {
             dataLog.error("restore failed: \(String(describing: error), privacy: .public)")
+            return .failed
         }
     }
 

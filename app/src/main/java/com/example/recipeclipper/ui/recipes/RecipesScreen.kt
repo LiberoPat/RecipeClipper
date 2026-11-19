@@ -40,7 +40,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -108,6 +110,18 @@ fun RecipesScreen(
         state.deleteBatch, deletedMessage, undoLabel, snackbarHostState,
         viewModel::onUndoDelete, viewModel::onSnackbarDismissed
     )
+
+    // The Undo of a delete that the free library's limit refused (#345): its own outcome, said once.
+    val refusedMessage = stringResource(R.string.snackbar_restore_full)
+    // Cleared at once, so the snackbar is shown from the screen's own scope: the effect restarts on the
+    // clearing, which would cancel a snackbar shown inside it.
+    val refusedScope = rememberCoroutineScope()
+    LaunchedEffect(state.restoreRefused) {
+        if (state.restoreRefused) {
+            viewModel.onRestoreRefusedShown()
+            refusedScope.launch { snackbarHostState.showSnackbar(refusedMessage) }
+        }
+    }
 
     RecipeClipperTheme {
         // Inside the theme, like every dialog (#186): outside it, Material's purple applies.

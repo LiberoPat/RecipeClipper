@@ -170,6 +170,32 @@ abstract class RecipeDao {
         }
     }
 
+    /** What a delete took of one recipe, for [restoreAll]. */
+    class DeletedRows(
+        val recipe: RecipeEntity,
+        val crossRefs: List<RecipeListCrossRef>,
+        val planEntries: List<MealPlanEntryEntity>,
+        val menuEntries: List<MenuEntryEntity>,
+        val cookedPhotos: List<CookedPhotoEntity>
+    )
+
+    /**
+     * Undoes a burst of deletes, all or nothing, under [limit] (#345). A [LibraryLimit.Capped]
+     * library (the free tier, locked) restores none of them when they would take it past its
+     * limit, the same count as [upsert]'s (the tour's sample counts toward nothing): without this
+     * an Undo would let delete, add one, Undo grow the library by one each time. Anything else
+     * restores. Returns whether it restored.
+     */
+    @Transaction
+    open suspend fun restoreAll(rows: List<DeletedRows>, limit: LibraryLimit): Boolean {
+        if (limit is LibraryLimit.Capped) {
+            val adding = rows.count { it.recipe.sourceUrl != SAMPLE_SOURCE_URL }
+            if (count() + adding > limit.max) return false
+        }
+        rows.forEach { restore(it.recipe, it.crossRefs, it.planEntries, it.menuEntries, it.cookedPhotos) }
+        return true
+    }
+
     // "Saved" is derived: a recipe is saved when at least one list contains it.
     @Query(
         """
@@ -419,5 +445,8 @@ abstract class RecipeDao {
 
         /** [upsert]'s answer when a full free library had no room (#107): no row has id 0. */
         const val NOT_KEPT = 0L
+
+        /** The tour's sample's `sourceUrl` (`SampleRecipe.SOURCE_URL`), which [count] leaves out. */
+        private const val SAMPLE_SOURCE_URL = "manual:sample"
     }
 }

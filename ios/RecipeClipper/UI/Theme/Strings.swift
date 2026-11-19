@@ -348,6 +348,8 @@ enum Strings {
     static var clearSearch: String { String(localized: "cd_clear_search") }
     static func deletedOne(_ title: String) -> String { String(localized: "snackbar_deleted_one \(title)") }
     static func deletedMany(_ n: Int) -> String { String(localized: "snackbar_deleted_many \(n)") }
+    /// An Undo the full free library refused (#345).
+    static var restoreFull: String { String(localized: "snackbar_restore_full") }
     // Recipes: the tidy list (#286). The count left of the sort, under search.
     static func recipesListed(_ n: Int) -> String { String(localized: "recipes_listed \(n)") }
     static var sort: String { String(localized: "cd_sort") }

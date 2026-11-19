@@ -169,8 +169,16 @@ class FakeRecipeRepository : RecipeRepository {
         return deleteResults[id]
     }
 
-    override suspend fun restore(deleted: RecipeRepository.DeletedRecipe) {
-        restoreCalls += deleted
+    /** The outcome [restoreAll] answers, to stage a full free library (#345); a refusal restores none. */
+    var restoreOutcome = RecipeRepository.RestoreOutcome.RESTORED
+
+    /** Every burst [restoreAll] was asked for, refused or not, in order. */
+    val restoreAllCalls = mutableListOf<List<RecipeRepository.DeletedRecipe>>()
+
+    override suspend fun restoreAll(deleted: List<RecipeRepository.DeletedRecipe>): RecipeRepository.RestoreOutcome {
+        restoreAllCalls += deleted
+        if (restoreOutcome == RecipeRepository.RestoreOutcome.RESTORED) restoreCalls += deleted
+        return restoreOutcome
     }
 
     /** Deletes that stood (#116: their photo files go). */

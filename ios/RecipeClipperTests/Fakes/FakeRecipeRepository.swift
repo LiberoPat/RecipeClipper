@@ -115,8 +115,15 @@ final class FakeRecipeRepository: RecipeRepository {
 
     @MainActor func runningTimers() async -> [StepAlarm] { runningTimersResult }
 
-    @MainActor func restore(_ deleted: DeletedRecipe) async {
-        restoreCalls.append(deleted)
+    /// The outcome `restoreAll` answers, to stage a full free library (#345); a refusal restores none.
+    var restoreOutcome: RestoreOutcome = .restored
+    /// Every burst `restoreAll` was asked for, refused or not, in order.
+    private(set) var restoreAllCalls: [[DeletedRecipe]] = []
+
+    @MainActor func restoreAll(_ deleted: [DeletedRecipe]) async -> RestoreOutcome {
+        restoreAllCalls.append(deleted)
+        if restoreOutcome == .restored { restoreCalls.append(contentsOf: deleted) }
+        return restoreOutcome
     }
 
     /// Deletes that stood (#116: their photo files go).
