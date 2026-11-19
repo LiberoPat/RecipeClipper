@@ -347,12 +347,14 @@ final class EditRecipeViewModel {
         }
         // A scan's or shared text's (#226, #306) is saved as the cook's own, in its language.
         let ownText = scanPages != nil || sharedText != nil
+        // A chat's recipe JSON (#350) is saved as from a chat (#355).
+        let fromChat = sharedText?.fromChat ?? false
         let language = ownText ? scannedLanguage(state.draft) : nil
         let notes = state.note.kIsBlank ? nil : state.note
         Task { [weak self, recipeId, repository] in
             let saved: Recipe?
             if ownText {
-                saved = await repository.addManual(draft: state.draft, language: language, notes: notes)
+                saved = await repository.addManual(draft: state.draft, language: language, notes: notes, fromChat: fromChat)
             } else if let recipeId {
                 saved = await repository.saveEdit(id: recipeId, draft: state.draft)
                 await self?.countdowns?.reconcile()

@@ -257,7 +257,7 @@ class RecipesViewModel @Inject constructor(
     private data class PendingDeletes(val batch: Int? = null, val titles: List<String> = emptyList())
 
     companion object {
-        /** The route argument naming an automatic view (V4): `NOT_IN_A_LIST`, `COOKED` or `TYPED`. */
+        /** The route argument naming an automatic view (V4): `NOT_IN_A_LIST`, `COOKED`, `TYPED` or `CHAT`. */
         const val VIEW_ARG = "view"
 
         /**

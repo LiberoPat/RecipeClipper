@@ -69,6 +69,7 @@ struct RecipesViewsStrip: View {
         switch view {
         case .cooked: "checkmark"
         case .typed: "pencil"
+        case .chat: "bubble.left"
         default: "bookmark"
         }
     }
@@ -91,6 +92,7 @@ struct ViewNote: View {
         case .notInAList: Strings.recipesViewNotInListNote
         case .cooked: Strings.recipesViewCookedNote
         case .typed: Strings.recipesViewTypedNote
+        case .chat: Strings.recipesViewChatNote
         default: ""
         }
     }

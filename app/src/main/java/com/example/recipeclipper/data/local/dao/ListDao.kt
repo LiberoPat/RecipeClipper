@@ -71,7 +71,8 @@ abstract class ListDao {
     @Query(
         """
         SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
-               r.contentOrigin = 'CLIPPED' AS isClipped, r.sourceUrl
+               r.contentOrigin = 'CLIPPED' AS isClipped, r.sourceUrl,
+               r.contentOrigin = 'CHAT' AS isFromChat
         FROM recipes r
         JOIN recipe_list_cross_ref c ON c.recipeId = r.id
         WHERE c.listId = :listId

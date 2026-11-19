@@ -232,8 +232,9 @@ protocol RecipeRepository: AnyObject {
     /// On a full free library (#107) with nothing to make room, the recipe comes back with id
     /// 0: not kept, and the editor stays open. `language` is a scanned recipe's (#226), as its
     /// words said; a recipe typed in has none. `notes` is the recipe's note from the start (#334:
-    /// shared text's lines the split left out), as the cook left it.
-    func addManual(draft: RecipeDraft, language: String?, notes: String?) async -> Recipe?
+    /// shared text's lines the split left out), as the cook left it. `fromChat` saves it as read
+    /// from a chat's JSON (#355): origin CHAT, otherwise the same as typed in.
+    func addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool) async -> Recipe?
 
     /// Opens a recipe from history, a list or home. Counts as a view. Nil if it's gone.
     func open(id: Int64) async -> Recipe?
@@ -325,11 +326,15 @@ extension RecipeRepository {
 
     /// A recipe typed in by hand, with no language of its own (#29).
     func addManual(draft: RecipeDraft) async -> Recipe? {
-        await addManual(draft: draft, language: nil, notes: nil)
+        await addManual(draft: draft, language: nil, notes: nil, fromChat: false)
     }
 
     func addManual(draft: RecipeDraft, language: String?) async -> Recipe? {
-        await addManual(draft: draft, language: language, notes: nil)
+        await addManual(draft: draft, language: language, notes: nil, fromChat: false)
+    }
+
+    func addManual(draft: RecipeDraft, language: String?, notes: String?) async -> Recipe? {
+        await addManual(draft: draft, language: language, notes: notes, fromChat: false)
     }
 
     func observeCount() -> AnyPublisher<Int, Never> {
@@ -346,6 +351,7 @@ extension RecipeRepository {
             case .notInAList: rows.filter { !$0.isSaved }
             case .cooked: rows.filter { $0.lastCookedDay != nil }
             case .typed: rows.filter(\.isTyped)
+            case .chat: rows.filter(\.isFromChat)
             }
         }.eraseToAnyPublisher()
     }
@@ -355,7 +361,8 @@ extension RecipeRepository {
             .map {
                 RecipeCounts(
                     all: $0.count, inList: $0.filter(\.isSaved).count,
-                    cooked: $0.filter { $0.lastCookedDay != nil }.count, typed: $0.filter(\.isTyped).count
+                    cooked: $0.filter { $0.lastCookedDay != nil }.count, typed: $0.filter(\.isTyped).count,
+                    chat: $0.filter(\.isFromChat).count
                 )
             }
             .removeDuplicates().eraseToAnyPublisher()

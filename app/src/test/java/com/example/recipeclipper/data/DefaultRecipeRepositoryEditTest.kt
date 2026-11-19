@@ -169,6 +169,19 @@ class DefaultRecipeRepositoryEditTest {
         assertEquals(null, repository.addManual(edit)!!.language)
     }
 
+    @Test fun `a recipe from a chat is CHAT, with a manual link, never fetched, and stays CHAT when edited (#355)`() = runTest {
+        val recipe = repository.addManual(edit, fromChat = true)!!
+
+        assertEquals(ContentOrigin.CHAT, recipe.origin)
+        assertTrue(ManualRecipe.isManual(recipe.sourceUrl))
+        assertFalse(recipe.canUpdateFromSource)
+        assertEquals(ParseResult.Error(ParseError.NothingToShow), repository.updateFromSource(recipe.id))
+        assertEquals(0, source.fetches)
+        now = 9_000L
+        assertEquals(ContentOrigin.CHAT, repository.saveEdit(recipe.id, edit.copy(name = "Soup v2"))!!.origin)
+        assertEquals(ContentOrigin.MANUAL, repository.addManual(edit)!!.origin)
+    }
+
     @Test fun `two manual recipes are two rows`() = runTest {
         val a = repository.addManual(edit)!!
         val b = repository.addManual(edit)!!

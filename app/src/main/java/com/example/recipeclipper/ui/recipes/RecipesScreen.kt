@@ -204,6 +204,7 @@ fun RecipesScreen(
                                     state.query.isNotBlank() -> stringResource(R.string.recipes_no_results, state.query)
                                     state.filter == RecipeFilter.COOKED -> stringResource(R.string.recipes_empty_cooked)
                                     state.filter == RecipeFilter.TYPED -> stringResource(R.string.recipes_empty_typed)
+                                    state.filter == RecipeFilter.CHAT -> stringResource(R.string.recipes_empty_chat)
                                     state.showsFilter && state.filter == RecipeFilter.IN_A_LIST -> stringResource(R.string.recipes_empty_in_list)
                                     state.showsFilter && state.filter == RecipeFilter.NOT_IN_A_LIST -> stringResource(R.string.recipes_empty_not_in_list)
                                     else -> stringResource(R.string.recipes_empty)

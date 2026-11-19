@@ -201,6 +201,8 @@ class BackupJsonTest {
         assertTrue(original.recipes.all { it.contentOrigin == "PARSED" && it.editedAt == null })
         val edited = original.copy(recipes = original.recipes.map { it.copy(contentOrigin = "EDITED", editedAt = 42L) })
         assertEquals(edited, decodeOrFail(BackupJson.encode(edited)))
+        val fromChat = original.copy(recipes = original.recipes.map { it.copy(contentOrigin = "CHAT", editedAt = 42L) })
+        assertEquals(fromChat, decodeOrFail(BackupJson.encode(fromChat)))
     }
 
     @Test fun `the encoded file carries the marker, the version and explicit nulls`() {

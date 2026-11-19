@@ -70,6 +70,7 @@ struct LibraryRow: View {
     @ViewBuilder
     private func details(stacked: Bool) -> some View {
         let credit = Strings.sourceCredit(recipe.sourceDomain, clipped: recipe.isClipped)
+            ?? (recipe.isFromChat ? Strings.recipesViewChat : nil)
         let time = recipe.totalTime
         if stacked {
             let line = [credit, time].compactMap { $0 }.joined(separator: " · ")

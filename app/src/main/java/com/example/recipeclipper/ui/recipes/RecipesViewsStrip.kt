@@ -41,7 +41,7 @@ import com.example.recipeclipper.data.model.RecipeList
 
 /**
  * One cookbook (#345, V4): under search, a strip of the automatic views (Not in a list, Cooked,
- * Typed by you) followed by the lists, each a small card with its count. A view opens as its own
+ * Typed by you, From a chat) followed by the lists, each a small card with its count. A view opens as its own
  * screen (Back goes to Recipes); a list opens its own screen. The views never ask the cook to
  * file anything: they are questions about what is already stored.
  */
@@ -83,6 +83,7 @@ internal fun RecipesViewsStrip(
 private fun viewIcon(view: RecipeFilter): Painter = when (view) {
     RecipeFilter.COOKED -> rememberVectorPainter(Icons.Default.Check)
     RecipeFilter.TYPED -> rememberVectorPainter(Icons.Default.Edit)
+    RecipeFilter.CHAT -> painterResource(R.drawable.ic_view_chat)
     else -> painterResource(R.drawable.ic_bookmark_border)
 }
 
@@ -131,6 +132,7 @@ internal fun ViewNote(view: RecipeFilter, modifier: Modifier = Modifier) {
         RecipeFilter.NOT_IN_A_LIST -> R.string.recipes_view_not_in_list_note
         RecipeFilter.COOKED -> R.string.recipes_view_cooked_note
         RecipeFilter.TYPED -> R.string.recipes_view_typed_note
+        RecipeFilter.CHAT -> R.string.recipes_view_chat_note
         else -> return
     }
     Text(

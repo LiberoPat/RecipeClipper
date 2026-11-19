@@ -17,6 +17,10 @@ enum class ContentOrigin {
     CLIPPED,
     /** Typed in by hand; its link is a synthetic [ManualRecipe] key, never fetched. */
     MANUAL,
+    /** Read from a chat's schema.org Recipe JSON (#355): the AI's words, to be checked. Handled
+     *  like [MANUAL] everywhere (never fetched, a `manual:` link, never refreshed, stays when
+     *  edited), but its own view and label. An older app reads the unknown name as EDITED. */
+    CHAT,
     /** Picked from the page's text by the on-device model (#103), every line checked to be on
      *  the page. The source's, like [PARSED]: refreshed on every re-share. */
     EXTRACTED;
@@ -107,7 +111,9 @@ data class RecipeSummary(
     /** The latest day (epoch day) of the user's own photos of it (#116); null for none. */
     val lastCookedDay: Long? = null,
     /** Its link, for the site credited under the title (#286); `manual:` for a typed one. */
-    val sourceUrl: String = ""
+    val sourceUrl: String = "",
+    /** Read from a chat's JSON (#355, origin CHAT): the row says "From a chat". */
+    val isFromChat: Boolean = false
 ) {
     /** The site, as the reading view credits it; null for a typed or scanned recipe. */
     val sourceDomain: String?
@@ -133,18 +139,18 @@ enum class RecipeSort {
  * Which recipes the Recipes screen lists (#345): all, those in at least one list ("saved",
  * derived from the cross-ref table), or those in none (V1's filter pills, and V4's first view);
  * and V4's other automatic views: [COOKED] (the user's own photos or "Mark as cooked", #116,
- * #173) and [TYPED] (typed, scanned or read in by hand, `contentOrigin` MANUAL, never the tour's
- * sample). Not remembered: it opens on [ALL].
+ * #173), [TYPED] (typed, scanned or read in by hand, `contentOrigin` MANUAL, never the tour's
+ * sample) and [CHAT] (read from a chat's JSON, `contentOrigin` CHAT, #355). Not remembered: it opens on [ALL].
  */
 enum class RecipeFilter {
-    ALL, IN_A_LIST, NOT_IN_A_LIST, COOKED, TYPED;
+    ALL, IN_A_LIST, NOT_IN_A_LIST, COOKED, TYPED, CHAT;
 
     companion object {
         /** The three pills with `oneCookbook` off (V1). */
         val pills: List<RecipeFilter> = listOf(ALL, IN_A_LIST, NOT_IN_A_LIST)
 
         /** The strip's automatic views with `oneCookbook` on (V4), in the order the strip shows them. */
-        val views: List<RecipeFilter> = listOf(NOT_IN_A_LIST, COOKED, TYPED)
+        val views: List<RecipeFilter> = listOf(NOT_IN_A_LIST, COOKED, TYPED, CHAT)
 
         fun fromRouteName(name: String?): RecipeFilter? = views.firstOrNull { it.name == name }
     }
@@ -152,9 +158,15 @@ enum class RecipeFilter {
 
 /**
  * How many recipes there are, how many of them are in at least one list, and how many are
- * cooked or typed in (#345): the Recipes filter's and the views strip's counts.
+ * cooked, typed in or from a chat (#345, #355): the Recipes filter's and the views strip's counts.
  */
-data class RecipeCounts(val all: Int, val inList: Int, val cooked: Int = 0, val typed: Int = 0) {
+data class RecipeCounts(
+    val all: Int,
+    val inList: Int,
+    val cooked: Int = 0,
+    val typed: Int = 0,
+    val chat: Int = 0
+) {
     val notInList: Int get() = all - inList
 
     fun of(filter: RecipeFilter): Int = when (filter) {
@@ -163,6 +175,7 @@ data class RecipeCounts(val all: Int, val inList: Int, val cooked: Int = 0, val 
         RecipeFilter.NOT_IN_A_LIST -> notInList
         RecipeFilter.COOKED -> cooked
         RecipeFilter.TYPED -> typed
+        RecipeFilter.CHAT -> chat
     }
 }
 

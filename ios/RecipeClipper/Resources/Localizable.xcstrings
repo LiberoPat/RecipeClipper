@@ -27075,6 +27075,129 @@
         }
       }
     },
+    "recipes_view_chat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From a chat"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus einem Chat"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De un chat"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depuis un chat"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Da una chat"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De um chat"
+          }
+        }
+      }
+    },
+    "recipes_view_chat_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipes read from an AI chat. Check the times and temperatures before you trust them."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rezepte, die aus einem KI-Chat übernommen wurden. Prüfe Zeiten und Temperaturen, bevor du dich darauf verlässt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recetas leídas de un chat con una IA. Revisa los tiempos y las temperaturas antes de fiarte."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recettes lues dans un chat d'IA. Vérifiez les temps et les températures avant de vous y fier."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricette lette da una chat con un'IA. Controlla tempi e temperature prima di fidarti."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receitas lidas de um chat de IA. Confira tempos e temperaturas antes de confiar."
+          }
+        }
+      }
+    },
+    "recipes_empty_chat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing from a chat yet. Share a chat's recipe to the app."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nichts aus einem Chat. Teile das Rezept eines Chats mit der App."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no hay nada de un chat. Comparte la receta de un chat con la app."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien d'un chat pour l'instant. Partagez la recette d'un chat vers l'app."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ancora niente da una chat. Condividi la ricetta di una chat con l'app."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada de um chat ainda. Compartilhe a receita de um chat com o app."
+          }
+        }
+      }
+    },
     "home_see_all" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -50,6 +50,7 @@ struct RecipeFilterPills: View {
         case .notInAList: Strings.recipesFilterNotInList
         case .cooked: Strings.recipesViewCooked
         case .typed: Strings.recipesViewTyped
+        case .chat: Strings.recipesViewChat
         }
     }
 }

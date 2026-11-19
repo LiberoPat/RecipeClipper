@@ -136,7 +136,7 @@ data class ImportPlan(
  *   left as it is, never merged or renamed. Its meals follow the plan's rules (a recipe meal
  *   needs its recipe here, a note always comes in, no meal type means Dinner). A menu's recipes
  *   come in like listed ones, since the cull keeps them too. A menu left with no meals is dropped.
- * - **Typed-in recipes** (#102, origin MANUAL) come in like listed ones, and one here counts as
+ * - **Typed-in recipes** (#102, origin MANUAL, or CHAT, #355) come in like listed ones, and one here counts as
  *   listed: the cull never removes them.
  * - **Photos of the user's own cooking** (#116) come in unless their uid is already here, and
  *   only with their picture ([availablePhotoFiles]); a photo without one is left out. A recipe
@@ -259,8 +259,8 @@ object BackupMerger {
         val incomingMenuIds = incomingMenus.mapTo(HashSet()) { it.id }
         val incomingMenuEntries = backup.menuEntries.filter { it.menuId in incomingMenuIds }
         incomingMenuEntries.mapNotNullTo(listedTargets) { it.recipeId?.let(recipeTargets::get) }
-        // So is a recipe typed in by hand (#102): it has no link to bring it back.
-        newByUrl.values.filter { it.contentOrigin == "MANUAL" }.mapTo(listedTargets) { Target.New(it.id) }
+        // So is a recipe typed in by hand (#102) or read from a chat (#355): it has no link to bring it back.
+        newByUrl.values.filter { it.contentOrigin == "MANUAL" || it.contentOrigin == "CHAT" }.mapTo(listedTargets) { Target.New(it.id) }
         // And one with the user's own photos (#116): only the recipe can hold them.
         val takenPhotoUids = existingCookedPhotoUids.toMutableSet()
         // A cooking marked with no photo (#173) needs no picture.

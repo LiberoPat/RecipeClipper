@@ -79,6 +79,19 @@ class EditRecipeTextViewModelTest {
             advanceUntilIdle()
             assertEquals(1, repository.addManualCalls.size)
             assertEquals(8L, vm.uiState.value.savedId)
+            assertEquals("a chat's JSON is saved as from a chat (#355)", listOf(true), repository.addManualFromChat)
+        }
+
+    @Test fun `plain shared text is saved as typed in, not as from a chat (#355)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { addManualResult = saved(8L) }
+            val vm = viewModel("Ingredients:\n- 2 cups flour\nMethod:\n1. Mix.\n2. Bake.", repository)
+            advanceUntilIdle()
+
+            vm.onSave()
+            advanceUntilIdle()
+
+            assertEquals(listOf(false), repository.addManualFromChat)
         }
 
     @Test fun `text that doesn't split is every line a step, as written`() =

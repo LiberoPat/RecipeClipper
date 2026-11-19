@@ -46,6 +46,7 @@ fun RecipeRow(recipe: RecipeSummary, now: Long, onClick: () -> Unit, modifier: M
             )
             val details = listOfNotNull(
                 if (recipe.isClipped) stringResource(R.string.clipped_by_you) else null,
+                if (recipe.isFromChat) stringResource(R.string.recipes_view_chat) else null,
                 recipe.totalTime,
                 TimeAgo.since(recipe.lastViewedAt, now).text()
             ).joinToString("  ·  ")

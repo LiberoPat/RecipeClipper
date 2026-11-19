@@ -22,6 +22,10 @@ enum ContentOrigin: String, Equatable, CaseIterable {
     case clipped = "CLIPPED"
     /// Typed in by hand; its link is a synthetic `ManualRecipe` key, never fetched.
     case manual = "MANUAL"
+    /// Read from a chat's schema.org Recipe JSON (#355): the AI's words, to be checked. Handled
+    /// like `manual` everywhere (never fetched, a `manual:` link, never refreshed, stays when
+    /// edited), but its own view and label. An older app reads the unknown name as EDITED.
+    case chat = "CHAT"
     /// Picked from the page's text by the on-device model (#103), every line checked to be on
     /// the page. The source's, like `parsed`: refreshed on every re-share.
     case extracted = "EXTRACTED"
@@ -110,12 +114,15 @@ struct RecipeSummary: Equatable, Identifiable {
     var lastCookedDay: Int64? = nil
     /// Its link, for the site credited under the title (#286); `manual:` for a typed one.
     var sourceUrl: String = ""
+    /// Read from a chat's JSON (#355, origin CHAT): the row says "From a chat".
+    var isFromChat: Bool = false
 
     /// The site, as the reading view credits it; nil for a typed or scanned recipe.
     var sourceDomain: String? { ManualRecipe.isManual(sourceUrl) ? nil : SourceDomain.of(sourceUrl) }
 
-    /// Typed, scanned or read in by hand (a `manual:` link), never the tour's sample (#345).
-    var isTyped: Bool { ManualRecipe.isManual(sourceUrl) && !SampleRecipe.isSample(sourceUrl) }
+    /// Typed, scanned or read in by hand (a `manual:` link), never the tour's sample (#345), and
+    /// not one read from a chat (#355: its own view).
+    var isTyped: Bool { ManualRecipe.isManual(sourceUrl) && !SampleRecipe.isSample(sourceUrl) && !isFromChat }
 }
 
 /// How the Recipes screen orders its rows (#102). Remembered in `AppPreferences` by its
@@ -134,25 +141,27 @@ enum RecipeSort: String, CaseIterable {
 /// Which recipes the Recipes screen lists (#345): all, those in at least one list ("saved",
 /// derived from the cross-ref table), or those in none (V1's filter pills, and V4's first view);
 /// and V4's other automatic views: `.cooked` (the user's own photos or "Mark as cooked", #116,
-/// #173) and `.typed` (typed, scanned or read in by hand, `contentOrigin` MANUAL, never the tour's
-/// sample). Not remembered: it opens on `.all`. Android's `RecipeFilter`.
+/// #173), `.typed` (typed, scanned or read in by hand, `contentOrigin` MANUAL, never the tour's
+/// sample) and `.chat` (read from a chat's JSON, `contentOrigin` CHAT, #355). Not remembered: it opens on `.all`. Android's `RecipeFilter`.
 enum RecipeFilter: String, CaseIterable {
     case all = "ALL", inAList = "IN_A_LIST", notInAList = "NOT_IN_A_LIST", cooked = "COOKED", typed = "TYPED"
+    case chat = "CHAT"
 
     /// The three pills with `oneCookbook` off (V1).
     static let pills: [RecipeFilter] = [.all, .inAList, .notInAList]
 
     /// The strip's automatic views with `oneCookbook` on (V4), in the order the strip shows them.
-    static let views: [RecipeFilter] = [.notInAList, .cooked, .typed]
+    static let views: [RecipeFilter] = [.notInAList, .cooked, .typed, .chat]
 }
 
 /// How many recipes there are, how many of them are in at least one list, and how many are cooked
-/// or typed in (#345): the Recipes filter's and the views strip's counts.
+/// typed in or from a chat (#345, #355): the Recipes filter's and the views strip's counts.
 struct RecipeCounts: Equatable {
     let all: Int
     let inList: Int
     var cooked: Int = 0
     var typed: Int = 0
+    var chat: Int = 0
 
     var notInList: Int { all - inList }
 
@@ -163,6 +172,7 @@ struct RecipeCounts: Equatable {
         case .notInAList: notInList
         case .cooked: cooked
         case .typed: typed
+        case .chat: chat
         }
     }
 }

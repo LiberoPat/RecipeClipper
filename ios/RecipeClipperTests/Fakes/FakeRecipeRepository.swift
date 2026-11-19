@@ -74,6 +74,7 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var addManualCalls: [RecipeDraft] = []
     private(set) var addManualLanguages: [String?] = []
     private(set) var addManualNotes: [String?] = []
+    private(set) var addManualFromChat: [Bool] = []
 
     @MainActor func updateFromSource(id: Int64) async -> ParseResult {
         updateFromSourceCalls.append(id)
@@ -85,7 +86,8 @@ final class FakeRecipeRepository: RecipeRepository {
         return saveEditResult
     }
 
-    @MainActor func addManual(draft: RecipeDraft, language: String?, notes: String?) async -> Recipe? {
+    @MainActor func addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool) async -> Recipe? {
+        addManualFromChat.append(fromChat)
         addManualCalls.append(draft)
         addManualLanguages.append(language)
         addManualNotes.append(notes)
@@ -152,6 +154,7 @@ final class FakeRecipeRepository: RecipeRepository {
             case .notInAList: rows.filter { !$0.isSaved }
             case .cooked: rows.filter { $0.lastCookedDay != nil }
             case .typed: rows.filter(\.isTyped)
+            case .chat: rows.filter(\.isFromChat)
             }
         }.eraseToAnyPublisher()
     }
@@ -161,7 +164,8 @@ final class FakeRecipeRepository: RecipeRepository {
         history.map {
             RecipeCounts(
                 all: $0.count, inList: $0.filter(\.isSaved).count,
-                cooked: $0.filter { $0.lastCookedDay != nil }.count, typed: $0.filter(\.isTyped).count
+                cooked: $0.filter { $0.lastCookedDay != nil }.count, typed: $0.filter(\.isTyped).count,
+                chat: $0.filter(\.isFromChat).count
             )
         }.eraseToAnyPublisher()
     }

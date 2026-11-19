@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -115,6 +116,16 @@ internal fun ReadingView(
                     }
                     Spacer(Modifier.height(4.dp))
                 } else {
+                    // Read from a chat (#355): the AI's words, so say so, quietly, where a site's
+                    // domain would sit. No link, so no Open original.
+                    if (recipe.origin == ContentOrigin.CHAT) {
+                        Text(
+                            stringResource(R.string.recipes_view_chat),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp).testTag("fromAChat")
+                        )
+                    }
                     Spacer(Modifier.height(14.dp))
                 }
                 Times(recipe.prepTime, recipe.cookTime, recipe.totalTime)

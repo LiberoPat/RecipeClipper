@@ -27,11 +27,19 @@ data class RecipeSummaryRow(
     /** The latest day of the user's own photos (#116), or null for none. */
     val lastCookedDay: Long? = null,
     /** Its link, for the site the Recipes row credits (#286). */
-    val sourceUrl: String = ""
+    val sourceUrl: String = "",
+    /** Read from a chat's JSON (#355, origin CHAT). */
+    val isFromChat: Boolean = false
 )
 
-/** [RecipeDao.observeLibraryCounts]: every recipe, those in at least one list, cooked and typed in (#345). */
-data class LibraryCountsRow(val total: Int, val inList: Int, val cooked: Int = 0, val typed: Int = 0)
+/** [RecipeDao.observeLibraryCounts]: every recipe, those in at least one list, cooked, typed in and from a chat (#345, #355). */
+data class LibraryCountsRow(
+    val total: Int,
+    val inList: Int,
+    val cooked: Int = 0,
+    val typed: Int = 0,
+    val chat: Int = 0
+)
 
 /** A recipe's saved cook progress, with what a timer alert needs to name it. */
 data class CookStateRow(
@@ -203,7 +211,8 @@ abstract class RecipeDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-               sourceUrl
+               sourceUrl,
+               contentOrigin = 'CHAT' AS isFromChat
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         """
@@ -215,7 +224,7 @@ abstract class RecipeDao {
 
     /** [observeHistory] with only the list filter (V1's pills). */
     fun observeHistory(query: String, listed: Int): Flow<List<RecipeSummaryRow>> =
-        observeHistory(query, listed, cooked = 0, typed = 0)
+        observeHistory(query, listed, cooked = 0, typed = 0, chat = 0)
 
     /**
      * Same as [observeHistory], filtered to titles or ingredients containing [query]
@@ -231,7 +240,7 @@ abstract class RecipeDao {
      * and the filter can't disagree; the search still applies inside it. [cooked] = 1 keeps the
      * recipes with a cooking marked (the user's own photos, or "Mark as cooked", #116, #173);
      * [typed] = 1 those typed, scanned or read in by hand (`contentOrigin` MANUAL, not the tour's
-     * sample), V4's views.
+     * sample), [chat] = 1 those read from a chat's JSON (`contentOrigin` CHAT, #355): V4's views.
      */
     @Query(
         """
@@ -239,7 +248,8 @@ abstract class RecipeDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-               sourceUrl
+               sourceUrl,
+               contentOrigin = 'CHAT' AS isFromChat
         FROM recipes
         WHERE (:query = ''
            OR instr(lower(title), lower(:query)) > 0
@@ -250,10 +260,12 @@ abstract class RecipeDao {
            OR EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id))
           AND (:typed = 0
            OR (contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'))
+          AND (:chat = 0
+           OR contentOrigin = 'CHAT')
         ORDER BY lastViewedAt DESC, id DESC
         """
     )
-    abstract fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int): Flow<List<RecipeSummaryRow>>
+    abstract fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int, chat: Int): Flow<List<RecipeSummaryRow>>
 
     /** How many recipes there are, in a list, cooked and typed in, for the filter's and the strip's counts (#345). */
     @Query(
@@ -261,7 +273,8 @@ abstract class RecipeDao {
         SELECT COUNT(*) AS total,
                COALESCE(SUM(EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)), 0) AS inList,
                COALESCE(SUM(EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id)), 0) AS cooked,
-               COALESCE(SUM(contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'), 0) AS typed
+               COALESCE(SUM(contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'), 0) AS typed,
+               COALESCE(SUM(contentOrigin = 'CHAT'), 0) AS chat
         FROM recipes
         """
     )
@@ -273,7 +286,8 @@ abstract class RecipeDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-               sourceUrl
+               sourceUrl,
+               contentOrigin = 'CHAT' AS isFromChat
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
         LIMIT :limit
@@ -286,7 +300,7 @@ abstract class RecipeDao {
      * recently viewed of them. A recipe in any list is never touched, and neither is one
      * planned for [today] or later (#49; an epoch day, see `PlanDays`): both are outside the
      * cap. A recipe planned only for past days is ordinary history again. Nor is one in a saved
-     * menu (#52): the menu would lose it. Nor is one typed in by hand (#102, origin MANUAL): it
+     * menu (#52): the menu would lose it. Nor is one typed in by hand (#102, origin MANUAL, or CHAT, #355): it
      * has no link to bring it back. Nor is one with the user's own photos (#116).
      *
      * The plan subquery filters out NULL recipe ids (a note): `NOT IN` a set holding a NULL
@@ -300,7 +314,7 @@ abstract class RecipeDao {
               AND id NOT IN (SELECT recipeId FROM meal_plan_entries
                              WHERE recipeId IS NOT NULL AND day >= :today)
               AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
-              AND contentOrigin != 'MANUAL'
+              AND contentOrigin NOT IN ('MANUAL', 'CHAT')
               AND id NOT IN (SELECT recipeId FROM cooked_photos)
             ORDER BY lastViewedAt DESC, id DESC
             LIMIT -1 OFFSET :keep
@@ -321,7 +335,7 @@ abstract class RecipeDao {
           AND id NOT IN (SELECT recipeId FROM meal_plan_entries
                          WHERE recipeId IS NOT NULL AND day >= :today)
           AND id NOT IN (SELECT recipeId FROM menu_entries WHERE recipeId IS NOT NULL)
-          AND contentOrigin != 'MANUAL'
+          AND contentOrigin NOT IN ('MANUAL', 'CHAT')
           AND id NOT IN (SELECT recipeId FROM cooked_photos)
         ORDER BY lastViewedAt ASC, id ASC
         LIMIT 1

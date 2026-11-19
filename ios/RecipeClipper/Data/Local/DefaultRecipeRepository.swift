@@ -297,7 +297,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
-    func addManual(draft: RecipeDraft, language: String?, notes: String?) async -> Recipe? {
+    func addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool) async -> Recipe? {
         guard draft.isValid else { return nil }
         let now = clock.now()
         var recipe = draft.apply(to: Recipe(
@@ -305,7 +305,7 @@ final class DefaultRecipeRepository: RecipeRepository {
             prepTime: nil, cookTime: nil, totalTime: nil, yield: nil,
             sourceUrl: ManualRecipe.newSourceUrl(newUid())
         ))
-        recipe.origin = .manual
+        recipe.origin = fromChat ? .chat : .manual
         recipe.editedAt = now
         recipe.language = language
         recipe.notes = notes.flatMap { $0.kTrimmed.isEmpty ? nil : $0.kTrimmed }
@@ -519,8 +519,9 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
         let cooked = filter == .cooked ? 1 : 0
         let typed = filter == .typed ? 1 : 0
+        let chat = filter == .chat ? 1 : 0
         return db.observe { conn in
-            try RecipeDao(db: conn).history(query: query, listed: listed, cooked: cooked, typed: typed).map { $0.toDomain() }
+            try RecipeDao(db: conn).history(query: query, listed: listed, cooked: cooked, typed: typed, chat: chat).map { $0.toDomain() }
         }
     }
 
