@@ -53,15 +53,19 @@ class WeekScreenTest {
 
     private val groceries = FakeGroceryRepository()
 
-    private fun show() {
+    private var openedWhatINeed: Long? = null
+
+    private fun show(shopForWeek: Boolean = false) {
         val viewModel = WeekViewModel(plan, recipes, FakePlanCalendar())
         val groceriesViewModel = AddToGroceriesViewModel(groceries, FakeAppPreferences(), FakePantryRepository())
         compose.setContent {
             WeekScreen(
                 onOpenRecipe = { id, servings -> opened = id to servings },
                 onOpenMealTypes = {},
+                onOpenWhatINeed = { openedWhatINeed = it },
                 viewModel = viewModel,
-                groceriesViewModel = groceriesViewModel
+                groceriesViewModel = groceriesViewModel,
+                shopForWeek = shopForWeek
             )
         }
     }
@@ -165,6 +169,47 @@ class WeekScreenTest {
             assertEquals(listOf("4 cups flour", "2 cup milk"), groceries.items.value.map { it.text })
             assertTrue(groceries.items.value.all { it.plannedDay == today })
         }
+    }
+
+    /** Shop for this week (#384): one item opens What I need for the week shown; the old pair is gone. */
+    @Test
+    fun shopForThisWeekIsTheOneMenuItemAndOpensWhatINeedForTheWeekShown() {
+        show(shopForWeek = true)
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Shop for this week").assertIsDisplayed()
+        compose.onNodeWithText("What I need").assertDoesNotExist()
+        compose.onNodeWithText("Add this week's ingredients").assertDoesNotExist()
+        compose.onNodeWithText("Shop for this week").performClick()
+
+        compose.runOnIdle { assertEquals(today, openedWhatINeed) }
+
+        // Another week: the item opens that week's.
+        compose.onNodeWithContentDescription("Next week").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Shop for this week").performClick()
+        compose.runOnIdle { assertEquals(today + 7, openedWhatINeed) }
+    }
+
+    /** With the flag off the old two items return, exactly. */
+    @Test
+    fun withTheFlagOffTheMenuHasWhatINeedAndAddThisWeeksIngredients() {
+        show(shopForWeek = false)
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("What I need").assertIsDisplayed()
+        compose.onNodeWithText("Add this week's ingredients").assertIsDisplayed()
+        compose.onNodeWithText("Shop for this week").assertDoesNotExist()
+    }
+
+    @Test
+    fun theMonthViewHasNoShopForThisWeek() {
+        show(shopForWeek = true)
+
+        compose.onNodeWithTag("toggleMonth").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Shop for this week").assertDoesNotExist()
+        compose.onNodeWithText("Meal types").assertIsDisplayed()
     }
 
     @Test

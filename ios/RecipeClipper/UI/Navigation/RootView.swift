@@ -147,7 +147,8 @@ struct RootView: View {
                     onOpenRecipe: { router.weekPath.append(.weekRecipe(id: $0, servings: $1)) },
                     onOpenMealTypes: { router.weekPath.append(.mealTypes) },
                     onOpenWhatINeed: { router.weekPath.append(.whatINeed(weekStart: $0)) },
-                    makeGroceriesVM: container.makeAddToGroceriesViewModel
+                    makeGroceriesVM: container.makeAddToGroceriesViewModel,
+                    shopForWeek: container.featureFlags.isOn(.shopForWeek)
                 )
             }
             .navigationDestination(for: Route.self) { route in

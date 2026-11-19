@@ -77,7 +77,7 @@ extension WalkthroughUITests {
         pause()
         tab("Week")
         planToday("Chicken Adobo")
-        recipeMenu("What I need")
+        recipeMenu("Shop for this week")
         pause(2)
         app.swipeUp()
         pause(2)

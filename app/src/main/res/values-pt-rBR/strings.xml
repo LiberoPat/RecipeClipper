@@ -427,6 +427,7 @@
     <string name="action_add_to_groceries">Adicionar às compras</string>
     <string name="add_to_groceries_title">Adicionar às compras</string>
     <string name="action_add_week_to_groceries">Adicionar os ingredientes desta semana</string>
+    <string name="action_shop_for_week">Comprar para esta semana</string>
     <string name="groceries_week_empty">Nenhuma receita planejada para esta semana.</string>
     <string name="action_share_groceries">Enviar lista</string>
     <string name="action_paste_list">Colar uma lista</string>
@@ -757,6 +758,7 @@
     <string name="menu_desc_update_from_source">Troca suas edições pela versão atual do site</string>
     <string name="menu_desc_what_i_need">O que as receitas da semana pedem e a despensa não tem</string>
     <string name="menu_desc_add_week_to_groceries">Na sua lista de compras, menos o que você já tem</string>
+    <string name="menu_desc_shop_for_week">O que a semana pede e o que você já tem</string>
     <string name="menu_desc_save_week_as_menu">Guarda as refeições da semana para repetir depois</string>
     <string name="menu_desc_apply_menu">Adiciona as refeições de um cardápio salvo a esta semana</string>
     <string name="menu_desc_meal_types">Adiciona, renomeia ou reordena as refeições do dia</string>

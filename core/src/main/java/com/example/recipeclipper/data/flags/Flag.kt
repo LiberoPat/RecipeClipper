@@ -46,7 +46,9 @@ enum class Flag(val key: String) {
     /** Meal-plan import (#352): a week of AI recipes shared in opens a review, kept and planned on their days in Week. */
     MEAL_PLAN_IMPORT("mealPlanImport"),
     /** Recipe versions (#354): an AI's change to a recipe is saved linked to its original. */
-    RECIPE_VERSIONS("recipeVersions");
+    RECIPE_VERSIONS("recipeVersions"),
+    /** Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients. */
+    SHOP_FOR_WEEK("shopForWeek");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
