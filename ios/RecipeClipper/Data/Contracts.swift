@@ -271,6 +271,13 @@ protocol RecipeRepository: AnyObject {
     /// never LIKE); everything when `query` is empty. Newest view first. Re-emits on change.
     func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never>
 
+    /// `observeHistory`, kept to the recipes in a list or those in none (#345: the Recipes
+    /// filter); `.all` is `observeHistory(query:)`. The search still applies inside the filter.
+    func observeHistory(query: String, filter: RecipeFilter) -> AnyPublisher<[RecipeSummary], Never>
+
+    /// How many recipes there are, and how many are in a list: the Recipes filter's counts (#345).
+    func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never>
+
     /// The `limit` most recently viewed. Re-emits on change.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never>
 
@@ -311,6 +318,24 @@ extension RecipeRepository {
 
     func observeCount() -> AnyPublisher<Int, Never> {
         observeHistory(query: "").map(\.count).removeDuplicates().eraseToAnyPublisher()
+    }
+
+    /// Test doubles that only know `observeHistory(query:)`: the filter is applied to its answer
+    /// by `isSaved`, the same split the SQL makes by the cross-ref table.
+    func observeHistory(query: String, filter: RecipeFilter) -> AnyPublisher<[RecipeSummary], Never> {
+        observeHistory(query: query).map { rows in
+            switch filter {
+            case .all: rows
+            case .inAList: rows.filter(\.isSaved)
+            case .notInAList: rows.filter { !$0.isSaved }
+            }
+        }.eraseToAnyPublisher()
+    }
+
+    func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never> {
+        observeHistory(query: "")
+            .map { RecipeCounts(all: $0.count, inList: $0.filter(\.isSaved).count) }
+            .removeDuplicates().eraseToAnyPublisher()
     }
 
     /// Test doubles that have nothing to do with Home's resume card (#286) needn't implement it.

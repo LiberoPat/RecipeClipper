@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.common.LocalFlagValues
@@ -142,6 +143,9 @@ fun RecipesScreen(
                         }
                         Spacer(Modifier.height(12.dp))
                         SearchField(query = state.query, onQueryChange = viewModel::onQueryChange)
+                        if (state.showsFilter) {
+                            RecipeFilterPills(state.filter, state.counts, viewModel::onFilterChange)
+                        }
                         if (state.showsSortLine) {
                             SortLine(state, viewModel::onSortChange)
                         } else {
@@ -149,14 +153,20 @@ fun RecipesScreen(
                         }
                     }
 
+                    val cullKeep = state.cullKeep
+                    if (state.showsCullNote && cullKeep != null) {
+                        item { CullNote(cullKeep, Modifier.padding(top = 12.dp, bottom = 4.dp)) }
+                    }
+
                     val recipes = state.recipes
                     if (recipes != null && recipes.isEmpty()) {
                         item {
                             Text(
-                                if (state.query.isBlank()) {
-                                    stringResource(R.string.recipes_empty)
-                                } else {
-                                    stringResource(R.string.recipes_no_results, state.query)
+                                when {
+                                    state.query.isNotBlank() -> stringResource(R.string.recipes_no_results, state.query)
+                                    state.showsFilter && state.filter == RecipeFilter.IN_A_LIST -> stringResource(R.string.recipes_empty_in_list)
+                                    state.showsFilter && state.filter == RecipeFilter.NOT_IN_A_LIST -> stringResource(R.string.recipes_empty_not_in_list)
+                                    else -> stringResource(R.string.recipes_empty)
                                 },
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -197,7 +207,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
     )
 }
 
-/** A history row that can be swiped away in either direction to delete it. */
+/** A row that can be swiped away in either direction to delete it. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeToDeleteRow(

@@ -6,6 +6,10 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -23,6 +27,7 @@ import androidx.compose.ui.test.swipeRight
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.entity.RecipeEntity
+import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeRecipeRepository
@@ -37,7 +42,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * History: every recipe opened, newest first, searchable, and deleted by a swipe with an undo
+ * The Recipes screen: every recipe, newest viewed first, searchable, and deleted by a swipe with an undo
  * snackbar. A burst of swipes shares one snackbar, and its Undo restores the whole burst.
  *
  * [FakeRecipeRepository] hands back whatever [FakeRecipeRepository.history] holds whatever the
@@ -193,6 +198,94 @@ class RecipesScreenTest {
         show()
 
         waitFor("Nothing yet. Recipes you open are kept here, and + adds one by hand or from a link.")
+    }
+
+    // --- The filter (#345) ---
+
+    private val pillAll get() = compose.onNodeWithTag("recipeFilter-ALL")
+    private val pillIn get() = compose.onNodeWithTag("recipeFilter-IN_A_LIST")
+    private val pillNot get() = compose.onNodeWithTag("recipeFilter-NOT_IN_A_LIST")
+
+    @Test
+    fun theFilterShowsThreeChoicesWithTheirCountsAndAllChosen() {
+        show(adobo.copy(isSaved = true), carbonara, bread)
+
+        waitFor("All 3")
+        pillAll.assertIsSelected()
+        pillIn.assertIsNotSelected().assert(hasText("In a list 1"))
+        pillNot.assertIsNotSelected().assert(hasText("Not in a list 2"))
+        // The words: no "history" anywhere on the screen.
+        compose.onAllNodes(hasText("history", substring = true, ignoreCase = true)).assertCountEquals(0)
+    }
+
+    @Test
+    fun aChoiceListsOnlyItsRecipesAndTheSearchStaysInsideIt() {
+        show(adobo.copy(isSaved = true), carbonara, bread)
+        waitFor("All 3")
+        waitFor("Spaghetti Carbonara") // the rows come after the search debounce, the counts before
+
+        pillIn.performClick()
+        compose.waitUntil(timeoutMillis = 5_000) { compose.onAllNodesWithText("Spaghetti Carbonara").fetchSemanticsNodes().isEmpty() }
+        compose.waitForIdle()
+        pillIn.assertIsSelected()
+        compose.onNodeWithText("Chicken Adobo").assertIsDisplayed()
+        compose.onNodeWithText("Banana Bread").assertDoesNotExist()
+        // The counts don't follow the filter.
+        pillNot.assert(hasText("Not in a list 2"))
+
+        pillNot.performClick()
+        compose.waitUntil(timeoutMillis = 5_000) { compose.onAllNodesWithText("Chicken Adobo").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Spaghetti Carbonara").assertIsDisplayed()
+        compose.onNodeWithText("Banana Bread").assertIsDisplayed()
+
+        compose.onNode(hasSetTextAction()).performTextInput("bread")
+        passTheSearchDebounce()
+        assertEquals(RecipeFilter.NOT_IN_A_LIST, repository.historyFilters.last())
+        assertEquals("bread", repository.historyQueries.last())
+        pillNot.assertIsSelected()
+    }
+
+    @Test
+    fun anEmptyChoiceSaysWhatItIsAndKeepsTheFilter() {
+        show(carbonara, bread)
+        waitFor("All 2")
+        waitFor("Banana Bread")
+
+        pillIn.performClick()
+        waitFor("No recipes are in a list yet. Save one to a list with its bookmark.")
+        pillAll.assertIsDisplayed()
+
+        repository.history.value = listOf(adobo.copy(isSaved = true))
+        waitFor("All 1")
+        pillNot.performClick()
+        waitFor("Every recipe is in a list.")
+    }
+
+    @Test
+    fun theCleanUpNoteIsUnderNotInAListOnly() {
+        show(adobo.copy(isSaved = true), carbonara)
+        waitFor("All 2")
+        waitFor("Chicken Adobo")
+        compose.onNodeWithTag("recipesCullNote").assertDoesNotExist()
+
+        pillIn.performClick()
+        compose.onNodeWithTag("recipesCullNote").assertDoesNotExist()
+
+        pillNot.performClick()
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithTag("recipesCullNote").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText(
+            "Recipes in no list are kept up to 50. Past that, the ones you opened longest ago go first. " +
+                "Save one to a list to keep it."
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun anEmptyLibraryHasNoFilter() {
+        show()
+        waitFor("Nothing yet. Recipes you open are kept here, and + adds one by hand or from a link.")
+        pillAll.assertDoesNotExist()
     }
 
     // --- The + menu (#102) ---

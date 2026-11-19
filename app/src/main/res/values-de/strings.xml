@@ -17,7 +17,7 @@
     <string name="cd_share_recipe">Rezept teilen</string>
     <string name="cd_more_options">Weitere Optionen</string>
     <string name="delete_recipe_title">„%1$s“ löschen?</string>
-    <string name="delete_recipe_body">Das Rezept wird aus dem Verlauf und allen Listen entfernt. Das lässt sich nicht rückgängig machen.</string>
+    <string name="delete_recipe_body">Das Rezept wird aus deinen Rezepten und allen Listen entfernt. Das lässt sich nicht rückgängig machen.</string>
     <string name="label_prep">Vorbereitung</string>
     <string name="label_cook">Garzeit</string>
     <string name="label_total">Gesamt</string>
@@ -91,6 +91,13 @@
     <string name="recipes_title">Rezepte</string>
     <string name="recipes_empty">Noch nichts da. Rezepte, die du öffnest, landen hier, und mit + fügst du eines von Hand oder per Link hinzu.</string>
     <string name="recipes_no_results">Keine Rezepte zu „%1$s“ gefunden.</string>
+    <string name="recipes_filter_all">Alle</string>
+    <string name="recipes_filter_in_list">In einer Liste</string>
+    <string name="recipes_filter_not_in_list">In keiner Liste</string>
+    <string name="recipes_empty_in_list">Noch kein Rezept ist in einer Liste. Speichere eines mit dem Lesezeichen in einer Liste.</string>
+    <string name="recipes_empty_not_in_list">Jedes Rezept ist in einer Liste.</string>
+    <!-- %1$d is the cap on recipes in no list (50). -->
+    <string name="recipes_cull_note">Rezepte ohne Liste bleiben bis zu %1$d erhalten. Darüber werden zuerst die entfernt, die du am längsten nicht geöffnet hast. Speichere ein Rezept in einer Liste, um es zu behalten.</string>
     <string name="label_search_recipes">Titel und Zutaten durchsuchen</string>
     <string name="cd_add_recipe">Rezept hinzufügen</string>
     <string name="action_type_recipe">Rezept eintippen</string>
@@ -161,8 +168,8 @@
         <item quantity="other">%d Rezepte waren schon vorhanden.</item>
     </plurals>
     <plurals name="backup_skipped">
-        <item quantity="one">%1$d älteres Rezept ohne Liste wurde nicht hinzugefügt: Der Verlauf behält die %2$d zuletzt angesehenen.</item>
-        <item quantity="other">%1$d ältere Rezepte ohne Liste wurden nicht hinzugefügt: Der Verlauf behält die %2$d zuletzt angesehenen.</item>
+        <item quantity="one">%1$d älteres Rezept ohne Liste wurde nicht hinzugefügt: Rezepte ohne Liste bleiben bis zu %2$d erhalten.</item>
+        <item quantity="other">%1$d ältere Rezepte ohne Liste wurden nicht hinzugefügt: Rezepte ohne Liste bleiben bis zu %2$d erhalten.</item>
     </plurals>
     <string name="backup_error_not_a_backup">Diese Datei ist kein Recipe-Clipper-Export.</string>
     <string name="backup_error_newer_version">Diese Datei wurde mit einer neueren Version von Recipe Clipper erstellt (Format %1$d). Aktualisiere die App, um sie zu importieren.</string>
@@ -196,7 +203,7 @@
     <string name="save_to_list_new_list_note">%1$s kommt in die neue Liste.</string>
     <string name="rename_list_title">Liste umbenennen</string>
     <string name="delete_list_title">„%1$s“ löschen?</string>
-    <string name="delete_list_body">Die Liste wird entfernt. Die Rezepte darin bleiben in deinem Verlauf.</string>
+    <string name="delete_list_body">Die Liste wird entfernt. Die Rezepte darin bleiben in deinen Rezepten.</string>
     <string name="action_delete_list">Liste löschen</string>
 
     <!-- Bottom tabs (#47) -->
@@ -349,7 +356,7 @@
     <string name="cd_clip_remove_line">Zeile %1$d entfernen</string>
     <string name="clip_save">Rezept speichern</string>
     <string name="update_from_source_clip_title">Deinen Ausschnitt ersetzen?</string>
-    <string name="update_from_source_clip_body">Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und im Verlauf.</string>
+    <string name="update_from_source_clip_body">Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und in deinen Rezepten.</string>
     <string name="clipped_by_you">Von dir ausgeschnitten</string>
     <string name="clipped_by_you_on">Von dir ausgeschnitten · %1$s</string>
     <string name="extracted_from_page">Aus dem Seitentext übernommen – mit der Quelle abgleichen</string>
@@ -603,8 +610,8 @@
     <string name="cd_cooked_mark">Gekocht, ohne Foto, %1$s</string>
     <string name="cd_delete_cooked_mark">Eintrag löschen</string>
     <string name="cooked_mark_deleted">Eintrag gelöscht</string>
-    <string name="delete_recipe_body_photo">Das Rezept wird aus dem Verlauf und allen Listen entfernt, und dein Foto davon wird gelöscht. Das lässt sich nicht rückgängig machen.</string>
-    <string name="delete_recipe_body_photos">Das Rezept wird aus dem Verlauf und allen Listen entfernt, und deine %1$d Fotos davon werden gelöscht. Das lässt sich nicht rückgängig machen.</string>
+    <string name="delete_recipe_body_photo">Das Rezept wird aus deinen Rezepten und allen Listen entfernt, und dein Foto davon wird gelöscht. Das lässt sich nicht rückgängig machen.</string>
+    <string name="delete_recipe_body_photos">Das Rezept wird aus deinen Rezepten und allen Listen entfernt, und deine %1$d Fotos davon werden gelöscht. Das lässt sich nicht rückgängig machen.</string>
     <!-- The automatic backup copy (#150). -->
     <string name="auto_backup_title">Automatische Sicherungskopie</string>
     <string name="auto_backup_description">Legt eine Kopie von allem, Fotos inklusive, in einem Ordner deiner Wahl ab und hält sie nach Änderungen aktuell</string>

@@ -127,7 +127,7 @@ final class ListDetailUITests: RecipeUITestCase {
 
         let alert = require(app.alerts["Delete \"Weeknights\"?"])
         // The dialog says what does NOT happen, which is the part worth being sure of.
-        XCTAssertTrue(alert.staticTexts["The list is removed. The recipes in it stay in your history."].exists)
+        XCTAssertTrue(alert.staticTexts["The list is removed. The recipes in it are still in Recipes."].exists)
     }
 
     func testCancellingTheConfirmationDeletesNothing() {

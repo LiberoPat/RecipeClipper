@@ -104,6 +104,14 @@ extension AppDatabase {
         try await read { try RecipeDao(db: $0).history(query: query) }
     }
 
+    func history(_ query: String, listed: Int) async throws -> [RecipeSummaryRecord] {
+        try await read { try RecipeDao(db: $0).history(query: query, listed: listed) }
+    }
+
+    func libraryCounts() async throws -> RecipeCounts {
+        try await read { try RecipeDao(db: $0).libraryCounts() }
+    }
+
     func allLists(for recipeId: Int64 = ListDao.noRecipe) async throws -> [ListRecord] {
         try await read { try ListDao(db: $0).lists(recipeId: recipeId) }
     }

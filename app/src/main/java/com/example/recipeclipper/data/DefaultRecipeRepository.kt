@@ -12,6 +12,8 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.model.RecipeCounts
+import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SampleRecipe
 import com.example.recipeclipper.data.model.StepAlarm
@@ -386,8 +388,21 @@ class DefaultRecipeRepository @Inject constructor(
         if (files.isNotEmpty()) photos.delete(files)
     }
 
-    override fun observeHistory(query: String): Flow<List<RecipeSummary>> =
-        recipeDao.observeHistory(query).map { rows -> rows.map { it.toDomain() } }.orEmptyOnError(log, "observeHistory")
+    override fun observeHistory(query: String, filter: RecipeFilter): Flow<List<RecipeSummary>> {
+        val listed = when (filter) {
+            RecipeFilter.ALL -> RecipeDao.LISTED_ANY
+            RecipeFilter.IN_A_LIST -> RecipeDao.LISTED_YES
+            RecipeFilter.NOT_IN_A_LIST -> RecipeDao.LISTED_NO
+        }
+        return recipeDao.observeHistory(query, listed).map { rows -> rows.map { it.toDomain() } }
+            .orEmptyOnError(log, "observeHistory")
+    }
+
+    override fun observeRecipeCounts(): Flow<RecipeCounts> =
+        recipeDao.observeLibraryCounts().map { RecipeCounts(it.total, it.inList) }.catch { e ->
+            log.error("observeRecipeCounts failed", e)
+            emit(RecipeCounts(0, 0))
+        }
 
     override fun observeRecent(limit: Int): Flow<List<RecipeSummary>> =
         recipeDao.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }.orEmptyOnError(log, "observeRecent")

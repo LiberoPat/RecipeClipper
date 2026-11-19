@@ -66,6 +66,41 @@ final class RecipesUITests: RecipeUITestCase {
         XCTAssertLessThan(row("Banana Bread").frame.minY, row("Chicken Adobo").frame.minY)
     }
 
+    /// #345: All / In a list / Not in a list under search, with the library's counts; a choice
+    /// lists only its recipes, and the clean-up line shows under Not in a list alone.
+    func testTheFilterListsRecipesInAListOrNotAndExplainsTheCleanUp() {
+        launch()
+        openRecipes()
+
+        let all = require(app.buttons["recipes.filter.ALL"], "the All pill")
+        let inList = require(app.buttons["recipes.filter.IN_A_LIST"], "the In a list pill")
+        let notInList = require(app.buttons["recipes.filter.NOT_IN_A_LIST"], "the Not in a list pill")
+        XCTAssertEqual(all.label, "All 4")
+        XCTAssertEqual(inList.label, "In a list 2")
+        XCTAssertEqual(notInList.label, "Not in a list 2")
+        requireState(all, "isSelected == true")
+        assertAbsent(app.descendants(matching: .any)["recipes.cullNote"])
+
+        inList.tap()
+        require(row("Chicken Adobo"))
+        require(row("Spaghetti Carbonara"))
+        requireGone(row("Banana Bread"))
+        requireState(inList, "isSelected == true")
+        assertAbsent(app.descendants(matching: .any)["recipes.cullNote"])
+
+        notInList.tap()
+        require(row("Banana Bread"))
+        require(row("Miso Soup"))
+        requireGone(row("Chicken Adobo"))
+        require(app.descendants(matching: .any)["recipes.cullNote"], "the clean-up line")
+
+        // The search still applies inside the filter.
+        type("miso")
+        require(row("Miso Soup"))
+        requireGone(row("Banana Bread"))
+        requireState(notInList, "isSelected == true")
+    }
+
     func testSearchMatchesTitles() {
         launch()
         openRecipes()

@@ -17,7 +17,7 @@
     <string name="cd_share_recipe">Partager la recette</string>
     <string name="cd_more_options">Plus d\'options</string>
     <string name="delete_recipe_title">Supprimer « %1$s » ?</string>
-    <string name="delete_recipe_body">La recette sera retirée de l\'historique et de toutes les listes où elle figure. Cette action est irréversible.</string>
+    <string name="delete_recipe_body">La recette sera retirée de vos recettes et de toutes les listes où elle figure. Cette action est irréversible.</string>
     <string name="label_prep">Préparation</string>
     <string name="label_cook">Cuisson</string>
     <string name="label_total">Total</string>
@@ -93,6 +93,13 @@
     <string name="recipes_title">Recettes</string>
     <string name="recipes_empty">Rien pour l\'instant. Les recettes que vous ouvrez sont conservées ici, et + en ajoute une à la main ou depuis un lien.</string>
     <string name="recipes_no_results">Aucune recette ne correspond à « %1$s ».</string>
+    <string name="recipes_filter_all">Toutes</string>
+    <string name="recipes_filter_in_list">Dans une liste</string>
+    <string name="recipes_filter_not_in_list">Dans aucune liste</string>
+    <string name="recipes_empty_in_list">Aucune recette n\'est encore dans une liste. Enregistrez-en une dans une liste avec son marque-page.</string>
+    <string name="recipes_empty_not_in_list">Toutes les recettes sont dans une liste.</string>
+    <!-- %1$d is the cap on recipes in no list (50). -->
+    <string name="recipes_cull_note">Les recettes sans liste sont conservées jusqu\'à %1$d. Au-delà, celles que vous avez ouvertes il y a le plus longtemps sont supprimées en premier. Enregistrez-en une dans une liste pour la garder.</string>
     <string name="label_search_recipes">Rechercher par titre ou ingrédient</string>
     <string name="cd_add_recipe">Ajouter une recette</string>
     <string name="action_type_recipe">Saisir une recette</string>
@@ -171,9 +178,9 @@
         <item quantity="other">%d recettes étaient déjà là.</item>
     </plurals>
     <plurals name="backup_skipped">
-        <item quantity="one">%1$d ancienne recette sans liste n\'a pas été ajoutée : l\'historique garde les %2$d plus récentes.</item>
-        <item quantity="many">%1$d d\'anciennes recettes sans liste n\'ont pas été ajoutées : l\'historique garde les %2$d plus récentes.</item>
-        <item quantity="other">%1$d anciennes recettes sans liste n\'ont pas été ajoutées : l\'historique garde les %2$d plus récentes.</item>
+        <item quantity="one">%1$d ancienne recette sans liste n\'a pas été ajoutée : les recettes sans liste sont conservées jusqu\'à %2$d.</item>
+        <item quantity="many">%1$d d\'anciennes recettes sans liste n\'ont pas été ajoutées : les recettes sans liste sont conservées jusqu\'à %2$d.</item>
+        <item quantity="other">%1$d anciennes recettes sans liste n\'ont pas été ajoutées : les recettes sans liste sont conservées jusqu\'à %2$d.</item>
     </plurals>
     <string name="backup_error_not_a_backup">Ce fichier n\'est pas une exportation Recipe Clipper.</string>
     <string name="backup_error_newer_version">Ce fichier a été créé avec une version plus récente de Recipe Clipper (format %1$d). Mettez à jour l\'appli pour l\'importer.</string>
@@ -208,7 +215,7 @@
     <string name="save_to_list_new_list_note">%1$s ira dans la nouvelle liste.</string>
     <string name="rename_list_title">Renommer la liste</string>
     <string name="delete_list_title">Supprimer « %1$s » ?</string>
-    <string name="delete_list_body">La liste sera supprimée. Ses recettes resteront dans votre historique.</string>
+    <string name="delete_list_body">La liste sera supprimée. Ses recettes restent dans Recettes.</string>
     <string name="action_delete_list">Supprimer la liste</string>
 
     <!-- Bottom tabs (#47) -->
@@ -365,7 +372,7 @@
     <string name="cd_clip_remove_line">Retirer la ligne %1$d</string>
     <string name="clip_save">Enregistrer la recette</string>
     <string name="update_from_source_clip_title">Remplacer votre découpe ?</string>
-    <string name="update_from_source_clip_body">La page est rechargée, et le nom, les ingrédients, les étapes et la photo que vous avez découpés sont remplacés par les données de recette du site. La recette reste dans vos listes et votre historique.</string>
+    <string name="update_from_source_clip_body">La page est rechargée, et le nom, les ingrédients, les étapes et la photo que vous avez découpés sont remplacés par les données de recette du site. La recette reste dans vos listes et dans Recettes.</string>
     <string name="clipped_by_you">Découpée par vous</string>
     <string name="clipped_by_you_on">Découpée par vous · %1$s</string>
     <string name="extracted_from_page">Tirée du texte de la page : vérifiez-la sur la source</string>
@@ -631,8 +638,8 @@
     <string name="cd_cooked_mark">Cuisinée, sans photo, %1$s</string>
     <string name="cd_delete_cooked_mark">Retirer de vos réalisations</string>
     <string name="cooked_mark_deleted">Retiré de vos réalisations</string>
-    <string name="delete_recipe_body_photo">La recette sera retirée de l\'historique et de toutes les listes où elle figure, avec votre photo. Cette action est irréversible.</string>
-    <string name="delete_recipe_body_photos">La recette sera retirée de l\'historique et de toutes les listes où elle figure, avec vos %1$d photos. Cette action est irréversible.</string>
+    <string name="delete_recipe_body_photo">La recette sera retirée de vos recettes et de toutes les listes où elle figure, avec votre photo. Cette action est irréversible.</string>
+    <string name="delete_recipe_body_photos">La recette sera retirée de vos recettes et de toutes les listes où elle figure, avec vos %1$d photos. Cette action est irréversible.</string>
     <!-- The automatic backup copy (#150). -->
     <string name="auto_backup_title">Copie de sauvegarde automatique</string>
     <string name="auto_backup_description">Garde une copie de tout, photos comprises, dans un dossier de votre choix, et la met à jour après chaque modification</string>

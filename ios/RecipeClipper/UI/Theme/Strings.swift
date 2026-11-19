@@ -322,6 +322,13 @@ enum Strings {
     static var recipesTitle: String { String(localized: "recipes_title") }
     static var recipesEmpty: String { String(localized: "recipes_empty") }
     static func recipesNoResults(_ query: String) -> String { String(localized: "recipes_no_results \(query)") }
+    // The filter under search (#345).
+    static var recipesFilterAll: String { String(localized: "recipes_filter_all") }
+    static var recipesFilterInList: String { String(localized: "recipes_filter_in_list") }
+    static var recipesFilterNotInList: String { String(localized: "recipes_filter_not_in_list") }
+    static var recipesEmptyInList: String { String(localized: "recipes_empty_in_list") }
+    static var recipesEmptyNotInList: String { String(localized: "recipes_empty_not_in_list") }
+    static func recipesCullNote(_ keep: Int) -> String { String(localized: "recipes_cull_note \(keep)") }
     static var searchRecipes: String { String(localized: "label_search_recipes") }
     static var addRecipe: String { String(localized: "cd_add_recipe") }
     static var typeRecipe: String { String(localized: "action_type_recipe") }

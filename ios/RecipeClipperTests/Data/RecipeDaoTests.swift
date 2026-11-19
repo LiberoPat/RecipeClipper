@@ -657,6 +657,71 @@ final class RecipeDaoTests: XCTestCase {
         XCTAssertEqual(underscore, [], "_ is literal too")
     }
 
+    // MARK: - The Recipes filter (#345)
+
+    func testTheFilterSplitsRecipesByListMembership() async throws {
+        let inList = try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 300))
+        let inTwo = try await db.upsert(dataRecipeRecord("https://a.com/2", viewedAt: 200))
+        let none = try await db.upsert(dataRecipeRecord("https://a.com/3", viewedAt: 100))
+        try await db.putInList(inList, 1)
+        try await db.putInList(inTwo, 1)
+        try await db.putInList(inTwo, 2)
+
+        let any = try await db.history("", listed: RecipeDao.listedAny).map(\.id)
+        let yes = try await db.history("", listed: RecipeDao.listedYes).map(\.id)
+        let no = try await db.history("", listed: RecipeDao.listedNo).map(\.id)
+        let plain = try await db.history("").map(\.id)
+        XCTAssertEqual(any, [inList, inTwo, none])
+        XCTAssertEqual(yes, [inList, inTwo])
+        XCTAssertEqual(no, [none])
+        XCTAssertEqual(plain, [inList, inTwo, none], "the one-argument form is every recipe")
+    }
+
+    func testTheSearchStillAppliesInsideTheFilter() async throws {
+        let listedAdobo = try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 300, title: "Chicken Adobo"))
+        let looseAdobo = try await db.upsert(dataRecipeRecord("https://a.com/2", viewedAt: 200, title: "Pork Adobo"))
+        let looseStew = try await db.upsert(dataRecipeRecord("https://a.com/3", viewedAt: 100, title: "Beef Stew"))
+        try await db.putInList(listedAdobo, 1)
+
+        let yesAdobo = try await db.history("adobo", listed: RecipeDao.listedYes).map(\.id)
+        let noAdobo = try await db.history("adobo", listed: RecipeDao.listedNo).map(\.id)
+        let noStew = try await db.history("stew", listed: RecipeDao.listedNo).map(\.id)
+        let yesStew = try await db.history("stew", listed: RecipeDao.listedYes).map(\.id)
+        XCTAssertEqual(yesAdobo, [listedAdobo])
+        XCTAssertEqual(noAdobo, [looseAdobo])
+        XCTAssertEqual(noStew, [looseStew])
+        XCTAssertEqual(yesStew, [])
+    }
+
+    func testTheFilterFollowsAListChangeAtOnce() async throws {
+        let id = try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 100))
+        let before = try await db.history("", listed: RecipeDao.listedNo).map(\.id)
+        XCTAssertEqual(before, [id])
+
+        try await db.putInList(id, 1)
+
+        let no = try await db.history("", listed: RecipeDao.listedNo).map(\.id)
+        let yes = try await db.history("", listed: RecipeDao.listedYes).map(\.id)
+        XCTAssertEqual(no, [])
+        XCTAssertEqual(yes, [id])
+    }
+
+    func testTheCountsAreEveryRecipeAndThoseInAList() async throws {
+        let empty = try await db.libraryCounts()
+        XCTAssertEqual(empty, RecipeCounts(all: 0, inList: 0))
+
+        let a = try await db.upsert(dataRecipeRecord("https://a.com/1", viewedAt: 300))
+        let b = try await db.upsert(dataRecipeRecord("https://a.com/2", viewedAt: 200))
+        try await db.upsert(dataRecipeRecord("https://a.com/3", viewedAt: 100))
+        try await db.putInList(a, 1)
+        try await db.putInList(a, 2)
+        try await db.putInList(b, 1)
+
+        let counts = try await db.libraryCounts()
+        XCTAssertEqual(counts, RecipeCounts(all: 3, inList: 2), "a recipe in two lists counts once")
+        XCTAssertEqual(counts.notInList, 1)
+    }
+
     // MARK: - Delete and restore
 
     func testDeletingARecipeByIdRemovesTheRow() async throws {

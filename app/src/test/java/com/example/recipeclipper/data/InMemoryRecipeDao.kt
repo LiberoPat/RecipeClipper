@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.local.dao.CookStateRow
+import com.example.recipeclipper.data.local.dao.LibraryCountsRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
@@ -65,7 +66,8 @@ internal class InMemoryRecipeDao : RecipeDao() {
     override suspend fun crossRefsFor(recipeId: Long) = emptyList<RecipeListCrossRef>()
     override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) {}
     override fun observeHistory(): Flow<List<RecipeSummaryRow>> = emptyFlow()
-    override fun observeHistory(query: String): Flow<List<RecipeSummaryRow>> = emptyFlow()
+    override fun observeHistory(query: String, listed: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
+    override fun observeLibraryCounts(): Flow<LibraryCountsRow> = emptyFlow()
     override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override suspend fun cullHistory(keep: Int, today: Long) {}
     override suspend fun oldestCullable(today: Long): Long? = rows.values

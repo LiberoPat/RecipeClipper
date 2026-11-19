@@ -310,4 +310,122 @@ final class RecipesViewModelTests: XCTestCase {
         XCTAssertEqual(Strings.deletedMessage(["Soup"]), "Deleted \"Soup\"")
         XCTAssertEqual(Strings.deletedMessage(["A", "B"]), "2 recipes deleted")
     }
+
+    // MARK: - The filter (#345)
+
+    private func saved(_ id: Int64) -> RecipeSummary {
+        RecipeSummary(id: id, title: "Recipe \(id)", imageUrl: nil, totalTime: nil, lastViewedAt: id, isSaved: true)
+    }
+
+    func testTheFilterOpensOnAllWithTheLibrarysCounts() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send([saved(1), testSummary(2), testSummary(3)])
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.filter, .all)
+        XCTAssertEqual(vm.uiState.counts, RecipeCounts(all: 3, inList: 1))
+        XCTAssertEqual(vm.uiState.counts?.notInList, 2)
+        XCTAssertEqual(vm.uiState.recipes?.map(\.id), [1, 2, 3])
+        XCTAssertTrue(vm.uiState.showsFilter)
+    }
+
+    func testAFilterGoesToTheRepositoryAtOnceWithTheQuery() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send([saved(1), testSummary(2), testSummary(3)])
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
+        await settleMain()
+
+        vm.onFilterChange(.notInAList)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.filter, .notInAList)
+        XCTAssertEqual(vm.uiState.recipes?.map(\.id), [2, 3])
+
+        vm.onFilterChange(.inAList)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.recipes?.map(\.id), [1])
+
+        // Search applies inside the filter: the query and the filter are asked together.
+        vm.onQueryChange("soup")
+        await settleMain()
+        XCTAssertEqual(repository.historyQueries.last, "soup")
+        XCTAssertEqual(repository.historyFilters.last, .inAList)
+        XCTAssertEqual(vm.uiState.filter, .inAList)
+    }
+
+    func testAFilterNeedsNoDebounce() async {
+        let repository = FakeRecipeRepository()
+        let clock = TestClock()
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: clock.sleep)
+        await clock.advance(by: 250)
+
+        vm.onFilterChange(.inAList)
+        await settleMain()
+        XCTAssertEqual(repository.historyFilters.last, .inAList, "no 250 ms wait for a tap")
+    }
+
+    func testTheCountsIgnoreTheFilterAndThePillsStayWhenAFilterMatchesNothing() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send([testSummary(1), testSummary(2)])
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
+        await settleMain()
+        vm.onFilterChange(.inAList)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.recipes, [])
+        XCTAssertEqual(vm.uiState.counts, RecipeCounts(all: 2, inList: 0))
+        XCTAssertTrue(vm.uiState.showsFilter)
+    }
+
+    func testAnEmptyLibraryHasNoFilterToShow() async {
+        let vm = RecipesViewModel(repository: FakeRecipeRepository(), preferences: FakeAppPreferences(), sleep: immediateSleep)
+        await settleMain()
+
+        XCTAssertFalse(vm.uiState.showsFilter)
+    }
+
+    func testTheCleanUpNoteIsOnlyUnderNotInAListWithTheCapWhileThatCleanUpApplies() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send([saved(1), testSummary(2)])
+        let flags = FeatureFlags(store: MemoryFeatureFlagStore([:]), isDebug: false)
+        let store = FakeEntitlements()
+        let policy = LibraryPolicy(flags: flags, entitlements: store)
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep, library: policy)
+        await settleMain()
+        XCTAssertFalse(vm.showsCullNote, "All")
+
+        vm.onFilterChange(.inAList)
+        await settleMain()
+        XCTAssertFalse(vm.showsCullNote)
+
+        vm.onFilterChange(.notInAList)
+        await settleMain()
+        XCTAssertTrue(vm.showsCullNote)
+        XCTAssertEqual(vm.cullKeep, 50)
+
+        // The free tier and an unlocked library have their own rules: no note.
+        let freeFlags = FeatureFlags(store: MemoryFeatureFlagStore(["freeTier": true]), isDebug: false)
+        let free = RecipesViewModel(
+            repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep,
+            library: LibraryPolicy(flags: freeFlags, entitlements: FakeEntitlements())
+        )
+        free.onFilterChange(.notInAList)
+        await settleMain()
+        XCTAssertNil(free.cullKeep)
+        XCTAssertFalse(free.showsCullNote)
+    }
+
+    func testNoNoteOverAnEmptyNotInAList() async {
+        let repository = FakeRecipeRepository()
+        repository.history.send([saved(1)])
+        let flags = FeatureFlags(store: MemoryFeatureFlagStore([:]), isDebug: false)
+        let policy = LibraryPolicy(flags: flags, entitlements: FakeEntitlements())
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep, library: policy)
+        vm.onFilterChange(.notInAList)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.recipes, [])
+        XCTAssertFalse(vm.showsCullNote)
+    }
 }
+

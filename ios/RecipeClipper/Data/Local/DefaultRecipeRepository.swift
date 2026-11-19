@@ -503,7 +503,20 @@ final class DefaultRecipeRepository: RecipeRepository {
     }
 
     func observeHistory(query: String) -> AnyPublisher<[RecipeSummary], Never> {
-        db.observe { conn in try RecipeDao(db: conn).history(query: query).map { $0.toDomain() } }
+        observeHistory(query: query, filter: .all)
+    }
+
+    func observeHistory(query: String, filter: RecipeFilter) -> AnyPublisher<[RecipeSummary], Never> {
+        let listed = switch filter {
+        case .all: RecipeDao.listedAny
+        case .inAList: RecipeDao.listedYes
+        case .notInAList: RecipeDao.listedNo
+        }
+        return db.observe { conn in try RecipeDao(db: conn).history(query: query, listed: listed).map { $0.toDomain() } }
+    }
+
+    func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never> {
+        db.observe { conn in try RecipeDao(db: conn).libraryCounts() }
     }
 
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never> {
