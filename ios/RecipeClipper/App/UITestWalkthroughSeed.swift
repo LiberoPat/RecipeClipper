@@ -144,6 +144,21 @@ enum UITestWalkthroughSeed {
         }
     }
 
+    /// `count` typed-in recipes after the twenty (#345): with them the library holds the free tier's
+    /// fifty, so a new recipe meets the "library full" prompt and a shared one the "Not saved" bar.
+    static func seedTyped(_ conn: SQLiteConnection, now: Int64, count: Int) throws {
+        let minute: Int64 = 60_000
+        let dao = RecipeDao(db: conn)
+        for i in 0..<count {
+            _ = try dao.insert(RecipeRecord(
+                sourceUrl: "manual:walkthrough-\(i)", title: "Typed recipe \(i + 1)", imageUrl: nil,
+                ingredients: ["1 cup flour"], instructions: ["Mix.", "Bake."], prepTime: nil, cookTime: nil,
+                totalTime: nil, servings: "4", sourceType: SourceType.blog.rawValue,
+                lastViewedAt: now - Int64(recipes.count + i + 1) * minute, contentOrigin: "MANUAL"
+            ))
+        }
+    }
+
     /// The `walkthroughPantry` scenario's kitchen, for the Done shopping, Pantry Send list and
     /// use-up clips (#146, #149, #147); Android's `WalkthroughSeed.pantry`. Each item is a name,
     /// a quantity as typed, and whether it is in stock.

@@ -1359,7 +1359,9 @@ The owner's decision: import **merges, never replaces**, and deletes nothing.
   never replaces or deletes: recipes by cleaned `sourceUrl`, Favorites by
   `isFavorites`, other lists by uid then trimmed case-insensitive name;
   unlisted recipes only fill free history slots (free tier: places under 20,
-  counting every recipe; unlocked: all come in); pantry items by uid then name
+  counting every recipe; with `oneCookbook` on, #345: every recipe counts and none is exempt, only the
+  places under 50 are filled, listed ones first, then the most recently viewed, and a skipped
+  recipe's lists, plan entries and photos stay out with it; unlocked: all come in); pantry items by uid then name
   and language (what's here stands); grocery items by uid; meal types by
   `builtInKey`, else uid, else user-type name; planned meals by uid, a recipe's
   only if its recipe is here after the import; menus by uid, whole, their meals
@@ -2882,7 +2884,8 @@ bends the settled link field: an always-visible field became a tile that opens i
   enabled only for what `UrlInput` reads as a link (since #286, Home's tile opens it too), then the
   usual import route. No clipboard is read unasked: Android shows a toast and
   iOS a permission prompt on every read.
-- **A typed-in recipe is never culled,** like a listed one, and doesn't count
+- **(Since #345 step 2, with `oneCookbook` on, nothing is culled at all: see "One cookbook" below.
+  What follows is the clean-up as it stands with the flag off.)** **A typed-in recipe is never culled,** like a listed one, and doesn't count
   toward the 50: a parsed recipe that falls out of history can come back by
   sharing its link again, a typed one can't. The rule is the column
   (`contentOrigin = 'MANUAL'` in the cull's SQL), not the `manual:` link; an
@@ -2937,7 +2940,8 @@ bends the settled link field: an always-visible field became a tile that opens i
   screen opens on All, unlike the sort. A tap answers at once (no debounce); the pills hide
   while the library is empty and stay when a filter matches nothing, which has its own empty
   line ("Every recipe is in a list.", "No recipes are in a list yet…").
-- **The clean-up line:** one muted panel with an info glyph, only under Not in a list, only
+- **The clean-up line (only with `oneCookbook` off; with it on nothing is cleared, so the line is
+  not true and does not show):** one muted panel with an info glyph, only under Not in a list, only
   with a row under it, and only with the free tier off (`LibraryLimit.History(50)`): "Recipes in
   no list are kept up to 50. Past that, the ones you opened longest ago go first. Save one to a
   list to keep it." The free tier's count line and an unlocked library need no such line. The
@@ -2947,7 +2951,9 @@ bends the settled link field: an always-visible field became a tile that opens i
 ## The free tier and the unlock (#107)
 
 Owner's decision (2026-09-25, rules approved as proposed): the free app keeps
-20 recipes; a one-time purchase unlocks unlimited ones. Behind the `freeTier`
+20 recipes; a one-time purchase unlocks unlimited ones. **Changed by #345 step 2 (2026-11-18,
+`oneCookbook` on): the limit is 50 and at the limit a new recipe is shown, not saved; nothing is ever
+swapped out. What follows is the swap at 20, which applies with `oneCookbook` off.** Behind the `freeTier`
 flag, off in debug and release until the store products exist; with it off
 the app is exactly as before (the history cap of 50 unprotected recipes).
 
@@ -3020,6 +3026,66 @@ the app is exactly as before (the history cap of 50 unprotected recipes).
   cached, then lost), and the purchase sheet is tried by hand in the simulator. Play's own
   test tracks and license testers are the next step once the Play Console
   product exists.
+
+## One cookbook (#345)
+
+The owner's pick (2026-11-18) from the library designs (private artifact, source
+`~/Downloads/RecipeClipper-designs/library-history/`): **V1 "Say what it is"** (step 1, #346), then
+**V4 "One cookbook"** (step 2). Recipes and "history" were one list under two names, and Home's Recently
+viewed repeated its top. Every recipe manager checked (Paprika, Recipe Keeper, Crouton, Samsung Food,
+NYT Recipe Box, Mela) keeps one library that never deletes on its own, makes "recent" a sort or a
+shelf, and, when it has a free limit, blocks the next save at the limit instead of deleting an old
+recipe (Paprika 50, Recipe Keeper 20, Crouton 5). Paprika's "Uncategorized" is the model for the
+automatic "Not in a list" view.
+
+Everything below is behind the **`oneCookbook` flag** (on by default in debug and release); turning it
+off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, V1's filter pills.
+
+- **Nothing is removed automatically.** With the free tier off, or unlocked, `LibraryLimit.of` answers
+  `Unlimited`: no `cullHistory`, no one-for-one swap. "History is automatic… capped at 50" became
+  "every recipe stays until the cook deletes it". The protections (listed, planned, in a menu, typed in,
+  with photos) no longer decide anything with the flag on; the NULL-safe cull SQL stays for the flag-off
+  path (and `ShareFileRepositoryTest`'s cap test).
+- **The free tier is 50, and a 51st is shown, not saved.** `LibraryLimit.Capped(50)` (Android
+  `Capped`, iOS `.capped(max:)`): `RecipeDao.upsert` returns `NOT_KEPT` for a new recipe when
+  `count() >= max`, with no removal; the existing "Not saved" path then applies unchanged (the quiet bar
+  with Unlock on the recipe screen, the "Your library is full" dialog over the editor or the clip, the
+  share extension's card). Re-sharing or refreshing a recipe already here is allowed (it is already
+  counted), as are "Update from source" and editing; deleting one of the 50 frees a place, which is
+  intended (a cap on what you keep, as Paprika's). The tour's sample still counts toward nothing. The
+  strings (`recipe_not_kept`, `library_full_body`, `unlimited_body`, `backup_skipped_free`) say "the free
+  app keeps %d recipes" and no longer "all in lists, plans or typed in"; the number follows the flag
+  (`LibraryLimit.freeRecipes(oneCookbook)`; iOS reads the mirrored limit, so the share card agrees).
+- **One limit, every way in.** All paths reach `upsert` with `library.limit`: a shared link, a Reddit
+  post, a page passed through Cloudflare's check (`importPage`), a clip (`saveClip`), and typed, scanned
+  (#226), photo-read (#198) and shared-text (#306) recipes, which all save through `addManual`. Imports
+  take a second route, `BackupMerger` (`capsEveryRecipe`): a backup or a sent file stops at the limit,
+  counting every recipe here, listed ones first, then the most recently viewed, with the existing
+  "wasn't added: the free app keeps %d recipes" summary; a skipped recipe takes its list memberships,
+  plan entries, menu meals and photos with it. The iOS share extension saves in its own process, so it
+  reads the limit the app mirrors into the App Group suite (`library_limit`: now also `capped`) and
+  applies the same `upsert`. Tests for each path: Android `OneCookbookLimitTest`,
+  `OneCookbookDaoTest`, `OneCookbookImportTest`; iOS `OneCookbookTests`.
+  Known edge: Undo after a swipe delete restores the recipe whatever the count (it is the cook's own
+  recipe coming back), so delete, add one, then Undo within the snackbar's seconds can leave 51.
+- **Recipes is a cookbook.** Under search, a **strip of automatic views** followed by the lists, in
+  place of V1's pills: Not in a list (the `isSaved` `EXISTS`, as the bookmark), Cooked (any
+  `cooked_photos` row, so "Mark as cooked" counts, #173), Typed by you (`contentOrigin = 'MANUAL'`,
+  never the tour's sample, so scanned and shared-text recipes count too). Each is a card with its
+  count; a view opens as **its own screen** (route `recipes/view/{view}`, Back to Recipes; iOS
+  `Route.recipesView`) which is the Recipes screen over the same ViewModel with its filter fixed: title,
+  a one-line note, search, sort, swipe to delete with the usual undo, no strip, no + menu. A list card
+  opens the list. Counts come from the one `observeRecipeCounts` query (no migration). Views are
+  questions about what is stored, never a filing step: "Lists are deliberate", "Only Favorites is
+  permanent", "No Saved section" and "Search is on Recipes only" are untouched, and Home keeps its
+  Recipes and Lists rows.
+- **Recently viewed** is a sort (still the default) and Home's shelf, which gains **See all**: it sets
+  the remembered sort to Recently viewed and opens Recipes.
+- **A recipe in no list has an outlined bookmark** on its row (not in a view's header), opening the
+  existing save-to-list sheet (checkboxes that write at once, "+ New list" inline); the recipe then
+  leaves Not in a list by itself.
+- Unchanged and still true: the migration count (none: counts, views and the cap are queries), the
+  `freeTier` flag's default (off until the store products exist), the unlock's seams and cached state.
 
 ## A recipe picked from the page's text (#103)
 

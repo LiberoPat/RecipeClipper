@@ -143,13 +143,20 @@ final class FakeRecipeRepository: RecipeRepository {
             case .all: rows
             case .inAList: rows.filter(\.isSaved)
             case .notInAList: rows.filter { !$0.isSaved }
+            case .cooked: rows.filter { $0.lastCookedDay != nil }
+            case .typed: rows.filter(\.isTyped)
             }
         }.eraseToAnyPublisher()
     }
 
     /// Counted from what `history` holds (#345).
     func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never> {
-        history.map { RecipeCounts(all: $0.count, inList: $0.filter(\.isSaved).count) }.eraseToAnyPublisher()
+        history.map {
+            RecipeCounts(
+                all: $0.count, inList: $0.filter(\.isSaved).count,
+                cooked: $0.filter { $0.lastCookedDay != nil }.count, typed: $0.filter(\.isTyped).count
+            )
+        }.eraseToAnyPublisher()
     }
 
     /// Honours `limit`, like the SQL LIMIT it stands in for, so a test can't "prove" a cap

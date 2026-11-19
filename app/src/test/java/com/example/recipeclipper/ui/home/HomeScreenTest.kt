@@ -7,6 +7,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
@@ -69,11 +71,13 @@ class HomeScreenTest {
         var url: String? = null
     }
 
-    private fun show(): Taps {
+    private val preferences = com.example.recipeclipper.fake.FakeAppPreferences()
+
+    private fun show(oneCookbook: Boolean = false): Taps {
         val taps = Taps()
         // Built outside setContent: a ViewModel constructed inside a composable would be
         // rebuilt on every recomposition. A fixed clock, so a timer's time left is known.
-        val viewModel = HomeViewModel(repository, lists = lists, clock = Clock { NOW })
+        val viewModel = HomeViewModel(repository, lists = lists, clock = Clock { NOW }, preferences = preferences)
         compose.setContent {
             HomeScreen(
                 onOpenUrl = { taps.url = it },
@@ -83,10 +87,33 @@ class HomeScreenTest {
                 onOpenSettings = { taps.settings++ },
                 onNewRecipe = { taps.newRecipe++ },
                 onResumeCooking = { taps.resumed = it },
-                viewModel = viewModel
+                viewModel = viewModel,
+                oneCookbook = oneCookbook
             )
         }
         return taps
+    }
+
+    /** One cookbook (#345): Recently viewed has "See all", which opens Recipes in that order. */
+    @Test
+    fun seeAllOpensRecipesRecentlyViewed() {
+        repository.recent.value = listOf(summary(1, "Newest"), summary(2, "Older"))
+        preferences.recipeSort = com.example.recipeclipper.data.model.RecipeSort.NAME
+        val taps = show(oneCookbook = true)
+
+        compose.onNodeWithTag("home.seeAll").performClick()
+
+        assertEquals(1, taps.recipes)
+        assertEquals(com.example.recipeclipper.data.model.RecipeSort.RECENTLY_VIEWED, preferences.recipeSort)
+    }
+
+    @Test
+    fun withTheFlagOffThereIsNoSeeAll() {
+        repository.recent.value = listOf(summary(1, "Newest"), summary(2, "Older"))
+        show(oneCookbook = false)
+
+        compose.onNodeWithText("Recently viewed").assertIsDisplayed()
+        compose.onAllNodesWithTag("home.seeAll").assertCountEquals(0)
     }
 
     @Test

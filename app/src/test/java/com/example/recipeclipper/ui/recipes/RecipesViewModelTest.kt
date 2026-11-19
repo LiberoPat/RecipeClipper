@@ -502,4 +502,74 @@ class RecipesViewModelTest {
         assertEquals(listOf(1L), seen.last())
         assertTrue(seen.drop(seen.indexOfFirst { it != null }).none { it == null })
     }
+
+    // --- One cookbook (#345, V4) ---
+
+    @Test fun `with the cap the free tier counts against 50 and an unlocked library counts nothing`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { count.value = 12 }
+            val library = FakeLibraryPolicy(LibraryLimit.Capped(50))
+            val vm = RecipesViewModel(repository, FakeAppPreferences(), library)
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+            assertEquals(LibraryCount(12, 50), vm.uiState.value.count)
+            assertNull("nothing is cleared on its own", vm.uiState.value.cullKeep)
+
+            library.limit = LibraryLimit.Unlimited
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.count)
+            assertNull(vm.uiState.value.cullKeep)
+        }
+
+    @Test fun `opened on a view, the screen asks for that view and says so`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply {
+            history.value = listOf(summary(1), summary(2).copy(lastCookedDay = 20_000))
+        }
+        val vm = RecipesViewModel(
+            repository, FakeAppPreferences(),
+            savedStateHandle = androidx.lifecycle.SavedStateHandle(mapOf(RecipesViewModel.VIEW_ARG to "COOKED"))
+        )
+        collectEagerly(vm.uiState)
+        advanceUntilIdle()
+
+        assertEquals(RecipeFilter.COOKED, vm.uiState.value.view)
+        assertEquals(RecipeFilter.COOKED, repository.historyFilters.last())
+        assertEquals(listOf(2L), vm.uiState.value.recipes!!.map { it.id })
+        assertFalse("a view has no strip of its own", vm.uiState.value.showsViewsStrip)
+    }
+
+    @Test fun `an unknown or missing view is the whole cookbook`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = RecipesViewModel(
+            FakeRecipeRepository(), FakeAppPreferences(),
+            savedStateHandle = androidx.lifecycle.SavedStateHandle(mapOf(RecipesViewModel.VIEW_ARG to "SOMETHING"))
+        )
+        collectEagerly(vm.uiState)
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.view)
+        assertEquals(RecipeFilter.ALL, vm.uiState.value.filter)
+    }
+
+    @Test fun `the strip's counts and lists come from what is stored`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply {
+            history.value = listOf(
+                saved(1), summary(2).copy(lastCookedDay = 1), summary(3).copy(sourceUrl = "manual:x"),
+                summary(4).copy(sourceUrl = "manual:sample")
+            )
+        }
+        val lists = com.example.recipeclipper.fake.FakeListRepository().apply {
+            this.lists.value = listOf(
+                com.example.recipeclipper.data.model.RecipeList(1, "Favorites", true, true, 0)
+            )
+        }
+        val vm = RecipesViewModel(repository, FakeAppPreferences(), lists = lists)
+        collectEagerly(vm.uiState)
+        advanceUntilIdle()
+
+        val counts = vm.uiState.value.counts!!
+        assertEquals(3, counts.notInList)
+        assertEquals(1, counts.cooked)
+        assertEquals("never the tour's sample", 1, counts.typed)
+        assertEquals(listOf("Favorites"), vm.uiState.value.lists.map { it.name })
+        assertTrue(vm.uiState.value.showsViewsStrip)
+    }
 }

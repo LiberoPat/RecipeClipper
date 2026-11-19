@@ -30,8 +30,8 @@ data class RecipeSummaryRow(
     val sourceUrl: String = ""
 )
 
-/** [RecipeDao.observeLibraryCounts]: every recipe, and those in at least one list (#345). */
-data class LibraryCountsRow(val total: Int, val inList: Int)
+/** [RecipeDao.observeLibraryCounts]: every recipe, those in at least one list, cooked and typed in (#345). */
+data class LibraryCountsRow(val total: Int, val inList: Int, val cooked: Int = 0, val typed: Int = 0)
 
 /** A recipe's saved cook progress, with what a timer alert needs to name it. */
 data class CookStateRow(
@@ -187,6 +187,10 @@ abstract class RecipeDao {
     /** Every recipe matching [query] (see the two-argument form), in a list or not. */
     fun observeHistory(query: String): Flow<List<RecipeSummaryRow>> = observeHistory(query, LISTED_ANY)
 
+    /** [observeHistory] with only the list filter (V1's pills). */
+    fun observeHistory(query: String, listed: Int): Flow<List<RecipeSummaryRow>> =
+        observeHistory(query, listed, cooked = 0, typed = 0)
+
     /**
      * Same as [observeHistory], filtered to titles or ingredients containing [query]
      * (case-insensitive). An empty [query] returns everything, in one code path rather than
@@ -198,7 +202,10 @@ abstract class RecipeDao {
      *
      * [listed] is the Recipes screen's filter (#345): [LISTED_ANY], [LISTED_YES] (in at least one
      * list) or [LISTED_NO]. It is the same `EXISTS` as the `isSaved` column, so a row's bookmark
-     * and the filter can't disagree; the search still applies inside it.
+     * and the filter can't disagree; the search still applies inside it. [cooked] = 1 keeps the
+     * recipes with a cooking marked (the user's own photos, or "Mark as cooked", #116, #173);
+     * [typed] = 1 those typed, scanned or read in by hand (`contentOrigin` MANUAL, not the tour's
+     * sample), V4's views.
      */
     @Query(
         """
@@ -213,16 +220,22 @@ abstract class RecipeDao {
            OR instr(lower(ingredients), lower(:query)) > 0)
           AND (:listed = -1
            OR EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) = :listed)
+          AND (:cooked = 0
+           OR EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id))
+          AND (:typed = 0
+           OR (contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'))
         ORDER BY lastViewedAt DESC, id DESC
         """
     )
-    abstract fun observeHistory(query: String, listed: Int): Flow<List<RecipeSummaryRow>>
+    abstract fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int): Flow<List<RecipeSummaryRow>>
 
-    /** How many recipes there are and how many are in a list, for the filter's counts (#345). */
+    /** How many recipes there are, in a list, cooked and typed in, for the filter's and the strip's counts (#345). */
     @Query(
         """
         SELECT COUNT(*) AS total,
-               COALESCE(SUM(EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)), 0) AS inList
+               COALESCE(SUM(EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)), 0) AS inList,
+               COALESCE(SUM(EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id)), 0) AS cooked,
+               COALESCE(SUM(contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'), 0) AS typed
         FROM recipes
         """
     )
@@ -308,7 +321,9 @@ abstract class RecipeDao {
      * (see [LibraryLimit]): a [LibraryLimit.History] cap is culled after the save; a
      * [LibraryLimit.Free] one only when a new recipe is added to a library already at or over
      * it, by removing the oldest unprotected recipe first, one for one. If there is none, nothing
-     * is written and [NOT_KEPT] is returned. Updating a recipe already here never removes one.
+     * is written and [NOT_KEPT] is returned. A [LibraryLimit.Capped] one (#345) never removes
+     * anything: a new recipe at the limit is [NOT_KEPT]. Updating a recipe already here never
+     * removes one, and is allowed at the limit (it is already counted).
      *
      * A row that is the user's version (#29: edited, clipped or typed in, `contentOrigin` neither
      * PARSED nor EXTRACTED) keeps its content: the re-share only counts as a view. [replaceUsersVersion] is
@@ -323,6 +338,8 @@ abstract class RecipeDao {
     ): Long {
         val existing = findByUrl(fresh.sourceUrl)
         val id = if (existing == null) {
+            // One cookbook (#345): at the limit a new recipe is shown, not kept; nothing is removed.
+            if (limit is LibraryLimit.Capped && count() >= limit.max) return NOT_KEPT
             if (limit is LibraryLimit.Free && count() >= limit.max) {
                 delete(oldestCullable(today) ?: return NOT_KEPT)
             }

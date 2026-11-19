@@ -146,10 +146,13 @@ struct BackupDao {
         let historyLimit: Int = switch limit {
         case .history(let keep): keep
         case .free(let max): max
+        case .capped(let max): max
         case .unlimited: Int.max
         }
         var countsEveryRecipe = false
         if case .free = limit { countsEveryRecipe = true }
+        var capsEveryRecipe = false
+        if case .capped = limit { capsEveryRecipe = true }
         let plan = BackupMerger.plan(
             backup,
             existingRecipes: try existingRecipes(),
@@ -166,6 +169,7 @@ struct BackupDao {
             existingMenuUids: try existingMenuUids(),
             existingMenuEntryUids: try existingMenuEntryUids(),
             countsEveryRecipe: countsEveryRecipe,
+            capsEveryRecipe: capsEveryRecipe,
             existingCookedPhotoUids: Set(try db.query("SELECT uid FROM cooked_photos") { $0.string(0) }),
             availablePhotoFiles: Set(storedPhotos.keys)
         )
@@ -309,7 +313,10 @@ extension BackupDao {
     /// The free tier (#107) keeps the import's rule: only free places under its limit. Run
     /// inside `AppDatabase.write`, so it is one transaction.
     func importShare(_ share: Backup, limit: LibraryLimit, now: Int64, newUid: () -> String) throws -> ImportSummary {
-        let mergeLimit: LibraryLimit = if case .free = limit { limit } else { .unlimited }
+        let mergeLimit: LibraryLimit = switch limit {
+        case .free, .capped: limit
+        default: .unlimited
+        }
         let summary = try importBackup(share, limit: mergeLimit, today: nil, now: now, newUid: newUid)
         for recipe in share.recipes {
             try db.run("UPDATE recipes SET lastViewedAt = ? WHERE sourceUrl = ?", now, UrlCleaner.clean(recipe.sourceUrl))

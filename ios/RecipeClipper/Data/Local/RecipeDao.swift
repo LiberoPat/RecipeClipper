@@ -184,7 +184,12 @@ struct RecipeDao {
     /// `listed` is the Recipes screen's filter (#345): `listedAny`, `listedYes` (in at least one
     /// list) or `listedNo`. It is the same `EXISTS` as the `isSaved` column, so a row's bookmark
     /// and the filter can't disagree; the search still applies inside it.
-    func history(query: String, listed: Int = RecipeDao.listedAny) throws -> [RecipeSummaryRecord] {
+    /// `cooked` = 1 keeps the recipes with a cooking marked (the user's own photos, or "Mark as
+    /// cooked", #116, #173); `typed` = 1 those typed, scanned or read in by hand (`contentOrigin`
+    /// MANUAL, not the tour's sample): V4's views.
+    func history(
+        query: String, listed: Int = RecipeDao.listedAny, cooked: Int = 0, typed: Int = 0
+    ) throws -> [RecipeSummaryRecord] {
         try db.query(
             """
             SELECT \(Self.summaryColumns)
@@ -194,9 +199,13 @@ struct RecipeDao {
                OR instr(lower(ingredients), lower(?1)) > 0)
               AND (?2 = -1
                OR EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) = ?2)
+              AND (?3 = 0
+               OR EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id))
+              AND (?4 = 0
+               OR (contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'))
             ORDER BY lastViewedAt DESC, id DESC
             """,
-            query, listed, map: RecipeSummaryRecord.init(row:)
+            query, listed, cooked, typed, map: RecipeSummaryRecord.init(row:)
         )
     }
 
@@ -205,15 +214,18 @@ struct RecipeDao {
     static let listedYes = 1
     static let listedNo = 0
 
-    /// How many recipes there are and how many are in a list, for the filter's counts (#345).
+    /// How many recipes there are, in a list, cooked and typed in, for the filter's and the strip's counts (#345).
     func libraryCounts() throws -> RecipeCounts {
         try db.queryOne(
             """
             SELECT COUNT(*),
-                   COALESCE(SUM(EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)), 0)
+                   COALESCE(SUM(EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)), 0),
+                   COALESCE(SUM(EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id)), 0),
+                   COALESCE(SUM(contentOrigin = 'MANUAL' AND sourceUrl != 'manual:sample'), 0)
             FROM recipes
             """
-        ) { RecipeCounts(all: $0.int(0), inList: $0.int(1)) } ?? RecipeCounts(all: 0, inList: 0)
+        ) { RecipeCounts(all: $0.int(0), inList: $0.int(1), cooked: $0.int(2), typed: $0.int(3)) }
+            ?? RecipeCounts(all: 0, inList: 0)
     }
 
     func recent(limit: Int) throws -> [RecipeSummaryRecord] {
@@ -296,8 +308,9 @@ struct RecipeDao {
     /// applied in the same transaction (see `LibraryLimit`): a `.history` cap is culled after the
     /// save; a `.free` one only when a new recipe joins a library already at or over it, by
     /// removing the oldest unprotected recipe first, one for one. If there is none, nothing is
-    /// written and `notKept` is returned. Updating a recipe already here never removes one.
-    /// Call inside a write.
+    /// written and `notKept` is returned. A `.capped` one (#345) never removes anything: a new
+    /// recipe at the limit is `notKept`. Updating a recipe already here never removes one, and is
+    /// allowed at the limit (it is already counted). Call inside a write.
     ///
     /// A row that is the user's version (#29: `contentOrigin` neither PARSED nor EXTRACTED) keeps its content:
     /// the re-share only counts as a view. `replaceUsersVersion` is "Update from source", which
@@ -315,6 +328,8 @@ struct RecipeDao {
             }
             id = existing.id
         } else {
+            // One cookbook (#345): at the limit a new recipe is shown, not kept; nothing is removed.
+            if case .capped(let max) = limit, try count() >= max { return Self.notKept }
             if case .free(let max) = limit, try count() >= max {
                 guard let oldest = try oldestCullable(today: today) else { return Self.notKept }
                 try delete(oldest)

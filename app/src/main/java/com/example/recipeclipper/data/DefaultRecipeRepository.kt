@@ -390,16 +390,18 @@ class DefaultRecipeRepository @Inject constructor(
 
     override fun observeHistory(query: String, filter: RecipeFilter): Flow<List<RecipeSummary>> {
         val listed = when (filter) {
-            RecipeFilter.ALL -> RecipeDao.LISTED_ANY
             RecipeFilter.IN_A_LIST -> RecipeDao.LISTED_YES
             RecipeFilter.NOT_IN_A_LIST -> RecipeDao.LISTED_NO
+            else -> RecipeDao.LISTED_ANY
         }
-        return recipeDao.observeHistory(query, listed).map { rows -> rows.map { it.toDomain() } }
+        val cooked = if (filter == RecipeFilter.COOKED) 1 else 0
+        val typed = if (filter == RecipeFilter.TYPED) 1 else 0
+        return recipeDao.observeHistory(query, listed, cooked, typed).map { rows -> rows.map { it.toDomain() } }
             .orEmptyOnError(log, "observeHistory")
     }
 
     override fun observeRecipeCounts(): Flow<RecipeCounts> =
-        recipeDao.observeLibraryCounts().map { RecipeCounts(it.total, it.inList) }.catch { e ->
+        recipeDao.observeLibraryCounts().map { RecipeCounts(it.total, it.inList, it.cooked, it.typed) }.catch { e ->
             log.error("observeRecipeCounts failed", e)
             emit(RecipeCounts(0, 0))
         }

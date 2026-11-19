@@ -2512,13 +2512,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld older recipe in no list wasn't added: the free app keeps %2$lld recipes."
+                  "value" : "%1$lld recipe wasn't added: the free app keeps %2$lld recipes."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld older recipes in no list weren't added: the free app keeps %2$lld recipes."
+                  "value" : "%1$lld recipes weren't added: the free app keeps %2$lld recipes."
                 }
               }
             }
@@ -2530,19 +2530,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld receta antigua sin lista no se añadió: la app gratuita guarda %2$lld recetas."
+                  "value" : "%1$lld receta no se añadió: la app gratuita guarda %2$lld recetas."
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld de recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$lld recetas."
+                  "value" : "%1$lld de recetas no se añadieron: la app gratuita guarda %2$lld recetas."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld recetas antiguas sin lista no se añadieron: la app gratuita guarda %2$lld recetas."
+                  "value" : "%1$lld recetas no se añadieron: la app gratuita guarda %2$lld recetas."
                 }
               }
             }
@@ -2554,19 +2554,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld ancienne recette sans liste n'a pas été ajoutée : la version gratuite conserve %2$lld recettes."
+                  "value" : "%1$lld recette n'a pas été ajoutée : la version gratuite conserve %2$lld recettes."
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld d'anciennes recettes sans liste n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                  "value" : "%1$lld de recettes n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
+                  "value" : "%1$lld recettes n'ont pas été ajoutées : la version gratuite conserve %2$lld recettes."
                 }
               }
             }
@@ -2578,13 +2578,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld älteres Rezept ohne Liste wurde nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                  "value" : "%1$lld Rezept wurde nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
+                  "value" : "%1$lld Rezepte wurden nicht hinzugefügt: Die kostenlose App behält %2$lld Rezepte."
                 }
               }
             }
@@ -2596,19 +2596,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld ricetta meno recente senza lista non è stata aggiunta: l'app gratuita conserva %2$lld ricette."
+                  "value" : "%1$lld ricetta non è stata aggiunta: l'app gratuita conserva %2$lld ricette."
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld di ricette meno recenti senza lista non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                  "value" : "%1$lld di ricette non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld ricette meno recenti senza lista non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
+                  "value" : "%1$lld ricette non sono state aggiunte: l'app gratuita conserva %2$lld ricette."
                 }
               }
             }
@@ -2620,19 +2620,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld receita antiga sem lista não foi adicionada: o app gratuito guarda %2$lld receitas."
+                  "value" : "%1$lld receita não foi adicionada: o app gratuito guarda %2$lld receitas."
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld de receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                  "value" : "%1$lld de receitas não foram adicionadas: o app gratuito guarda %2$lld receitas."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o app gratuito guarda %2$lld receitas."
+                  "value" : "%1$lld receitas não foram adicionadas: o app gratuito guarda %2$lld receitas."
                 }
               }
             }
@@ -8017,40 +8017,40 @@
     "library_full_body %lld" : {
       "extractionState" : "manual",
       "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die kostenlose App behält %lld Rezepte, und deine sind alle in Listen, Plänen oder selbst eingegeben. Schalte unbegrenzt viele Rezepte frei oder lösche eines, um Platz zu schaffen."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The free app keeps %lld recipes, and yours are all in lists, plans or typed in. Unlock unlimited recipes, or delete one to make room."
+            "value" : "The free app keeps %lld recipes. Unlock unlimited recipes, or delete one to make room."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die kostenlose App behält %lld Rezepte. Schalte unbegrenzt viele Rezepte frei oder lösche eines, um Platz zu schaffen."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La app gratuita guarda %lld recetas, y todas las tuyas están en listas o planes, o las escribiste tú. Desbloquea recetas ilimitadas o elimina una para hacer sitio."
+            "value" : "La app gratuita guarda %lld recetas. Desbloquea recetas ilimitadas o elimina una para hacer sitio."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La version gratuite conserve %lld recettes, et les vôtres sont toutes dans des listes, dans le planning ou saisies à la main. Débloquez les recettes illimitées, ou supprimez-en une pour faire de la place."
+            "value" : "La version gratuite conserve %lld recettes. Débloquez les recettes illimitées, ou supprimez-en une pour faire de la place."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'app gratuita conserva %lld ricette, e le tue sono tutte in liste, pianificate o scritte da te. Sblocca le ricette illimitate o eliminane una per fare spazio."
+            "value" : "L'app gratuita conserva %lld ricette. Sblocca le ricette illimitate o eliminane una per fare spazio."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O app gratuito guarda %lld receitas, e as suas estão todas em listas, planos ou foram digitadas por você. Desbloqueie receitas ilimitadas ou exclua uma para abrir espaço."
+            "value" : "O app gratuito guarda %lld receitas. Desbloqueie receitas ilimitadas ou exclua uma para abrir espaço."
           }
         }
       }
@@ -8674,40 +8674,40 @@
     "recipe_not_kept %lld" : {
       "extractionState" : "manual",
       "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht gespeichert: Deine %lld Rezepte sind alle in Listen, Plänen oder selbst eingegeben."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Not saved: your %lld recipes are all in lists, plans or typed in."
+            "value" : "Not saved: the free app keeps %lld recipes."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht gespeichert: Die kostenlose App behält %lld Rezepte."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No guardada: tus %lld recetas están todas en listas o planes, o las escribiste tú."
+            "value" : "No guardada: la app gratuita guarda %lld recetas."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non enregistrée : vos %lld recettes sont toutes dans des listes, dans le planning ou saisies à la main."
+            "value" : "Non enregistrée : la version gratuite conserve %lld recettes."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non salvata: le tue %lld ricette sono tutte in liste, pianificate o scritte da te."
+            "value" : "Non salvata: l'app gratuita conserva %lld ricette."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não salva: suas %lld receitas estão todas em listas, planos ou foram digitadas por você."
+            "value" : "Não salva: o app gratuito guarda %lld receitas."
           }
         }
       }
@@ -26743,6 +26743,334 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "recipes_view_cooked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cooked"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gekocht"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cocinadas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuisinées"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparate"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feitas"
+          }
+        }
+      }
+    },
+    "recipes_view_typed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typed by you"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selbst eingegeben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escritas por ti"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisies par vous"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scritte da te"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digitadas por você"
+          }
+        }
+      }
+    },
+    "recipes_view_not_in_list_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipes you clipped or opened but haven't put in a list. They stay until you delete them."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rezepte, die du gespeichert oder geöffnet, aber in keine Liste gelegt hast. Sie bleiben, bis du sie löschst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recetas que guardaste o abriste pero no pusiste en ninguna lista. Se quedan hasta que las elimines."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recettes que vous avez enregistrées ou ouvertes sans les mettre dans une liste. Elles restent jusqu'à ce que vous les supprimiez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricette che hai salvato o aperto ma non hai messo in nessuna lista. Restano finché non le elimini."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receitas que você salvou ou abriu, mas não colocou em nenhuma lista. Elas ficam até você excluí-las."
+          }
+        }
+      }
+    },
+    "recipes_view_cooked_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipes you've marked as cooked or kept a photo of."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rezepte, die du als gekocht markiert oder von denen du ein Foto behalten hast."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recetas que marcaste como cocinadas o de las que guardaste una foto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recettes que vous avez marquées comme cuisinées ou dont vous avez gardé une photo."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricette che hai segnato come preparate o di cui hai salvato una foto."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receitas que você marcou como feitas ou das quais guardou uma foto."
+          }
+        }
+      }
+    },
+    "recipes_view_typed_note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipes you typed, scanned or pasted in yourself."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rezepte, die du selbst eingetippt, gescannt oder eingefügt hast."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recetas que escribiste, escaneaste o pegaste tú."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recettes que vous avez saisies, numérisées ou collées vous-même."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricette che hai scritto, scansionato o incollato tu."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receitas que você digitou, escaneou ou colou por conta própria."
+          }
+        }
+      }
+    },
+    "recipes_empty_cooked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing cooked yet. Mark a recipe as cooked and it shows up here."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nichts gekocht. Markiere ein Rezept als gekocht, dann erscheint es hier."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no has cocinado nada. Marca una receta como cocinada y aparecerá aquí."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien de cuisiné pour l'instant. Marquez une recette comme cuisinée et elle apparaîtra ici."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ancora niente di preparato. Segna una ricetta come preparata e comparirà qui."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada feito ainda. Marque uma receita como feita e ela aparece aqui."
+          }
+        }
+      }
+    },
+    "recipes_empty_typed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing typed in yet. Use + to type or scan a recipe."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nichts selbst eingegeben. Mit + tippst oder scannst du ein Rezept."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no has escrito ninguna. Con + escribes o escaneas una receta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien de saisi pour l'instant. Avec +, saisissez ou numérisez une recette."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ancora niente scritto da te. Con + scrivi o scansioni una ricetta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada digitado ainda. Com + você digita ou escaneia uma receita."
+          }
+        }
+      }
+    },
+    "home_see_all" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See all"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle ansehen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver todas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout voir"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vedi tutte"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver todas"
           }
         }
       }

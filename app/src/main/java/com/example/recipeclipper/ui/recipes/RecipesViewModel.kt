@@ -1,12 +1,15 @@
 package com.example.recipeclipper.ui.recipes
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
+import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.home.UrlInput
@@ -22,6 +25,7 @@ import com.example.recipeclipper.data.model.LibraryLimit
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -39,7 +43,9 @@ import javax.inject.Inject
  * [filter] is All / In a list / Not in a list (#345), applied by the query beside the search;
  * [counts] are the library's, whatever the filter or search, null until the database answers.
  * [cullKeep] is the cap on recipes in no list (the old history's 50) while it applies, null
- * when nothing clears on its own.
+ * when nothing clears on its own (always, with `oneCookbook` on, #345).
+ * [view] is the automatic view the screen was opened on (V4: Not in a list, Cooked, Typed by you),
+ * null for the whole cookbook; [lists] are the lists the strip shows after the views.
  */
 data class RecipesUiState(
     val query: String = "",
@@ -48,11 +54,13 @@ data class RecipesUiState(
     val deleteBatch: Int? = null,
     val sort: RecipeSort = RecipeSort.RECENTLY_VIEWED,
     val linkInput: String? = null,
-    /** The free library's quiet count (#107); null when there is no limit to count against. */
+    /** The free library's quiet count (#107, #345); null when there is no limit to count against. */
     val count: LibraryCount? = null,
     val filter: RecipeFilter = RecipeFilter.ALL,
     val counts: RecipeCounts? = null,
-    val cullKeep: Int? = null
+    val cullKeep: Int? = null,
+    val view: RecipeFilter? = null,
+    val lists: List<RecipeList> = emptyList()
 ) {
     /** The filter shows once there is a recipe to filter, and stays when a filter matches none. */
     val showsFilter: Boolean get() = (counts?.all ?: 0) > 0
@@ -64,6 +72,9 @@ data class RecipesUiState(
      */
     val showsCullNote: Boolean
         get() = cullKeep != null && filter == RecipeFilter.NOT_IN_A_LIST && !recipes.isNullOrEmpty()
+
+    /** The strip shows once there is a recipe or a list to show (V4), never inside a view. */
+    val showsViewsStrip: Boolean get() = view == null && ((counts?.all ?: 0) > 0 || lists.isNotEmpty())
 
     /** The dialog's Open is enabled only for what reads as a link (`UrlInput`). */
     val canOpenLink: Boolean get() = linkInput?.let(UrlInput::normalize) != null
@@ -91,8 +102,14 @@ class RecipesViewModel @Inject constructor(
     library: LibraryPolicy = LibraryPolicy.HistoryOnly,
     /** The countdowns outside the app (#309), squared with the database after a swipe's
      *  delete (#333); none without it (tests that aren't about them). */
-    private val countdowns: TimerCountdownSync? = null
+    private val countdowns: TimerCountdownSync? = null,
+    /** The strip's lists (#345); none without it (tests that aren't about them). */
+    lists: ListRepository? = null,
+    /** The automatic view's route argument (V4), when opened on one. */
+    savedStateHandle: SavedStateHandle? = null
 ) : ViewModel() {
+
+    private val view: RecipeFilter? = RecipeFilter.fromRouteName(savedStateHandle?.get<String>(VIEW_ARG))
 
     // The query box's live value. Kept in a StateFlow, not `remember`, so it survives rotation.
     private val query = MutableStateFlow("")
@@ -105,7 +122,7 @@ class RecipesViewModel @Inject constructor(
         .distinctUntilChanged()
     private val linkInput = MutableStateFlow<String?>(null)
     // In the ViewModel, not `remember`, so it survives rotation; not stored, so Recipes opens on All.
-    private val filter = MutableStateFlow(RecipeFilter.ALL)
+    private val filter = MutableStateFlow(view ?: RecipeFilter.ALL)
 
     // What swipe-to-dismiss captured, keyed by recipe id so a second swipe within the
     // snackbar's few seconds cannot overwrite the first and strand it. A plain field: the
@@ -123,8 +140,14 @@ class RecipesViewModel @Inject constructor(
 
     // Only on the free tier: unlocked, or with the flag off, there is nothing to count against.
     private val count = combine(repository.observeCount(), library.limits) { saved, limit ->
-        (limit as? LibraryLimit.Free)?.let { LibraryCount(saved, it.max) }
+        when (limit) {
+            is LibraryLimit.Free -> LibraryCount(saved, limit.max)
+            is LibraryLimit.Capped -> LibraryCount(saved, limit.max)
+            else -> null
+        }
     }
+
+    private val listsFlow = lists?.observeLists() ?: flowOf(emptyList())
 
     private val counts = repository.observeRecipeCounts()
 
@@ -139,9 +162,9 @@ class RecipesViewModel @Inject constructor(
             count,
             filter,
             counts,
-            cullKeep
-        ) { state, saved, picked, all, keep ->
-            state.copy(count = saved, filter = picked, counts = all, cullKeep = keep)
+            combine(cullKeep, listsFlow) { keep, shelves -> keep to shelves }
+        ) { state, saved, picked, all, (keep, shelves) ->
+            state.copy(count = saved, filter = picked, counts = all, cullKeep = keep, view = view, lists = shelves)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipesUiState())
 
     fun onQueryChange(text: String) {
@@ -215,6 +238,9 @@ class RecipesViewModel @Inject constructor(
     private data class PendingDeletes(val batch: Int? = null, val titles: List<String> = emptyList())
 
     companion object {
+        /** The route argument naming an automatic view (V4): `NOT_IN_A_LIST`, `COOKED` or `TYPED`. */
+        const val VIEW_ARG = "view"
+
         /**
          * [recipes], which the database gives newest viewed first, in [sort]'s order. Name
          * follows the phone's language (a collator, not code points); Date added is newest

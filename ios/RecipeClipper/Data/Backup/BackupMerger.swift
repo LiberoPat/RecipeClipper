@@ -160,6 +160,11 @@ enum BackupMerger {
         existingMenuUids: Set<String> = [],
         existingMenuEntryUids: Set<String> = [],
         countsEveryRecipe: Bool = false,
+        /// One cookbook (#345), the free tier: every recipe counts and nothing is exempt, so a listed,
+        /// planned or typed-in recipe is limited too, and only `historyLimit` minus what is here come
+        /// in (listed ones first, then the most recently viewed). A skipped recipe's list
+        /// memberships, plan entries, menu meals and photos stay out with it.
+        capsEveryRecipe: Bool = false,
         existingCookedPhotoUids: Set<String> = [],
         /// The pictures the package holds, by path in the zip; nil takes every file as there.
         availablePhotoFiles: Set<String>? = nil
@@ -286,25 +291,32 @@ enum BackupMerger {
         let unlistedHere = existingRecipes.filter { !$0.isListed && !listedTargets.contains(.existing($0.id)) }.count
         let newRecipesInOrder = newOrder.compactMap { newByUrl[$0] }
         // The free tier (#107) counts every recipe, here and coming in protected, not only history.
-        // Never the tour's sample (#151).
-        let taken = countsEveryRecipe
+        // Never the tour's sample (#151). Capped (#345): only what is here counts, and none is exempt.
+        let taken = capsEveryRecipe
+            ? existingRecipes.filter { !SampleRecipe.isSample($0.sourceUrl) }.count
+            : countsEveryRecipe
             ? existingRecipes.filter { !SampleRecipe.isSample($0.sourceUrl) }.count
                 + newRecipesInOrder.filter { listedTargets.contains(.new($0.id)) && !SampleRecipe.isSample($0.sourceUrl) }.count
             : unlistedHere
         let freePlaces = max(0, historyLimit - taken)
-        let unlistedNew = newRecipesInOrder.filter { !listedTargets.contains(.new($0.id)) }
+        // Capped: the listed ones go first (their lists come with them), then the most recently
+        // viewed. Otherwise the listed ones always come in and only the rest compete.
+        let competing = capsEveryRecipe ? newRecipesInOrder : newRecipesInOrder.filter { !listedTargets.contains(.new($0.id)) }
         let kept = Set(
-            unlistedNew.enumerated()
+            competing.enumerated()
                 .sorted { a, b in
-                    a.element.lastViewedAt != b.element.lastViewedAt
+                    let aListed = capsEveryRecipe && listedTargets.contains(.new(a.element.id))
+                    let bListed = capsEveryRecipe && listedTargets.contains(.new(b.element.id))
+                    if aListed != bListed { return aListed }
+                    return a.element.lastViewedAt != b.element.lastViewedAt
                         ? a.element.lastViewedAt > b.element.lastViewedAt
                         : a.offset < b.offset
                 }
                 .prefix(freePlaces)
                 .map(\.element.id)
         )
-        let skipped = unlistedNew.filter { !kept.contains($0.id) }.count
-        let newRecipes = newRecipesInOrder.filter { listedTargets.contains(.new($0.id)) || kept.contains($0.id) }
+        let skipped = competing.filter { !kept.contains($0.id) }.count
+        let newRecipes = newRecipesInOrder.filter { (!capsEveryRecipe && listedTargets.contains(.new($0.id))) || kept.contains($0.id) }
 
         let noteUpdates = matchedOrder.compactMap { id -> NoteUpdate? in
             guard let existing = matched[id], !existing.hasNotes, let note = importedNote[id] else { return nil }
@@ -419,7 +431,11 @@ enum BackupMerger {
             newRecipes: newRecipes,
             noteUpdates: noteUpdates,
             newLists: newListOrder.compactMap { newListsByName[$0] },
-            memberships: memberships,
+            // A recipe left out by the cap (#345) takes no list membership with it.
+            memberships: memberships.filter { m in
+                if case .new = m.recipe { return written.contains(m.recipe) }
+                return true
+            },
             summary: ImportSummary(
                 recipesAdded: newRecipes.count,
                 listsAdded: newListOrder.count,
@@ -431,7 +447,7 @@ enum BackupMerger {
                 mealTypesAdded: newTypeOrder.count,
                 menusAdded: newMenus.count,
                 photosAdded: newCookedPhotos.filter { $0.photo.file != nil }.count,
-                freeLimit: countsEveryRecipe && skipped > 0 ? historyLimit : nil
+                freeLimit: (countsEveryRecipe || capsEveryRecipe) && skipped > 0 ? historyLimit : nil
             ),
             newPantry: newPantry,
             newGroceries: newGroceries,

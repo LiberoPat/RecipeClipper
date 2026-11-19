@@ -195,13 +195,21 @@ class FakeRecipeRepository : RecipeRepository {
                 RecipeFilter.ALL -> rows
                 RecipeFilter.IN_A_LIST -> rows.filter { it.isSaved }
                 RecipeFilter.NOT_IN_A_LIST -> rows.filter { !it.isSaved }
+                RecipeFilter.COOKED -> rows.filter { it.lastCookedDay != null }
+                RecipeFilter.TYPED -> rows.filter { it.isTyped }
             }
         }
     }
 
+    /** Typed in by hand (a `manual:` link), never the tour's sample (#345). */
+    private val RecipeSummary.isTyped: Boolean
+        get() = sourceUrl.startsWith("manual:") && sourceUrl != "manual:sample"
+
     /** Counted from what [history] holds (#345). */
     override fun observeRecipeCounts(): Flow<RecipeCounts> =
-        history.map { rows -> RecipeCounts(rows.size, rows.count { it.isSaved }) }
+        history.map { rows ->
+            RecipeCounts(rows.size, rows.count { it.isSaved }, rows.count { it.lastCookedDay != null }, rows.count { it.isTyped })
+        }
 
     /**
      * Honours [limit], like the SQL `LIMIT` it stands in for. Without this a test could push

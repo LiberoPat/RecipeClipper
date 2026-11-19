@@ -73,6 +73,8 @@ final class HomeViewModel {
     @ObservationIgnored private let repository: RecipeRepository
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private let sleep: Sleep
+    // "See all" on Recently viewed (#345) sets the sort Recipes opens in; nil leaves it.
+    @ObservationIgnored private let preferences: AppPreferences?
     // The resume card (#286): the latest recipe followed as its cook progress is saved.
     @ObservationIgnored private var followedId: Int64?
     @ObservationIgnored private var followed: Recipe?
@@ -84,8 +86,10 @@ final class HomeViewModel {
     /// Lists row its count (#286; nil shows none).
     init(
         repository: RecipeRepository, backups: BackupRepository? = nil, files: BackupFiles? = nil,
-        lists: ListRepository? = nil, clock: Clock = SystemClock(), sleep: @escaping Sleep = Sleeps.real
+        lists: ListRepository? = nil, clock: Clock = SystemClock(), sleep: @escaping Sleep = Sleeps.real,
+        preferences: AppPreferences? = nil
     ) {
+        self.preferences = preferences
         self.repository = repository
         self.backups = backups
         self.files = files
@@ -103,6 +107,11 @@ final class HomeViewModel {
     }
 
     deinit { tickTask?.cancel() }
+
+    /// "See all" on Recently viewed (#345): Recipes opens in that order, whatever it was left on.
+    func onSeeAllRecent() {
+        preferences?.recipeSort = .recentlyViewed
+    }
 
     private func observeRecent() {
         repository.observeRecent(limit: Self.recentCount + 1)

@@ -267,9 +267,9 @@ class RecipesWalkthroughTest : WalkthroughBase() {
 
     @Test
     fun test09_freeTier() {
-        start("freeTier")
+        start("freeTier", fillTo = 50)
         openRecipes()
-        waitFor(hasText("20 of 20 recipes"))
+        waitFor(hasText("50 of 50 recipes"))
         pause(2000)
         typeARecipe()
         waitFor(hasText("Unlock"))

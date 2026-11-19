@@ -11,8 +11,13 @@ final class FreeTierViewModelTests: XCTestCase {
         prepTime: nil, cookTime: nil, totalTime: nil, yield: nil, sourceUrl: "https://a.com/soup"
     )
 
+    /// These tests are the swap at 20 (#107), so `oneCookbook` (#345, the cap at 50) is off; its own
+    /// rules are `OneCookbookTests`' and `OneCookbookViewModelTests`'.
     private func flags(freeTier: Bool) -> FeatureFlags {
-        FeatureFlags(store: MemoryFeatureFlagStore(freeTier ? ["freeTier": true] : [:]), isDebug: false)
+        FeatureFlags(
+            store: MemoryFeatureFlagStore(freeTier ? ["freeTier": true, "oneCookbook": false] : ["oneCookbook": false]),
+            isDebug: false
+        )
     }
 
     private func notKeptRecipe(_ store: FakeEntitlements) async -> (RecipeViewModel, FakeRecipeRepository) {

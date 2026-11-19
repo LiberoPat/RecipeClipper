@@ -12,6 +12,9 @@ enum Route: Hashable {
     case importUrl(String)
     /// The library of every recipe (#102); it replaced History (`history`).
     case recipes
+    /// One of the cookbook's automatic views (#345): Not in a list, Cooked or Typed by you, as a
+    /// screen of its own (Android's `recipes/view/{view}`).
+    case recipesView(RecipeFilter)
     case settings
     /// A section of Settings on its own page, from its row on the index (#286; Android's
     /// `settings/<section>`).

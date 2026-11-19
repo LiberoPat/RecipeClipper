@@ -11,19 +11,31 @@ import Foundation
 ///   typed in: one out for one in, never more. So the library never shrinks because of the
 ///   limit, and a library that was over it when the limit arrived keeps every recipe. If every
 ///   recipe is protected, the new one is shown but not kept.
-/// - `unlimited`: unlocked. Nothing is removed automatically, ever.
+/// - `capped`: `oneCookbook` on (#345), the free tier on and locked. Every recipe counts, and a new
+///   one added at `max` is shown but not kept: nothing is ever removed to make room. Re-opening or
+///   refreshing a recipe already here is allowed (it is already counted).
+/// - `unlimited`: unlocked, or `oneCookbook` on with the free tier off. Nothing is removed
+///   automatically, ever.
 enum LibraryLimit: Equatable, Sendable {
     case history(keep: Int)
     case free(max: Int)
+    case capped(max: Int)
     case unlimited
 
-    /// The free tier's size.
+    /// The free tier's size with `oneCookbook` off (#107): swaps the oldest one out at this many.
     static let freeRecipes = 20
+
+    /// The free tier's size with `oneCookbook` on (#345): the next recipe isn't saved at this many.
+    static let cappedRecipes = 50
+
+    /// The free app's size as the screens say it, for the flag as it stands.
+    static func freeRecipes(oneCookbook: Bool) -> Int { oneCookbook ? cappedRecipes : freeRecipes }
 
     /// The old cap on unprotected recipes, while the free tier is off.
     static let historyRecipes = 50
 
-    static func of(freeTier: Bool, unlocked: Bool) -> LibraryLimit {
+    static func of(freeTier: Bool, unlocked: Bool, oneCookbook: Bool = false) -> LibraryLimit {
+        if oneCookbook { return freeTier && !unlocked ? .capped(max: cappedRecipes) : .unlimited }
         if !freeTier { return .history(keep: historyRecipes) }
         return unlocked ? .unlimited : .free(max: freeRecipes)
     }

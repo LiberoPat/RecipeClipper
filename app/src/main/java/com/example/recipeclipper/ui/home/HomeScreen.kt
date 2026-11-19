@@ -59,7 +59,9 @@ fun HomeScreen(
     /** "Resume cooking" (#286): the recipe, opened in cook mode. */
     onResumeCooking: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
-    scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT)
+    scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
+    /** One cookbook (#345): Recently viewed gains "See all". */
+    oneCookbook: Boolean = LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Restore from a backup file (#150): the same file picker as Settings' Import.
@@ -137,7 +139,16 @@ fun HomeScreen(
                     }
 
                     if (state.recent.isNotEmpty()) {
-                        item(key = "recent") { RecentlyViewed(state.recent, onOpenRecipe) }
+                        item(key = "recent") {
+                            RecentlyViewed(
+                                state.recent, onOpenRecipe,
+                                onSeeAll = if (oneCookbook) {
+                                    { viewModel.onSeeAllRecent(); onOpenRecipes() }
+                                } else {
+                                    null
+                                }
+                            )
+                        }
                     }
 
                     if (state.loaded && state.continueCooking == null) {

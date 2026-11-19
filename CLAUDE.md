@@ -36,7 +36,8 @@ place rather than appending an update.
 ## Status
 
 Built on both platforms: share → parse → show; the Recipes library (#102);
-the free tier and its unlock (#107); lists; scaling and unit conversion;
+the free tier and its unlock (#107); one cookbook (#345: nothing removed
+automatically, the free limit at 50, a views strip on Recipes); lists; scaling and unit conversion;
 Settings; cook mode with saved progress and background timer alerts; sharing
 out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
@@ -138,12 +139,21 @@ Decisions, not suggestions. Don't relitigate them in code.
 
 - **Capture is frictionless.** Sharing a link parses and shows it (iOS: the
   share extension saves it). No save prompt.
-- **History is automatic,** newest first, in the Recipes library. With
-  `freeTier` off, capped at the 50 most recently viewed unprotected recipes.
-- **The free tier keeps 20 recipes** (#107). Every recipe counts (not the
-  tour's sample). Sharing always opens the recipe; adding one at 20 or more
-  first removes the oldest-viewed unprotected one, so the limit never
-  shrinks a library. Unlocked, nothing is ever removed automatically.
+- **Every recipe stays until the cook deletes it** (#345, `oneCookbook`):
+  nothing is removed automatically, free or unlocked. Recipes is the one
+  library, Recently viewed first by default; there is no "history". (With
+  `oneCookbook` off the old clean-up returns: past 50, unprotected recipes in
+  no list, not planned, in no menu, not typed in, with no photos go,
+  oldest viewed first.)
+- **The free tier keeps 50 recipes** (#107, #345; 20, swapping the oldest out,
+  with `oneCookbook` off). Every recipe counts (not the tour's sample).
+  Sharing always opens the recipe; **at the limit a new one is shown, not
+  saved**, under the quiet "Not saved" bar with Unlock, and nothing old is
+  removed to make room. The limit holds on every way in (link, Reddit, typed,
+  scanned, photo-read, shared text, clip, `BackupMerger`, the iOS share
+  extension through the mirrored limit), through the one `upsert` and the one
+  `LibraryLimit`. A recipe already saved still opens and refreshes; deleting
+  one frees a place. Unlocked, no limit.
 - **Lists are deliberate:** adding to one is an explicit second act.
   Favorites is a list like Lunch, Dinner, Desserts, Breakfast and Snacks, not
   a separate tier.
@@ -152,12 +162,11 @@ Decisions, not suggestions. Don't relitigate them in code.
   is `isFavorites`, in the SQL, and `ListDaoTest` fails if it regresses to
   `isBuiltIn`.
 - **"Saved" means "in at least one list,"** derived from the cross-ref
-  table; there's no column. **Never culled, and not counted toward the 50:**
-  a recipe in a list, planned for today or later, in a saved menu, typed in
-  by hand, or with the user's own photos.
-- **Leaving a list is a demotion, not a deletion.** The recipe stays in
-  history and becomes cullable. Deleting is a separate, explicit action with
-  its own confirmation.
+  table; there's no column. A recipe in no list is shown under Not in a list,
+  with an outlined bookmark that opens the save-to-list sheet.
+- **Leaving a list is not a deletion.** The recipe stays in Recipes, under
+  Not in a list. Deleting is a separate, explicit action with its own
+  confirmation.
 - **Never invent a recipe, and never show a confident wrong number.** The
   on-device model only picks text that's on the page (#103) and never writes
   a number the cook sees (#100, #104). Anything the app doesn't understand
@@ -190,9 +199,15 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Reached from the gear beside the Home title;
   another entry point is the owner's call.
+- **Recipes** (#345, V4): under search, a strip of automatic views (Not in a
+  list, Cooked, Typed by you; each its own screen, Back to Recipes) then the
+  lists, in place of V1's All / In a list / Not in a list pills (those stay
+  with `oneCookbook` off). Views are questions about stored data, never
+  filing. Recently viewed is a sort, not a place.
 - **Home** (#286): "Continue cooking" (the most recent) as a resume card;
   Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles; "Recently
-  viewed" (the five before it) as photos; Recipes and Lists rows with counts
+  viewed" (the five before it) as photos, with "See all" (opens Recipes
+  sorted Recently viewed); Recipes and Lists rows with counts
   (always shown); the Settings gear. Empty sections hide. **No "Saved"
   section**: it duplicated Recently viewed. Search is on Recipes only.
 - **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry; Settings is not
@@ -240,7 +255,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   translation; seeded meal types go by `builtInKey` the same way. Built-in
   lists are seeded in `onCreate`, so adding one later needs a migration.
 - **The cull's plan subquery must filter NULL recipe ids** (a planned note
-  has none, and `NOT IN` a set holding a NULL matches nothing).
+  has none, and `NOT IN` a set holding a NULL matches nothing). The cull runs
+  only with `oneCookbook` off.
 - `addToList` is `@Insert(IGNORE)`, never REPLACE: re-adding must not
   rewrite `addedAt`, which orders list detail.
 - `observeHistory(query)` uses `instr(lower(…))`, **never `LIKE`** (a literal

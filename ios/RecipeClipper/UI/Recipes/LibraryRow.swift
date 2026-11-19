@@ -6,10 +6,30 @@ import SwiftUI
 struct LibraryRow: View {
     let recipe: RecipeSummary
     let onClick: () -> Void
+    /// One cookbook (#345): an outlined bookmark on a recipe in no list, opening the save-to-list sheet.
+    var onSaveToList: (() -> Void)? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
+        HStack(spacing: 0) {
+            rowButton
+            if !recipe.isSaved, let onSaveToList {
+                Button(action: onSaveToList) {
+                    Image(systemName: "bookmark")
+                        .foregroundStyle(Palette.muted)
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Strings.saveToList)
+                .accessibilityIdentifier("recipes.saveToList.\(recipe.id)")
+            }
+        }
+    }
+
+    private var rowButton: some View {
         Button(action: onClick) {
             // At the accessibility sizes a thumbnail beside the text would leave it a column
             // a few letters wide, so the thumbnail goes above and the title may run longer.

@@ -134,7 +134,7 @@ extension WalkthroughUITests {
     }
 
     func test09_freeTier() {
-        startAsShipped(flags: ["freeTier"])
+        start(flags: ["freeTier"], scenario: .walkthroughFull, extraArguments: ["-uiTestDefaultFlags"])
         openRecipes()
         require(app.staticTexts["recipes.count"], "the count")
         pause(2)

@@ -328,13 +328,20 @@ extension RecipeRepository {
             case .all: rows
             case .inAList: rows.filter(\.isSaved)
             case .notInAList: rows.filter { !$0.isSaved }
+            case .cooked: rows.filter { $0.lastCookedDay != nil }
+            case .typed: rows.filter(\.isTyped)
             }
         }.eraseToAnyPublisher()
     }
 
     func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never> {
         observeHistory(query: "")
-            .map { RecipeCounts(all: $0.count, inList: $0.filter(\.isSaved).count) }
+            .map {
+                RecipeCounts(
+                    all: $0.count, inList: $0.filter(\.isSaved).count,
+                    cooked: $0.filter { $0.lastCookedDay != nil }.count, typed: $0.filter(\.isTyped).count
+                )
+            }
             .removeDuplicates().eraseToAnyPublisher()
     }
 

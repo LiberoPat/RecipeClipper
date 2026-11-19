@@ -9,7 +9,9 @@ import Observation
 /// `linkInput` is the "Paste a link" alert's text, shown while
 /// `pastingLink`. `filter` is All / In a list / Not in a list (#345), applied by the query beside
 /// the search; `counts` are the library's, whatever the filter or search, nil until the
-/// database answers.
+/// database answers. `view` is the automatic view the screen was opened on (V4: Not in a list,
+/// Cooked, Typed by you), nil for the whole cookbook; `lists` are the lists the strip shows
+/// after the views (#345).
 struct RecipesUiState: Equatable {
     var query = ""
     var recipes: [RecipeSummary]?
@@ -22,6 +24,11 @@ struct RecipesUiState: Equatable {
     var savedCount: Int?
     var filter: RecipeFilter = .all
     var counts: RecipeCounts?
+    var view: RecipeFilter?
+    var lists: [RecipeList] = []
+
+    /// The strip shows once there is a recipe or a list to show (V4), never inside a view.
+    var showsViewsStrip: Bool { view == nil && ((counts?.all ?? 0) > 0 || !lists.isEmpty) }
 
     /// The alert's Go is enabled only for what reads as a link (`UrlInput`).
     var canOpenLink: Bool { UrlInput.normalize(linkInput) != nil }
@@ -50,6 +57,7 @@ final class RecipesViewModel {
     @ObservationIgnored private var countsSubscription: AnyCancellable?
     @ObservationIgnored private var historySubscription: AnyCancellable?
     @ObservationIgnored private var countSubscription: AnyCancellable?
+    @ObservationIgnored private var listsSubscription: AnyCancellable?
     @ObservationIgnored private let library: LibraryPolicy?
     /// Recently cooked (#116) only while its flag is on; stored, it reads as the default.
     @ObservationIgnored private let cookedSort: Bool
@@ -68,7 +76,8 @@ final class RecipesViewModel {
 
     init(
         repository: RecipeRepository, preferences: AppPreferences, sleep: @escaping Sleep = Sleeps.real,
-        library: LibraryPolicy? = nil, cookedSort: Bool = false, countdowns: TimerCountdownSync? = nil
+        library: LibraryPolicy? = nil, cookedSort: Bool = false, countdowns: TimerCountdownSync? = nil,
+        view: RecipeFilter? = nil, lists: ListRepository? = nil
     ) {
         self.cookedSort = cookedSort
         self.countdowns = countdowns
@@ -79,6 +88,10 @@ final class RecipesViewModel {
         // Remembered in AppPreferences, so it survives leaving the screen; read now so the
         // first frame is right, then kept in step with what is stored.
         uiState.sort = Self.shown(preferences.recipeSort, cookedSort: cookedSort)
+        // Opened on an automatic view (#345): its recipes only, from the first query.
+        let opened = view.flatMap { RecipeFilter.views.contains($0) ? $0 : nil }
+        uiState.view = opened
+        uiState.filter = opened ?? .all
         sortSubscription = preferences.settings
             .map { [cookedSort] in Self.shown($0.recipeSort, cookedSort: cookedSort) }
             .removeDuplicates()
@@ -88,6 +101,9 @@ final class RecipesViewModel {
         countsSubscription = repository.observeRecipeCounts()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] counts in self?.uiState.counts = counts }
+        listsSubscription = lists?.observeLists()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] lists in self?.uiState.lists = lists }
         if library != nil {
             countSubscription = repository.observeCount()
                 .receive(on: DispatchQueue.main)
@@ -95,11 +111,14 @@ final class RecipesViewModel {
         }
     }
 
-    /// "12 of 20 recipes" (#107), on the free tier only: unlocked, or with the flag off, there
+    /// "12 of 50 recipes" (#107, #345), on the free tier only: unlocked, or with the flag off, there
     /// is nothing to count against. Reads the observable policy, so the view follows it.
     var count: (saved: Int, max: Int)? {
-        guard case .free(let max) = library?.limit, let saved = uiState.savedCount else { return nil }
-        return (saved, max)
+        guard let saved = uiState.savedCount else { return nil }
+        switch library?.limit {
+        case .free(let max), .capped(let max): return (saved, max)
+        default: return nil
+        }
     }
 
     /// The line under search, with the count and the sort (#286): shown once there is a row to

@@ -8,7 +8,7 @@
     },
     {
       "key": "freeTier",
-      "description": "The free tier: 20 recipes, a one-time unlock for unlimited, the Settings row to buy or restore it and the Recipes count. Off until the store products exist.",
+      "description": "The free tier: 50 recipes (20 with oneCookbook off), a one-time unlock for unlimited, the Settings row to buy or restore it and the Recipes count. Off until the store products exist.",
       "defaults": { "debug": false, "release": false },
       "issue": 107
     },
@@ -71,6 +71,12 @@
       "description": "Use it up: a pantry item in stock that expires today or tomorrow (the expiry reminder's window) shows how many saved recipes (in at least one list) use it, matched by name as What I need matches; tapping that, or the expiry reminder, opens a sheet of those recipes, each with one tap to plan it today or on the use-by day. Off, the Pantry rows and the reminder are as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 305
+    },
+    {
+      "key": "oneCookbook",
+      "description": "One cookbook: every recipe stays until the cook deletes it (the old clean-up of recipes in no list past 50 is gone), the free tier's limit is 50 and a new recipe at the limit is opened but not saved, under the quiet Not saved bar with Unlock (nothing old is removed to make room), and Recipes shows a strip of views (Not in a list, Cooked, Typed by you) followed by the lists, in place of the filter pills. Home's Recently viewed gains See all. Off, the app is as before: the clean-up of 50, the free tier's swap at 20, the filter pills.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 345
     }
   ]
 }

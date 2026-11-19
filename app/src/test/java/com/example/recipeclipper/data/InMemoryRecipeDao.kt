@@ -66,7 +66,7 @@ internal class InMemoryRecipeDao : RecipeDao() {
     override suspend fun crossRefsFor(recipeId: Long) = emptyList<RecipeListCrossRef>()
     override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) {}
     override fun observeHistory(): Flow<List<RecipeSummaryRow>> = emptyFlow()
-    override fun observeHistory(query: String, listed: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
+    override fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override fun observeLibraryCounts(): Flow<LibraryCountsRow> = emptyFlow()
     override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override suspend fun cullHistory(keep: Int, today: Long) {}

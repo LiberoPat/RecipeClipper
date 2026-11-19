@@ -96,7 +96,12 @@ struct RootView: View {
                     onOpenLists: { router.push(.lists) },
                     onOpenSettings: { router.push(.settings) },
                     onNewRecipe: { router.push(.editRecipe(id: nil)) },
-                    onScan: scanHandler(push: router.push)
+                    onScan: scanHandler(push: router.push),
+                    // One cookbook (#345): Recently viewed gains See all, which opens Recipes in that order.
+                    onSeeAllRecent: container.featureFlags.isOn(.oneCookbook) ? {
+                        vm.onSeeAllRecent()
+                        router.push(.recipes)
+                    } : nil
                 )
             }
             .navigationDestination(for: Route.self) { route in
@@ -207,14 +212,28 @@ struct RootView: View {
         case .whatINeed(let weekStart):
             ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in WhatINeedScreen(vm: vm) }
         case .recipes:
-            ScreenHost(container.makeRecipesViewModel) { vm in
+            ScreenHost2(makeA: { container.makeRecipesViewModel() }, makeB: container.makeSaveToListViewModel) { vm, saveVM in
                 // The + menu: "Type a recipe" is Home's "+ New recipe"; "Paste a link" is Home's field.
                 RecipesScreen(
                     vm: vm,
                     onOpenRecipe: { push(.recipe(id: $0)) },
                     onNewRecipe: { push(.editRecipe(id: nil)) },
                     onOpenUrl: { push(.importUrl($0)) },
-                    onScan: scanHandler(push: push)
+                    onScan: scanHandler(push: push),
+                    oneCookbook: container.featureFlags.isOn(.oneCookbook),
+                    saveVM: saveVM,
+                    onOpenView: { push(.recipesView($0)) },
+                    onOpenList: { push(.listDetail(id: $0)) }
+                )
+            }
+        case .recipesView(let view):
+            // One cookbook (#345): an automatic view, with the save-to-list bookmark on its rows.
+            ScreenHost2(makeA: { container.makeRecipesViewModel(view: view) }, makeB: container.makeSaveToListViewModel) { vm, saveVM in
+                RecipesScreen(
+                    vm: vm,
+                    onOpenRecipe: { push(.recipe(id: $0)) },
+                    oneCookbook: true,
+                    saveVM: saveVM
                 )
             }
         case .settings:

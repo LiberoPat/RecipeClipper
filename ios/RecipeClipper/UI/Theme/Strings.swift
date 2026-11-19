@@ -222,13 +222,13 @@ enum Strings {
     static var unlock: String { String(localized: "unlock") }
     static func unlockPrice(_ price: String) -> String { String(localized: "unlock_price \(price)") }
     static var unlimitedTitle: String { String(localized: "unlimited_title") }
-    static var unlimitedBody: String { String(localized: "unlimited_body \(LibraryLimit.freeRecipes)") }
+    static var unlimitedBody: String { String(localized: "unlimited_body \(DefaultsLibraryLimit.shownFreeRecipes)") }
     static var unlimitedRestore: String { String(localized: "unlimited_restore") }
     static var unlimitedUnlocked: String { String(localized: "unlimited_unlocked") }
     static var unlimitedPending: String { String(localized: "unlimited_pending") }
-    static var recipeNotKept: String { String(localized: "recipe_not_kept \(LibraryLimit.freeRecipes)") }
+    static var recipeNotKept: String { String(localized: "recipe_not_kept \(DefaultsLibraryLimit.shownFreeRecipes)") }
     static var libraryFullTitle: String { String(localized: "library_full_title") }
-    static var libraryFullBody: String { String(localized: "library_full_body \(LibraryLimit.freeRecipes)") }
+    static var libraryFullBody: String { String(localized: "library_full_body \(DefaultsLibraryLimit.shownFreeRecipes)") }
     static func recipesCount(_ n: Int, of max: Int) -> String {
         n > max ? String(localized: "recipes_count_over \(n) \(max)") : String(localized: "recipes_count \(n) \(max)")
     }
@@ -328,6 +328,15 @@ enum Strings {
     static var recipesFilterNotInList: String { String(localized: "recipes_filter_not_in_list") }
     static var recipesEmptyInList: String { String(localized: "recipes_empty_in_list") }
     static var recipesEmptyNotInList: String { String(localized: "recipes_empty_not_in_list") }
+    // One cookbook (#345): the views strip, each view's note and empty line, and Home's See all.
+    static var recipesViewCooked: String { String(localized: "recipes_view_cooked") }
+    static var recipesViewTyped: String { String(localized: "recipes_view_typed") }
+    static var recipesViewNotInListNote: String { String(localized: "recipes_view_not_in_list_note") }
+    static var recipesViewCookedNote: String { String(localized: "recipes_view_cooked_note") }
+    static var recipesViewTypedNote: String { String(localized: "recipes_view_typed_note") }
+    static var recipesEmptyCooked: String { String(localized: "recipes_empty_cooked") }
+    static var recipesEmptyTyped: String { String(localized: "recipes_empty_typed") }
+    static var homeSeeAll: String { String(localized: "home_see_all") }
     static func recipesCullNote(_ keep: Int) -> String { String(localized: "recipes_cull_note \(keep)") }
     static var searchRecipes: String { String(localized: "label_search_recipes") }
     static var addRecipe: String { String(localized: "cd_add_recipe") }

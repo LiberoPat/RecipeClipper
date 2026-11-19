@@ -8,7 +8,7 @@ import Observation
 enum Flag: String, CaseIterable {
     /// Chef mode (#100): the Settings switch for short steps written on the device.
     case chefMode
-    /// The free tier (#107): 20 recipes, and the one-time unlock for unlimited ones.
+    /// The free tier (#107): 50 recipes (20 with `oneCookbook` off), and the one-time unlock for unlimited ones.
     case freeTier
     /// A recipe picked from the page's text by the on-device model when the page has no recipe data (#103).
     case llmExtraction
@@ -31,6 +31,9 @@ enum Flag: String, CaseIterable {
     case shareText
     /// "Use it up" (#305): the saved recipes that use a pantry item about to expire.
     case useItUp
+    /// One cookbook (#345): nothing is removed automatically; the free tier (50) opens a new recipe unsaved
+    /// at the limit; Recipes shows a strip of views in place of the filter pills; Home's Recently viewed gains See all.
+    case oneCookbook
 }
 
 /// One flag as `shared/flags.json` declares it.

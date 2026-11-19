@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.PurchaseOutcome
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.LibraryLimit
 
 /** The words for a purchase or restore that didn't simply unlock (#107). */
@@ -29,7 +30,7 @@ fun LibraryFullDialog(onUnlock: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.library_full_title)) },
-        text = { Text(stringResource(R.string.library_full_body, LibraryLimit.FREE_RECIPES)) },
+        text = { Text(stringResource(R.string.library_full_body, LibraryLimit.freeRecipes(LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK)))) },
         confirmButton = { TextButton(onClick = onUnlock) { Text(stringResource(R.string.unlock)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     )

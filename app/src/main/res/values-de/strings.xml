@@ -96,6 +96,14 @@
     <string name="recipes_filter_not_in_list">In keiner Liste</string>
     <string name="recipes_empty_in_list">Noch kein Rezept ist in einer Liste. Speichere eines mit dem Lesezeichen in einer Liste.</string>
     <string name="recipes_empty_not_in_list">Jedes Rezept ist in einer Liste.</string>
+    <string name="recipes_view_cooked">Gekocht</string>
+    <string name="recipes_view_typed">Selbst eingegeben</string>
+    <string name="recipes_view_not_in_list_note">Rezepte, die du gespeichert oder geöffnet, aber in keine Liste gelegt hast. Sie bleiben, bis du sie löschst.</string>
+    <string name="recipes_view_cooked_note">Rezepte, die du als gekocht markiert oder von denen du ein Foto behalten hast.</string>
+    <string name="recipes_view_typed_note">Rezepte, die du selbst eingetippt, gescannt oder eingefügt hast.</string>
+    <string name="recipes_empty_cooked">Noch nichts gekocht. Markiere ein Rezept als gekocht, dann erscheint es hier.</string>
+    <string name="recipes_empty_typed">Noch nichts selbst eingegeben. Mit + tippst oder scannst du ein Rezept.</string>
+    <string name="home_see_all">Alle ansehen</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
     <string name="recipes_cull_note">Rezepte ohne Liste bleiben bis zu %1$d erhalten. Darüber werden zuerst die entfernt, die du am längsten nicht geöffnet hast. Speichere ein Rezept in einer Liste, um es zu behalten.</string>
     <string name="label_search_recipes">Titel und Zutaten durchsuchen</string>
@@ -578,14 +586,14 @@
     <string name="unlimited_pending">Kauf ausstehend: Die Freischaltung erfolgt, sobald die Zahlung durch ist.</string>
     <string name="unlock_failed">Der Store ist nicht erreichbar. Versuch es später noch einmal.</string>
     <string name="unlock_nothing">Für dieses Konto gibt es keinen Kauf zum Wiederherstellen.</string>
-    <string name="recipe_not_kept">Nicht gespeichert: Deine %1$d Rezepte sind alle in Listen, Plänen oder selbst eingegeben.</string>
+    <string name="recipe_not_kept">Nicht gespeichert: Die kostenlose App behält %1$d Rezepte.</string>
     <string name="library_full_title">Deine Sammlung ist voll</string>
-    <string name="library_full_body">Die kostenlose App behält %1$d Rezepte, und deine sind alle in Listen, Plänen oder selbst eingegeben. Schalte unbegrenzt viele Rezepte frei oder lösche eines, um Platz zu schaffen.</string>
+    <string name="library_full_body">Die kostenlose App behält %1$d Rezepte. Schalte unbegrenzt viele Rezepte frei oder lösche eines, um Platz zu schaffen.</string>
     <string name="recipes_count">%1$d von %2$d Rezepten</string>
     <string name="recipes_count_over">%1$d Rezepte, mehr als die kostenlosen %2$d</string>
     <plurals name="backup_skipped_free">
-        <item quantity="one">%1$d älteres Rezept ohne Liste wurde nicht hinzugefügt: Die kostenlose App behält %2$d Rezepte.</item>
-        <item quantity="other">%1$d ältere Rezepte ohne Liste wurden nicht hinzugefügt: Die kostenlose App behält %2$d Rezepte.</item>
+        <item quantity="one">%1$d Rezept wurde nicht hinzugefügt: Die kostenlose App behält %2$d Rezepte.</item>
+        <item quantity="other">%1$d Rezepte wurden nicht hinzugefügt: Die kostenlose App behält %2$d Rezepte.</item>
     </plurals>
     <!-- "I made this" (#116) -->
     <string name="sort_recently_cooked">Zuletzt gekocht</string>

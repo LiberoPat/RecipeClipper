@@ -36,6 +36,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -54,6 +57,8 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
+import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
+import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -68,12 +73,21 @@ fun RecipesScreen(
     onNewRecipe: () -> Unit = {},
     onOpenUrl: (String) -> Unit = {},
     onScan: (List<String>) -> Unit = {},
+    /** A view's tile on the strip (#345): its own screen, Back to Recipes. */
+    onOpenView: (RecipeFilter) -> Unit = {},
+    onOpenList: (Long) -> Unit = {},
     viewModel: RecipesViewModel = hiltViewModel(),
     scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
+    /** One cookbook (#345): the views strip in place of the filter pills, and a bookmark to save from a row. */
+    oneCookbook: Boolean = LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK),
+    /** The sheet behind a row's outlined bookmark (#345); the recipe goes in with `setRecipe`. */
+    saveViewModel: SaveToListViewModel? = if (oneCookbook) hiltViewModel() else null,
     // A parameter so a test can watch the one snackbar a burst shares (#268).
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var saveSheetOpen by rememberSaveable { mutableStateOf(false) }
+    val view = state.view
 
     // Resolved here, not inside LaunchedEffect below: its block is a suspend lambda, not a
     // composable one, so stringResource cannot be called from it. Resolving the finished
@@ -106,6 +120,9 @@ fun RecipesScreen(
                 onDismiss = viewModel::onLinkDismiss
             )
         }
+        if (saveSheetOpen && saveViewModel != null) {
+            SaveToListBottomSheet(saveViewModel, onDismiss = { saveSheetOpen = false })
+        }
         Scaffold(
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->
@@ -132,19 +149,26 @@ fun RecipesScreen(
                         BackButton(onBack)
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                             Text(
-                                stringResource(R.string.recipes_title),
+                                stringResource(if (view != null) filterLabel(view) else R.string.recipes_title),
                                 style = MaterialTheme.typography.headlineSmall,
                                 modifier = Modifier.weight(1f)
                             )
-                            AddMenu(
-                                onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink,
-                                onScan = onScan.takeIf { scanEnabled }
-                            )
+                            if (view == null) {
+                                AddMenu(
+                                    onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink,
+                                    onScan = onScan.takeIf { scanEnabled }
+                                )
+                            }
                         }
+                        if (view != null) ViewNote(view, Modifier.padding(top = 6.dp))
                         Spacer(Modifier.height(12.dp))
                         SearchField(query = state.query, onQueryChange = viewModel::onQueryChange)
-                        if (state.showsFilter) {
-                            RecipeFilterPills(state.filter, state.counts, viewModel::onFilterChange)
+                        when {
+                            // One cookbook (#345): the views, then the lists, in place of the pills.
+                            oneCookbook && state.showsViewsStrip ->
+                                RecipesViewsStrip(state.counts, state.lists, onOpenView, onOpenList)
+                            !oneCookbook && state.showsFilter ->
+                                RecipeFilterPills(state.filter, state.counts, viewModel::onFilterChange)
                         }
                         if (state.showsSortLine) {
                             SortLine(state, viewModel::onSortChange)
@@ -164,6 +188,8 @@ fun RecipesScreen(
                             Text(
                                 when {
                                     state.query.isNotBlank() -> stringResource(R.string.recipes_no_results, state.query)
+                                    state.filter == RecipeFilter.COOKED -> stringResource(R.string.recipes_empty_cooked)
+                                    state.filter == RecipeFilter.TYPED -> stringResource(R.string.recipes_empty_typed)
                                     state.showsFilter && state.filter == RecipeFilter.IN_A_LIST -> stringResource(R.string.recipes_empty_in_list)
                                     state.showsFilter && state.filter == RecipeFilter.NOT_IN_A_LIST -> stringResource(R.string.recipes_empty_not_in_list)
                                     else -> stringResource(R.string.recipes_empty)
@@ -179,7 +205,15 @@ fun RecipesScreen(
                         SwipeToDeleteRow(
                             recipe = recipe,
                             onClick = { onOpenRecipe(recipe.id) },
-                            onDelete = { viewModel.onDelete(recipe) }
+                            onDelete = { viewModel.onDelete(recipe) },
+                            onSaveToList = if (oneCookbook && saveViewModel != null) {
+                                {
+                                    saveViewModel.setRecipe(recipe.id, recipe.title)
+                                    saveSheetOpen = true
+                                }
+                            } else {
+                                null
+                            }
                         )
                     }
                 }
@@ -213,7 +247,8 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
 private fun SwipeToDeleteRow(
     recipe: RecipeSummary,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onSaveToList: (() -> Unit)? = null
 ) {
     // Remembered, not rememberSaveable like rememberSwipeToDismissBoxState: the lazy list keeps a
     // removed row's saved state under its key, so a row put back by Undo came back dismissed and
@@ -234,7 +269,7 @@ private fun SwipeToDeleteRow(
         onDismiss = onDismiss
     ) {
         Surface(color = MaterialTheme.colorScheme.background) {
-            LibraryRow(recipe, onClick = onClick)
+            LibraryRow(recipe, onClick = onClick, onSaveToList = onSaveToList)
         }
     }
 }
@@ -265,7 +300,8 @@ private fun DeleteBackground(dismissState: SwipeToDismissBoxState) {
 @Composable
 private fun SortLine(state: RecipesUiState, onSort: (RecipeSort) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        val count = state.count
+        // Inside a view the count is the view's own, not the free library's.
+        val count = state.count.takeIf { state.view == null }
         val listed = state.listed
         Text(
             when {
