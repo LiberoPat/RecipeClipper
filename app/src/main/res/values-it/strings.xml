@@ -78,12 +78,11 @@
     </plurals>
     <string name="timer_start">⏱  Avvia timer da %1$s</string>
     <string name="timers_up">Tempo scaduto</string>
-    <string name="label_recipe_url">URL della ricetta</string>
     <string name="section_continue_cooking">Continua a cucinare</string>
     <string name="section_recently_viewed">Viste di recente</string>
     <string name="home_empty_hint">Le ricette che apri compariranno qui.</string>
     <!-- Home (#286): the resume card and the Add a recipe tiles -->
-    <string name="home_paste_link_hint">Da qualsiasi sito o da Reddit</string>
+    <string name="home_paste_link_hint">Un link o il testo di una ricetta</string>
     <string name="home_scan_hint">Una scheda o la pagina di un ricettario</string>
     <string name="home_type_hint">Scrivila tu</string>
     <string name="home_share_hint">Oppure condividi un link con Recipe Clipper da qualsiasi app.</string>
@@ -791,7 +790,7 @@
     <string name="action_ask_ai">Chiedi a un\'IA</string>
     <string name="home_ask_ai_hint">Un prompt per qualsiasi chat</string>
     <string name="ask_ai_title">Chiedi a un\'IA</string>
-    <string name="ask_ai_intro">Copia un prompt in qualsiasi app di chat. Condividi la risposta con Recipe Clipper e si apre qui per controllarla.</string>
+    <string name="ask_ai_intro">Copia un prompt in qualsiasi app di chat. Condividi la risposta con Recipe Clipper, oppure copiala e tocca Incolla la risposta, e si apre qui per controllarla.</string>
     <string name="ask_ai_field">Cosa vuoi cucinare?</string>
     <string name="ask_ai_field_extra">Altro? (facoltativo)</string>
     <string name="ask_ai_kind_describe">Quello che descrivo sopra</string>
@@ -804,6 +803,12 @@
     <string name="ask_ai_copy">Copia prompt</string>
     <string name="ask_ai_copied">Copiato</string>
     <string name="ask_ai_share">Condividi</string>
+    <string name="paste_dialog_title">Incolla un link o una ricetta</string>
+    <string name="label_link_or_recipe">Link o testo della ricetta</string>
+    <string name="paste_no_recipe">Nessuna ricetta trovata in questo testo.</string>
+    <string name="ask_ai_paste">Incolla la risposta</string>
+    <string name="ask_ai_paste_empty">Niente da incollare. Copia prima la risposta.</string>
+    <string name="ask_ai_paste_none">Nessuna ricetta trovata in ciò che hai copiato.</string>
     <string name="action_change_recipe">Modifica questa ricetta</string>
     <string name="menu_desc_change_recipe">Un prompt per qualsiasi chat di IA</string>
     <string name="change_recipe_title">Modifica questa ricetta</string>

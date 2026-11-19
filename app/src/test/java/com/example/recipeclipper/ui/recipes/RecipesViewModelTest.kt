@@ -12,6 +12,7 @@ import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeLibraryPolicy
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.ui.edit.PasteTarget
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -428,7 +429,7 @@ class RecipesViewModelTest {
             assertEquals(listOf(deleted), repository.forgetCalls)
         }
 
-    @Test fun `paste a link opens only a real link, and closes the dialog`() =
+    @Test fun `paste a link imports a link and closes the dialog, and without the router other text stays`() =
         runTest(mainDispatcherRule.dispatcher) {
             val vm = RecipesViewModel(FakeRecipeRepository(), FakeAppPreferences())
             collectEagerly(vm.uiState)
@@ -439,15 +440,20 @@ class RecipesViewModelTest {
 
             vm.onLinkChange("not a link")
             advanceUntilIdle()
-            assertEquals(false, vm.uiState.value.canOpenLink)
-            assertNull(vm.onOpenLink())
+            assertEquals(true, vm.uiState.value.canOpenLink)
+            var opened: PasteTarget? = null
+            vm.onOpenLink { opened = it }
+            advanceUntilIdle()
+            assertNull(opened)
             assertEquals("not a link", vm.uiState.value.linkInput) // stays open
+            assertTrue(vm.uiState.value.linkNoRecipe)
 
             vm.onLinkChange("  seriouseats.com/bread ")
             advanceUntilIdle()
             assertTrue(vm.uiState.value.canOpenLink)
-            assertEquals("https://seriouseats.com/bread", vm.onOpenLink())
+            vm.onOpenLink { opened = it }
             advanceUntilIdle()
+            assertEquals(PasteTarget.Link("https://seriouseats.com/bread"), opened)
             assertNull(vm.uiState.value.linkInput)
         }
 

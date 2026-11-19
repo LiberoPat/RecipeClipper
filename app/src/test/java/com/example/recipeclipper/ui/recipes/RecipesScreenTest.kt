@@ -32,6 +32,9 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.passTheSearchDebounce
+import com.example.recipeclipper.ui.edit.PasteTarget
+import com.example.recipeclipper.ui.edit.PastedTextFixtures
+import com.example.recipeclipper.ui.edit.PastedTextRouter
 import com.example.recipeclipper.ui.assertInAppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -93,19 +96,21 @@ class RecipesScreenTest {
     private var opened: Long? = null
     private var newRecipe = 0
     private var openedUrl: String? = null
+    private var openedPasted: PasteTarget? = null
 
     private val snackbars = SnackbarHostState()
 
-    private fun show(vararg recipes: RecipeSummary) {
+    private fun show(vararg recipes: RecipeSummary, pasted: PastedTextRouter? = null) {
         repository.history.value = recipes.toList()
         recipes.forEach { repository.deleteResults[it.id] = captured(it) }
-        val viewModel = RecipesViewModel(repository, FakeAppPreferences())
+        val viewModel = RecipesViewModel(repository, FakeAppPreferences(), pasted = pasted)
         compose.setContent {
             RecipesScreen(
                 onBack = {},
                 onOpenRecipe = { opened = it },
                 onNewRecipe = { newRecipe++ },
                 onOpenUrl = { openedUrl = it },
+                onOpenPasted = { openedPasted = it },
                 viewModel = viewModel,
                 snackbarHostState = snackbars
             )
@@ -301,22 +306,30 @@ class RecipesScreenTest {
     }
 
     @Test
-    fun plusPasteALinkOpensItOnlyOnceItIsALink() {
-        show(adobo)
+    fun plusPasteALinkImportsALinkAndOpensTheEditorForAnyOtherText() {
+        val fixtures = PastedTextFixtures()
+        show(adobo, pasted = fixtures.router)
 
         compose.onNodeWithContentDescription("Add a recipe").performClick()
         compose.onNodeWithText("Paste a link").performClick()
         compose.onNodeWithText("Go").assertIsNotEnabled()
 
-        val field = compose.onNode(hasSetTextAction() and hasText("Recipe URL"))
-        field.performTextInput("not a link")
-        compose.onNodeWithText("Go").assertIsNotEnabled()
-        field.performTextClearance()
-        field.performTextInput("seriouseats.com/adobo")
+        // #372: any text goes where a share would, here a recipe written out opens the editor.
+        val field = compose.onNode(hasSetTextAction() and hasText("Link or recipe text"))
+        field.performTextInput(PastedTextFixtures.prose)
         compose.onNodeWithText("Go").assertIsEnabled().performClick()
+        compose.waitUntil(5_000) { openedPasted != null }
+        assertTrue(openedPasted is PasteTarget.Review)
+        assertNull(openedUrl)
+        compose.waitForIdle()
+        compose.onNodeWithText("Paste a link or recipe").assertDoesNotExist()
 
+        compose.onNodeWithContentDescription("Add a recipe").performClick()
+        compose.onNodeWithText("Paste a link").performClick()
+        compose.onNode(hasSetTextAction() and hasText("Link or recipe text")).performTextInput("seriouseats.com/adobo")
+        compose.onNodeWithText("Go").assertIsEnabled().performClick()
+        compose.waitUntil(5_000) { openedUrl != null }
         assertEquals("https://seriouseats.com/adobo", openedUrl)
-        compose.onNodeWithText("Paste a link").assertDoesNotExist()
     }
 
     /** #186: it was composed outside the screen's theme, so it came up Material purple. */

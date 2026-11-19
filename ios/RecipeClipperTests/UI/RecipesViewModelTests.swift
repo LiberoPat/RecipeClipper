@@ -344,19 +344,20 @@ final class RecipesViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.recipes?.map(\.id), [3, 2, 1])
     }
 
-    func testPasteALinkOpensOnlyARealLinkAndClosesTheAlert() {
+    func testPasteALinkImportsALinkAndClosesTheSheetAndWithoutTheRouterOtherTextStays() {
         let vm = RecipesViewModel(repository: FakeRecipeRepository(), preferences: FakeAppPreferences(), sleep: immediateSleep)
 
         vm.onPasteLink()
         XCTAssertTrue(vm.uiState.pastingLink)
         vm.onLinkChange("not a link")
-        XCTAssertFalse(vm.uiState.canOpenLink)
+        XCTAssertTrue(vm.uiState.canOpenLink)
         XCTAssertNil(vm.onOpenLink())
         XCTAssertTrue(vm.uiState.pastingLink)
+        XCTAssertTrue(vm.uiState.linkNoRecipe)
 
         vm.onLinkChange("  seriouseats.com/bread ")
         XCTAssertTrue(vm.uiState.canOpenLink)
-        XCTAssertEqual(vm.onOpenLink(), "https://seriouseats.com/bread")
+        XCTAssertEqual(vm.onOpenLink(), .link("https://seriouseats.com/bread"))
         XCTAssertFalse(vm.uiState.pastingLink)
     }
 
@@ -368,7 +369,7 @@ final class RecipesViewModelTests: XCTestCase {
         vm.onLinkDismissed()
 
         XCTAssertFalse(vm.uiState.pastingLink)
-        XCTAssertEqual(vm.onOpenLink(), "https://example.com/soup")
+        XCTAssertEqual(vm.onOpenLink(), .link("https://example.com/soup"))
     }
 
     func testSnackbarMessageNamesOneAndCountsMany() {

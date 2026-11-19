@@ -65,13 +65,14 @@ class RecipeUITestCase: XCTestCase {
     var homePasteLink: XCUIElement { app.buttons["home.pasteLink"] }
 
     /// Opens `link` from Home as the cook would (#286): the Paste a link tile, the link typed
-    /// into its alert, then Go. `beforeGo` runs between the two (a walkthrough's pause).
+    /// into its sheet, then Go. `beforeGo` runs between the two (a walkthrough's pause).
     func pasteLink(_ link: String, beforeGo: () -> Void = {}) {
         require(homePasteLink, "Home").tap()
-        let field = require(app.alerts.textFields.firstMatch, "the Paste a link alert's field")
+        let field = require(app.descendants(matching: .any)["pasteField"], "the Paste a link sheet's field")
+        field.tap()
         field.typeText(link)
         beforeGo()
-        app.alerts.buttons["Go"].tap()
+        require(app.buttons["pasteGo"], "Go").tap()
     }
 
     // MARK: - Queries
