@@ -2921,6 +2921,29 @@ bends the settled link field: an always-visible field became a tile that opens i
   tier's count is showing. Photos stayed 64: the mockup's 56 would have made
   them smaller, not bigger.
 
+- **"History" is not a word the cook sees** (#345 step 1, the owner's pick V1 "Say what it
+  is"; V4 "One cookbook" is step 2). Recipes is the one library, in Recently viewed order by
+  default; the delete dialogs, the list delete, "Update from source" and the import note say
+  "your recipes" or "Recipes", in all six languages, on both platforms. Code identifiers keep
+  the name (`observeHistory`, `cullHistory`, `LibraryLimit.History`).
+- **The filter** under search: All, In a list and Not in a list, as plain text pills with the
+  library's counts ("In a list 12"), the chosen one filled in ink (Android `RecipeFilterPills`,
+  radio semantics; iOS `RecipeFilterPills`, selected trait). They pick recipes, never
+  ingredients, so the reading view's no-chips rule is untouched. "In a list" is the `isSaved`
+  `EXISTS` over the cross-ref table, the same one as a row's bookmark, so the two can't disagree;
+  the filter is in the query (`observeHistory(query, filter)`, DAO `listed` = -1 / 1 / 0), with
+  the search still applying inside it. The counts (`observeRecipeCounts`) ignore both. The
+  filter lives in the ViewModel's state (it survives rotation) and is **not remembered**: the
+  screen opens on All, unlike the sort. A tap answers at once (no debounce); the pills hide
+  while the library is empty and stay when a filter matches nothing, which has its own empty
+  line ("Every recipe is in a list.", "No recipes are in a list yet…").
+- **The clean-up line:** one muted panel with an info glyph, only under Not in a list, only
+  with a row under it, and only with the free tier off (`LibraryLimit.History(50)`): "Recipes in
+  no list are kept up to 50. Past that, the ones you opened longest ago go first. Save one to a
+  list to keep it." The free tier's count line and an unlocked library need no such line. The
+  mockup's outlined bookmark on each Not in a list row (opening the save-to-list sheet from
+  Recipes) is not built: a recipe is still saved from its own screen.
+
 ## The free tier and the unlock (#107)
 
 Owner's decision (2026-09-25, rules approved as proposed): the free app keeps

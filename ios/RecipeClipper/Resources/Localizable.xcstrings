@@ -2649,13 +2649,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld older recipe in no list wasn't added: history keeps the %2$lld most recent."
+                  "value" : "%1$lld older recipe in no list wasn't added: recipes in no list are kept up to %2$lld."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld older recipes in no list weren't added: history keeps the %2$lld most recent."
+                  "value" : "%1$lld older recipes in no list weren't added: recipes in no list are kept up to %2$lld."
                 }
               }
             }
@@ -2667,19 +2667,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld receta antigua sin lista no se añadió: el historial conserva las %2$lld más recientes."
+                  "value" : "%1$lld receta antigua sin lista no se añadió: las recetas sin lista se conservan hasta %2$lld."
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld de recetas antiguas sin lista no se añadieron: el historial conserva las %2$lld más recientes."
+                  "value" : "%1$lld de recetas antiguas sin lista no se añadieron: las recetas sin lista se conservan hasta %2$lld."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld recetas antiguas sin lista no se añadieron: el historial conserva las %2$lld más recientes."
+                  "value" : "%1$lld recetas antiguas sin lista no se añadieron: las recetas sin lista se conservan hasta %2$lld."
                 }
               }
             }
@@ -2691,19 +2691,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld ancienne recette sans liste n'a pas été ajoutée : l'historique garde les %2$lld plus récentes."
+                  "value" : "%1$lld ancienne recette sans liste n'a pas été ajoutée : les recettes sans liste sont conservées jusqu'à %2$lld."
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld d'anciennes recettes sans liste n'ont pas été ajoutées : l'historique garde les %2$lld plus récentes."
+                  "value" : "%1$lld d'anciennes recettes sans liste n'ont pas été ajoutées : les recettes sans liste sont conservées jusqu'à %2$lld."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : l'historique garde les %2$lld plus récentes."
+                  "value" : "%1$lld anciennes recettes sans liste n'ont pas été ajoutées : les recettes sans liste sont conservées jusqu'à %2$lld."
                 }
               }
             }
@@ -2715,13 +2715,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld älteres Rezept ohne Liste wurde nicht hinzugefügt: Der Verlauf behält die %2$lld zuletzt angesehenen."
+                  "value" : "%1$lld älteres Rezept ohne Liste wurde nicht hinzugefügt: Rezepte ohne Liste bleiben bis zu %2$lld erhalten."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Der Verlauf behält die %2$lld zuletzt angesehenen."
+                  "value" : "%1$lld ältere Rezepte ohne Liste wurden nicht hinzugefügt: Rezepte ohne Liste bleiben bis zu %2$lld erhalten."
                 }
               }
             }
@@ -2733,19 +2733,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld ricetta meno recente senza lista non è stata aggiunta: la cronologia conserva le %2$lld più recenti."
+                  "value" : "%1$lld ricetta meno recente senza lista non è stata aggiunta: le ricette senza lista vengono conservate fino a %2$lld."
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld di ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$lld più recenti."
+                  "value" : "%1$lld di ricette meno recenti senza lista non sono state aggiunte: le ricette senza lista vengono conservate fino a %2$lld."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$lld più recenti."
+                  "value" : "%1$lld ricette meno recenti senza lista non sono state aggiunte: le ricette senza lista vengono conservate fino a %2$lld."
                 }
               }
             }
@@ -2757,19 +2757,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld receita antiga sem lista não foi adicionada: o histórico mantém as %2$lld mais recentes."
+                  "value" : "%1$lld receita antiga sem lista não foi adicionada: as receitas sem lista são mantidas até %2$lld."
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld de receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$lld mais recentes."
+                  "value" : "%1$lld de receitas antigas sem lista não foram adicionadas: as receitas sem lista são mantidas até %2$lld."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%1$lld receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$lld mais recentes."
+                  "value" : "%1$lld receitas antigas sem lista não foram adicionadas: as receitas sem lista são mantidas até %2$lld."
                 }
               }
             }
@@ -6503,37 +6503,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Liste wird entfernt. Die Rezepte darin bleiben in deinem Verlauf."
+            "value" : "Die Liste wird entfernt. Die Rezepte darin bleiben in deinen Rezepten."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The list is removed. The recipes in it stay in your history."
+            "value" : "The list is removed. The recipes in it are still in Recipes."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se eliminará la lista. Sus recetas seguirán en tu historial."
+            "value" : "Se eliminará la lista. Sus recetas seguirán en Recetas."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La liste sera supprimée. Ses recettes resteront dans votre historique."
+            "value" : "La liste sera supprimée. Ses recettes restent dans Recettes."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La lista verrà rimossa. Le sue ricette resteranno nella cronologia."
+            "value" : "La lista verrà rimossa. Le sue ricette resteranno in Ricette."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A lista será removida. As receitas dela continuam no seu histórico."
+            "value" : "A lista será removida. As receitas dela continuam em Receitas."
           }
         }
       }
@@ -6667,37 +6667,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Rezept wird aus dem Verlauf und allen Listen entfernt. Das lässt sich nicht rückgängig machen."
+            "value" : "Das Rezept wird aus deinen Rezepten und allen Listen entfernt. Das lässt sich nicht rückgängig machen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This removes it from history and any lists it's in. This can't be undone."
+            "value" : "This removes it from your recipes and any lists it's in. This can't be undone."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La receta se eliminará del historial y de todas las listas en las que esté. No se puede deshacer."
+            "value" : "La receta se eliminará de tus recetas y de todas las listas en las que esté. No se puede deshacer."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La recette sera retirée de l'historique et de toutes les listes où elle figure. Cette action est irréversible."
+            "value" : "La recette sera retirée de vos recettes et de toutes les listes où elle figure. Cette action est irréversible."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La ricetta verrà rimossa dalla cronologia e da tutte le liste in cui si trova. L'operazione non si può annullare."
+            "value" : "La ricetta verrà rimossa dalle tue ricette e da tutte le liste in cui si trova. L'operazione non si può annullare."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A receita será removida do histórico e de todas as listas em que estiver. Isso não pode ser desfeito."
+            "value" : "A receita será removida das suas receitas e de todas as listas em que estiver. Isso não pode ser desfeito."
           }
         }
       }
@@ -9009,6 +9009,252 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nenhuma receita encontrada para “%@”."
+          }
+        }
+      }
+    },
+    "recipes_filter_all" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toutes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tutte"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas"
+          }
+        }
+      }
+    },
+    "recipes_filter_in_list" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In einer Liste"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In a list"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En una lista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans une liste"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In una lista"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Em uma lista"
+          }
+        }
+      }
+    },
+    "recipes_filter_not_in_list" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In keiner Liste"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not in a list"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En ninguna lista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans aucune liste"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In nessuna lista"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Em nenhuma lista"
+          }
+        }
+      }
+    },
+    "recipes_empty_in_list" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch kein Rezept ist in einer Liste. Speichere eines mit dem Lesezeichen in einer Liste."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No recipes are in a list yet. Save one to a list with its bookmark."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay recetas en ninguna lista. Guarda una en una lista con su marcador."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune recette n'est encore dans une liste. Enregistrez-en une dans une liste avec son marque-page."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna ricetta è ancora in una lista. Salvane una in una lista con il suo segnalibro."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma receita está em uma lista ainda. Salve uma em uma lista com o marcador dela."
+          }
+        }
+      }
+    },
+    "recipes_empty_not_in_list" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jedes Rezept ist in einer Liste."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every recipe is in a list."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas las recetas están en una lista."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toutes les recettes sont dans une liste."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ogni ricetta è in una lista."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas as receitas estão em uma lista."
+          }
+        }
+      }
+    },
+    "recipes_cull_note %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rezepte ohne Liste bleiben bis zu %lld erhalten. Darüber werden zuerst die entfernt, die du am längsten nicht geöffnet hast. Speichere ein Rezept in einer Liste, um es zu behalten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipes in no list are kept up to %lld. Past that, the ones you opened longest ago go first. Save one to a list to keep it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las recetas sin lista se conservan hasta %lld. Pasado ese número, se eliminan primero las que abriste hace más tiempo. Guarda una en una lista para conservarla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les recettes sans liste sont conservées jusqu'à %lld. Au-delà, celles que vous avez ouvertes il y a le plus longtemps sont supprimées en premier. Enregistrez-en une dans une liste pour la garder."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le ricette senza lista vengono conservate fino a %lld. Oltre, le prime a essere eliminate sono quelle aperte meno di recente. Salva una ricetta in una lista per conservarla."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As receitas sem lista são mantidas até %lld. Depois disso, as abertas há mais tempo são removidas primeiro. Salve uma receita em uma lista para mantê-la."
           }
         }
       }
@@ -14284,37 +14530,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und im Verlauf."
+            "value" : "Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und in deinen Rezepten."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This loads the page again and replaces the name, ingredients, steps and photo you clipped with the site's own recipe data. It stays in your lists and history."
+            "value" : "This loads the page again and replaces the name, ingredients, steps and photo you clipped with the site's own recipe data. It stays in your lists and in Recipes."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esto vuelve a cargar la página y reemplaza el nombre, los ingredientes, los pasos y la foto que recortaste por los datos de receta del propio sitio. Sigue en tus listas y tu historial."
+            "value" : "Esto vuelve a cargar la página y reemplaza el nombre, los ingredientes, los pasos y la foto que recortaste por los datos de receta del propio sitio. Sigue en tus listas y en Recetas."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La page est rechargée, et le nom, les ingrédients, les étapes et la photo que vous avez découpés sont remplacés par les données de recette du site. La recette reste dans vos listes et votre historique."
+            "value" : "La page est rechargée, et le nom, les ingrédients, les étapes et la photo que vous avez découpés sont remplacés par les données de recette du site. La recette reste dans vos listes et dans Recettes."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nelle tue liste e nella cronologia."
+            "value" : "La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nelle tue liste e in Ricette."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. A receita continua nas suas listas e no histórico."
+            "value" : "Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. A receita continua nas suas listas e em Receitas."
           }
         }
       }
@@ -20175,37 +20421,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Rezept wird aus dem Verlauf und allen Listen entfernt, und dein Foto davon wird gelöscht. Das lässt sich nicht rückgängig machen."
+            "value" : "Das Rezept wird aus deinen Rezepten und allen Listen entfernt, und dein Foto davon wird gelöscht. Das lässt sich nicht rückgängig machen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This removes it from history and any lists it's in, with your photo of it. This can't be undone."
+            "value" : "This removes it from your recipes and any lists it's in, with your photo of it. This can't be undone."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La receta se eliminará del historial y de todas las listas en las que esté, junto con tu foto. No se puede deshacer."
+            "value" : "La receta se eliminará de tus recetas y de todas las listas en las que esté, junto con tu foto. No se puede deshacer."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La recette sera retirée de l'historique et de toutes les listes où elle figure, avec votre photo. Cette action est irréversible."
+            "value" : "La recette sera retirée de vos recettes et de toutes les listes où elle figure, avec votre photo. Cette action est irréversible."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La ricetta verrà rimossa dalla cronologia e da tutte le liste in cui si trova, insieme alla tua foto. L'operazione non si può annullare."
+            "value" : "La ricetta verrà rimossa dalle tue ricette e da tutte le liste in cui si trova, insieme alla tua foto. L'operazione non si può annullare."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A receita será removida do histórico e de todas as listas em que estiver, com a sua foto. Isso não pode ser desfeito."
+            "value" : "A receita será removida das suas receitas e de todas as listas em que estiver, com a sua foto. Isso não pode ser desfeito."
           }
         }
       }
@@ -20216,37 +20462,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Rezept wird aus dem Verlauf und allen Listen entfernt, und deine %lld Fotos davon werden gelöscht. Das lässt sich nicht rückgängig machen."
+            "value" : "Das Rezept wird aus deinen Rezepten und allen Listen entfernt, und deine %lld Fotos davon werden gelöscht. Das lässt sich nicht rückgängig machen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This removes it from history and any lists it's in, with your %lld photos of it. This can't be undone."
+            "value" : "This removes it from your recipes and any lists it's in, with your %lld photos of it. This can't be undone."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La receta se eliminará del historial y de todas las listas en las que esté, junto con tus %lld fotos. No se puede deshacer."
+            "value" : "La receta se eliminará de tus recetas y de todas las listas en las que esté, junto con tus %lld fotos. No se puede deshacer."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La recette sera retirée de l'historique et de toutes les listes où elle figure, avec vos %lld photos. Cette action est irréversible."
+            "value" : "La recette sera retirée de vos recettes et de toutes les listes où elle figure, avec vos %lld photos. Cette action est irréversible."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La ricetta verrà rimossa dalla cronologia e da tutte le liste in cui si trova, insieme alle tue %lld foto. L'operazione non si può annullare."
+            "value" : "La ricetta verrà rimossa dalle tue ricette e da tutte le liste in cui si trova, insieme alle tue %lld foto. L'operazione non si può annullare."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A receita será removida do histórico e de todas as listas em que estiver, com as suas %lld fotos. Isso não pode ser desfeito."
+            "value" : "A receita será removida das suas receitas e de todas as listas em que estiver, com as suas %lld fotos. Isso não pode ser desfeito."
           }
         }
       }

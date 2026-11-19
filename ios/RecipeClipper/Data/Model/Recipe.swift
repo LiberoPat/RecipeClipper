@@ -128,6 +128,28 @@ enum RecipeSort: String, CaseIterable {
     }
 }
 
+/// Which recipes the Recipes screen lists (#345, V1): all, those in at least one list ("saved",
+/// derived from the cross-ref table), or those in none. Not remembered: it opens on `.all`.
+enum RecipeFilter: String, CaseIterable {
+    case all = "ALL", inAList = "IN_A_LIST", notInAList = "NOT_IN_A_LIST"
+}
+
+/// How many recipes there are, and how many of them are in at least one list (#345).
+struct RecipeCounts: Equatable {
+    let all: Int
+    let inList: Int
+
+    var notInList: Int { all - inList }
+
+    func of(_ filter: RecipeFilter) -> Int {
+        switch filter {
+        case .all: all
+        case .inAList: inList
+        case .notInAList: notInList
+        }
+    }
+}
+
 /// A list of recipes as a screen needs it. `isFavorites` is carried from the column rather
 /// than matched on the name, so it survives a rename. `containsRecipe` is meaningful only
 /// where a recipe was named in the query (the save-to-list sheet).

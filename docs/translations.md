@@ -66,6 +66,12 @@ The Lists screen still says "Empty" rather than a zero count, in every language.
   "Réglages" on iOS; Portuguese "Configurações" on Android, "Ajustes" on iOS.
 - **Quotation marks follow the language:** «…» (es, it), « … » with non-breaking spaces
   (fr), „…“ (de), “…” (pt-BR).
+- **No "history" (#345):** the Recipes library is "your recipes" / "Recipes" (*tus recetas*,
+  *vos recettes*, *deinen Rezepten*, *tue ricette*, *suas receitas*), never the old *historial*,
+  *historique*, *Verlauf*, *cronologia* or *histórico*. The filter under search reads *Todas /
+  En una lista / En ninguna lista*, *Toutes / Dans une liste / Dans aucune liste*, *Alle / In
+  einer Liste / In keiner Liste*, *Tutte / In una lista / In nessuna lista*, *Todas / Em uma lista
+  / Em nenhuma lista*: drafts for a native speaker, like the rest.
 - **Dates:** Android's `time_date_format` is a pattern and is translated per language
   (`d. MMM` in German, `d 'de' MMM` in Portuguese). iOS uses a template that
   `DateFormatter` reorders itself, so it isn't in the catalog.

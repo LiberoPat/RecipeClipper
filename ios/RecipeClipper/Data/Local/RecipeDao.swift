@@ -180,18 +180,40 @@ struct RecipeDao {
     ///
     /// `instr()`, never `LIKE`: LIKE treats `%` and `_` as wildcards, so "100%" would
     /// misbehave. It matches the ingredients column as stored (parsed, not scaled/converted).
-    func history(query: String) throws -> [RecipeSummaryRecord] {
+    ///
+    /// `listed` is the Recipes screen's filter (#345): `listedAny`, `listedYes` (in at least one
+    /// list) or `listedNo`. It is the same `EXISTS` as the `isSaved` column, so a row's bookmark
+    /// and the filter can't disagree; the search still applies inside it.
+    func history(query: String, listed: Int = RecipeDao.listedAny) throws -> [RecipeSummaryRecord] {
         try db.query(
             """
             SELECT \(Self.summaryColumns)
             FROM recipes
-            WHERE ?1 = ''
+            WHERE (?1 = ''
                OR instr(lower(title), lower(?1)) > 0
-               OR instr(lower(ingredients), lower(?1)) > 0
+               OR instr(lower(ingredients), lower(?1)) > 0)
+              AND (?2 = -1
+               OR EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) = ?2)
             ORDER BY lastViewedAt DESC, id DESC
             """,
-            query, map: RecipeSummaryRecord.init(row:)
+            query, listed, map: RecipeSummaryRecord.init(row:)
         )
+    }
+
+    /// `history`'s `listed` argument (#345): any recipe, one in a list, one in none.
+    static let listedAny = -1
+    static let listedYes = 1
+    static let listedNo = 0
+
+    /// How many recipes there are and how many are in a list, for the filter's counts (#345).
+    func libraryCounts() throws -> RecipeCounts {
+        try db.queryOne(
+            """
+            SELECT COUNT(*),
+                   COALESCE(SUM(EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)), 0)
+            FROM recipes
+            """
+        ) { RecipeCounts(all: $0.int(0), inList: $0.int(1)) } ?? RecipeCounts(all: 0, inList: 0)
     }
 
     func recent(limit: Int) throws -> [RecipeSummaryRecord] {

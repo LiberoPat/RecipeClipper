@@ -143,7 +143,7 @@ class ListDetailScreenTest {
 
         compose.onNodeWithText("Delete \"Weeknights\"?").assertIsDisplayed()
         // The dialog says what does NOT happen, which is the part worth being sure of.
-        compose.onNodeWithText("The list is removed. The recipes in it stay in your history.")
+        compose.onNodeWithText("The list is removed. The recipes in it are still in Recipes.")
             .assertIsDisplayed()
         assertTrue(repository.deleteCalls.isEmpty())
     }

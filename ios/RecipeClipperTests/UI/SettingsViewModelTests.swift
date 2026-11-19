@@ -202,7 +202,7 @@ final class SettingsViewModelTests: XCTestCase {
         )
         XCTAssertEqual(
             Strings.importSummary(ImportSummary(recipesAdded: 1, listsAdded: 0, recipesAlreadyHere: 0, recipesSkipped: 2)),
-            "Imported 1 recipe. 2 older recipes in no list weren't added: history keeps the 50 most recent."
+            "Imported 1 recipe. 2 older recipes in no list weren't added: recipes in no list are kept up to 50."
         )
     }
 }

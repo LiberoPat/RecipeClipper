@@ -23,18 +23,27 @@ struct RecipesScreen: View {
                     ScreenTitle(Strings.recipesTitle, style: Typography.headlineSmall)
                     SearchField(query: state.query, onQueryChange: vm.onQueryChange)
                 }
-                .padding(.bottom, vm.showsSortLine ? 0 : 12)
+                .padding(.bottom, vm.showsSortLine || state.showsFilter ? 0 : 12)
                 .listRowSeparator(.hidden)
+
+                if state.showsFilter {
+                    RecipeFilterPills(selected: state.filter, counts: state.counts, onSelect: vm.onFilterChange)
+                        .listRowSeparator(.hidden)
+                }
 
                 if vm.showsSortLine {
                     sortLine(state)
                         .listRowSeparator(.hidden)
                 }
 
+                if vm.showsCullNote, let keep = vm.cullKeep {
+                    CullNote(keep: keep)
+                        .padding(.vertical, 8)
+                        .listRowSeparator(.hidden)
+                }
+
                 if let recipes = state.recipes, recipes.isEmpty {
-                    Text(state.query.trimmingCharacters(in: .whitespaces).isEmpty
-                         ? Strings.recipesEmpty
-                         : Strings.recipesNoResults(state.query))
+                    Text(emptyMessage(state))
                         .textStyle(Typography.bodyLarge)
                         .foregroundStyle(Palette.muted)
                         .listRowSeparator(.hidden)
@@ -118,6 +127,18 @@ struct RecipesScreen: View {
             await SnackbarTimeout.run(pending: state.pendingDeletes, onTimeout: vm.onSnackbarDismissed)
         }
         .scanSources($scanSource) { onScan?($0) }
+    }
+
+    /// What an empty list says: the search's, else the filter's (while there is a library to
+    /// filter), else the empty library's.
+    private func emptyMessage(_ state: RecipesUiState) -> String {
+        if !state.query.trimmingCharacters(in: .whitespaces).isEmpty { return Strings.recipesNoResults(state.query) }
+        guard state.showsFilter else { return Strings.recipesEmpty }
+        return switch state.filter {
+        case .all: Strings.recipesEmpty
+        case .inAList: Strings.recipesEmptyInList
+        case .notInAList: Strings.recipesEmptyNotInList
+        }
     }
 
     /// The quiet line under search (#286): how many recipes on the left ("20 recipes", or on the

@@ -7,7 +7,9 @@ import Observation
 /// for the undo snackbar, and `deleteBatch` names the burst they belong to (nil when none is
 /// pending): the snackbar's timeout is keyed on it, so further swipes join one snackbar (#268).
 /// `linkInput` is the "Paste a link" alert's text, shown while
-/// `pastingLink`.
+/// `pastingLink`. `filter` is All / In a list / Not in a list (#345), applied by the query beside
+/// the search; `counts` are the library's, whatever the filter or search, nil until the
+/// database answers.
 struct RecipesUiState: Equatable {
     var query = ""
     var recipes: [RecipeSummary]?
@@ -18,12 +20,17 @@ struct RecipesUiState: Equatable {
     var linkInput = ""
     /// Every recipe saved, whatever the query (#107: the free tier's count).
     var savedCount: Int?
+    var filter: RecipeFilter = .all
+    var counts: RecipeCounts?
 
     /// The alert's Go is enabled only for what reads as a link (`UrlInput`).
     var canOpenLink: Bool { UrlInput.normalize(linkInput) != nil }
 
     /// How many rows are listed (the matches, while searching); nil until the database answers.
     var listed: Int? { recipes?.count }
+
+    /// The filter shows once there is a recipe to filter, and stays when a filter matches none.
+    var showsFilter: Bool { (counts?.all ?? 0) > 0 }
 }
 
 @MainActor
@@ -39,6 +46,8 @@ final class RecipesViewModel {
     @ObservationIgnored private let sleep: Sleep
     @ObservationIgnored private var debounceTask: Task<Void, Never>?
     @ObservationIgnored private var appliedQuery: String?
+    @ObservationIgnored private var appliedFilter: RecipeFilter?
+    @ObservationIgnored private var countsSubscription: AnyCancellable?
     @ObservationIgnored private var historySubscription: AnyCancellable?
     @ObservationIgnored private var countSubscription: AnyCancellable?
     @ObservationIgnored private let library: LibraryPolicy?
@@ -76,6 +85,9 @@ final class RecipesViewModel {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] sort in self?.applySort(sort) }
         schedule(query: "")
+        countsSubscription = repository.observeRecipeCounts()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] counts in self?.uiState.counts = counts }
         if library != nil {
             countSubscription = repository.observeCount()
                 .receive(on: DispatchQueue.main)
@@ -94,6 +106,19 @@ final class RecipesViewModel {
     /// order, or on the free tier, whose count shows even for an empty library.
     var showsSortLine: Bool { count != nil || !(uiState.recipes?.isEmpty ?? true) }
 
+    /// The cap on recipes in no list (the old history's 50) while it applies, nil when nothing
+    /// clears on its own (the free tier and an unlocked library have their own rules).
+    var cullKeep: Int? {
+        guard case .history(let keep) = library?.limit else { return nil }
+        return keep
+    }
+
+    /// The quiet line saying recipes in no list are cleared past `cullKeep` (#345): only under
+    /// "Not in a list", only where that clean-up applies, and only with a row to read it over.
+    var showsCullNote: Bool {
+        cullKeep != nil && uiState.filter == .notInAList && !(uiState.recipes?.isEmpty ?? true)
+    }
+
     func onQueryChange(_ text: String) {
         uiState.query = text
         schedule(query: text)
@@ -106,16 +131,32 @@ final class RecipesViewModel {
         debounceTask?.cancel()
         debounceTask = Task { [weak self, sleep] in
             do { try await sleep(Self.debounce) } catch { return }
-            guard !Task.isCancelled, let self, query != self.appliedQuery else { return }
-            self.appliedQuery = query
-            self.historySubscription = self.repository.observeHistory(query: query)
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] recipes in
-                    guard let self else { return }
-                    self.found = recipes
-                    self.uiState.recipes = Self.sorted(recipes, self.uiState.sort)
-                }
+            guard !Task.isCancelled, let self,
+                  query != self.appliedQuery || self.uiState.filter != self.appliedFilter else { return }
+            self.subscribe(query: query)
         }
+    }
+
+    /// The latest query and filter's results; the old subscription is cancelled.
+    private func subscribe(query: String) {
+        let filter = uiState.filter
+        appliedQuery = query
+        appliedFilter = filter
+        historySubscription = repository.observeHistory(query: query, filter: filter)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] recipes in
+                guard let self else { return }
+                self.found = recipes
+                self.uiState.recipes = Self.sorted(recipes, self.uiState.sort)
+            }
+    }
+
+    /// A tap on a filter answers at once, with the query already applied; the debounce is the
+    /// typing's alone. A query still waiting out its debounce picks the filter up when it fires.
+    func onFilterChange(_ filter: RecipeFilter) {
+        guard filter != uiState.filter else { return }
+        uiState.filter = filter
+        if let appliedQuery { subscribe(query: appliedQuery) }
     }
 
     /// Stored at once and applied at once, rather than waiting for `settings` to echo it.

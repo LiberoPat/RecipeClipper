@@ -131,6 +131,27 @@ final class FakeRecipeRepository: RecipeRepository {
         return history.eraseToAnyPublisher()
     }
 
+    /// Every filter `observeHistory(query:filter:)` was called with, in order (#345).
+    private(set) var historyFilters: [RecipeFilter] = []
+
+    /// Honours the filter by `isSaved`, as the SQL does by the cross-ref table, but not the query
+    /// (the tests push what they want listed).
+    func observeHistory(query: String, filter: RecipeFilter) -> AnyPublisher<[RecipeSummary], Never> {
+        historyFilters.append(filter)
+        return observeHistory(query: query).map { rows in
+            switch filter {
+            case .all: rows
+            case .inAList: rows.filter(\.isSaved)
+            case .notInAList: rows.filter { !$0.isSaved }
+            }
+        }.eraseToAnyPublisher()
+    }
+
+    /// Counted from what `history` holds (#345).
+    func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never> {
+        history.map { RecipeCounts(all: $0.count, inList: $0.filter(\.isSaved).count) }.eraseToAnyPublisher()
+    }
+
     /// Honours `limit`, like the SQL LIMIT it stands in for, so a test can't "prove" a cap
     /// that isn't there.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never> {
