@@ -5,10 +5,10 @@ import XCTest
 /// view opened on its own screen, the count against 50 and Home's See all.
 @MainActor
 final class OneCookbookViewModelTests: XCTestCase {
-    private func summary(_ id: Int64, saved: Bool = false, cooked: Int64? = nil, link: String = "") -> RecipeSummary {
+    private func summary(_ id: Int64, saved: Bool = false, cooked: Int64? = nil, link: String = "", chat: Bool = false) -> RecipeSummary {
         RecipeSummary(
             id: id, title: "Recipe \(id)", imageUrl: nil, totalTime: nil, lastViewedAt: id, isSaved: saved,
-            lastCookedDay: cooked, sourceUrl: link.isEmpty ? "https://example.com/\(id)" : link
+            lastCookedDay: cooked, sourceUrl: link.isEmpty ? "https://example.com/\(id)" : link, isFromChat: chat
         )
     }
 
@@ -21,6 +21,7 @@ final class OneCookbookViewModelTests: XCTestCase {
         let repository = FakeRecipeRepository()
         repository.history.send([
             summary(1, saved: true), summary(2, cooked: 1), summary(3, link: "manual:x"), summary(4, link: SampleRecipe.sourceUrl),
+            summary(5, link: "manual:chat", chat: true),
         ])
         let lists = FakeListRepository()
         lists.lists.send([RecipeList(id: 1, name: "Favorites", isBuiltIn: true, isFavorites: true, recipeCount: 0)])
@@ -30,9 +31,10 @@ final class OneCookbookViewModelTests: XCTestCase {
         await settleMain()
 
         let counts = vm.uiState.counts
-        XCTAssertEqual(counts?.notInList, 3)
+        XCTAssertEqual(counts?.notInList, 4)
         XCTAssertEqual(counts?.cooked, 1)
-        XCTAssertEqual(counts?.typed, 1, "never the tour's sample")
+        XCTAssertEqual(counts?.typed, 1, "never the tour's sample, nor a chat's recipe")
+        XCTAssertEqual(counts?.chat, 1)
         XCTAssertEqual(vm.uiState.lists.map(\.name), ["Favorites"])
         XCTAssertTrue(vm.uiState.showsViewsStrip)
     }

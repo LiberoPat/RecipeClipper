@@ -377,6 +377,9 @@ final class OneCookbookTests: XCTestCase {
         var sampleRow = dataRecipeRecord(SampleRecipe.sourceUrl, viewedAt: 4)
         sampleRow.contentOrigin = "MANUAL"
         let sample = try await db.write { [sampleRow] in try RecipeDao(db: $0).upsert(sampleRow, limit: .unlimited) }
+        var chatRow = dataRecipeRecord("manual:chat", viewedAt: 5)
+        chatRow.contentOrigin = "CHAT"
+        let chat = try await db.write { [chatRow] in try RecipeDao(db: $0).upsert(chatRow, limit: .unlimited) }
         try await db.putInList(inList, try await db.favoritesId())
         // "Mark as cooked" (#173) with no photo counts as cooked.
         try await db.write {
@@ -386,13 +389,13 @@ final class OneCookbookTests: XCTestCase {
             )
         }
 
-        func ids(_ listed: Int, _ cooked: Int, _ typed: Int, _ query: String = "") async throws -> Set<Int64> {
-            Set(try await db.read { try RecipeDao(db: $0).history(query: query, listed: listed, cooked: cooked, typed: typed) }.map(\.id))
+        func ids(_ listed: Int, _ cooked: Int, _ typed: Int, _ query: String = "", chat: Int = 0) async throws -> Set<Int64> {
+            Set(try await db.read { try RecipeDao(db: $0).history(query: query, listed: listed, cooked: cooked, typed: typed, chat: chat) }.map(\.id))
         }
         let any = try await ids(RecipeDao.listedAny, 0, 0)
-        XCTAssertEqual(any, [inList, cooked, typed, sample])
+        XCTAssertEqual(any, [inList, cooked, typed, sample, chat])
         let notInList = try await ids(RecipeDao.listedNo, 0, 0)
-        XCTAssertEqual(notInList, [cooked, typed, sample])
+        XCTAssertEqual(notInList, [cooked, typed, sample, chat])
         let cookedIds = try await ids(RecipeDao.listedAny, 1, 0)
         XCTAssertEqual(cookedIds, [cooked])
         let typedIds = try await ids(RecipeDao.listedAny, 0, 1)
@@ -400,7 +403,12 @@ final class OneCookbookTests: XCTestCase {
         let searched = try await ids(RecipeDao.listedAny, 0, 1, "zzz")
         XCTAssertEqual(searched, [], "the search still applies inside a view")
 
+        let chatIds = try await ids(RecipeDao.listedAny, 0, 0, chat: 1)
+        XCTAssertEqual(chatIds, [chat], "a chat's recipe is its own view, not Typed by you (#355)")
+        let searchedChat = try await ids(RecipeDao.listedAny, 0, 0, "zzz", chat: 1)
+        XCTAssertEqual(searchedChat, [])
+
         let counts = try await db.libraryCounts()
-        XCTAssertEqual(counts, RecipeCounts(all: 4, inList: 1, cooked: 1, typed: 1))
+        XCTAssertEqual(counts, RecipeCounts(all: 5, inList: 1, cooked: 1, typed: 1, chat: 1))
     }
 }

@@ -134,6 +134,22 @@ final class DataEditTests: XCTestCase {
         XCTAssertTrue(source.fetched.isEmpty)
     }
 
+    func testARecipeFromAChatIsChatWithAManualLinkNeverFetchedAndStaysChatWhenEdited() async {
+        let recipe = await recipes.addManual(draft: edit, language: nil, notes: nil, fromChat: true)!
+
+        XCTAssertEqual(recipe.origin, .chat)
+        XCTAssertTrue(ManualRecipe.isManual(recipe.sourceUrl))
+        XCTAssertFalse(recipe.canUpdateFromSource)
+        let update = await recipes.updateFromSource(id: recipe.id)
+        XCTAssertEqual(update, .error(.nothingToShow))
+        XCTAssertTrue(source.fetched.isEmpty)
+        clock.time = 9_000
+        let saved = await recipes.saveEdit(id: recipe.id, draft: edit)
+        XCTAssertEqual(saved?.origin, .chat)
+        let typed = await recipes.addManual(draft: edit)
+        XCTAssertEqual(typed?.origin, .manual)
+    }
+
     func testTwoManualRecipesAreTwoRows() async {
         let a = await recipes.addManual(draft: edit)
         let b = await recipes.addManual(draft: edit)

@@ -187,6 +187,8 @@ final class BackupJsonTests: XCTestCase {
             backup.recipes[i].editedAt = 42
         }
         XCTAssertEqual(try decodeOrFail(BackupJson.encode(backup)), backup)
+        for i in backup.recipes.indices { backup.recipes[i].contentOrigin = "CHAT" }
+        XCTAssertEqual(try decodeOrFail(BackupJson.encode(backup)), backup)
     }
 
     func testTheEncodedFileCarriesTheMarkerTheVersionAndExplicitNulls() throws {

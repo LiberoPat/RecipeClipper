@@ -256,6 +256,15 @@ final class BackupMergerTests: XCTestCase {
         XCTAssertEqual(plan.summary.recipesSkipped, 0)
     }
 
+    func testRecipesFromAChatAlwaysComeInEvenWhenHistoryIsFull() {
+        let here = (1...50).map { ExistingRecipe(id: Int64($0), uid: "u\($0)", sourceUrl: "https://h.example/\($0)", hasNotes: false, isListed: false) }
+        var chat = recipe("f1", "manual:abc")
+        chat.contentOrigin = "CHAT"
+        let plan = plan(Backup(exportedAt: 0, recipes: [chat], lists: [], memberships: []), recipes: here, lists: [], historyLimit: 50)
+        XCTAssertEqual(plan.newRecipes.map(\.id), ["f1"])
+        XCTAssertEqual(plan.summary.recipesSkipped, 0)
+    }
+
     func testOnTheFreeTierEveryRecipeHereCountsListedOnesToo() {
         // 15 here, 10 of them listed: only 5 places are free under 20, not 20 - 5 (#107).
         let here = (1...15).map {
