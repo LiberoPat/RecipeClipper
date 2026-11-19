@@ -96,11 +96,11 @@
     <string name="recipes_filter_all">Todas</string>
     <string name="recipes_filter_in_list">Em uma lista</string>
     <string name="recipes_filter_not_in_list">Em nenhuma lista</string>
-    <string name="recipes_empty_in_list">Nenhuma receita está em uma lista ainda. Salve uma em uma lista com o marcador dela.</string>
+    <string name="recipes_empty_in_list">Nenhuma receita está em uma lista ainda. Salve uma receita em uma lista com o marcador dela.</string>
     <string name="recipes_empty_not_in_list">Todas as receitas estão em uma lista.</string>
     <string name="recipes_view_cooked">Feitas</string>
     <string name="recipes_view_typed">Digitadas por você</string>
-    <string name="recipes_view_not_in_list_note">Receitas que você salvou ou abriu, mas não colocou em nenhuma lista. Elas ficam até você excluí-las.</string>
+    <string name="recipes_view_not_in_list_note">Receitas que você abriu ou recortou à mão, mas não colocou em nenhuma lista. Elas ficam até você excluí-las.</string>
     <string name="recipes_view_cooked_note">Receitas que você marcou como feitas ou das quais guardou uma foto.</string>
     <string name="recipes_view_typed_note">Receitas que você digitou, escaneou ou colou por conta própria.</string>
     <string name="recipes_empty_cooked">Nada feito ainda. Marque uma receita como feita e ela aparece aqui.</string>

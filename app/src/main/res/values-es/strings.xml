@@ -96,18 +96,18 @@
     <string name="recipes_filter_all">Todas</string>
     <string name="recipes_filter_in_list">En una lista</string>
     <string name="recipes_filter_not_in_list">En ninguna lista</string>
-    <string name="recipes_empty_in_list">Aún no hay recetas en ninguna lista. Guarda una en una lista con su marcador.</string>
+    <string name="recipes_empty_in_list">Aún no hay recetas en ninguna lista. Guarda una receta en una lista con su marcador.</string>
     <string name="recipes_empty_not_in_list">Todas las recetas están en una lista.</string>
     <string name="recipes_view_cooked">Cocinadas</string>
     <string name="recipes_view_typed">Escritas por ti</string>
-    <string name="recipes_view_not_in_list_note">Recetas que guardaste o abriste pero no pusiste en ninguna lista. Se quedan hasta que las elimines.</string>
+    <string name="recipes_view_not_in_list_note">Recetas que abriste o recortaste a mano pero no pusiste en ninguna lista. Se quedan hasta que las elimines.</string>
     <string name="recipes_view_cooked_note">Recetas que marcaste como cocinadas o de las que guardaste una foto.</string>
     <string name="recipes_view_typed_note">Recetas que escribiste, escaneaste o pegaste tú.</string>
     <string name="recipes_empty_cooked">Todavía no has cocinado nada. Marca una receta como cocinada y aparecerá aquí.</string>
     <string name="recipes_empty_typed">Todavía no has escrito ninguna. Con + escribes o escaneas una receta.</string>
     <string name="home_see_all">Ver todas</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
-    <string name="recipes_cull_note">Las recetas sin lista se conservan hasta %1$d. Pasado ese número, se eliminan primero las que abriste hace más tiempo. Guarda una en una lista para conservarla.</string>
+    <string name="recipes_cull_note">Las recetas sin lista se conservan hasta %1$d. Pasado ese límite, se eliminan primero las que abriste hace más tiempo. Guarda una receta en una lista para conservarla.</string>
     <string name="label_search_recipes">Buscar títulos e ingredientes</string>
     <string name="cd_add_recipe">Añadir una receta</string>
     <string name="action_type_recipe">Escribir una receta</string>

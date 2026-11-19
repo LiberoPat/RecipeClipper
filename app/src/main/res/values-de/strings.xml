@@ -98,14 +98,14 @@
     <string name="recipes_empty_not_in_list">Jedes Rezept ist in einer Liste.</string>
     <string name="recipes_view_cooked">Gekocht</string>
     <string name="recipes_view_typed">Selbst eingegeben</string>
-    <string name="recipes_view_not_in_list_note">Rezepte, die du gespeichert oder geöffnet, aber in keine Liste gelegt hast. Sie bleiben, bis du sie löschst.</string>
-    <string name="recipes_view_cooked_note">Rezepte, die du als gekocht markiert oder von denen du ein Foto behalten hast.</string>
+    <string name="recipes_view_not_in_list_note">Rezepte, die du geöffnet oder selbst ausgeschnitten, aber in keine Liste gelegt hast. Sie bleiben, bis du sie löschst.</string>
+    <string name="recipes_view_cooked_note">Rezepte, die du als gekocht markiert hast oder zu denen du ein Foto hinzugefügt hast.</string>
     <string name="recipes_view_typed_note">Rezepte, die du selbst eingetippt, gescannt oder eingefügt hast.</string>
     <string name="recipes_empty_cooked">Noch nichts gekocht. Markiere ein Rezept als gekocht, dann erscheint es hier.</string>
-    <string name="recipes_empty_typed">Noch nichts selbst eingegeben. Mit + tippst oder scannst du ein Rezept.</string>
+    <string name="recipes_empty_typed">Noch nichts selbst eingegeben. Mit + tippst du ein Rezept ein oder scannst eines.</string>
     <string name="home_see_all">Alle ansehen</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
-    <string name="recipes_cull_note">Rezepte ohne Liste bleiben bis zu %1$d erhalten. Darüber werden zuerst die entfernt, die du am längsten nicht geöffnet hast. Speichere ein Rezept in einer Liste, um es zu behalten.</string>
+    <string name="recipes_cull_note">Rezepte ohne Liste bleiben bis zu %1$d erhalten. Sind es mehr, werden zuerst die entfernt, die du am längsten nicht geöffnet hast. Speichere ein Rezept in einer Liste, um es zu behalten.</string>
     <string name="label_search_recipes">Titel und Zutaten durchsuchen</string>
     <string name="cd_add_recipe">Rezept hinzufügen</string>
     <string name="action_type_recipe">Rezept eintippen</string>
@@ -211,7 +211,7 @@
     <string name="save_to_list_new_list_note">%1$s kommt in die neue Liste.</string>
     <string name="rename_list_title">Liste umbenennen</string>
     <string name="delete_list_title">„%1$s“ löschen?</string>
-    <string name="delete_list_body">Die Liste wird entfernt. Die Rezepte darin bleiben in deinen Rezepten.</string>
+    <string name="delete_list_body">Die Liste wird entfernt. Die Rezepte darin bleiben unter „Rezepte“ erhalten.</string>
     <string name="action_delete_list">Liste löschen</string>
 
     <!-- Bottom tabs (#47) -->
@@ -364,7 +364,7 @@
     <string name="cd_clip_remove_line">Zeile %1$d entfernen</string>
     <string name="clip_save">Rezept speichern</string>
     <string name="update_from_source_clip_title">Deinen Ausschnitt ersetzen?</string>
-    <string name="update_from_source_clip_body">Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und in deinen Rezepten.</string>
+    <string name="update_from_source_clip_body">Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und unter „Rezepte“.</string>
     <string name="clipped_by_you">Von dir ausgeschnitten</string>
     <string name="clipped_by_you_on">Von dir ausgeschnitten · %1$s</string>
     <string name="extracted_from_page">Aus dem Seitentext übernommen – mit der Quelle abgleichen</string>
