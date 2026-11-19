@@ -17,7 +17,7 @@ struct MealPlanDao {
     func days(start: Int64, end: Int64) throws -> [PlannedMeal] {
         try db.query(
             """
-            SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, COALESCE('photo://' || r.photoFile, r.imageUrl) AS imageUrl, e.uid
+            SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, \(RecipeImageSql.asR) AS imageUrl, e.uid
             FROM meal_plan_entries e
             JOIN meal_types t ON t.id = e.mealTypeId
             LEFT JOIN recipes r ON r.id = e.recipeId

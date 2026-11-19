@@ -5277,8 +5277,18 @@ the Paprika import is the first user, behind `paprikaImport`).
   recipe screen and the print use `Recipe.displayImage`, and the image loader turns the string into the file
   (Android: `StoredPhotoMapper`, registered in `RecipeApp`'s Coil loader; iOS: `ImageLoader`, which reads
   `photo://` from the photo store's folder). The editor still shows and saves only the web link
-  (`Recipe.image`). A phone restored from Android's own backup has the rows without the files (as for "I made
-  this" photos): the picture is blank until an import brings it back.
+  (`Recipe.image`).
+- **A missing file shows the link as before, never a blank.** A phone restored from Android's own backup
+  has the rows without the files (as for "I made this" photos), and a store can be cleared. So the model
+  carries the link behind the photo: `photo://<name>#<web link>` (the link's own fragment cut; `StoredPhoto`
+  builds it, `RecipeImageSql` builds the same in SQL, `photo://<name>` alone when there is no link). It is
+  decided in one place per platform, when the picture is loaded, not when the row is read: Android's
+  `StoredPhotoMapper` answers the file if `File.isFile`, else the link (which Coil's own mappers then
+  handle), else nothing; iOS's `ImageLoader` reads the file if it exists, else loads the link, else throws
+  and the view keeps its placeholder. That is a stat, never a decode on the main thread, and it holds for
+  rows, covers, planned meals, the recipe screen and the print (Android's `cached` check and iOS's
+  `cachedData` follow the same rule). The column is never cleared by a miss: an import may bring the file
+  back, and the next load shows it.
 - **Kept, deleted, restored.** A re-share, "Update from source" and an edit never change it
   (`keepingUserState`; iOS's `update` doesn't write the column). Deleting a recipe deletes the row; its
   file stays while the Undo may still come (the delete's snapshot is the whole row, so Undo brings the
@@ -5292,7 +5302,7 @@ the Paprika import is the first user, behind `paprikaImport`).
   only with its file and only for a recipe with none: a new recipe gets it, a recipe already here with
   none gains it (`PhotoUpdate`; it never replaces one). The Android backup include list is unchanged:
   photo files stay out of Google's Auto Backup, as the cooked ones do.
-- **Tests.** `StoredPhotoTest`/`StoredPhotoTests`, `StoredPhotoMapperTest`; `RecipePhotoTest` (Room) and
+- **Tests.** `StoredPhotoTest`/`StoredPhotoTests`, `StoredPhotoMapperTest` (file there, file missing with a link, missing with none, the file coming back) and the iOS `ImageLoader` tests of the same three; `RecipePhotoTest` (Room) and
   `RecipePhotoTests` (SQLite): lists show it, a re-share and an edit keep it, Undo and `forget`, the sweep,
   never a cooking, the export round trip, a photo without its picture, a recipe with none gains the
   file's; `MigrationTest` 17 to 18 (device) and the iOS 16 to 17 migration test.

@@ -9,7 +9,7 @@ struct RecipeDao {
     /// Shared by every summary query. "Saved" is derived: a recipe is saved when at least one
     /// list contains it. There is deliberately no isSaved column.
     private static let summaryColumns = """
-        id, title, COALESCE('photo://' || photoFile, imageUrl) AS imageUrl, totalTime, lastViewedAt,
+        id, title, \(RecipeImageSql.plain) AS imageUrl, totalTime, lastViewedAt,
         EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
         contentOrigin = 'CLIPPED' AS isClipped,
         (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
