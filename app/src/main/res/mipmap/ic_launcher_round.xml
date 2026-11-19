@@ -4,10 +4,11 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path android:fillColor="#BF4A2B" android:pathData="M0,0 L108,0 L108,108 L0,108 Z" />
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <path android:fillColor="#BF4A2B" android:pathData="M0,0H1024V1024H0Z" />
     <path
         android:fillColor="#FBF9F6"
-        android:pathData="M40,30 L68,30 A4,4 0 0 1 72,34 L72,78 L54,66 L36,78 L36,34 A4,4 0 0 1 40,30 Z" />
+        android:fillType="evenOdd"
+        android:pathData="M332,303A36,36 0 0 1 368,267H656A36,36 0 0 1 692,303V757L512,650L332,757ZM400.0,488V343A11,11 0 0 1 422.0,343V452H435.0V343A11,11 0 0 1 457.0,343V452H470.0V343A11,11 0 0 1 492.0,343V452V488C492.0,536 461,524 461,582V629A15,15 0 0 1 431,629V582C431,524 400.0,536 400.0,488ZM554.0,454.8A47,66 0 1 1 602.0,454.8C593,498.8 593,514.8 593,544.8V629A15,15 0 0 1 563,629V544.8C563,514.8 563,498.8 554.0,454.8Z" />
 </vector>
