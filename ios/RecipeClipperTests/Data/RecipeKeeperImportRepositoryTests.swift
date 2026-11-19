@@ -275,6 +275,28 @@ final class RecipeKeeperImportRepositoryTests: XCTestCase {
         XCTAssertEqual(result, .failure(.notARecipeKeeperFile))
     }
 
+    /// The real file reader, as the file importer gives it a URL: a file on disk, read by source.
+    func testTheRealFileReaderReadsAZipFromDiskAsRecipeKeepersAndOnlyThat() async throws {
+        let bundle = Bundle(for: Self.self)
+        let source = try XCTUnwrap(bundle.url(forResource: "recipekeeper-valid", withExtension: "zip", subdirectory: "fixtures/recipekeeper"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("RecipeKeeper_\(UUID().uuidString).zip")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let reader = FilePaprikaFiles(photos: store)
+
+        guard case .success(let contents) = await reader.read(copy, source: .recipeKeeper) else { return XCTFail("expected a success") }
+        XCTAssertEqual(contents.recipes.count, 7)
+        XCTAssertEqual(contents.photosLeftOut, 1)
+        let asPaprika = await reader.read(copy, source: .paprika)
+        XCTAssertEqual(asPaprika, .failure(.notAPaprikaFile))
+        let gone = await reader.read(URL(fileURLWithPath: "/tmp/does-not-exist.zip"), source: .recipeKeeper)
+        XCTAssertEqual(gone, .failure(.readFailed))
+        // And through the repository, with the real reader.
+        let real = DefaultPaprikaImportRepository(files: reader, db: db, clock: clock, library: FixedLibraryLimit(limit: .unlimited), photos: store)
+        let result = try summary(await real.importPaprika(copy, filing: false, source: .recipeKeeper))
+        XCTAssertEqual(result.imported, 6)
+    }
+
     func testDeepNestingStillImportsTheRecipe() async throws {
         let result = try summary(await importing("recipekeeper-deep"))
         XCTAssertEqual(result.imported, 1)
