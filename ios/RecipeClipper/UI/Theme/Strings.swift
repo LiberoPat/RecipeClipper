@@ -213,6 +213,20 @@ enum Strings {
     static var shareRedditBlocked: String { String(localized: "share_reddit_blocked") }
     static var shareScanInApp: String { String(localized: "share_scan_in_app") }
     static var shareTextInApp: String { String(localized: "share_text_in_app") }
+    static var sharePlanInApp: String { String(localized: "share_plan_in_app") }
+
+    // Meal-plan import (#352)
+    static var mealPlanTitle: String { String(localized: "mealplan_title") }
+    static var mealPlanIntro: String { String(localized: "mealplan_intro") }
+    static var mealPlanDayNone: String { String(localized: "mealplan_day_none") }
+    static var mealPlanDayDontPlan: String { String(localized: "mealplan_day_dont_plan") }
+    static func mealPlanDayFor(_ name: String) -> String { String(localized: "mealplan_day_for \(name)") }
+    static var mealPlanDayPassed: String { String(localized: "mealplan_day_passed") }
+    static func mealPlanKeeping(_ n: Int, of total: Int) -> String { String(localized: "mealplan_keeping \(n) \(total)") }
+    static func mealPlanRoom(_ n: Int) -> String { String(localized: "mealplan_room \(n)") }
+    static var mealPlanWontFit: String { String(localized: "mealplan_wont_fit") }
+    static func mealPlanKept(_ n: Int) -> String { String(localized: "mealplan_kept \(n)") }
+    static var mealPlanOpenWeek: String { String(localized: "mealplan_open_week") }
     static var shareSaved: String { String(localized: "share_saved") }
     static var shareOpenToCook: String { String(localized: "share_open_to_cook") }
     static var shareNoLink: String { String(localized: "share_no_link") }

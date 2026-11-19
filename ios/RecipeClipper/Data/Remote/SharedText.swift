@@ -162,7 +162,7 @@ enum SharedText {
     }
 
     /// The index after the bracket that closes the one at `start`, or -1. Strings are skipped.
-    private static func jsonEnd(_ units: [UInt16], _ start: Int) -> Int {
+    static func jsonEnd(_ units: [UInt16], _ start: Int) -> Int {
         var depth = 0
         var inString = false
         var escaped = false

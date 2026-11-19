@@ -379,6 +379,18 @@
     <string name="text_read">Sorted from the text you shared. Check every line, above all the amounts, before saving.</string>
     <string name="text_leftovers">Lines that didn\'t fit anywhere are under Notes, as written.</string>
     <string name="text_not_sorted">Couldn\'t find ingredients and steps in the text, so it\'s all under Steps, as written: finish it by hand.</string>
+    <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
+    <string name="mealplan_title">Your week</string>
+    <string name="mealplan_intro">Choose the recipes to keep. Each one is saved as from a chat and planned on its day in Week. Nothing is saved until you tap Save.</string>
+    <string name="mealplan_day_none">No day</string>
+    <string name="mealplan_day_dont_plan">Don\'t plan</string>
+    <string name="mealplan_day_for">Day for %1$s</string>
+    <string name="mealplan_day_passed">That day has passed. Pick another day, or leave it unplanned.</string>
+    <string name="mealplan_keeping" tools:ignore="PluralsCandidate">Keeping %1$d of %2$d</string>
+    <string name="mealplan_room" tools:ignore="PluralsCandidate">Your library has room for %1$d more. The first ones you keep are saved and the rest wait here; nothing you have is removed. Unlock to keep them all.</string>
+    <string name="mealplan_wont_fit">No room for this one yet</string>
+    <string name="mealplan_kept" tools:ignore="PluralsCandidate">Saved so far: %1$d</string>
+    <string name="mealplan_open_week">Open Week</string>
     <string name="photo_failed">Couldn\'t load the photo. Check your connection and try again.</string>
     <string name="photo_not_ready">The photo reader isn\'t ready on this phone yet: Google Play services downloads it once, over the internet. Try again in a few minutes, or finish the recipe by hand below.</string>
     <string name="photo_check_heading">Check these lines: the photo was hard to read there</string>

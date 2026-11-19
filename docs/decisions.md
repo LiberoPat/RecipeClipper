@@ -4858,8 +4858,8 @@ scan (#226) are. Behind the `shareText` flag, on both platforms.
   candidates are the text's `{…}` and `[…]`, each cut at its matching bracket (string-aware, at
   most 20 tried, a failed one skipped whole), read by the existing `JsonLdRecipeParser` (never a
   second reader: `@graph`, arrays, HowToSection, the depth guards and the one `Throwable` catch
-  all as for a page). The first Recipe wins, so an array of recipes opens its first (a meal-plan
-  import is a follow-up). It opens sorted with `Reading.name` filling the editor's name, plus its
+  all as for a page). The first Recipe wins, so an array of recipes opens its first (a week of
+  recipes with days opens the meal-plan review instead, #352, below). It opens sorted with `Reading.name` filling the editor's name, plus its
   ingredients, steps, yield and times; the prose around it is not kept (a chat's "Here you go!"
   is not the cook's note), and **its `url` and image are never used** (an AI may make either up;
   the recipe has no source credit). JSON that doesn't parse, or holds no recipe, falls through
@@ -4954,7 +4954,53 @@ replies vary; Ask an AI makes them reliable. **No AI runs in the app**: a prompt
   for word. The ViewModels (`AskAiViewModel`, both platforms) are tested over fakes; Home's tile
   and the sheet over fakes on Android (`AskAiSheetTest`, `ChangeRecipeMenuTest`), and
   `AskAiWiringTest` checks every recipe route passes the ViewModel, as `PrintWiringTest` does.
-- **Not here:** reading the answer (#350, #352), saving a version linked to its original (#354).
+- **Not here:** saving a version linked to its original (#354). Reading the answer is #350's
+  (one recipe) and #352's (a week, next section).
+
+## Meal-plan import: a week of AI recipes into Week (#352, 2026-11-19)
+
+The answer to Ask an AI's **Plan my week** (#353) is one JSON array of schema.org Recipes, each
+with `"day": "YYYY-MM-DD"`. Shared in, it opens a **review** instead of the single-recipe editor.
+Behind the `mealPlanImport` flag (on by default; off, the first recipe opens the editor as in
+#350), on both platforms.
+
+- **What counts as a plan** (`MealPlanImport`, `:core`, `data/remote`; iOS `MealPlanImport.swift`):
+  the first JSON value in the text (candidates cut by their matching bracket, as #350) from which
+  `JsonLdRecipeParser.parseEach` reads **at least two recipes, at least one with a `day`**. It
+  walks only what a list holds (a top-level array, `@graph`, an ItemList's `itemListElement`, a
+  ListItem's `item`, the day on either) and reads each recipe with the one parser. One recipe, or
+  recipes with no day at all (say, "three dinner ideas"), open the editor as before. At most 31 are
+  kept. A recipe's `url` and image are never used, as for one recipe. A `day` is a real calendar
+  date `YYYY-MM-DD` (a time after it is ignored): anything else ("Monday", "2026-02-30") is no day.
+- **The review** (`mealplan?key=`, `MealPlanReviewViewModel`; iOS the same name, route
+  `.mealPlan(text)`): a recipe per row, **all ticked**, its name, its first three ingredients
+  and a day button (a menu of today and the next 13 days, the answer's own later day, and *Don't
+  plan*). **Nothing is saved before Save.** Save runs each ticked recipe through the one
+  `addManual` (CHAT, `manual:<uuid>`, #355, so `LibraryLimit` and the one `upsert` decide) and
+  plans it on its day under **Dinner** (the recipe's own servings). Groceries follow as today, from
+  the planned week ("What I need"). When every ticked recipe is saved the review is replaced by
+  **Week** (or just closes when none was planned); Back discards.
+- **A day that has passed, or none/unreadable**, is shown as "No day" with a muted line for a
+  passed one, and the recipe is saved **unplanned** unless the cook picks a day. Chosen, kept
+  simple: no guessing a weekday, no shifting a week.
+- **The free limit** (#107, #345): the review follows the limit and the library count and says
+  "Your library has room for N more" with **Unlock** when fewer than the ticked ones fit; the first
+  ticked ones that fit are saved (a recipe that doesn't is marked "No room for this one yet" and
+  stays in the list), **nothing old is ever removed**. Unlocking makes room at once; a recipe the
+  `upsert` doesn't keep after all (id 0) stays listed too. A failed save leaves its recipe listed
+  with the usual error.
+- **Android hand-off:** `MainActivity` reads the text once (`TextIntent.target(..., mealPlanOn)`
+  -> `Target.Plan`), leaves the plan in `SharedTextInbox` (`offerPlan`/`takePlan`, in memory) under
+  a key; the review keeps the text in saved state and reads it again after process death (every
+  recipe ticked again). **iOS:** the share extension (`ShareImportViewModel.leavesText`) leaves the
+  **text** in `PendingPlan` (`pending_plan`, 10 minutes, flag mirrored as `meal_plan_on`; the card
+  says to open the app) and the app reads it again; a new share clears an earlier plan.
+- **No migration:** nothing but existing tables. Six strings (`mealplan_*`) in six languages on
+  both platforms, plus iOS's `share_plan_in_app`.
+- **Tests:** `MealPlanImportTest`/`MealPlanImportTests` and the corpus's `PlanText(...)` rows
+  (core + iOS port), `MealPlanReviewViewModelTest`/`MealPlanReviewTests` over fakes,
+  `MealPlanReviewScreenTest` (Android, through a NavHost route), `TextIntentTest`, `PlanHandOffTests`
+  (iOS). The share sheet/extension on a real phone, and a real AI's answer, need a device.
 
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 

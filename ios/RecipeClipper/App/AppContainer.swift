@@ -33,6 +33,8 @@ final class AppContainer {
     var pendingScan: PendingScan?
     /// Where the share extension leaves text for the editor (#306); nil under test.
     var pendingText: PendingText?
+    /// Where it leaves a week of recipes for the meal-plan review (#352); nil under test.
+    var pendingPlan: PendingPlan?
     /// A scan's pages while they are read and checked (#226), in the App Group container.
     let scanPages = ScanPages.shared()
     /// The feature flags (#87), read by the root view and Developer settings.
@@ -271,6 +273,9 @@ final class AppContainer {
         // Shared text (#306): the extension's copy of the flag, and the hand-off.
         container.startMirroring(.shareText, into: DefaultsShareTextSwitch(defaults: defaults))
         if !testing { container.pendingText = PendingText(defaults: defaults) }
+        // A week of recipes in shared text (#352): the same, for its review.
+        container.startMirroring(.mealPlanImport, into: DefaultsMealPlanSwitch(defaults: defaults))
+        if !testing { container.pendingPlan = PendingPlan(defaults: defaults) }
         return container
     }
 
@@ -435,6 +440,21 @@ final class AppContainer {
     func takePendingText() -> SharedText.Reading? {
         guard let reading = pendingText?.take(now: clock.now()) else { return nil }
         return featureFlags.isOn(.shareText) ? reading : nil
+    }
+
+    /// The text of a week of recipes the share extension left (#352), if within
+    /// `PendingPlan.window`, and only while the shareText and mealPlanImport flags are on.
+    func takePendingPlan() -> String? {
+        guard let text = pendingPlan?.take(now: clock.now()) else { return nil }
+        return featureFlags.isOn(.shareText) && featureFlags.isOn(.mealPlanImport) ? text : nil
+    }
+
+    /// The meal-plan review (#352) over the recipes `text` holds.
+    func makeMealPlanReviewViewModel(text: String) -> MealPlanReviewViewModel {
+        MealPlanReviewViewModel(
+            text: text, recipes: recipeRepository, plan: mealPlanRepository, calendar: planCalendar,
+            limit: { [libraryPolicy] in libraryPolicy.limit }, entitlements: entitlements
+        )
     }
 
     /// Text shared in (#306): the editor over its reading, split or as written.

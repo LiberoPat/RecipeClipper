@@ -78,6 +78,7 @@ class FakeRecipeRepository : RecipeRepository {
     val saveEditCalls = mutableListOf<Pair<Long, RecipeDraft>>()
     var addManualResult: Recipe? = null
     val addManualCalls = mutableListOf<RecipeDraft>()
+    val addManualQueue = ArrayDeque<Recipe?>()
     val addManualNotes = mutableListOf<String?>()
     val addManualLanguages = mutableListOf<String?>()
     val addManualFromChat = mutableListOf<Boolean>()
@@ -145,7 +146,8 @@ class FakeRecipeRepository : RecipeRepository {
         addManualCalls += draft
         addManualLanguages += language
         addManualNotes += notes
-        return addManualResult
+        // A queue of answers, one per call, when a test stages several (#352); else the one result.
+        return if (addManualQueue.isNotEmpty()) addManualQueue.removeFirst() else addManualResult
     }
 
     override suspend fun setChecked(id: Long, checked: Set<Int>) {

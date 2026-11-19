@@ -44,6 +44,9 @@ enum Route: Hashable {
     /// Text shared in (#306): the same editor, filled from its reading, done once in the share
     /// extension (#334), split or as written (Android's `edit/text?key=`).
     case textRecipe(SharedText.Reading)
+    /// A week of recipes shared in (#352): the meal-plan review, over the text (Android's
+    /// `mealplan?key=`). Saving replaces it with Week when any recipe was planned.
+    case mealPlan(String)
 }
 
 /// `recipeclipper://import?url=<percent-encoded>` opens the import screen. The share extension

@@ -197,10 +197,12 @@ class MainActivity : ComponentActivity() {
         }
         val shareTextOn = featureFlags.current.isOn(Flag.SHARE_TEXT)
         val pages = ScanIntent.pages(intent)
+        val mealPlanOn = featureFlags.current.isOn(Flag.MEAL_PLAN_IMPORT)
         val text = TextIntent.text(intent, shareTextOn)
-        val target = text?.let { withContext(Dispatchers.Default) { TextIntent.target(it, shareTextOn, pages != null) } }
+        val target = text?.let { withContext(Dispatchers.Default) { TextIntent.target(it, shareTextOn, pages != null, mealPlanOn) } }
         when (target) {
             is TextIntent.Target.Review -> return Routes.editText(sharedTexts.offer(target.text, target.reading))
+            is TextIntent.Target.Plan -> return Routes.mealPlan(sharedTexts.offerPlan(target.text, target.plan))
             is TextIntent.Target.Open -> return target.route
             is TextIntent.Target.OfferList -> {
                 receivedLists.offer(target.text)
