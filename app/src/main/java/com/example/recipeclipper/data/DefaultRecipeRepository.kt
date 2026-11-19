@@ -379,8 +379,15 @@ class DefaultRecipeRepository @Inject constructor(
         RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries, menuEntries, cookedPhotos)
     }
 
-    override suspend fun restore(deleted: RecipeRepository.DeletedRecipe) =
-        log.guard("restore", Unit) { recipeDao.restore(deleted.entity, deleted.crossRefs, deleted.planEntries, deleted.menuEntries, deleted.cookedPhotos) }
+    override suspend fun restoreAll(deleted: List<RecipeRepository.DeletedRecipe>): RecipeRepository.RestoreOutcome =
+        log.guard("restore", RecipeRepository.RestoreOutcome.FAILED) {
+            val rows = deleted.map { RecipeDao.DeletedRows(it.entity, it.crossRefs, it.planEntries, it.menuEntries, it.cookedPhotos) }
+            if (recipeDao.restoreAll(rows, library.limit)) {
+                RecipeRepository.RestoreOutcome.RESTORED
+            } else {
+                RecipeRepository.RestoreOutcome.LIBRARY_FULL
+            }
+        }
 
     // The photos belong to the recipe (#116): once its delete stands, their files go too.
     override suspend fun forget(deleted: RecipeRepository.DeletedRecipe) {

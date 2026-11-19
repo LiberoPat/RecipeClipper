@@ -251,6 +251,80 @@ class RecipesViewModelTest {
             assertTrue(next != null && next != batch)
         }
 
+    // One cookbook (#345): the repository answers whether the free library had room for the Undo.
+
+    @Test fun `an undo the full free library refuses says so, and the delete stands`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            val deleted = RecipeRepository.DeletedRecipe(entity(1, "Chicken Adobo"), emptyList())
+            repository.deleteResults[1L] = deleted
+            repository.restoreOutcome = RecipeRepository.RestoreOutcome.LIBRARY_FULL
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+            vm.onDelete(summary(1, "Chicken Adobo"))
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.restoreRefused)
+
+            vm.onUndoDelete()
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.restoreRefused)
+            assertEquals(emptyList<String>(), vm.uiState.value.pendingDeletes)
+            assertEquals(listOf(listOf(deleted)), repository.restoreAllCalls)
+            assertTrue(repository.restoreCalls.isEmpty())
+            // The delete stands, so what only an undo needed (the photo files) goes.
+            assertEquals(listOf(deleted), repository.forgetCalls)
+
+            vm.onRestoreRefusedShown()
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.restoreRefused)
+        }
+
+    @Test fun `a burst's undo is asked for as one, and refused as one`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            val deletedA = RecipeRepository.DeletedRecipe(entity(1, "A"), emptyList())
+            val deletedB = RecipeRepository.DeletedRecipe(entity(2, "B"), emptyList())
+            repository.deleteResults[1L] = deletedA
+            repository.deleteResults[2L] = deletedB
+            repository.restoreOutcome = RecipeRepository.RestoreOutcome.LIBRARY_FULL
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+            vm.onDelete(summary(1, "A"))
+            advanceUntilIdle()
+            vm.onDelete(summary(2, "B"))
+            advanceUntilIdle()
+
+            vm.onUndoDelete()
+            advanceUntilIdle()
+
+            assertEquals("one request for the whole burst", listOf(listOf(deletedA, deletedB)), repository.restoreAllCalls)
+            assertTrue(repository.restoreCalls.isEmpty())
+            assertTrue(vm.uiState.value.restoreRefused)
+            assertEquals(setOf(deletedA, deletedB), repository.forgetCalls.toSet())
+        }
+
+    @Test fun `an undo that has room says nothing and forgets nothing`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository()
+            val deleted = RecipeRepository.DeletedRecipe(entity(1, "Chicken Adobo"), emptyList())
+            repository.deleteResults[1L] = deleted
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+            vm.onDelete(summary(1, "Chicken Adobo"))
+            advanceUntilIdle()
+
+            vm.onUndoDelete()
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.restoreRefused)
+            assertEquals(listOf(deleted), repository.restoreCalls)
+            assertTrue(repository.forgetCalls.isEmpty())
+        }
+
     @Test fun `dismissing ends the batch, and the next swipe starts another`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = FakeRecipeRepository()

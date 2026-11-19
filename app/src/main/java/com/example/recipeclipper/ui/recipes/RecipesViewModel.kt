@@ -60,7 +60,9 @@ data class RecipesUiState(
     val counts: RecipeCounts? = null,
     val cullKeep: Int? = null,
     val view: RecipeFilter? = null,
-    val lists: List<RecipeList> = emptyList()
+    val lists: List<RecipeList> = emptyList(),
+    /** An Undo was refused, the free library being full (#345): the screen says so once, then clears it. */
+    val restoreRefused: Boolean = false
 ) {
     /** The filter shows once there is a recipe to filter, and stays when a filter matches none. */
     val showsFilter: Boolean get() = (counts?.all ?: 0) > 0
@@ -121,6 +123,7 @@ class RecipesViewModel @Inject constructor(
         .map { it.recipeSort }
         .distinctUntilChanged()
     private val linkInput = MutableStateFlow<String?>(null)
+    private val restoreRefused = MutableStateFlow(false)
     // In the ViewModel, not `remember`, so it survives rotation; not stored, so Recipes opens on All.
     private val filter = MutableStateFlow(view ?: RecipeFilter.ALL)
 
@@ -158,7 +161,7 @@ class RecipesViewModel @Inject constructor(
         combine(
             combine(query, recipes, pendingDeletes, sort, linkInput) { q, found, pending, order, link ->
                 RecipesUiState(q, found?.let { sorted(it, order) }, pending.titles, pending.batch, order, link)
-            },
+            }.combine(restoreRefused) { state, refused -> state.copy(restoreRefused = refused) },
             count,
             filter,
             counts,
@@ -216,13 +219,29 @@ class RecipesViewModel @Inject constructor(
     /**
      * Restores everything still pending, oldest first so ids go back in the order they left.
      * All or nothing: one snackbar covers the batch, so there is no way to pick one out of it.
+     * On the free tier at its limit (#345) none comes back: [RecipesUiState.restoreRefused].
      */
     fun onUndoDelete() {
         if (captured.isEmpty()) return
         val removed = captured.values.toList()
         captured.clear()
         pendingDeletes.value = PendingDeletes()
-        viewModelScope.launch { removed.forEach { repository.restore(it) } }
+        viewModelScope.launch {
+            // The free library's limit is checked in the repository's transaction (#345): a burst
+            // that wouldn't fit restores none, and the deletes stand, photo files included.
+            when (repository.restoreAll(removed)) {
+                RecipeRepository.RestoreOutcome.LIBRARY_FULL -> {
+                    restoreRefused.value = true
+                    removed.forEach { repository.forget(it) }
+                }
+                RecipeRepository.RestoreOutcome.RESTORED, RecipeRepository.RestoreOutcome.FAILED -> Unit
+            }
+        }
+    }
+
+    /** The screen has said the Undo was refused. */
+    fun onRestoreRefusedShown() {
+        restoreRefused.value = false
     }
 
     /** The snackbar timed out or was swiped away: the deletes stand. */
