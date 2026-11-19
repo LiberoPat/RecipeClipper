@@ -20,6 +20,8 @@ struct RecipesUiState: Equatable {
     var sort: RecipeSort = .recentlyViewed
     var pastingLink = false
     var linkInput = ""
+    /// Go found nothing to open in the pasted text (#372); cleared by the next keystroke.
+    var linkNoRecipe = false
     /// Every recipe saved, whatever the query (#107: the free tier's count).
     var savedCount: Int?
     var filter: RecipeFilter = .all
@@ -33,7 +35,7 @@ struct RecipesUiState: Equatable {
     var showsViewsStrip: Bool { view == nil && ((counts?.all ?? 0) > 0 || !lists.isEmpty) }
 
     /// The alert's Go is enabled only for what reads as a link (`UrlInput`).
-    var canOpenLink: Bool { UrlInput.normalize(linkInput) != nil }
+    var canOpenLink: Bool { !linkInput.kIsBlank }
 
     /// How many rows are listed (the matches, while searching); nil until the database answers.
     var listed: Int? { recipes?.count }
@@ -67,6 +69,8 @@ final class RecipesViewModel {
     /// The countdowns outside the app (#309), squared with the database after a swipe's delete
     /// (#333); nil without them (tests that aren't about them).
     @ObservationIgnored private let countdowns: TimerCountdownSync?
+    // "Paste a link" takes any text (#372): where it goes is the shared-text route's; nil opens links only.
+    @ObservationIgnored private let pasted: PastedTextRouter?
     /// What the database last answered, in its own order, so a new sort needs no new query.
     @ObservationIgnored private var found: [RecipeSummary]?
 
@@ -79,8 +83,9 @@ final class RecipesViewModel {
     init(
         repository: RecipeRepository, preferences: AppPreferences, sleep: @escaping Sleep = Sleeps.real,
         library: LibraryPolicy? = nil, cookedSort: Bool = false, countdowns: TimerCountdownSync? = nil,
-        view: RecipeFilter? = nil, lists: ListRepository? = nil
+        view: RecipeFilter? = nil, lists: ListRepository? = nil, pasted: PastedTextRouter? = nil
     ) {
+        self.pasted = pasted
         self.cookedSort = cookedSort
         self.countdowns = countdowns
         self.repository = repository
@@ -198,18 +203,31 @@ final class RecipesViewModel {
         uiState.pastingLink = true
     }
 
-    func onLinkChange(_ text: String) { uiState.linkInput = text }
+    func onLinkChange(_ text: String) {
+        uiState.linkInput = text
+        uiState.linkNoRecipe = false
+    }
 
     /// The alert went away by itself. Only the flag is cleared, as with a list's rename:
     /// SwiftUI may run Go's action before or after resetting the binding.
-    func onLinkDismissed() { uiState.pastingLink = false }
+    func onLinkDismissed() {
+        uiState.pastingLink = false
+        uiState.linkNoRecipe = false
+    }
 
-    /// The link to import, closing the alert; nil, and the alert stays, if it isn't one.
-    func onOpenLink() -> String? {
-        guard let url = UrlInput.normalize(uiState.linkInput) else { return nil }
+    /// Go (#372): a link imports, any other text goes where the same text shared would (the
+    /// editor, the meal-plan review, Groceries' list sheet). Returns where, closing the sheet;
+    /// nil, and the sheet stays saying so, with nothing to open. Nothing is saved here.
+    func onOpenLink() -> PasteTarget? {
+        let text = uiState.linkInput
+        guard !text.kIsBlank else { return nil }
+        guard let target = pasted?.open(text) ?? UrlInput.normalize(text).map(PasteTarget.link) else {
+            uiState.linkNoRecipe = true
+            return nil
+        }
         uiState.pastingLink = false
         uiState.linkInput = ""
-        return url
+        return target
     }
 
     /// `recipes`, which the database gives newest viewed first, in `sort`'s order. Name follows

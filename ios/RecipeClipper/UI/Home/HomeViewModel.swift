@@ -9,6 +9,8 @@ struct HomeUiState: Equatable {
     var loaded = false
     var pastingLink = false
     var linkInput = ""
+    /// Go found nothing to open in the pasted text (#372); cleared by the next keystroke.
+    var linkNoRecipe = false
     /// The "Ask an AI" sheet (#351) is open.
     var askAiOpen = false
     var continueCooking: RecipeSummary?
@@ -28,8 +30,8 @@ struct HomeUiState: Equatable {
     /// The restore row shows on an empty library, and stays to say how the restore went.
     var showsRestore: Bool { libraryEmpty || restore != .idle }
 
-    /// The alert's Go is enabled only for what reads as a link (`UrlInput`).
-    var canOpenLink: Bool { UrlInput.normalize(linkInput) != nil }
+    /// The sheet's Go is enabled for any text (#372): a link imports, anything else goes where a share would.
+    var canOpenLink: Bool { !linkInput.kIsBlank }
 }
 
 /// A recipe being cooked (#286): cook mode was left on, or a step timer still runs. `step` is the
@@ -77,6 +79,8 @@ final class HomeViewModel {
     @ObservationIgnored private let sleep: Sleep
     // "See all" on Recently viewed (#345) sets the sort Recipes opens in; nil leaves it.
     @ObservationIgnored private let preferences: AppPreferences?
+    // "Paste a link" takes any text (#372): where it goes is the shared-text route's; nil opens links only.
+    @ObservationIgnored private let pasted: PastedTextRouter?
     // The resume card (#286): the latest recipe followed as its cook progress is saved.
     @ObservationIgnored private var followedId: Int64?
     @ObservationIgnored private var followed: Recipe?
@@ -89,9 +93,10 @@ final class HomeViewModel {
     init(
         repository: RecipeRepository, backups: BackupRepository? = nil, files: BackupFiles? = nil,
         lists: ListRepository? = nil, clock: Clock = SystemClock(), sleep: @escaping Sleep = Sleeps.real,
-        preferences: AppPreferences? = nil
+        preferences: AppPreferences? = nil, pasted: PastedTextRouter? = nil
     ) {
         self.preferences = preferences
+        self.pasted = pasted
         self.repository = repository
         self.backups = backups
         self.files = files
@@ -194,18 +199,31 @@ final class HomeViewModel {
         uiState.pastingLink = true
     }
 
-    func onLinkChange(_ text: String) { uiState.linkInput = text }
+    func onLinkChange(_ text: String) {
+        uiState.linkInput = text
+        uiState.linkNoRecipe = false
+    }
 
     /// The alert went away by itself. Only the flag is cleared, as on Recipes: SwiftUI may run
     /// Go's action before or after resetting the binding.
-    func onLinkDismissed() { uiState.pastingLink = false }
+    func onLinkDismissed() {
+        uiState.pastingLink = false
+        uiState.linkNoRecipe = false
+    }
 
-    /// The link to import, closing the alert; nil, and the alert stays, if it isn't one.
-    func onOpenLink() -> String? {
-        guard let url = UrlInput.normalize(uiState.linkInput) else { return nil }
+    /// Go (#372): a link imports, any other text goes where the same text shared would (the
+    /// editor, the meal-plan review, Groceries' list sheet). Returns where, closing the sheet;
+    /// nil, and the sheet stays saying so, with nothing to open. Nothing is saved here.
+    func onOpenLink() -> PasteTarget? {
+        let text = uiState.linkInput
+        guard !text.kIsBlank else { return nil }
+        guard let target = pasted?.open(text) ?? UrlInput.normalize(text).map(PasteTarget.link) else {
+            uiState.linkNoRecipe = true
+            return nil
+        }
         uiState.pastingLink = false
         uiState.linkInput = ""
-        return url
+        return target
     }
 
     // MARK: Restore (#150)
