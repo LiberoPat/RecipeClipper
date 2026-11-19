@@ -202,6 +202,9 @@ class EditRecipeViewModel @Inject constructor(
     /** The shared text was a chat's recipe JSON (#355): it is saved as from a chat. */
     private var fromChat = false
 
+    /** The chat's JSON named the recipe it changed (#354): the repository finds it, if it is here. */
+    private var basedOn: String? = null
+
     init {
         if (recipeId != null) {
             viewModelScope.launch {
@@ -225,6 +228,7 @@ class EditRecipeViewModel @Inject constructor(
             val reading = read ?: withContext(sorting) { SharedText.read(text) }
             photoLanguage = reading.recipe.language
             fromChat = reading.fromChat
+            basedOn = reading.basedOn
             val recipe = reading.recipe
             _uiState.update {
                 it.copy(
@@ -379,7 +383,7 @@ class EditRecipeViewModel @Inject constructor(
             }
             val saved = if (scanPages != null || sharedText != null) {
                 repository.addManual(
-                    state.draft, scannedLanguage(state.draft), state.note.takeIf { it.isNotBlank() }, fromChat
+                    state.draft, scannedLanguage(state.draft), state.note.takeIf { it.isNotBlank() }, fromChat, basedOn
                 )
             } else if (recipeId == null) {
                 repository.addManual(state.draft)

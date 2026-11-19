@@ -150,7 +150,10 @@ object SharedText {
         /** The recipe's name when the text carried one (a schema.org Recipe, #350); else blank. */
         val name: String = "",
         /** Read from a schema.org Recipe's JSON (#350): the editor saves it as from a chat (#355). */
-        val fromChat: Boolean = false
+        val fromChat: Boolean = false,
+        /** The JSON's `isBasedOn` (#354), as written: the `sourceUrl` of the recipe it changed, or
+         *  null. Only a claim: the repository finds the recipe, and an unmatched one is ignored. */
+        val basedOn: String? = null
     )
 
     /** How many places in the text that open a JSON value are tried before giving up. */
@@ -179,7 +182,8 @@ object SharedText {
                     recipe.ingredients, recipe.instructions, recipe.yield,
                     recipe.prepTime, recipe.cookTime, recipe.totalTime, recipe.language
                 )
-                return Reading(split, sorted = true, name = recipe.name, fromChat = true)
+                val basedOn = JsonLdRecipeParser.isBasedOn(listOf(text.substring(i, end)))
+                return Reading(split, sorted = true, name = recipe.name, fromChat = true, basedOn = basedOn)
             }
             i = end
         }

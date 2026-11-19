@@ -87,7 +87,10 @@ data class BackupRecipe(
      *  "CLIPPED", "MANUAL" or "CHAT". Kept so an imported edit is still never refreshed by a re-share. */
     val contentOrigin: String = "PARSED",
     /** When the user last saved an edit, or null. */
-    val editedAt: Long? = null
+    val editedAt: Long? = null,
+    /** The [id] of the recipe this one is a version of (#354), or null. Absent in older files. An
+     *  import keeps it only if that recipe is here after it. */
+    val basedOn: String? = null
 )
 
 data class BackupList(

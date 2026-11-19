@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.recipe
 import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.model.ParseError
+import com.example.recipeclipper.data.model.RecipeLink
 import com.example.recipeclipper.data.model.ServingsScale
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
@@ -108,7 +109,11 @@ data class RecipeUiState(
      */
     val cookFinished: FinishedCook? = null,
     /** A step's ingredient link was tapped (#254): the lines it names, until the cook goes back. */
-    val ingredientJump: IngredientJump? = null
+    val ingredientJump: IngredientJump? = null,
+    /** The recipe this one is a version of (#354), to say "Based on" and open it; null for none. */
+    val basedOn: RecipeLink? = null,
+    /** The versions saved from this recipe (#354), newest first, quietly listed under its steps. */
+    val versions: List<RecipeLink> = emptyList()
 ) {
     /**
      * Cook mode's opened ingredients bar for the current step (#286): its lines first, then the

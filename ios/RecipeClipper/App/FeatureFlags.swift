@@ -36,6 +36,8 @@ enum Flag: String, CaseIterable {
     case oneCookbook
     /// "Ask an AI" (#351, #353): prompts that come back as schema.org Recipe JSON, from Home and the recipe's menu.
     case askAi
+    /// Recipe versions (#354): an AI's change to a recipe is saved linked to its original.
+    case recipeVersions
 }
 
 /// One flag as `shared/flags.json` declares it.

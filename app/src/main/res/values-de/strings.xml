@@ -106,6 +106,10 @@
     <string name="recipes_view_chat">Aus einem Chat</string>
     <string name="recipes_view_chat_note">Rezepte, die aus einem KI-Chat übernommen wurden. Prüfe Zeiten und Temperaturen, bevor du dich darauf verlässt.</string>
     <string name="recipes_empty_chat">Noch nichts aus einem Chat. Teile das Rezept eines Chats mit der App.</string>
+    <!-- A recipe saved from an AI answer that changed another (#354): %1$s is the original's title. -->
+    <string name="recipe_based_on">Basiert auf %1$s</string>
+    <string name="recipe_versions_heading">Versionen</string>
+    <string name="cd_open_recipe_named">%1$s öffnen</string>
     <string name="home_see_all">Alle ansehen</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
     <string name="recipes_cull_note">Rezepte ohne Liste bleiben bis zu %1$d erhalten. Sind es mehr, werden zuerst die entfernt, die du am längsten nicht geöffnet hast. Speichere ein Rezept in einer Liste, um es zu behalten.</string>

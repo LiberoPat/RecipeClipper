@@ -3,6 +3,7 @@ package com.example.recipeclipper.data
 import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.LibraryCountsRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
+import com.example.recipeclipper.data.local.dao.RecipeLinkRow
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MenuEntryEntity
@@ -10,6 +11,7 @@ import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 
 /** Just enough of a RecipeDao for the import path, recording every write. */
 internal class InMemoryRecipeDao : RecipeDao() {
@@ -63,6 +65,25 @@ internal class InMemoryRecipeDao : RecipeDao() {
         writes++
         rows.remove(id)
     }
+    override suspend fun clearOrphanedLinks() {
+        val uids = rows.values.mapTo(HashSet()) { it.uid }
+        rows.values.filter { it.basedOnUid != null && it.basedOnUid !in uids }.forEach {
+            writes++
+            rows[it.id] = it.copy(basedOnUid = null)
+        }
+    }
+    override suspend fun versionIdsOf(uid: String) = rows.values.filter { it.basedOnUid == uid }.map { it.id }
+    override suspend fun relink(ids: List<Long>, uid: String) {
+        ids.forEach { id -> rows[id]?.let { rows[id] = it.copy(basedOnUid = uid) } }
+    }
+    override fun observeOriginal(id: Long): Flow<RecipeLinkRow?> = flowOf(
+        rows[id]?.basedOnUid?.let { uid -> rows.values.firstOrNull { it.uid == uid } }?.let { RecipeLinkRow(it.id, it.title) }
+    )
+    override fun observeVersions(id: Long): Flow<List<RecipeLinkRow>> = flowOf(
+        rows[id]?.uid?.let { uid ->
+            rows.values.filter { it.basedOnUid == uid }.sortedByDescending { it.id }.map { RecipeLinkRow(it.id, it.title) }
+        }.orEmpty()
+    )
     override suspend fun crossRefsFor(recipeId: Long) = emptyList<RecipeListCrossRef>()
     override suspend fun insertCrossRefs(crossRefs: List<RecipeListCrossRef>) {}
     override fun observeHistory(): Flow<List<RecipeSummaryRow>> = emptyFlow()

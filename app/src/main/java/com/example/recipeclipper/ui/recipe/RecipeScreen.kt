@@ -53,6 +53,8 @@ fun RecipeScreen(
     onClipBlocked: (url: String) -> Unit = {},
     onHumanCheck: (url: String) -> Unit = {},
     onEdit: (recipeId: Long) -> Unit = {},
+    // A version's original, or an original's version (#354): opens that recipe.
+    onOpenRecipe: (recipeId: Long) -> Unit = {},
     // "Read the photo" (#198): a Reddit post with no recipe text, read on the device.
     onReadPhoto: (PhotoPost) -> Unit = {},
     photoTextEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
@@ -80,7 +82,7 @@ fun RecipeScreen(
     var groceriesSheetOpen by rememberSaveable { mutableStateOf(false) }
     var changeSheetOpen by rememberSaveable { mutableStateOf(false) }
     val actions = rememberRecipeActions(
-        viewModel, onBack, onEdit, planViewModel, groceriesViewModel, sendFileViewModel, printViewModel, askAiViewModel,
+        viewModel, onBack, onEdit, onOpenRecipe, planViewModel, groceriesViewModel, sendFileViewModel, printViewModel, askAiViewModel,
         onOpenSaveSheet = { sheetOpen = true },
         onOpenPlanSheet = { planSheetOpen = true },
         onOpenGroceriesSheet = { groceriesSheetOpen = true },
