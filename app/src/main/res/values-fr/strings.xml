@@ -212,7 +212,7 @@
     <string name="paprika_error_not_paprika">Ce fichier n\'est pas une exportation Paprika. Choisissez un fichier .paprikarecipes.</string>
     <string name="paprika_error_damaged">Ce fichier est endommagé ou incomplet. Rien n\'a été importé.</string>
     <string name="paprika_error_too_large">Ce fichier est bien plus volumineux qu\'une exportation Paprika ne devrait l\'être. Rien n\'a été importé.</string>
-    <string name="paprika_filing_title">Ranger les recettes dans des listes selon leurs catégories Paprika</string>
+    <string name="paprika_filing_title">Ranger les recettes dans des listes selon leurs catégories</string>
     <string name="paprika_filing_description">Une liste du même nom, ou une nouvelle. Rien n\'est retiré d\'une liste.</string>
     <plurals name="paprika_photos_left_out">
         <item quantity="one">%d photo n\'a pas pu être lue et a été laissée de côté.</item>
@@ -238,6 +238,16 @@
         <item quantity="one">%d entrée n\'a pas pu être lue.</item>
         <item quantity="many">%d d\'entrées n\'ont pas pu être lues.</item>
         <item quantity="other">%d entrées n\'ont pas pu être lues.</item>
+    </plurals>
+    <string name="recipekeeper_import_title">Importer depuis Recipe Keeper</string>
+    <string name="recipekeeper_import_description">Ajouter les recettes d\'un fichier d\'exportation Recipe Keeper (.zip). Rien de ce qui est déjà là n\'est remplacé ni supprimé.</string>
+    <string name="recipekeeper_importing">Lecture du fichier Recipe Keeper…</string>
+    <string name="recipekeeper_error_not_recipekeeper">Ce fichier n\'est pas une exportation Recipe Keeper. Choisissez le fichier .zip créé par Recipe Keeper.</string>
+    <string name="recipekeeper_error_too_large">Ce fichier est bien plus volumineux qu\'une exportation Recipe Keeper ne devrait l\'être. Rien n\'a été importé.</string>
+    <plurals name="recipekeeper_imported">
+        <item quantity="one">%d recette importée depuis Recipe Keeper.</item>
+        <item quantity="many">%d de recettes importées depuis Recipe Keeper.</item>
+        <item quantity="other">%d recettes importées depuis Recipe Keeper.</item>
     </plurals>
     <string name="temperature_as_written">Comme dans la recette</string>
     <string name="temperature_as_written_description">Exactement la température de la recette</string>

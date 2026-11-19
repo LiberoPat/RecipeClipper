@@ -212,7 +212,7 @@
     <string name="paprika_error_not_paprika">Quel file non è un\'esportazione di Paprika. Scegli un file .paprikarecipes.</string>
     <string name="paprika_error_damaged">Quel file è danneggiato o incompleto. Non è stato importato nulla.</string>
     <string name="paprika_error_too_large">Quel file è molto più grande di quanto dovrebbe essere un\'esportazione di Paprika. Non è stato importato nulla.</string>
-    <string name="paprika_filing_title">Metti le ricette in liste secondo le loro categorie di Paprika</string>
+    <string name="paprika_filing_title">Metti le ricette in liste secondo le loro categorie</string>
     <string name="paprika_filing_description">Una lista con quel nome, o una nuova. Non viene tolto nulla da nessuna lista.</string>
     <plurals name="paprika_photos_left_out">
         <item quantity="one">%d foto non è stata letta ed è stata esclusa.</item>
@@ -238,6 +238,16 @@
         <item quantity="one">Non è stato possibile leggere %d voce.</item>
         <item quantity="many">Non è stato possibile leggere %d di voci.</item>
         <item quantity="other">Non è stato possibile leggere %d voci.</item>
+    </plurals>
+    <string name="recipekeeper_import_title">Importa da Recipe Keeper</string>
+    <string name="recipekeeper_import_description">Aggiunge le ricette di un file di esportazione di Recipe Keeper (.zip). Niente di ciò che c\'è già viene sostituito o eliminato.</string>
+    <string name="recipekeeper_importing">Lettura del file Recipe Keeper…</string>
+    <string name="recipekeeper_error_not_recipekeeper">Quel file non è un\'esportazione di Recipe Keeper. Scegli il file .zip creato da Recipe Keeper.</string>
+    <string name="recipekeeper_error_too_large">Quel file è molto più grande di quanto dovrebbe essere un\'esportazione di Recipe Keeper. Non è stato importato nulla.</string>
+    <plurals name="recipekeeper_imported">
+        <item quantity="one">%d ricetta importata da Recipe Keeper.</item>
+        <item quantity="many">%d di ricette importate da Recipe Keeper.</item>
+        <item quantity="other">%d ricette importate da Recipe Keeper.</item>
     </plurals>
     <string name="temperature_as_written">Come nella ricetta</string>
     <string name="temperature_as_written_description">Esattamente la temperatura della ricetta</string>

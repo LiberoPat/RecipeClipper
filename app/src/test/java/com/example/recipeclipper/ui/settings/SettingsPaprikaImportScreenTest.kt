@@ -66,8 +66,8 @@ class SettingsPaprikaImportScreenTest {
     @Test fun `the filing switch is under the row, on by default, and turns off`() {
         show(viewModel())
         compose.waitForIdle()
-        scrollTo("Put recipes in lists by their Paprika categories")
-        compose.onNodeWithText("Put recipes in lists by their Paprika categories").assertIsDisplayed()
+        scrollTo("Put recipes in lists by their categories")
+        compose.onNodeWithText("Put recipes in lists by their categories").assertIsDisplayed()
         compose.onNode(androidx.compose.ui.test.isToggleable() and hasText("Put recipes in lists", substring = true))
             .assertIsOn()
             .performClick()

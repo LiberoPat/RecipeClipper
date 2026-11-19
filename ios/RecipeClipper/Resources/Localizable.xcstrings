@@ -2563,37 +2563,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rezepte nach ihren Paprika-Kategorien in Listen legen"
+            "value" : "Rezepte nach ihren Kategorien in Listen legen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Put recipes in lists by their Paprika categories"
+            "value" : "Put recipes in lists by their categories"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poner las recetas en listas según sus categorías de Paprika"
+            "value" : "Poner las recetas en listas según sus categorías"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranger les recettes dans des listes selon leurs catégories Paprika"
+            "value" : "Ranger les recettes dans des listes selon leurs catégories"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Metti le ricette in liste secondo le loro categorie di Paprika"
+            "value" : "Metti le ricette in liste secondo le loro categorie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Colocar as receitas em listas pelas categorias do Paprika"
+            "value" : "Colocar as receitas em listas pelas categorias"
           }
         }
       }
@@ -3317,6 +3317,348 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Não foi possível ler %lld entradas."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "recipekeeper_import_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from Recipe Keeper"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar desde Recipe Keeper"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer depuis Recipe Keeper"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus Recipe Keeper importieren"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importa da Recipe Keeper"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar do Recipe Keeper"
+          }
+        }
+      }
+    },
+    "recipekeeper_import_description" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add the recipes from a Recipe Keeper export file (.zip). Nothing here is replaced or deleted."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir las recetas de un archivo de exportación de Recipe Keeper (.zip). Nada se reemplaza ni se elimina."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter les recettes d'un fichier d'exportation Recipe Keeper (.zip). Rien de ce qui est déjà là n'est remplacé ni supprimé."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rezepte aus einer Recipe-Keeper-Exportdatei (.zip) hinzufügen. Dabei wird nichts ersetzt oder gelöscht."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiunge le ricette di un file di esportazione di Recipe Keeper (.zip). Niente di ciò che c'è già viene sostituito o eliminato."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar as receitas de um arquivo de exportação do Recipe Keeper (.zip). Nada aqui é substituído ou excluído."
+          }
+        }
+      }
+    },
+    "recipekeeper_importing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading the Recipe Keeper file…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyendo el archivo de Recipe Keeper…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lecture du fichier Recipe Keeper…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipe-Keeper-Datei wird gelesen…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lettura del file Recipe Keeper…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lendo o arquivo do Recipe Keeper…"
+          }
+        }
+      }
+    },
+    "recipekeeper_error_not_recipekeeper" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That isn't a Recipe Keeper export. Choose the .zip file Recipe Keeper made."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ese archivo no es una exportación de Recipe Keeper. Elige el archivo .zip que creó Recipe Keeper."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier n'est pas une exportation Recipe Keeper. Choisissez le fichier .zip créé par Recipe Keeper."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist keine Recipe-Keeper-Exportdatei. Wähle die .zip-Datei, die Recipe Keeper erstellt hat."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quel file non è un'esportazione di Recipe Keeper. Scegli il file .zip creato da Recipe Keeper."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esse arquivo não é uma exportação do Recipe Keeper. Escolha o arquivo .zip que o Recipe Keeper criou."
+          }
+        }
+      }
+    },
+    "recipekeeper_error_too_large" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That file is far larger than a Recipe Keeper export should be. Nothing was imported."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ese archivo es mucho más grande de lo que debería ser una exportación de Recipe Keeper. No se importó nada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier est bien plus volumineux qu'une exportation Recipe Keeper ne devrait l'être. Rien n'a été importé."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Datei ist viel größer, als ein Recipe-Keeper-Export sein sollte. Es wurde nichts importiert."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quel file è molto più grande di quanto dovrebbe essere un'esportazione di Recipe Keeper. Non è stato importato nulla."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esse arquivo é muito maior do que uma exportação do Recipe Keeper deveria ser. Nada foi importado."
+          }
+        }
+      }
+    },
+    "recipekeeper_imported %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Imported %lld recipe from Recipe Keeper."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Imported %lld recipes from Recipe Keeper."
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se importó %lld receta de Recipe Keeper."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se importaron %lld de recetas de Recipe Keeper."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se importaron %lld recetas de Recipe Keeper."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld recette importée depuis Recipe Keeper."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld de recettes importées depuis Recipe Keeper."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld recettes importées depuis Recipe Keeper."
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Rezept aus Recipe Keeper importiert."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Rezepte aus Recipe Keeper importiert."
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ricetta importata da Recipe Keeper."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld di ricette importate da Recipe Keeper."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ricette importate da Recipe Keeper."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld receita importada do Recipe Keeper."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld de receitas importadas do Recipe Keeper."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld receitas importadas do Recipe Keeper."
                 }
               }
             }

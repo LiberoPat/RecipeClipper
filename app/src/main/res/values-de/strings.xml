@@ -201,7 +201,7 @@
     <string name="paprika_error_not_paprika">Das ist keine Paprika-Exportdatei. Wähle eine .paprikarecipes-Datei.</string>
     <string name="paprika_error_damaged">Diese Datei ist beschädigt oder unvollständig. Es wurde nichts importiert.</string>
     <string name="paprika_error_too_large">Diese Datei ist viel größer, als ein Paprika-Export sein sollte. Es wurde nichts importiert.</string>
-    <string name="paprika_filing_title">Rezepte nach ihren Paprika-Kategorien in Listen legen</string>
+    <string name="paprika_filing_title">Rezepte nach ihren Kategorien in Listen legen</string>
     <string name="paprika_filing_description">Eine Liste mit diesem Namen, sonst eine neue. Aus keiner Liste wird etwas entfernt.</string>
     <plurals name="paprika_photos_left_out">
         <item quantity="one">%d Bild konnte nicht gelesen werden und wurde ausgelassen.</item>
@@ -222,6 +222,15 @@
     <plurals name="paprika_unreadable">
         <item quantity="one">%d Eintrag konnte nicht gelesen werden.</item>
         <item quantity="other">%d Einträge konnten nicht gelesen werden.</item>
+    </plurals>
+    <string name="recipekeeper_import_title">Aus Recipe Keeper importieren</string>
+    <string name="recipekeeper_import_description">Rezepte aus einer Recipe-Keeper-Exportdatei (.zip) hinzufügen. Dabei wird nichts ersetzt oder gelöscht.</string>
+    <string name="recipekeeper_importing">Recipe-Keeper-Datei wird gelesen…</string>
+    <string name="recipekeeper_error_not_recipekeeper">Das ist keine Recipe-Keeper-Exportdatei. Wähle die .zip-Datei, die Recipe Keeper erstellt hat.</string>
+    <string name="recipekeeper_error_too_large">Diese Datei ist viel größer, als ein Recipe-Keeper-Export sein sollte. Es wurde nichts importiert.</string>
+    <plurals name="recipekeeper_imported">
+        <item quantity="one">%d Rezept aus Recipe Keeper importiert.</item>
+        <item quantity="other">%d Rezepte aus Recipe Keeper importiert.</item>
     </plurals>
     <string name="temperature_as_written">Wie im Rezept</string>
     <string name="temperature_as_written_description">Genau die Temperatur aus dem Rezept</string>

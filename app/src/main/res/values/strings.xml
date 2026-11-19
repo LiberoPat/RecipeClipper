@@ -295,7 +295,7 @@
     <string name="paprika_error_not_paprika">That isn\'t a Paprika export. Choose a .paprikarecipes file.</string>
     <string name="paprika_error_damaged">That file is damaged or cut short. Nothing was imported.</string>
     <string name="paprika_error_too_large">That file is far larger than a Paprika export should be. Nothing was imported.</string>
-    <string name="paprika_filing_title">Put recipes in lists by their Paprika categories</string>
+    <string name="paprika_filing_title">Put recipes in lists by their categories</string>
     <string name="paprika_filing_description">A list of that name, or a new one. Nothing is taken out of a list.</string>
     <plurals name="paprika_photos_left_out">
         <item quantity="one">%d picture couldn\'t be read and was left out.</item>
@@ -316,6 +316,15 @@
     <plurals name="paprika_unreadable">
         <item quantity="one">%d entry couldn\'t be read.</item>
         <item quantity="other">%d entries couldn\'t be read.</item>
+    </plurals>
+    <string name="recipekeeper_import_title">Import from Recipe Keeper</string>
+    <string name="recipekeeper_import_description">Add the recipes from a Recipe Keeper export file (.zip). Nothing here is replaced or deleted.</string>
+    <string name="recipekeeper_importing">Reading the Recipe Keeper file…</string>
+    <string name="recipekeeper_error_not_recipekeeper">That isn\'t a Recipe Keeper export. Choose the .zip file Recipe Keeper made.</string>
+    <string name="recipekeeper_error_too_large">That file is far larger than a Recipe Keeper export should be. Nothing was imported.</string>
+    <plurals name="recipekeeper_imported">
+        <item quantity="one">Imported %d recipe from Recipe Keeper.</item>
+        <item quantity="other">Imported %d recipes from Recipe Keeper.</item>
     </plurals>
     <string name="temperature_as_written">As written</string>
     <string name="temperature_as_written_description">Exactly the temperature the recipe uses</string>

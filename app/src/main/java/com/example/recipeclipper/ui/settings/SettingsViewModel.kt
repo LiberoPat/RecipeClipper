@@ -15,6 +15,7 @@ import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.PaprikaImportRepository
 import com.example.recipeclipper.data.PaprikaResult
 import com.example.recipeclipper.data.backup.PaprikaSummary
+import com.example.recipeclipper.data.remote.ImportSource
 import com.example.recipeclipper.data.remote.PaprikaError
 import com.example.recipeclipper.data.Entitlements
 import com.example.recipeclipper.data.PurchaseOutcome
@@ -74,6 +75,8 @@ data class SettingsUiState(
     val autoBackup: AutoBackupRow? = null,
     /** The "Import from Paprika" row (#382): only with the `paprikaImport` flag on. */
     val showsPaprikaImport: Boolean = false,
+    /** The "Import from Recipe Keeper" row (#390): only with the `recipeKeeperImport` flag on. */
+    val showsRecipeKeeperImport: Boolean = false,
     /** "Put recipes in lists by their Paprika categories" (#387): on by default; this visit's choice, not a saved setting. */
     val paprikaFiling: Boolean = true
 ) {
@@ -153,8 +156,14 @@ sealed class BackupStatus {
     data class ImportedPaprika(val summary: PaprikaSummary) : BackupStatus()
     data class PaprikaFailed(val error: PaprikaError) : BackupStatus()
 
+    /** Import from Recipe Keeper (#390): the same route and summary as Paprika's, its own words. */
+    object ImportingRecipeKeeper : BackupStatus()
+    data class ImportedRecipeKeeper(val summary: PaprikaSummary) : BackupStatus()
+    data class RecipeKeeperFailed(val error: PaprikaError) : BackupStatus()
+
     val isBusy: Boolean
-        get() = this == Exporting || this == Importing || this == ImportingPaprika || this is ReadyToShare
+        get() = this == Exporting || this == Importing || this == ImportingPaprika || this == ImportingRecipeKeeper ||
+            this is ReadyToShare
 }
 
 /**
@@ -214,7 +223,8 @@ class SettingsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             showsChefMode = values.isOn(Flag.CHEF_MODE),
-                            showsPaprikaImport = paprika != null && values.isOn(Flag.PAPRIKA_IMPORT)
+                            showsPaprikaImport = paprika != null && values.isOn(Flag.PAPRIKA_IMPORT),
+                            showsRecipeKeeperImport = paprika != null && values.isOn(Flag.RECIPE_KEEPER_IMPORT)
                         )
                     }
                     if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
@@ -288,6 +298,8 @@ class SettingsViewModel @Inject constructor(
         autoBackup = previous?.autoBackup,
         showsPaprikaImport = previous?.showsPaprikaImport
             ?: (paprika != null && featureFlags?.isOn(Flag.PAPRIKA_IMPORT) == true),
+        showsRecipeKeeperImport = previous?.showsRecipeKeeperImport
+            ?: (paprika != null && featureFlags?.isOn(Flag.RECIPE_KEEPER_IMPORT) == true),
         paprikaFiling = previous?.paprikaFiling ?: true
     )
 
@@ -378,7 +390,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** The switch under "Import from Paprika" (#387): whether the next import files recipes by their categories. */
+    /** The switch under the import rows (#387, #390): whether the next import files recipes by their categories. */
     fun onPaprikaFilingChange(enabled: Boolean) {
         _uiState.update { it.copy(paprikaFiling = enabled) }
     }
@@ -393,6 +405,21 @@ class SettingsViewModel @Inject constructor(
             val status = when (val result = importer.import(uri, filing)) {
                 is PaprikaResult.Success -> BackupStatus.ImportedPaprika(result.summary)
                 is PaprikaResult.Failure -> BackupStatus.PaprikaFailed(result.error)
+            }
+            _uiState.update { it.copy(backup = status) }
+        }
+    }
+
+    /** Import from the Recipe Keeper export the user picked in the system file picker (#390). */
+    fun onRecipeKeeperPicked(uri: String) {
+        val importer = paprika ?: return
+        if (_uiState.value.backup.isBusy) return
+        val filing = _uiState.value.paprikaFiling
+        _uiState.update { it.copy(backup = BackupStatus.ImportingRecipeKeeper) }
+        viewModelScope.launch {
+            val status = when (val result = importer.import(uri, filing, ImportSource.RECIPE_KEEPER)) {
+                is PaprikaResult.Success -> BackupStatus.ImportedRecipeKeeper(result.summary)
+                is PaprikaResult.Failure -> BackupStatus.RecipeKeeperFailed(result.error)
             }
             _uiState.update { it.copy(backup = status) }
         }
