@@ -10,6 +10,7 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SavedTimer
 import com.example.recipeclipper.fake.FakeListRepository
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.ui.edit.PasteTarget
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -89,22 +90,31 @@ class HomeViewModelTest {
             vm.onLinkChange("example.com/recipe")
             advanceUntilIdle()
             assertTrue(vm.uiState.value.canOpenLink)
-            assertEquals("https://example.com/recipe", vm.onOpenLink())
+            var opened: PasteTarget? = null
+            vm.onOpenLink { opened = it }
             advanceUntilIdle()
+            assertEquals(PasteTarget.Link("https://example.com/recipe"), opened)
             assertNull("the dialog closes", vm.uiState.value.linkInput)
         }
 
-    @Test fun `what isn't a link can't be opened, and the dialog stays`() = runTest(mainDispatcherRule.dispatcher) {
+    @Test fun `without the shared-text route, what isn't a link opens nothing, and the dialog stays`() = runTest(mainDispatcherRule.dispatcher) {
         val vm = HomeViewModel(FakeRecipeRepository())
         collectEagerly(vm.uiState)
         vm.onPasteLink()
         vm.onLinkChange("not a link")
         advanceUntilIdle()
 
-        assertFalse(vm.uiState.value.canOpenLink)
-        assertNull(vm.onOpenLink())
+        assertTrue(vm.uiState.value.canOpenLink)
+        var opened: PasteTarget? = null
+        vm.onOpenLink { opened = it }
         advanceUntilIdle()
+        assertNull(opened)
         assertEquals("not a link", vm.uiState.value.linkInput)
+        assertTrue(vm.uiState.value.linkNoRecipe)
+
+        vm.onLinkChange("not a link either")
+        advanceUntilIdle()
+        assertFalse("typing clears the message", vm.uiState.value.linkNoRecipe)
 
         vm.onLinkDismiss()
         advanceUntilIdle()

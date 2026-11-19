@@ -50,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
@@ -74,6 +75,8 @@ fun RecipesScreen(
     onOpenRecipe: (Long) -> Unit,
     onNewRecipe: () -> Unit = {},
     onOpenUrl: (String) -> Unit = {},
+    /** Pasted text that isn't a link (#372): the editor, the meal-plan review, Groceries' list sheet. */
+    onOpenPasted: (PasteTarget) -> Unit = {},
     onScan: (List<String>) -> Unit = {},
     /** A view's tile on the strip (#345): its own screen, Back to Recipes. */
     onOpenView: (RecipeFilter) -> Unit = {},
@@ -131,7 +134,8 @@ fun RecipesScreen(
                 value = link,
                 canOpen = state.canOpenLink,
                 onValueChange = viewModel::onLinkChange,
-                onOpen = { viewModel.onOpenLink()?.let(onOpenUrl) },
+                onOpen = { viewModel.onOpenLink { if (it is PasteTarget.Link) onOpenUrl(it.url) else onOpenPasted(it) } },
+                noRecipe = state.linkNoRecipe,
                 onDismiss = viewModel::onLinkDismiss
             )
         }

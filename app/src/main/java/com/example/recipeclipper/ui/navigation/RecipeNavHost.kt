@@ -176,6 +176,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     composable(Routes.HOME) {
         HomeScreen(
             onOpenUrl = { navController.navigate(Routes.import(it)) },
+            onOpenPasted = navController::openPasted,
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
             onResumeCooking = { navController.navigate(Routes.cookRecipe(it)) },
             onOpenRecipes = { navController.navigate(Routes.RECIPES) },
@@ -211,6 +212,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
             onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) },
             onOpenUrl = { navController.navigate(Routes.import(it)) },
+            onOpenPasted = navController::openPasted,
             onScan = { navController.navigate(Routes.scan(it)) },
             onOpenView = { navController.navigate(Routes.recipesView(it)) },
             onOpenLists = { navController.navigate(Routes.LISTS) }

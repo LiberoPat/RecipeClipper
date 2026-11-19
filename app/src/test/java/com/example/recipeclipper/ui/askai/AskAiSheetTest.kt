@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.askai
 
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.ui.test.assertIsEnabled
@@ -15,11 +16,16 @@ import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.remote.SharedText
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeListRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.ui.edit.PasteTarget
+import com.example.recipeclipper.ui.edit.PastedTextFixtures
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -32,10 +38,17 @@ class AskAiSheetTest {
     @get:Rule
     val compose = createComposeRule()
 
+    private val fixtures = PastedTextFixtures()
+
     private fun viewModel(pantry: List<PantryItem> = emptyList()) = AskAiViewModel(
         FakePantryRepository(pantry), FakeListRepository(), FakeRecipeRepository(), FakeAppPreferences(),
-        Clock { 1_800_000_000_000L }
+        Clock { 1_800_000_000_000L }, fixtures.router
     )
+
+    private fun setClipboard(text: String?) {
+        val manager = ApplicationProvider.getApplicationContext<Context>().getSystemService(ClipboardManager::class.java)
+        if (text == null) manager.clearPrimaryClip() else manager.setPrimaryClip(ClipData.newPlainText("answer", text))
+    }
 
     private fun clipboard(): String? {
         val manager = ApplicationProvider.getApplicationContext<Context>().getSystemService(ClipboardManager::class.java)
@@ -95,5 +108,47 @@ class AskAiSheetTest {
         assertTrue(prompt.startsWith("Please change this recipe: make it vegetarian"))
         assertTrue(prompt.contains("\"isBasedOn\": \"https://example.com/adobo\""))
         assertTrue(prompt.contains("```json\n{"))
+    }
+
+    /** #372: the answer comes back by paste. The clipboard is read on the tap, and goes where a share would. */
+    @Test fun `paste the answer reads the clipboard on the tap and opens the editor`() {
+        var target: PasteTarget? = null
+        var dismissed = 0
+        setClipboard(PastedTextFixtures.json)
+        val vm = viewModel()
+        compose.setContent {
+            RecipeClipperTheme { AskAiSheet(onDismiss = { dismissed++ }, onOpenPasted = { target = it }, viewModel = vm) }
+        }
+
+        compose.onNodeWithTag("askAiPaste").assertIsEnabled().performClick()
+        compose.waitUntil(5_000) { target != null }
+
+        assertEquals("Lemon Pasta", fixtures.inbox.take((target as PasteTarget.Review).key)!!.reading.name)
+        assertEquals(1, dismissed)
+    }
+
+    @Test fun `paste the answer with an empty clipboard says so and opens nothing`() {
+        var target: PasteTarget? = null
+        setClipboard(null)
+        val vm = viewModel()
+        compose.setContent { RecipeClipperTheme { AskAiSheet(onDismiss = {}, onOpenPasted = { target = it }, viewModel = vm) } }
+
+        compose.onNodeWithTag("askAiPaste").performClick()
+
+        compose.onNodeWithText("Nothing to paste. Copy the answer first.").assertExists()
+        assertNull(target)
+    }
+
+    @Test fun `paste the answer with no recipe in it says so`() {
+        var target: PasteTarget? = null
+        setClipboard("x".repeat(SharedText.MAX_LENGTH + 1))
+        val vm = viewModel()
+        compose.setContent { RecipeClipperTheme { AskAiSheet(onDismiss = {}, onOpenPasted = { target = it }, viewModel = vm) } }
+
+        compose.onNodeWithTag("askAiPaste").performClick()
+
+        compose.waitUntil(5_000) { vm.uiState.value.pasteProblem != null }
+        compose.onNodeWithText("No recipe found in what you copied.").assertExists()
+        assertNull(target)
     }
 }

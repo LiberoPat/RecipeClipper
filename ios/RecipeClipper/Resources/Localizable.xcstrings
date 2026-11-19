@@ -7774,37 +7774,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Von jeder Website oder Reddit"
+            "value" : "Ein Link oder der Text eines Rezepts"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "From any site or Reddit"
+            "value" : "A link or a recipe's text"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "De cualquier web o de Reddit"
+            "value" : "Un enlace o el texto de una receta"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "D'un site ou de Reddit"
+            "value" : "Un lien ou le texte d'une recette"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Da qualsiasi sito o da Reddit"
+            "value" : "Un link o il testo di una ricetta"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "De qualquer site ou do Reddit"
+            "value" : "Um link ou o texto de uma receita"
           }
         }
       }
@@ -27778,37 +27778,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kopiere einen Prompt in eine beliebige Chat-App. Teile die Antwort mit Recipe Clipper, dann öffnet sie sich hier zum Prüfen."
+            "value" : "Kopiere einen Prompt in eine beliebige Chat-App. Teile die Antwort mit Recipe Clipper oder kopiere sie und tippe auf „Antwort einfügen“, dann öffnet sie sich hier zum Prüfen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy a prompt into any chat app. Share the answer back to Recipe Clipper and it opens here for you to check."
+            "value" : "Copy a prompt into any chat app. Share the answer back to Recipe Clipper, or copy it and tap Paste the answer, and it opens here for you to check."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia un prompt en cualquier app de chat. Comparte la respuesta con Recipe Clipper y se abrirá aquí para que la revises."
+            "value" : "Copia un prompt en cualquier app de chat. Comparte la respuesta con Recipe Clipper, o cópiala y toca Pegar la respuesta, y se abrirá aquí para que la revises."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiez un prompt dans n'importe quelle appli de chat. Partagez la réponse avec Recipe Clipper : elle s'ouvre ici pour que vous la vérifiiez."
+            "value" : "Copiez un prompt dans n'importe quelle appli de chat. Partagez la réponse avec Recipe Clipper, ou copiez-la et touchez Coller la réponse : elle s'ouvre ici pour que vous la vérifiiez."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia un prompt in qualsiasi app di chat. Condividi la risposta con Recipe Clipper e si apre qui per controllarla."
+            "value" : "Copia un prompt in qualsiasi app di chat. Condividi la risposta con Recipe Clipper, oppure copiala e tocca Incolla la risposta, e si apre qui per controllarla."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copie um prompt em qualquer app de chat. Compartilhe a resposta com o Recipe Clipper e ela abre aqui para você conferir."
+            "value" : "Copie um prompt em qualquer app de chat. Compartilhe a resposta com o Recipe Clipper, ou copie-a e toque em Colar a resposta, e ela abre aqui para você conferir."
           }
         }
       }
@@ -28301,6 +28301,252 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Compartilhar"
+          }
+        }
+      }
+    },
+    "paste_dialog_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link oder Rezept einfügen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste a link or recipe"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegar un enlace o una receta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coller un lien ou une recette"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incolla un link o una ricetta"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colar um link ou receita"
+          }
+        }
+      }
+    },
+    "label_link_or_recipe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link oder Rezepttext"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link or recipe text"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enlace o texto de la receta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lien ou texte de la recette"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link o testo della ricetta"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link ou texto da receita"
+          }
+        }
+      }
+    },
+    "paste_no_recipe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Rezept in diesem Text gefunden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No recipe found in that text."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontró ninguna receta en ese texto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune recette trouvée dans ce texte."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna ricetta trovata in questo testo."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma receita encontrada nesse texto."
+          }
+        }
+      }
+    },
+    "ask_ai_paste" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antwort einfügen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste the answer"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegar la respuesta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coller la réponse"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incolla la risposta"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colar a resposta"
+          }
+        }
+      }
+    },
+    "ask_ai_paste_empty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts zum Einfügen. Kopiere zuerst die Antwort."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing to paste. Copy the answer first."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay nada que pegar. Copia primero la respuesta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien à coller. Copiez d'abord la réponse."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niente da incollare. Copia prima la risposta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada para colar. Copie a resposta primeiro."
+          }
+        }
+      }
+    },
+    "ask_ai_paste_none" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Rezept in dem Kopierten gefunden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No recipe found in what you copied."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontró ninguna receta en lo que copiaste."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune recette trouvée dans ce que vous avez copié."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna ricetta trovata in ciò che hai copiato."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma receita encontrada no que você copiou."
           }
         }
       }

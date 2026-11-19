@@ -8,6 +8,8 @@ import UniformTypeIdentifiers
 struct HomeScreen: View {
     let vm: HomeViewModel
     let onOpenUrl: (String) -> Void
+    /// Pasted text that isn't a link (#372): the editor, the meal-plan review, Groceries' list sheet.
+    var onOpenPasted: (PasteTarget) -> Void = { _ in }
     let onOpenRecipe: (Int64) -> Void
     /// "Resume cooking" (#286): the recipe, opened in cook mode.
     var onResumeCooking: (Int64) -> Void = { _ in }
@@ -29,6 +31,11 @@ struct HomeScreen: View {
     /// The gear grows a little with the title beside it, capped: it is chrome.
     @ScaledMetric(relativeTo: .title) private var gearScaled: CGFloat = 20
     private var gearSize: CGFloat { min(gearScaled, 30) }
+
+    /// A link imports as always; any other pasted text goes where the same text shared would (#372).
+    private func openPasted(_ target: PasteTarget) {
+        if case .link(let url) = target { onOpenUrl(url) } else { onOpenPasted(target) }
+    }
 
     var body: some View {
         let state = vm.uiState
@@ -122,18 +129,18 @@ struct HomeScreen: View {
         // The tooltips (#190); none while the file picker is up.
         .tooltipHost(.home, blocked: restoring)
         .toolbar(.hidden, for: .navigationBar)
-        // The Recipes screen's "Paste a link" (#286): Go only for what reads as a link.
-        .alert(Strings.pasteLink, isPresented: Binding(
+        // The Recipes screen's "Paste a link" (#286), which takes any recipe text (#372): a link
+        // imports, anything else goes where a share of it would.
+        .sheet(isPresented: Binding(
             get: { vm.uiState.pastingLink },
             set: { presented in if !presented { vm.onLinkDismissed() } }
         )) {
-            TextField(Strings.labelRecipeUrl, text: Binding(get: { vm.uiState.linkInput }, set: vm.onLinkChange))
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-            Button(Strings.cancel, role: .cancel, action: vm.onLinkDismissed)
-            Button(Strings.go) { if let url = vm.onOpenLink() { onOpenUrl(url) } }
-                .disabled(!vm.uiState.canOpenLink)
+            PasteLinkSheet(
+                text: Binding(get: { vm.uiState.linkInput }, set: vm.onLinkChange),
+                canOpen: vm.uiState.canOpenLink, noRecipe: vm.uiState.linkNoRecipe,
+                onOpen: { if let target = vm.onOpenLink() { openPasted(target) } },
+                onCancel: vm.onLinkDismissed
+            )
         }
         // Ask an AI (#351): a prompt to copy or share; the sheet starts over each time.
         .sheet(isPresented: Binding(
@@ -146,7 +153,12 @@ struct HomeScreen: View {
             }
         )) {
             if let askAiVM {
-                AskAiSheet(vm: askAiVM)
+                AskAiSheet(vm: askAiVM, onOpenPasted: { target in
+                    // The sheet closes, then the answer opens where a share of it would.
+                    askAiVM.onReset()
+                    vm.onAskAiDismissed()
+                    openPasted(target)
+                })
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }

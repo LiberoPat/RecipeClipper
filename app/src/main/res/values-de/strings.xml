@@ -76,11 +76,10 @@
     </plurals>
     <string name="timer_start">⏱  Timer für %1$s starten</string>
     <string name="timers_up">Zeit ist um</string>
-    <string name="label_recipe_url">Rezept-URL</string>
     <string name="section_continue_cooking">Weiterkochen</string>
     <string name="home_empty_hint">Rezepte, die du öffnest, erscheinen hier.</string>
     <!-- Home (#286): the resume card and the Add a recipe tiles -->
-    <string name="home_paste_link_hint">Von jeder Website oder Reddit</string>
+    <string name="home_paste_link_hint">Ein Link oder der Text eines Rezepts</string>
     <string name="home_scan_hint">Rezeptkarte oder Kochbuchseite</string>
     <string name="home_type_hint">Selbst eintippen</string>
     <string name="home_share_hint">Oder teile einen Link aus einer beliebigen App mit Recipe Clipper.</string>
@@ -752,7 +751,7 @@
     <string name="action_ask_ai">KI fragen</string>
     <string name="home_ask_ai_hint">Ein Prompt für jede Chat-App</string>
     <string name="ask_ai_title">KI fragen</string>
-    <string name="ask_ai_intro">Kopiere einen Prompt in eine beliebige Chat-App. Teile die Antwort mit Recipe Clipper, dann öffnet sie sich hier zum Prüfen.</string>
+    <string name="ask_ai_intro">Kopiere einen Prompt in eine beliebige Chat-App. Teile die Antwort mit Recipe Clipper oder kopiere sie und tippe auf „Antwort einfügen“, dann öffnet sie sich hier zum Prüfen.</string>
     <string name="ask_ai_field">Was möchtest du kochen?</string>
     <string name="ask_ai_field_extra">Noch etwas? (optional)</string>
     <string name="ask_ai_kind_describe">Was ich oben beschreibe</string>
@@ -765,6 +764,12 @@
     <string name="ask_ai_copy">Prompt kopieren</string>
     <string name="ask_ai_copied">Kopiert</string>
     <string name="ask_ai_share">Teilen</string>
+    <string name="paste_dialog_title">Link oder Rezept einfügen</string>
+    <string name="label_link_or_recipe">Link oder Rezepttext</string>
+    <string name="paste_no_recipe">Kein Rezept in diesem Text gefunden.</string>
+    <string name="ask_ai_paste">Antwort einfügen</string>
+    <string name="ask_ai_paste_empty">Nichts zum Einfügen. Kopiere zuerst die Antwort.</string>
+    <string name="ask_ai_paste_none">Kein Rezept in dem Kopierten gefunden.</string>
     <string name="action_change_recipe">Dieses Rezept ändern</string>
     <string name="menu_desc_change_recipe">Ein Prompt für jeden KI-Chat</string>
     <string name="change_recipe_title">Dieses Rezept ändern</string>

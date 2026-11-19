@@ -154,11 +154,10 @@
 
     <!-- Home screen -->
     <string name="home_title" translatable="false">Recipe Clipper</string>
-    <string name="label_recipe_url">Recipe URL</string>
     <string name="section_continue_cooking">Continue cooking</string>
     <string name="home_empty_hint">Recipes you open will show up here.</string>
     <!-- Home (#286): the resume card and the Add a recipe tiles -->
-    <string name="home_paste_link_hint">From any site or Reddit</string>
+    <string name="home_paste_link_hint">A link or a recipe\'s text</string>
     <string name="home_scan_hint">A card or a cookbook page</string>
     <string name="home_type_hint">Write it in yourself</string>
     <string name="home_share_hint">Or share a link to Recipe Clipper from any app.</string>
@@ -811,7 +810,7 @@
     <string name="action_ask_ai">Ask an AI</string>
     <string name="home_ask_ai_hint">A prompt for any chat app</string>
     <string name="ask_ai_title">Ask an AI</string>
-    <string name="ask_ai_intro">Copy a prompt into any chat app. Share the answer back to Recipe Clipper and it opens here for you to check.</string>
+    <string name="ask_ai_intro">Copy a prompt into any chat app. Share the answer back to Recipe Clipper, or copy it and tap Paste the answer, and it opens here for you to check.</string>
     <string name="ask_ai_field">What do you want to cook?</string>
     <string name="ask_ai_field_extra">Anything else? (optional)</string>
     <string name="ask_ai_kind_describe">What I describe above</string>
@@ -824,6 +823,12 @@
     <string name="ask_ai_copy">Copy prompt</string>
     <string name="ask_ai_copied">Copied</string>
     <string name="ask_ai_share">Share</string>
+    <string name="paste_dialog_title">Paste a link or recipe</string>
+    <string name="label_link_or_recipe">Link or recipe text</string>
+    <string name="paste_no_recipe">No recipe found in that text.</string>
+    <string name="ask_ai_paste">Paste the answer</string>
+    <string name="ask_ai_paste_empty">Nothing to paste. Copy the answer first.</string>
+    <string name="ask_ai_paste_none">No recipe found in what you copied.</string>
     <string name="action_change_recipe">Change this recipe</string>
     <string name="menu_desc_change_recipe">A prompt for any AI chat</string>
     <string name="change_recipe_title">Change this recipe</string>

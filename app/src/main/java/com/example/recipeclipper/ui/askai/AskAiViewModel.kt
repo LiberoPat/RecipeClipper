@@ -13,6 +13,8 @@ import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.UseItUp
+import com.example.recipeclipper.ui.edit.PasteTarget
+import com.example.recipeclipper.ui.edit.PastedTextRouter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -33,6 +36,9 @@ import javax.inject.Inject
  * filled from the app's data. Choosing a ready one leaves the field for extra wishes.
  */
 enum class AskAiKind { DESCRIBE, WHAT_CAN_I_MAKE, PLAN_MY_WEEK }
+
+/** Why "Paste the answer" opened nothing (#372): the clipboard was empty, or held no recipe. */
+enum class PasteProblem { EMPTY, NO_RECIPE }
 
 /**
  * [request] is the field's text. [pantryCount] counts what is in stock, [useUpCount] the items to
@@ -46,7 +52,9 @@ data class AskAiUiState(
     val useUpCount: Int = 0,
     val favouriteCount: Int = 0,
     val cookedCount: Int = 0,
-    val copied: Boolean = false
+    val copied: Boolean = false,
+    /** What "Paste the answer" found wrong (#372), until anything changes; null when nothing. */
+    val pasteProblem: PasteProblem? = null
 ) {
     /** "What can I make?" needs something in the pantry to make it from. */
     val canAskWhatCanIMake: Boolean get() = pantryCount > 0
@@ -76,7 +84,9 @@ class AskAiViewModel @Inject constructor(
     lists: ListRepository,
     recipes: RecipeRepository,
     preferences: AppPreferences,
-    private val clock: Clock
+    private val clock: Clock,
+    // "Paste the answer" (#372) goes where a shared text would; null opens nothing.
+    private val pasted: PastedTextRouter? = null
 ) : ViewModel() {
 
     private class Data(
@@ -119,13 +129,30 @@ class AskAiViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AskAiUiState())
 
-    fun onRequestChange(text: String) = input.update { it.copy(request = text, copied = false) }
+    fun onRequestChange(text: String) = input.update { it.copy(request = text, copied = false, pasteProblem = null) }
 
     /** The prompt to send: the cook's own words, or a ready one. */
-    fun onKind(kind: AskAiKind) = input.update { it.copy(kind = kind, copied = false) }
+    fun onKind(kind: AskAiKind) = input.update { it.copy(kind = kind, copied = false, pasteProblem = null) }
 
     /** The prompt was copied: the button says so until something changes. */
     fun onCopied() = input.update { it.copy(copied = true) }
+
+    /**
+     * "Paste the answer" (#372): [clip] is what the view layer read from the clipboard, once, on
+     * the tap (null: nothing there). It goes exactly where the same text shared would: the
+     * editor for a recipe, the review for a week. [onTarget] gets where; with nothing to open
+     * the sheet says why ([PasteProblem]). Nothing is saved here.
+     */
+    fun onPasteAnswer(clip: String?, onTarget: (PasteTarget) -> Unit) {
+        if (clip.isNullOrBlank()) {
+            input.update { it.copy(pasteProblem = PasteProblem.EMPTY) }
+            return
+        }
+        viewModelScope.launch {
+            val target = pasted?.open(clip)
+            if (target == null) input.update { it.copy(pasteProblem = PasteProblem.NO_RECIPE) } else onTarget(target)
+        }
+    }
 
     /** The sheet closed: the next one opens empty. */
     fun onReset() = input.update { AskAiUiState() }

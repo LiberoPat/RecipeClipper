@@ -53,22 +53,26 @@ final class HomeViewModelTests: XCTestCase {
 
         vm.onLinkChange("example.com/recipe")
         XCTAssertTrue(vm.uiState.canOpenLink)
-        XCTAssertEqual(vm.onOpenLink(), "https://example.com/recipe")
+        XCTAssertEqual(vm.onOpenLink(), .link("https://example.com/recipe"))
         XCTAssertFalse(vm.uiState.pastingLink, "the alert closes")
         XCTAssertEqual(vm.uiState.linkInput, "")
     }
 
-    func testWhatIsNotALinkCannotBeOpenedAndTheAlertStays() async {
+    func testWithoutTheSharedTextRouteWhatIsNotALinkOpensNothingAndTheSheetStays() async {
         let vm = HomeViewModel(repository: FakeRecipeRepository())
         await settleMain()
 
         vm.onPasteLink()
         vm.onLinkChange("not a link")
 
-        XCTAssertFalse(vm.uiState.canOpenLink)
+        XCTAssertTrue(vm.uiState.canOpenLink)
         XCTAssertNil(vm.onOpenLink())
         XCTAssertTrue(vm.uiState.pastingLink)
         XCTAssertEqual(vm.uiState.linkInput, "not a link")
+        XCTAssertTrue(vm.uiState.linkNoRecipe)
+
+        vm.onLinkChange("not a link either")
+        XCTAssertFalse(vm.uiState.linkNoRecipe, "typing clears the message")
 
         vm.onLinkDismissed()
         XCTAssertFalse(vm.uiState.pastingLink)
