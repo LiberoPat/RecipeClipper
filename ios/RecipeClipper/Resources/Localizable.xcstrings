@@ -11993,6 +11993,47 @@
         }
       }
     },
+    "share_plan_in_app" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne Recipe Clipper, um deine Woche zu prüfen. Sie wartet dort noch ein paar Minuten auf dich."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Recipe Clipper to review your week. It's waiting there for the next few minutes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre Recipe Clipper para revisar tu semana. Te espera allí durante los próximos minutos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrez Recipe Clipper pour vérifier votre semaine. Elle vous y attend pendant quelques minutes."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri Recipe Clipper per controllare la tua settimana. Resterà lì ad aspettarti per qualche minuto."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra o Recipe Clipper para conferir sua semana. Ela fica esperando lá pelos próximos minutos."
+          }
+        }
+      }
+    },
     "share_serves %lld" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -2173,8 +2173,8 @@ final class DifferentialCorpusTests: XCTestCase {
         }
     }
 
-    private struct Meal { let name: String; let day: Int?; let ingredients: [String]; let instructions: [String]
-        init(_ name: String, _ day: Int?, _ ingredients: [String], _ instructions: [String]) {
+    private struct Meal { let name: String; let day: Int64?; let ingredients: [String]; let instructions: [String]
+        init(_ name: String, _ day: Int64?, _ ingredients: [String], _ instructions: [String]) {
             self.name = name; self.day = day; self.ingredients = ingredients; self.instructions = instructions
         }
     }
