@@ -34,6 +34,11 @@ final class ImageLoader {
         return directory.appendingPathComponent(name)
     }
 
+    /// The recipe's web link behind a `photo://` model (#386), for when its file is missing, or nil for none.
+    static func fallbackLink(for url: URL) -> URL? {
+        StoredPhoto.fallback(url.absoluteString).flatMap { URL(string: $0) }
+    }
+
     let cache: URLCache
     private let session: URLSession
 
@@ -54,8 +59,13 @@ final class ImageLoader {
     /// scan's page, #226) is read where it is and never cached: a scan isn't kept.
     func data(for url: URL) async throws -> Data {
         if url.scheme == "photo" {
-            guard let file = Self.storedFile(for: url) else { throw URLError(.fileDoesNotExist) }
-            return try await Task.detached(priority: .userInitiated) { try Data(contentsOf: file) }.value
+            // The stored photo if its file is there (a stat, then a read off the main thread); else the
+            // recipe's link behind it, as before the photo existed; else nothing, and the caller's placeholder.
+            if let file = Self.storedFile(for: url), FileManager.default.fileExists(atPath: file.path) {
+                return try await Task.detached(priority: .userInitiated) { try Data(contentsOf: file) }.value
+            }
+            guard let link = Self.fallbackLink(for: url) else { throw URLError(.fileDoesNotExist) }
+            return try await data(for: link)
         }
         if url.isFileURL {
             return try await Task.detached(priority: .userInitiated) { try Data(contentsOf: url) }.value
@@ -73,7 +83,10 @@ final class ImageLoader {
     /// The image's bytes only if they are already on the phone (a local file, or the cache),
     /// never fetched: a printed recipe (#318) prints its photo only when it is cached.
     func cachedData(for url: URL) -> Data? {
-        if url.scheme == "photo" { return Self.storedFile(for: url).flatMap { try? Data(contentsOf: $0) } }
+        if url.scheme == "photo" {
+            if let data = Self.storedFile(for: url).flatMap({ try? Data(contentsOf: $0) }) { return data }
+            return Self.fallbackLink(for: url).flatMap { cachedData(for: $0) }
+        }
         if url.isFileURL { return try? Data(contentsOf: url) }
         return cache.cachedResponse(for: URLRequest(url: url))?.data
     }

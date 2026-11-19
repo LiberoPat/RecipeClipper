@@ -70,7 +70,7 @@ abstract class ListDao {
      */
     @Query(
         """
-        SELECT r.id, r.title, COALESCE('photo://' || r.photoFile, r.imageUrl) AS imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
+        SELECT r.id, r.title, ${RecipeImageSql.AS_R} AS imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
                r.contentOrigin = 'CLIPPED' AS isClipped, r.sourceUrl,
                r.contentOrigin = 'CHAT' AS isFromChat
         FROM recipes r
@@ -91,7 +91,7 @@ abstract class ListDao {
      */
     @Query(
         """
-        SELECT c.listId, COALESCE('photo://' || r.photoFile, r.imageUrl) AS imageUrl
+        SELECT c.listId, ${RecipeImageSql.AS_R} AS imageUrl
         FROM recipe_list_cross_ref c
         JOIN recipes r ON r.id = c.recipeId
         WHERE (r.photoFile IS NOT NULL OR (r.imageUrl IS NOT NULL AND r.imageUrl != ''))

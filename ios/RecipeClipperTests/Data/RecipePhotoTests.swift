@@ -35,6 +35,20 @@ final class RecipePhotoTests: XCTestCase {
         XCTAssertEqual(StoredPhoto.fileName("photo://3f2a.jpg"), "3f2a.jpg")
     }
 
+    func testAModelCanCarryTheLinkToShowWhenTheFileIsMissing() {
+        XCTAssertEqual(StoredPhoto.model("a.jpg", fallback: "https://img.example/a.jpg"), "photo://a.jpg#https://img.example/a.jpg")
+        XCTAssertEqual(StoredPhoto.fileName("photo://a.jpg#https://img.example/a.jpg"), "a.jpg")
+        XCTAssertEqual(StoredPhoto.fallback("photo://a.jpg#https://img.example/a.jpg"), "https://img.example/a.jpg")
+        // A link's own fragment is cut, a blank or missing link is none.
+        XCTAssertEqual(StoredPhoto.model("a.jpg", fallback: "https://img.example/a.jpg#top"), "photo://a.jpg#https://img.example/a.jpg")
+        XCTAssertEqual(StoredPhoto.model("a.jpg", fallback: ""), "photo://a.jpg")
+        XCTAssertEqual(StoredPhoto.model("a.jpg"), "photo://a.jpg")
+        XCTAssertNil(StoredPhoto.fallback("photo://a.jpg"))
+        // Only a photo model has one.
+        XCTAssertNil(StoredPhoto.fallback("https://img.example/a.jpg#x"))
+        XCTAssertNil(StoredPhoto.fallback("photo://../x#https://img.example/a.jpg"))
+    }
+
     func testAWebLinkOrAnythingThatIsntAPlainFileNameNamesNoFile() {
         for model in [
             "https://img.example/a.jpg", "file:///etc/passwd", "photo://", "photo://../secret", "photo://a/b.jpg",
@@ -52,7 +66,7 @@ final class RecipePhotoTests: XCTestCase {
         XCTAssertEqual(recipe.displayImage, "https://img.example/a.jpg")
         var withPhoto = recipe
         withPhoto.photoFile = "mine.jpg"
-        XCTAssertEqual(withPhoto.displayImage, "photo://mine.jpg")
+        XCTAssertEqual(withPhoto.displayImage, "photo://mine.jpg#https://img.example/a.jpg")
         // The editor's link is untouched by it.
         XCTAssertEqual(withPhoto.image, "https://img.example/a.jpg")
         withPhoto.image = nil
@@ -99,7 +113,8 @@ final class RecipePhotoTests: XCTestCase {
 
         let history = try await db.read { try RecipeDao(db: $0).history(query: "") }
         let images = Dictionary(uniqueKeysWithValues: history.map { ($0.id, $0.imageUrl) })
-        XCTAssertEqual(images[withPhoto], "photo://mine.jpg")
+        // The photo, with the link behind it for a file that isn't there.
+        XCTAssertEqual(images[withPhoto], "photo://mine.jpg#https://img.example/a.jpg")
         XCTAssertEqual(images[onlyPhoto], "photo://only.jpg")
         XCTAssertEqual(images[onlyLink], "https://img.example/a.jpg")
         XCTAssertNil(images[none] ?? nil)
@@ -112,7 +127,7 @@ final class RecipePhotoTests: XCTestCase {
             }
         }
         let covers = try await db.read { try ListDao(db: $0).coverPhotos() }
-        XCTAssertEqual(covers.map(\.imageUrl).filter { $0.hasPrefix("photo://") }.sorted(), ["photo://mine.jpg", "photo://only.jpg"])
+        XCTAssertEqual(covers.map(\.imageUrl).filter { $0.hasPrefix("photo://") }.sorted(), ["photo://mine.jpg#https://img.example/a.jpg", "photo://only.jpg"])
         let rows = try await db.read { try ListDao(db: $0).recipesIn(listId: favorites) }
         XCTAssertEqual(rows.first { $0.id == onlyPhoto }?.imageUrl, "photo://only.jpg")
         let dinner = try await db.read { try MealPlanDao(db: $0).mealTypes().first!.id }
@@ -122,7 +137,97 @@ final class RecipePhotoTests: XCTestCase {
             ))
         }
         let meals = try await db.read { try MealPlanDao(db: $0).days(start: 20_000, end: 20_000) }
-        XCTAssertEqual(meals.first?.imageUrl, "photo://mine.jpg")
+        XCTAssertEqual(meals.first?.imageUrl, "photo://mine.jpg#https://img.example/a.jpg")
+    }
+
+    func testTheLinkBehindThePhotoIsTheLinkWithoutItsFragmentAndNothingForABlankOne() async throws {
+        let fragment = try await insert(record("https://x/a", image: "https://img.example/a.jpg#top", photo: "p1.jpg"))
+        let blank = try await insert(record("https://x/b", image: "", photo: "p2.jpg"))
+        let none = try await insert(record("https://x/c", image: nil, photo: "p3.jpg"))
+        let plain = try await insert(record("https://x/d", image: "https://img.example/d.jpg#top"))
+
+        let history = try await db.read { try RecipeDao(db: $0).history(query: "") }
+        let images = Dictionary(uniqueKeysWithValues: history.map { ($0.id, $0.imageUrl) })
+        XCTAssertEqual(images[fragment], "photo://p1.jpg#https://img.example/a.jpg")
+        XCTAssertEqual(images[blank], "photo://p2.jpg")
+        XCTAssertEqual(images[none], "photo://p3.jpg")
+        // No photo: the link as it is, as before.
+        XCTAssertEqual(images[plain], "https://img.example/d.jpg#top")
+        // And the model the domain builds for the recipe screen is the same string.
+        let row = try await db.get(fragment)
+        XCTAssertEqual(try XCTUnwrap(row).toDomain().displayImage, images[fragment])
+    }
+
+    // MARK: A missing file shows the link as before
+
+    private func loader(cache: URLCache = URLCache(memoryCapacity: 1_000_000, diskCapacity: 0)) -> ImageLoader {
+        ImageLoader(cache: cache)
+    }
+
+    private func withStore(_ body: (URL) async throws -> Void) async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let saved = ImageLoader.photoDirectory
+        defer { ImageLoader.photoDirectory = saved }
+        ImageLoader.photoDirectory = directory
+        try await body(directory)
+    }
+
+    private func cachedLink(_ link: String, bytes: String, in cache: URLCache) throws {
+        let url = try XCTUnwrap(URL(string: link))
+        let response = try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil))
+        cache.storeCachedResponse(CachedURLResponse(response: response, data: Data(bytes.utf8)), for: URLRequest(url: url))
+    }
+
+    func testAPhotoThatIsThereIsShownWhateverLinkIsBehindIt() async throws {
+        try await withStore { directory in
+            try Data("PIXELS".utf8).write(to: directory.appendingPathComponent("abc.jpg"))
+            let cache = URLCache(memoryCapacity: 1_000_000, diskCapacity: 0)
+            try cachedLink("https://img.example/a.jpg", bytes: "THE LINK", in: cache)
+            let url = try XCTUnwrap(URL(string: "photo://abc.jpg#https://img.example/a.jpg"))
+            let loaded = try await loader(cache: cache).data(for: url)
+            XCTAssertEqual(String(decoding: loaded, as: UTF8.self), "PIXELS")
+            XCTAssertEqual(loader(cache: cache).cachedData(for: url), Data("PIXELS".utf8))
+        }
+    }
+
+    func testAPhotoWhoseFileIsMissingShowsTheRecipesLinkAsBefore() async throws {
+        try await withStore { _ in
+            let cache = URLCache(memoryCapacity: 1_000_000, diskCapacity: 0)
+            try cachedLink("https://img.example/a.jpg", bytes: "THE LINK", in: cache)
+            let url = try XCTUnwrap(URL(string: "photo://gone.jpg#https://img.example/a.jpg"))
+            let loaded = try await loader(cache: cache).data(for: url)
+            XCTAssertEqual(String(decoding: loaded, as: UTF8.self), "THE LINK")
+            XCTAssertEqual(loader(cache: cache).cachedData(for: url), Data("THE LINK".utf8))
+        }
+    }
+
+    func testAPhotoWhoseFileIsMissingWithNoLinkIsNothingForThePlaceholder() async throws {
+        try await withStore { _ in
+            let url = try XCTUnwrap(URL(string: "photo://gone.jpg"))
+            do {
+                _ = try await loader().data(for: url)
+                XCTFail("nothing to show")
+            } catch {
+                XCTAssertTrue(error is URLError)
+            }
+            XCTAssertNil(loader().cachedData(for: url))
+        }
+    }
+
+    func testAMissFollowsTheFileComingBackAndTheRowIsNotTouched() async throws {
+        let id = try await insert(record("https://x/a", photo: "later.jpg"))
+        try await withStore { directory in
+            let cache = URLCache(memoryCapacity: 1_000_000, diskCapacity: 0)
+            try cachedLink("https://img.example/a.jpg", bytes: "THE LINK", in: cache)
+            let url = try XCTUnwrap(URL(string: "photo://later.jpg#https://img.example/a.jpg"))
+            XCTAssertEqual(loader(cache: cache).cachedData(for: url), Data("THE LINK".utf8))
+            // A miss does not clear the column: an import may bring the file back.
+            let still = try await db.get(id)
+            XCTAssertEqual(still?.photoFile, "later.jpg")
+            try Data("BACK".utf8).write(to: directory.appendingPathComponent("later.jpg"))
+            XCTAssertEqual(loader(cache: cache).cachedData(for: url), Data("BACK".utf8))
+        }
     }
 
     func testAReShareAndAnEditKeepThePhoto() async throws {

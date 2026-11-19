@@ -36,6 +36,11 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
 
+private fun RecipeEntity.toDomainForTest() = com.example.recipeclipper.data.model.Recipe(
+    name = title, image = imageUrl, ingredients = ingredients, instructions = instructions, prepTime = null,
+    cookTime = null, totalTime = null, yield = null, sourceUrl = sourceUrl, photoFile = photoFile
+)
+
 /**
  * A recipe's own stored picture (#386) over real Room: shown in place of its link wherever the
  * recipe's picture shows, kept by a re-share and an edit, restored by an Undo and deleted when the
@@ -73,7 +78,8 @@ class RecipePhotoTest {
         val none = db.recipeDao().upsert(recipe("https://x/d", image = null), LibraryLimit.Unlimited)
 
         val history = db.recipeDao().observeHistory("", RecipeDaoQueryDefaults.ANY, 0, 0, 0).first().associate { it.id to it.imageUrl }
-        assertEquals("photo://mine.jpg", history[withPhoto])
+        // The photo, with the link behind it for a file that isn't there.
+        assertEquals("photo://mine.jpg#https://img.example/a.jpg", history[withPhoto])
         assertEquals("photo://only.jpg", history[onlyPhoto])
         assertEquals("https://img.example/a.jpg", history[onlyLink])
         assertNull(history[none])
@@ -82,7 +88,7 @@ class RecipePhotoTest {
         val list = db.listDao().observeLists(-1).first().first { it.isFavorites }.id
         listOf(withPhoto, onlyPhoto, onlyLink, none).forEachIndexed { i, id -> db.listDao().addToList(RecipeListCrossRef(id, list, i.toLong())) }
         assertEquals(
-            listOf("photo://only.jpg", "photo://mine.jpg").sorted(),
+            listOf("photo://only.jpg", "photo://mine.jpg#https://img.example/a.jpg").sorted(),
             db.listDao().observeCoverPhotos().first().filter { it.imageUrl.startsWith("photo://") }.map { it.imageUrl }.sorted()
         )
         assertEquals(
@@ -91,7 +97,26 @@ class RecipePhotoTest {
         )
         val dinner = db.mealPlanDao().observeMealTypes().first().first().id
         db.mealPlanDao().add(MealPlanEntryEntity(day = 20000, mealTypeId = dinner, recipeId = withPhoto, servings = null, note = null, sortOrder = 0, updatedAt = 0))
-        assertEquals("photo://mine.jpg", db.mealPlanDao().observeDays(20000, 20000).first().single().imageUrl)
+        assertEquals(
+            "photo://mine.jpg#https://img.example/a.jpg",
+            db.mealPlanDao().observeDays(20000, 20000).first().single().imageUrl
+        )
+    }
+
+    @Test fun theLinkBehindThePhotoIsTheLinkWithoutItsFragmentAndNothingForABlankOne() = runBlocking {
+        val fragment = db.recipeDao().upsert(recipe("https://x/a", image = "https://img.example/a.jpg#top", photo = "p1.jpg"), LibraryLimit.Unlimited)
+        val blank = db.recipeDao().upsert(recipe("https://x/b", image = "", photo = "p2.jpg"), LibraryLimit.Unlimited)
+        val none = db.recipeDao().upsert(recipe("https://x/c", image = null, photo = "p3.jpg"), LibraryLimit.Unlimited)
+        val plain = db.recipeDao().upsert(recipe("https://x/d", image = "https://img.example/d.jpg#top"), LibraryLimit.Unlimited)
+
+        val images = db.recipeDao().observeHistory("", RecipeDaoQueryDefaults.ANY, 0, 0, 0).first().associate { it.id to it.imageUrl }
+        assertEquals("photo://p1.jpg#https://img.example/a.jpg", images[fragment])
+        assertEquals("photo://p2.jpg", images[blank])
+        assertEquals("photo://p3.jpg", images[none])
+        // No photo: the link as it is, as before.
+        assertEquals("https://img.example/d.jpg#top", images[plain])
+        // And the model the domain builds for the recipe screen is the same string.
+        assertEquals(images[fragment], db.recipeDao().get(fragment)!!.toDomainForTest().displayImage)
     }
 
     @Test fun aReShareAndAnEditKeepThePhoto() = runBlocking {
