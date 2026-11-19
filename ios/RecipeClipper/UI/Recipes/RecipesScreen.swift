@@ -10,8 +10,15 @@ struct RecipesScreen: View {
     var onOpenUrl: (String) -> Void = { _ in }
     /// "Scan a recipe" (#226): the pictures taken or picked, in order; nil hides it (flag off).
     var onScan: (([Data]) -> Void)? = nil
+    /// One cookbook (#345): the views strip in place of the filter pills, and a bookmark to save from a
+    /// row, through `saveVM`'s sheet. A view's tile and a list's open their own screens.
+    var oneCookbook = false
+    var saveVM: SaveToListViewModel? = nil
+    var onOpenView: (RecipeFilter) -> Void = { _ in }
+    var onOpenList: (Int64) -> Void = { _ in }
 
     @State private var scanSource: ScanSource?
+    @State private var saveSheetOpen = false
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
     @State private var sideInset = ReadableWidth.gutter
 
@@ -20,13 +27,22 @@ struct RecipesScreen: View {
         List {
             Group {
                 VStack(alignment: .leading, spacing: 12) {
-                    ScreenTitle(Strings.recipesTitle, style: Typography.headlineSmall)
+                    ScreenTitle(state.view.map(RecipeFilterPills.name) ?? Strings.recipesTitle, style: Typography.headlineSmall)
+                    if let view = state.view { ViewNote(view: view) }
                     SearchField(query: state.query, onQueryChange: vm.onQueryChange)
                 }
-                .padding(.bottom, vm.showsSortLine || state.showsFilter ? 0 : 12)
+                .padding(.bottom, vm.showsSortLine || state.showsFilter || (oneCookbook && state.showsViewsStrip) ? 0 : 12)
                 .listRowSeparator(.hidden)
 
-                if state.showsFilter {
+                if oneCookbook {
+                    // One cookbook (#345): the views, then the lists, in place of the pills.
+                    if state.showsViewsStrip {
+                        RecipesViewsStrip(
+                            counts: state.counts, lists: state.lists, onOpenView: onOpenView, onOpenList: onOpenList
+                        )
+                        .listRowSeparator(.hidden)
+                    }
+                } else if state.showsFilter {
                     RecipeFilterPills(selected: state.filter, counts: state.counts, onSelect: vm.onFilterChange)
                         .listRowSeparator(.hidden)
                 }
@@ -55,7 +71,13 @@ struct RecipesScreen: View {
                     // next row's top and no line showed at all.
                     VStack(spacing: 0) {
                         Hairline()
-                        LibraryRow(recipe: recipe) { onOpenRecipe(recipe.id) }
+                        LibraryRow(
+                            recipe: recipe, onClick: { onOpenRecipe(recipe.id) },
+                            onSaveToList: oneCookbook && saveVM != nil ? {
+                                saveVM?.setRecipe(recipe.id, title: recipe.title)
+                                saveSheetOpen = true
+                            } : nil
+                        )
                     }
                         .listRowSeparator(.hidden)
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -85,6 +107,7 @@ struct RecipesScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if state.view == nil {
                 Menu {
                     Button(Strings.typeRecipe, action: onNewRecipe)
                     Button(Strings.pasteLink, action: vm.onPasteLink)
@@ -97,6 +120,7 @@ struct RecipesScreen: View {
                 }
                 .accessibilityLabel(Strings.addRecipe)
                 .accessibilityIdentifier("recipes.add")
+                }
             }
         }
         .alert(Strings.pasteLink, isPresented: Binding(
@@ -127,17 +151,26 @@ struct RecipesScreen: View {
             await SnackbarTimeout.run(pending: state.pendingDeletes, onTimeout: vm.onSnackbarDismissed)
         }
         .scanSources($scanSource) { onScan?($0) }
+        .sheet(isPresented: $saveSheetOpen) {
+            if let saveVM {
+                SaveToListSheet(vm: saveVM)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
     }
 
     /// What an empty list says: the search's, else the filter's (while there is a library to
     /// filter), else the empty library's.
     private func emptyMessage(_ state: RecipesUiState) -> String {
         if !state.query.trimmingCharacters(in: .whitespaces).isEmpty { return Strings.recipesNoResults(state.query) }
-        guard state.showsFilter else { return Strings.recipesEmpty }
+        guard state.showsFilter || state.view != nil else { return Strings.recipesEmpty }
         return switch state.filter {
         case .all: Strings.recipesEmpty
         case .inAList: Strings.recipesEmptyInList
         case .notInAList: Strings.recipesEmptyNotInList
+        case .cooked: Strings.recipesEmptyCooked
+        case .typed: Strings.recipesEmptyTyped
         }
     }
 
@@ -147,7 +180,8 @@ struct RecipesScreen: View {
     private func sortLine(_ state: RecipesUiState) -> some View {
         HStack(spacing: 8) {
             Group {
-                if let count = vm.count {
+                // Inside a view the count is the view's own, not the free library's.
+                if let count = vm.count, state.view == nil {
                     Text(Strings.recipesCount(count.saved, of: count.max))
                         .accessibilityIdentifier("recipes.count")
                 } else {

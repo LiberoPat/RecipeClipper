@@ -11,7 +11,7 @@ struct RecipeFilterPills: View {
 
     var body: some View {
         PillFlow(spacing: 6, lineSpacing: 0) {
-            ForEach(RecipeFilter.allCases, id: \.self) { filter in
+            ForEach(RecipeFilter.pills, id: \.self) { filter in
                 pill(filter)
             }
         }
@@ -48,6 +48,8 @@ struct RecipeFilterPills: View {
         case .all: Strings.recipesFilterAll
         case .inAList: Strings.recipesFilterInList
         case .notInAList: Strings.recipesFilterNotInList
+        case .cooked: Strings.recipesViewCooked
+        case .typed: Strings.recipesViewTyped
         }
     }
 }

@@ -42,6 +42,7 @@ import UIKit
 ///   walkthrough  twenty realistic recipes for the walkthrough videos (#106) — see UITestWalkthroughSeed
 ///   walkthroughPantry  the same, with a stocked pantry and the Adobo on the grocery list
 ///   walkthroughUseItUp  the same, the soy sauce expiring tomorrow (Use it up, #305)
+///   walkthroughFull  the twenty and thirty typed ones: fifty, the free tier's limit (#345)
 enum UITestSeeding {
     static let flag = "-uiTestSeed"
     static let keepPrefsFlag = "-uiTestKeepPrefs"
@@ -257,6 +258,9 @@ enum UITestSeeding {
                     case "cook": try seedCook(conn, now: now)
                     case "chef": try seedChef(conn, now: now)
                     case "walkthrough": try UITestWalkthroughSeed.seed(conn, now: now)
+                    case "walkthroughFull":
+                        try UITestWalkthroughSeed.seed(conn, now: now)
+                        try UITestWalkthroughSeed.seedTyped(conn, now: now, count: 30)
                     case "walkthroughPantry":
                         try UITestWalkthroughSeed.seed(conn, now: now)
                         try UITestWalkthroughSeed.seedPantry(conn, now: now)

@@ -17,6 +17,8 @@ struct HomeScreen: View {
     var onNewRecipe: () -> Void = {}
     /// "Scan a recipe" (#226): the pictures taken or picked, in order; nil hides it (flag off).
     var onScan: (([Data]) -> Void)? = nil
+    /// One cookbook (#345): "See all" on Recently viewed, opening Recipes in that order; nil hides it.
+    var onSeeAllRecent: (() -> Void)? = nil
 
     @State private var restoring = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -63,7 +65,15 @@ struct HomeScreen: View {
                     .padding(.top, 20)
 
                 if !state.recent.isEmpty {
-                    SectionHeading(Strings.sectionRecentlyViewed).padding(.top, 24)
+                    HStack {
+                        SectionHeading(Strings.sectionRecentlyViewed)
+                        if let onSeeAllRecent {
+                            Button(Strings.homeSeeAll, action: onSeeAllRecent)
+                                .buttonStyle(TextActionStyle())
+                                .accessibilityIdentifier("home.seeAll")
+                        }
+                    }
+                    .padding(.top, 24)
                     RecentlyViewedRow(recipes: state.recent, onOpenRecipe: onOpenRecipe)
                         .padding(.top, 10)
                 }

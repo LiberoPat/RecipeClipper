@@ -73,6 +73,14 @@ struct DefaultsLibraryLimit: LibraryLimitSource, @unchecked Sendable {
         }
     }
 
+    /// The free app's size as the screens say it (#345): the mirrored cap while `oneCookbook` is on and
+    /// the free tier locked, else the older swap's. Read in any process, the share card's too.
+    static var shownFreeRecipes: Int {
+        let defaults = UserDefaults(suiteName: AppGroup.identifier) ?? .standard
+        if case .capped(let max) = DefaultsLibraryLimit(defaults: defaults).current() { return max }
+        return LibraryLimit.freeRecipes
+    }
+
     func store(_ limit: LibraryLimit) {
         let value: String = switch limit {
         case .free: "free"

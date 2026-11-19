@@ -34,6 +34,7 @@ import com.example.recipeclipper.data.local.TourPreferences
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.RecipeEntity
+import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.NewPantryItem
@@ -91,14 +92,16 @@ abstract class WalkthroughBase {
      * library. [firstRun]: the first-run tour (#151, #190) as a fresh install has it, every
      * tooltip still to see; otherwise every one is seen, so none appears. [kitchen]: the Pantry and
      * the grocery list of [WalkthroughSeed.pantry] and [WalkthroughSeed.groceries] too, with
-     * [expiringTomorrow]'s use-by day tomorrow (Use it up, #305).
+     * [expiringTomorrow]'s use-by day tomorrow (Use it up, #305). [fillTo]: typed-in recipes after the
+     * seed up to that many, the free tier's limit of 50 (#345).
      */
     fun start(
         vararg flags: String,
         seeded: Boolean = true,
         firstRun: Boolean = false,
         kitchen: Boolean = false,
-        expiringTomorrow: String? = null
+        expiringTomorrow: String? = null,
+        fillTo: Int? = null
     ) {
         hilt!!.inject()
         // Expiry reminders ask for notifications; granted up front so no system dialog shows.
@@ -107,6 +110,7 @@ abstract class WalkthroughBase {
         )
         runBlocking {
             if (seeded) seed()
+            fillTo?.let { fillWithTypedRecipes(it) }
             if (kitchen) stockTheKitchen()
             expiringTomorrow?.let { name ->
                 val item = pantryRepository.items().first { it.name == name }
@@ -157,6 +161,19 @@ abstract class WalkthroughBase {
             recipeIds[r.title] = id
             val names = listOfNotNull("Favorites".takeIf { r.title == "Chicken Adobo" }, WalkthroughSeed.listFor(r.title))
             names.forEach { listDao.addToList(RecipeListCrossRef(id, lists.getValue(it), now - 30 * minute)) }
+        }
+    }
+
+    /** Typed-in recipes, after the seed's, until the library holds [total]: the free tier's limit (#345). */
+    private suspend fun fillWithTypedRecipes(total: Int) {
+        val now = System.currentTimeMillis()
+        for (i in WalkthroughSeed.recipes.size until total) {
+            recipeDao.upsert(RecipeEntity(
+                sourceUrl = "manual:walkthrough-$i", title = "Typed recipe ${i + 1}", imageUrl = null,
+                ingredients = listOf("1 cup flour"), instructions = listOf("Mix.", "Bake."),
+                prepTime = null, cookTime = null, totalTime = null, servings = "4", sourceType = "BLOG",
+                lastViewedAt = now - (i + 1) * 60_000L, contentOrigin = "MANUAL"
+            ), LibraryLimit.Unlimited)
         }
     }
 

@@ -32,6 +32,8 @@ class RecipeUITestCase: XCTestCase {
         case walkthroughPantry
         /// The same, with the soy sauce (in the Adobo and the Beef Stir-Fry) expiring tomorrow (#305).
         case walkthroughUseItUp
+        /// The twenty, and thirty typed ones after them: fifty, the free tier's limit (#107, #345).
+        case walkthroughFull
         /// The standard recipes, with "chicken thighs" (Chicken Adobo's, saved) expiring
         /// tomorrow and "flour" (Banana Bread's, in no list) today: Use it up (#305).
         case useItUp

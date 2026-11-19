@@ -387,7 +387,8 @@ final class RecipesViewModelTests: XCTestCase {
     func testTheCleanUpNoteIsOnlyUnderNotInAListWithTheCapWhileThatCleanUpApplies() async {
         let repository = FakeRecipeRepository()
         repository.history.send([saved(1), testSummary(2)])
-        let flags = FeatureFlags(store: MemoryFeatureFlagStore([:]), isDebug: false)
+        // The clean-up is the flag-off behaviour (#345): `oneCookbook` off.
+        let flags = FeatureFlags(store: MemoryFeatureFlagStore(["oneCookbook": false]), isDebug: false)
         let store = FakeEntitlements()
         let policy = LibraryPolicy(flags: flags, entitlements: store)
         let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep, library: policy)
@@ -404,7 +405,7 @@ final class RecipesViewModelTests: XCTestCase {
         XCTAssertEqual(vm.cullKeep, 50)
 
         // The free tier and an unlocked library have their own rules: no note.
-        let freeFlags = FeatureFlags(store: MemoryFeatureFlagStore(["freeTier": true]), isDebug: false)
+        let freeFlags = FeatureFlags(store: MemoryFeatureFlagStore(["freeTier": true, "oneCookbook": false]), isDebug: false)
         let free = RecipesViewModel(
             repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep,
             library: LibraryPolicy(flags: freeFlags, entitlements: FakeEntitlements())
@@ -418,7 +419,7 @@ final class RecipesViewModelTests: XCTestCase {
     func testNoNoteOverAnEmptyNotInAList() async {
         let repository = FakeRecipeRepository()
         repository.history.send([saved(1)])
-        let flags = FeatureFlags(store: MemoryFeatureFlagStore([:]), isDebug: false)
+        let flags = FeatureFlags(store: MemoryFeatureFlagStore(["oneCookbook": false]), isDebug: false)
         let policy = LibraryPolicy(flags: flags, entitlements: FakeEntitlements())
         let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep, library: policy)
         vm.onFilterChange(.notInAList)

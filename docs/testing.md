@@ -522,7 +522,12 @@ or the calls will fail as "not mocked".
 - **Turning it on:** Developer settings (7 taps on the version) → `freeTier`.
   "Unlocked" beside it counts the purchase as bought, with no store; Reset
   clears both.
-- **The rules** are tested against real SQLite (`FreeTierDaoTest` /
+- **One cookbook (#345, the `oneCookbook` flag, on by default):** the limit is 50 and a new recipe at
+  it is shown, not saved, with nothing removed. Tested against real SQLite and through the repository
+  on every way in (`OneCookbookDaoTest`, `OneCookbookLimitTest`, `OneCookbookImportTest`, iOS
+  `OneCookbookTests`, which also covers the share extension's mirrored limit). To see the older swap
+  at 20 or the clean-up of 50 on a device, turn `oneCookbook` off in Developer settings.
+- **The rules with `oneCookbook` off** are tested against real SQLite (`FreeTierDaoTest` /
   `FreeTierDaoTests`: one for one at 20, protections, a library over 20 keeps
   everything, all protected is not kept, unlocked is never culled), through
   the repository over an in-memory DAO (`DefaultRecipeRepositoryLimitTest`),

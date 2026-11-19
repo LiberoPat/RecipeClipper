@@ -101,6 +101,37 @@ final class RecipesUITests: RecipeUITestCase {
         requireState(notInList, "isSelected == true")
     }
 
+    /// #345, V4: with `oneCookbook` on the strip of views and lists replaces the pills; a view is a
+    /// screen of its own, Back to Recipes, and the outlined bookmark on its rows opens the sheet.
+    func testTheViewsStripReplacesThePillsAndAViewHasItsOwnScreen() {
+        launch(flags: ["oneCookbook"])
+        openRecipes()
+
+        require(app.descendants(matching: .any)["recipes.viewsStrip"], "the views strip")
+        assertAbsent(app.buttons["recipes.filter.ALL"])
+        let notInList = require(app.buttons["recipes.view.NOT_IN_A_LIST"], "the Not in a list card")
+        XCTAssertEqual(notInList.label, "Not in a list, 2")
+        require(app.buttons["recipes.view.COOKED"], "the Cooked card")
+        require(app.buttons["recipes.view.TYPED"], "the Typed by you card")
+
+        notInList.tap()
+        require(app.descendants(matching: .any)["recipes.viewNote"], "the view's note")
+        require(row("Banana Bread"))
+        require(row("Miso Soup"))
+        requireGone(row("Chicken Adobo"))
+        assertAbsent(app.descendants(matching: .any)["recipes.viewsStrip"])
+        // A recipe in no list: an outlined bookmark, opening the sheet; a tick takes it off the view.
+        require(app.buttons["Save to a list"].firstMatch, "an outlined bookmark").tap()
+        require(text("Save to"), "the save-to-list sheet")
+    }
+
+    /// #345: Home's Recently viewed gains See all, which opens Recipes.
+    func testHomeSeeAllOpensRecipes() {
+        launch(flags: ["oneCookbook"])
+        require(app.buttons["home.seeAll"], "See all").tap()
+        require(app.textFields["Search titles and ingredients"], "Recipes")
+    }
+
     func testSearchMatchesTitles() {
         launch()
         openRecipes()
