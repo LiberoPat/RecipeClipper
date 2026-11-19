@@ -33,7 +33,7 @@ enum PaprikaZipReader {
         return !file.hasPrefix(".") && file.lowercased().hasSuffix(ext)
     }
 
-    private struct Entry {
+    struct Entry {
         let name: String
         let method: UInt16
         let compressedSize: UInt32
@@ -110,7 +110,7 @@ enum PaprikaZipReader {
 
     /// The entries the End Of Central Directory record lists, and how many it says there are; nil
     /// if there is no record, or the directory is cut short or broken (a truncated file).
-    private static func centralDirectory(_ zip: Data) -> (entries: [Entry], declared: Int)? {
+    static func centralDirectory(_ zip: Data) -> (entries: [Entry], declared: Int)? {
         guard zip.count >= 22 else { return nil }
         var eocd = zip.count - 22
         let lowest = max(0, zip.count - 22 - 65_535)
@@ -139,7 +139,7 @@ enum PaprikaZipReader {
 
     /// An entry's bytes (a gzip stream): STORED as they are, DEFLATE inflated, at most `max`;
     /// nil if damaged, over the cap, or another method.
-    private static func contents(of entry: Entry, in zip: Data, max: Int) -> Data? {
+    static func contents(of entry: Entry, in zip: Data, max: Int) -> Data? {
         let local = Int(entry.localOffset)
         guard local + 30 <= zip.count, u32(zip, local) == localSignature else { return nil }
         let start = local + 30 + Int(u16(zip, local + 26)) + Int(u16(zip, local + 28))
@@ -184,7 +184,7 @@ enum PaprikaZipReader {
 
     /// Raw DEFLATE inflated through Compression's stream API, counting what really comes out:
     /// nil past `max` bytes, or if the data is damaged or ends before the stream does.
-    private static func inflate(_ input: Data, max: Int) -> Data? {
+    static func inflate(_ input: Data, max: Int) -> Data? {
         if input.isEmpty { return nil }
         let bufferSize = 64 * 1024
         let scratch = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
@@ -232,11 +232,11 @@ enum PaprikaZipReader {
 
     // MARK: Little-endian reads
 
-    private static func u16(_ d: Data, _ i: Int) -> UInt16 {
+    static func u16(_ d: Data, _ i: Int) -> UInt16 {
         UInt16(d[d.startIndex + i]) | UInt16(d[d.startIndex + i + 1]) << 8
     }
 
-    private static func u32(_ d: Data, _ i: Int) -> UInt32 {
+    static func u32(_ d: Data, _ i: Int) -> UInt32 {
         UInt32(d[d.startIndex + i]) | UInt32(d[d.startIndex + i + 1]) << 8
             | UInt32(d[d.startIndex + i + 2]) << 16 | UInt32(d[d.startIndex + i + 3]) << 24
     }

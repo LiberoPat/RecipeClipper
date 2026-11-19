@@ -42,6 +42,8 @@ enum Flag: String, CaseIterable {
     case recipeVersions
     /// Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library.
     case paprikaImport
+    /// Import from Mealie (#391): Settings' Your recipes reads a Mealie export (a zip, or one recipe's .json) into the library.
+    case mealieImport
 }
 
 /// One flag as `shared/flags.json` declares it.

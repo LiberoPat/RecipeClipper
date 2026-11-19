@@ -216,6 +216,48 @@ enum Strings {
         return parts.joined(separator: " ")
     }
 
+    // Settings → Your recipes: import from Mealie (#391)
+    static var mealieImportTitle: String { String(localized: "mealie_import_title") }
+    static var mealieImportDescription: String { String(localized: "mealie_import_description") }
+    static var mealieImporting: String { String(localized: "mealie_importing") }
+    static var mealieFilingTitle: String { String(localized: "mealie_filing_title") }
+    static var mealieFilingDescription: String { String(localized: "mealie_filing_description") }
+
+    /// What an import from Mealie did: `paprikaSummary`'s sentences, with Mealie's own words.
+    static func mealieSummary(_ s: MealieSummary) -> String {
+        var parts: [String] = []
+        if s.imported > 0 {
+            parts.append(String(localized: "mealie_imported \(s.imported)"))
+        } else if s.skippedForLimit == 0 && s.alreadyHere > 0 {
+            parts.append(String(localized: "mealie_imported_nothing"))
+        } else if s.skippedForLimit == 0 {
+            parts.append(String(localized: "mealie_nothing_found"))
+        }
+        if s.alreadyHere > 0 && (s.imported > 0 || s.skippedForLimit > 0) {
+            parts.append(String(localized: "backup_already_here \(s.alreadyHere)"))
+        }
+        if s.skippedForLimit > 0, let free = s.freeLimit {
+            parts.append(String(localized: "backup_skipped_free \(s.skippedForLimit) \(free)"))
+        } else if s.skippedForLimit > 0 {
+            parts.append(String(localized: "backup_skipped \(s.skippedForLimit) \(historyLimit)"))
+        }
+        if s.notRecipes > 0 { parts.append(String(localized: "mealie_not_recipes \(s.notRecipes)")) }
+        if s.unreadable > 0 { parts.append(String(localized: "mealie_unreadable \(s.unreadable)")) }
+        if s.photosLeftOut > 0 { parts.append(String(localized: "mealie_photos_left_out \(s.photosLeftOut)")) }
+        if s.listsMade > 0 { parts.append(String(localized: "mealie_lists_made \(s.listsMade)")) }
+        return parts.joined(separator: " ")
+    }
+
+    static func message(for error: MealieError) -> String {
+        switch error {
+        case .notAMealieFile: return String(localized: "mealie_error_not_mealie")
+        case .damaged: return String(localized: "mealie_error_damaged")
+        case .tooLarge: return String(localized: "mealie_error_too_large")
+        case .readFailed: return String(localized: "backup_error_read_failed")
+        case .saveFailed: return String(localized: "backup_error_save_failed")
+        }
+    }
+
     static func message(for error: PaprikaError) -> String {
         switch error {
         case .notAPaprikaFile: return String(localized: "paprika_error_not_paprika")

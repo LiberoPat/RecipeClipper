@@ -15,6 +15,7 @@ struct SettingsSectionScreen: View {
     var onShowTips: () -> Void = {}
     @State private var importing = false
     @State private var importingPaprika = false
+    @State private var importingMealie = false
 
     var body: some View {
         let page = ScrollView {
@@ -40,6 +41,13 @@ struct SettingsSectionScreen: View {
         .fileImporter(isPresented: $importingPaprika, allowedContentTypes: [.item]) { result in
             switch result {
             case .success(let url): vm.onPaprikaPicked(url)
+            case .failure: vm.onImportPickFailed()
+            }
+        }
+        // Import from Mealie (#391): a zip or a .json that may be labelled any way, so any file may be picked.
+        .fileImporter(isPresented: $importingMealie, allowedContentTypes: [.item]) { result in
+            switch result {
+            case .success(let url): vm.onMealiePicked(url)
             case .failure: vm.onImportPickFailed()
             }
         }
@@ -186,6 +194,21 @@ private extension SettingsSectionScreen {
                 isOn: Binding(get: { state.paprikaFiling }, set: vm.onPaprikaFilingChange)
             )
             .accessibilityIdentifier("settings.paprikaFiling")
+        }
+        // Mealie's export (#391), the same way.
+        if vm.showsMealieImport {
+            ActionRow(
+                title: Strings.mealieImportTitle,
+                description: Strings.mealieImportDescription,
+                enabled: !state.backup.isBusy
+            ) { importingMealie = true }
+            .accessibilityIdentifier("settings.importMealie")
+            SwitchRow(
+                title: Strings.mealieFilingTitle,
+                description: Strings.mealieFilingDescription,
+                isOn: Binding(get: { state.mealieFiling }, set: vm.onMealieFilingChange)
+            )
+            .accessibilityIdentifier("settings.mealieFiling")
         }
         if let status = backupStatusText(state.backup) {
             Text(status.text)

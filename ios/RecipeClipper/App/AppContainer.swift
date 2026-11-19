@@ -18,6 +18,8 @@ final class AppContainer {
     let backupFiles: BackupFiles
     /// Import from Paprika (#382); nil under test unless given.
     let paprikaImportRepository: PaprikaImportRepository?
+    /// Import from Mealie (#391); nil under test unless given.
+    let mealieImportRepository: MealieImportRepository?
     let appInfo: AppInfo
     let alarms: TimerAlarmScheduler
     /// The one path that squares the countdowns outside the app (#309) with the database (#333).
@@ -97,6 +99,7 @@ final class AppContainer {
         cookedPhotoRepository: CookedPhotoRepository? = nil,
         autoBackup: AutoBackup? = nil,
         paprikaImportRepository: PaprikaImportRepository? = nil,
+        mealieImportRepository: MealieImportRepository? = nil,
         shareFileRepository: ShareFileRepository? = nil,
         // Unless given, every tooltip is seen: a unit test sees none it didn't ask for.
         tourPreferences: TourPreferences = MemoryTourPreferences(),
@@ -108,6 +111,7 @@ final class AppContainer {
         self.shareFileRepository = shareFileRepository
         self.autoBackup = autoBackup
         self.paprikaImportRepository = paprikaImportRepository
+        self.mealieImportRepository = mealieImportRepository
         self.cookedPhotoRepository = cookedPhotoRepository
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -255,6 +259,9 @@ final class AppContainer {
             ),
             paprikaImportRepository: DefaultPaprikaImportRepository(
                 files: FilePaprikaFiles(photos: photoStore), db: database, clock: clock, library: libraryLimit, photos: photoStore
+            ),
+            mealieImportRepository: DefaultMealieImportRepository(
+                files: FileMealieFiles(photos: photoStore), db: database, clock: clock, library: libraryLimit, photos: photoStore
             ),
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             // Under XCTest (the unit tests' host) every tooltip is seen, as for any test container.
@@ -519,7 +526,7 @@ final class AppContainer {
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
             flags: featureFlags, notificationPermission: notificationPermission,
             shortSteps: shortStepRepository, entitlements: entitlements, autoBackup: autoBackup, clock: clock,
-            paprika: paprikaImportRepository
+            paprika: paprikaImportRepository, mealie: mealieImportRepository
         )
     }
 

@@ -31,6 +31,8 @@ struct SettingsUiState: Equatable {
     var autoBackup: AutoBackupRow?
     /// "Put recipes in lists by their Paprika categories" (#387): on by default; this visit's choice, not a saved setting.
     var paprikaFiling = true
+    /// "Put recipes in lists by their Mealie categories and tags" (#391, #387): on by default; this visit's choice.
+    var mealieFiling = true
 }
 
 /// The automatic backup copy's rows in Your recipes (#150; Android's `AutoBackupRow`): the
@@ -84,10 +86,14 @@ enum BackupStatus: Equatable {
     case failed(BackupError)
     case importedPaprika(PaprikaSummary)
     case paprikaFailed(PaprikaError)
+    /// Import from Mealie (#391) is reading the file; shares the one-at-a-time rule.
+    case importingMealie
+    case importedMealie(MealieSummary)
+    case mealieFailed(MealieError)
 
     var isBusy: Bool {
         switch self {
-        case .exporting, .importing, .importingPaprika, .readyToShare: return true
+        case .exporting, .importing, .importingPaprika, .importingMealie, .readyToShare: return true
         default: return false
         }
     }
@@ -122,6 +128,7 @@ final class SettingsViewModel {
     @ObservationIgnored private let entitlements: Entitlements
     @ObservationIgnored private let autoBackup: AutoBackup?
     @ObservationIgnored private let paprika: PaprikaImportRepository?
+    @ObservationIgnored private let mealie: MealieImportRepository?
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private var autoBackupSubscription: AnyCancellable?
 
@@ -135,9 +142,11 @@ final class SettingsViewModel {
         entitlements: Entitlements = UnavailableEntitlements(),
         autoBackup: AutoBackup? = nil,
         clock: Clock = SystemClock(),
-        paprika: PaprikaImportRepository? = nil
+        paprika: PaprikaImportRepository? = nil,
+        mealie: MealieImportRepository? = nil
     ) {
         self.paprika = paprika
+        self.mealie = mealie
         self.autoBackup = autoBackup
         self.clock = clock
         self.flags = flags
@@ -164,6 +173,7 @@ final class SettingsViewModel {
                 next.unlockNotice = self.uiState.unlockNotice
                 next.autoBackup = self.uiState.autoBackup
                 next.paprikaFiling = self.uiState.paprikaFiling
+                next.mealieFiling = self.uiState.mealieFiling
                 self.uiState = next
             }
         if let autoBackup {
@@ -227,6 +237,26 @@ final class SettingsViewModel {
             switch await paprika.importPaprika(url, filing: filing) {
             case .success(let summary): uiState.backup = .importedPaprika(summary)
             case .failure(let error): uiState.backup = .paprikaFailed(error)
+            }
+        }
+    }
+
+    /// The "Import from Mealie" row (#391): only with the `mealieImport` flag on, and an importer.
+    var showsMealieImport: Bool { mealie != nil && (flags?.isOn(.mealieImport) ?? false) }
+
+    /// The switch under "Import from Mealie" (#391): whether the next import files recipes by their categories and tags.
+    func onMealieFilingChange(_ enabled: Bool) { uiState.mealieFiling = enabled }
+
+    /// Import from the Mealie file the user picked in the file importer (#391).
+    @discardableResult
+    func onMealiePicked(_ url: URL) -> Task<Void, Never>? {
+        guard let mealie, !uiState.backup.isBusy else { return nil }
+        uiState.backup = .importingMealie
+        let filing = uiState.mealieFiling
+        return Task {
+            switch await mealie.importMealie(url, filing: filing) {
+            case .success(let summary): uiState.backup = .importedMealie(summary)
+            case .failure(let error): uiState.backup = .mealieFailed(error)
             }
         }
     }
