@@ -95,9 +95,9 @@ data class Recipe(
      *  Not part of [image] (a web link, which the editor shows and saves). */
     val photoFile: String? = null
 ) {
-    /** What the screens show as the recipe's picture (#386): its stored photo, else its link. */
+    /** What the screens show as the recipe's picture (#386): its stored photo (with its link behind it, for a missing file), else its link. */
     val displayImage: String?
-        get() = photoFile?.let(StoredPhoto::model) ?: image
+        get() = photoFile?.let { StoredPhoto.model(it, fallback = image) } ?: image
 
     /** "Update from source" applies: the user's version of a recipe that has a real link. */
     val canUpdateFromSource: Boolean

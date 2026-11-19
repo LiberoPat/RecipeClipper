@@ -31,7 +31,7 @@ struct ListDao {
     func recipesIn(listId: Int64) throws -> [RecipeSummaryRecord] {
         try db.query(
             """
-            SELECT r.id, r.title, COALESCE('photo://' || r.photoFile, r.imageUrl) AS imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
+            SELECT r.id, r.title, \(RecipeImageSql.asR) AS imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
                    r.contentOrigin = 'CLIPPED' AS isClipped, NULL AS lastCookedDay, r.sourceUrl,
                    r.contentOrigin = 'CHAT' AS isFromChat
             FROM recipes r
@@ -53,7 +53,7 @@ struct ListDao {
     func coverPhotos() throws -> [ListCoverPhotoRecord] {
         try db.query(
             """
-            SELECT c.listId, COALESCE('photo://' || r.photoFile, r.imageUrl) AS imageUrl
+            SELECT c.listId, \(RecipeImageSql.asR) AS imageUrl
             FROM recipe_list_cross_ref c
             JOIN recipes r ON r.id = c.recipeId
             WHERE (r.photoFile IS NOT NULL OR (r.imageUrl IS NOT NULL AND r.imageUrl != ''))

@@ -96,8 +96,8 @@ struct Recipe: Equatable {
     /// Not part of `image` (a web link, which the editor shows and saves).
     var photoFile: String? = nil
 
-    /// What the screens show as the recipe's picture (#386): its stored photo, else its link.
-    var displayImage: String? { photoFile.map(StoredPhoto.model) ?? image }
+    /// What the screens show as the recipe's picture (#386): its stored photo (with its link behind it, for a missing file), else its link.
+    var displayImage: String? { photoFile.map { StoredPhoto.model($0, fallback: image) } ?? image }
 
     /// "Update from source" applies: the user's version of a recipe that has a real link.
     var canUpdateFromSource: Bool {
