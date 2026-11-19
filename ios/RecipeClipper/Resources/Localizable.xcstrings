@@ -6503,7 +6503,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Liste wird entfernt. Die Rezepte darin bleiben in deinen Rezepten."
+            "value" : "Die Liste wird entfernt. Die Rezepte darin bleiben unter „Rezepte“ erhalten."
           }
         },
         "en" : {
@@ -9154,7 +9154,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aún no hay recetas en ninguna lista. Guarda una en una lista con su marcador."
+            "value" : "Aún no hay recetas en ninguna lista. Guarda una receta en una lista con su marcador."
           }
         },
         "fr" : {
@@ -9166,13 +9166,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nessuna ricetta è ancora in una lista. Salvane una in una lista con il suo segnalibro."
+            "value" : "Nessuna ricetta è ancora in una lista. Salva una ricetta in una lista con il suo segnalibro."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhuma receita está em uma lista ainda. Salve uma em uma lista com o marcador dela."
+            "value" : "Nenhuma receita está em uma lista ainda. Salve uma receita em uma lista com o marcador dela."
           }
         }
       }
@@ -9224,7 +9224,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rezepte ohne Liste bleiben bis zu %lld erhalten. Darüber werden zuerst die entfernt, die du am längsten nicht geöffnet hast. Speichere ein Rezept in einer Liste, um es zu behalten."
+            "value" : "Rezepte ohne Liste bleiben bis zu %lld erhalten. Sind es mehr, werden zuerst die entfernt, die du am längsten nicht geöffnet hast. Speichere ein Rezept in einer Liste, um es zu behalten."
           }
         },
         "en" : {
@@ -9236,7 +9236,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las recetas sin lista se conservan hasta %lld. Pasado ese número, se eliminan primero las que abriste hace más tiempo. Guarda una en una lista para conservarla."
+            "value" : "Las recetas sin lista se conservan hasta %lld. Pasado ese límite, se eliminan primero las que abriste hace más tiempo. Guarda una receta en una lista para conservarla."
           }
         },
         "fr" : {
@@ -9248,7 +9248,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le ricette senza lista vengono conservate fino a %lld. Oltre, le prime a essere eliminate sono quelle aperte meno di recente. Salva una ricetta in una lista per conservarla."
+            "value" : "Le ricette senza lista vengono conservate fino a %lld. Oltre questo limite, vengono eliminate per prime quelle aperte meno di recente. Salva una ricetta in una lista per conservarla."
           }
         },
         "pt-BR" : {
@@ -14571,7 +14571,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und in deinen Rezepten."
+            "value" : "Die Seite wird neu geladen, und Name, Zutaten, Schritte und Foto, die du ausgeschnitten hast, werden durch die Rezeptdaten der Website ersetzt. Das Rezept bleibt in deinen Listen und unter „Rezepte“."
           }
         },
         "en" : {
@@ -26818,7 +26818,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preparate"
+            "value" : "Cucinate"
           }
         },
         "pt-BR" : {
@@ -26853,7 +26853,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saisies par vous"
+            "value" : "Saisies à la main"
           }
         },
         "it" : {
@@ -26882,31 +26882,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rezepte, die du gespeichert oder geöffnet, aber in keine Liste gelegt hast. Sie bleiben, bis du sie löschst."
+            "value" : "Rezepte, die du geöffnet oder selbst ausgeschnitten, aber in keine Liste gelegt hast. Sie bleiben, bis du sie löschst."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recetas que guardaste o abriste pero no pusiste en ninguna lista. Se quedan hasta que las elimines."
+            "value" : "Recetas que abriste o recortaste a mano pero no pusiste en ninguna lista. Se quedan hasta que las elimines."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recettes que vous avez enregistrées ou ouvertes sans les mettre dans une liste. Elles restent jusqu'à ce que vous les supprimiez."
+            "value" : "Recettes que vous avez ouvertes ou découpées à la main sans les mettre dans une liste. Elles restent jusqu'à ce que vous les supprimiez."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ricette che hai salvato o aperto ma non hai messo in nessuna lista. Restano finché non le elimini."
+            "value" : "Ricette che hai aperto o ritagliato a mano ma non hai messo in nessuna lista. Restano finché non le elimini."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Receitas que você salvou ou abriu, mas não colocou em nenhuma lista. Elas ficam até você excluí-las."
+            "value" : "Receitas que você abriu ou recortou à mão, mas não colocou em nenhuma lista. Elas ficam até você excluí-las."
           }
         }
       }
@@ -26923,7 +26923,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rezepte, die du als gekocht markiert oder von denen du ein Foto behalten hast."
+            "value" : "Rezepte, die du als gekocht markiert hast oder zu denen du ein Foto hinzugefügt hast."
           }
         },
         "es" : {
@@ -26941,7 +26941,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ricette che hai segnato come preparate o di cui hai salvato una foto."
+            "value" : "Ricette che hai segnato come cucinate o di cui hai salvato una foto."
           }
         },
         "pt-BR" : {
@@ -26976,7 +26976,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recettes que vous avez saisies, numérisées ou collées vous-même."
+            "value" : "Recettes que vous avez saisies, scannées ou collées vous-même."
           }
         },
         "it" : {
@@ -27023,7 +27023,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ancora niente di preparato. Segna una ricetta come preparata e comparirà qui."
+            "value" : "Ancora niente di cucinato. Segna una ricetta come cucinata e comparirà qui."
           }
         },
         "pt-BR" : {
@@ -27046,7 +27046,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch nichts selbst eingegeben. Mit + tippst oder scannst du ein Rezept."
+            "value" : "Noch nichts selbst eingegeben. Mit + tippst du ein Rezept ein oder scannst eines."
           }
         },
         "es" : {
@@ -27058,7 +27058,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rien de saisi pour l'instant. Avec +, saisissez ou numérisez une recette."
+            "value" : "Rien de saisi pour l'instant. Avec +, saisissez ou scannez une recette."
           }
         },
         "it" : {

@@ -15,6 +15,42 @@ under "Proposals for a native speaker" below, with the questions still open. A l
 of the applied changes adjusted three tooltips and left one more proposal there. None of this
 replaces a native speaker's review.
 
+## Review, 2026-11-18
+
+Claude reviewed the strings the Recipes library work (#345: PRs #346 and #347) added or
+reworded, in the same way: the "no history" wording, the Recipes filter, the views strip
+(Not in a list, Cooked, Typed by you) with its notes and empty states, "See all", the
+clean-up note and the free-tier and delete texts that now say what the library keeps. Each of
+the 23 keys was checked against its English, the terms table and the vocabulary the rest of
+that language's UI already uses, on both platforms; Android and iOS say the same thing. No
+translation still says "history". Placeholders and plural forms were already intact. Twenty-one
+strings per platform were changed, identically on both:
+
+- **Italian said "preparata" where the app says "cucinata".** The strip label, its note and the
+  empty state told the cook to "Segna come preparata", but the menu item is "Segna come
+  cucinata" (and the sort is "Cucinate di recente"). Now "Cucinate" throughout.
+- **"Saved" means "in a list" in this app** (*Guardada*, *Enregistrée*, *Gespeichert*,
+  *Salvata*, *Salva*), so the "Not in a list" note can't say a recipe was "saved" without a list.
+  It now says opened, or clipped by hand, using the words of "Clip it yourself" (*Recortar a
+  mano*, *Découper à la main*, *Selbst ausschneiden*, *Ritaglia a mano*, *Recortar à mão*).
+- **German:** "Mit + tippst oder scannst du ein Rezept" was missing its separable prefix, now
+  "Mit + tippst du ein Rezept ein oder scannst eines". The cooked note's "ein Foto behalten"
+  is now "ein Foto hinzugefügt", with both clauses finished. "Darüber werden … entfernt" is
+  "Sind es mehr, werden … entfernt". "Bleiben in deinen Rezepten" repeated itself and now names
+  the tab, „Rezepte“, in `delete_list_body` and `update_from_source_clip_body`.
+- **French:** "Saisies par vous" (stiff) is "Saisies à la main", which also covers scanned and
+  pasted recipes as its note says. "Numériser" is "scanner" in the typed note and empty state,
+  as in "Scanner une recette".
+- **Spanish, Italian, Portuguese:** "Guarda una en una lista" (and "Salvane una in una
+  lista", "Salve uma em uma lista") named the recipe, now "una receta", "una ricetta", "uma
+  receita"; Spanish "Pasado ese número" is "Pasado ese límite" and Italian "Oltre, le prime a
+  essere eliminate" is "Oltre questo limite, vengono eliminate per prime".
+
+The rest was kept: the filter and strip labels, the free-tier texts (the free app keeps N
+recipes), the "wasn't added" plurals (every form, the `many` ones included) and the delete
+confirmations are right as they were. The doubtful ones are under "Proposals for a native
+speaker" below.
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,
@@ -130,6 +166,7 @@ Cooking vocabulary first; these are the ones the draft was least sure of.
 | Scan a recipe / Page 1 of 2 (#226) | Escanear una receta / Página 1 de 2 | Scanner une recette / Page 1 sur 2 | Rezept scannen / Seite 1 von 2 | Scansiona una ricetta / Pagina 1 di 2 | Escanear uma receita / Página 1 de 2 |
 | Check these lines: the photo was hard to read there (#198) | Revisa estas líneas: ahí la foto se leía mal | Vérifiez ces lignes : la photo y était difficile à lire | Prüfe diese Zeilen: Dort war das Foto schwer zu lesen | Controlla queste righe: in quei punti la foto era poco leggibile | Confira estas linhas: ali a foto estava difícil de ler |
 | In this step / Later (cook mode's ingredients bar, #286) | En este paso / Más adelante | Pour cette étape / Pour la suite | In diesem Schritt / Später | In questo passaggio / Più avanti | Neste passo / Depois |
+| In a list / Not in a list / Cooked / Typed by you (the Recipes filter and views strip, #345) | En una lista / En ninguna lista / Cocinadas / Escritas por ti | Dans une liste / Dans aucune liste / Cuisinées / Saisies à la main | In einer Liste / In keiner Liste / Gekocht / Selbst eingegeben | In una lista / In nessuna lista / Cucinate / Scritte da te | Em uma lista / Em nenhuma lista / Feitas / Digitadas por você |
 
 Also worth a look: "Undo" and "Cancel" are the same word in French (Annuler) and Italian
 (Annulla), as the platforms themselves have it; "Delete" is *Excluir* in Portuguese
@@ -163,11 +200,23 @@ native ear; the reason is the later passes'.
 | `aisle_baking` | Confeitaria | Farinhas e confeitaria | The aisle holds flour, sugar and yeast first; "Confeitaria" is a real supermarket category, the longer label isn't one shops use. Kept. |
 | `action_choose_photos` (iOS) | Escolher da galeria | Escolher da Fototeca | iOS in Portuguese calls the photo library "Fototeca" ("Galeria" is Android's word), but check the name on a pt-BR iPhone's picker first. |
 
+**Library views and notes (2026-11-18 review)**
+
+| Key | Current | Proposed | Reason |
+|---|---|---|---|
+| `recipes_view_not_in_list_note` (all five) | opened or "clipped by hand" with the "Clip it yourself" words | only "opened" | The English says "clipped or opened". A recipe from a shared link is opened, the hand-clipped one has its own name; whether "recortaste a mano", "découpées à la main", "selbst ausgeschnitten", "ritagliato a mano", "recortou à mão" reads naturally here, or just "opened" is plainer, needs a native ear. |
+| `recipes_view_typed` (fr) | Saisies à la main | Écrites par vous / Saisies par vous | "À la main" suits the note (typed, scanned or pasted), but is "main" read as handwriting? |
+| `recipes_view_typed` (de) | Selbst eingegeben | Selbst eingetippt | The action and note say "eintippen"; "eingegeben" also covers scanned and pasted. Kept. |
+| `recipes_view_cooked` (es, fr, it, pt) | Cocinadas, Cuisinées, Cucinate, Feitas | Hechas, Faites, Fatte | Follows "Marcar como cocinada" etc. Natives may prefer the plainer "made" word for a recipe; it would change the mark's label too. |
+| `recipes_empty_in_list` (all five) | "…con su marcador" and its equivalents | Tap the bookmark to save one to a list | The bookmark's name (*marcador*, *marque-page*, *Lesezeichen*, *segnalibro*) should be the one the platform's own bookmark glyph is called. |
+| `recipes_cull_note`, `backup_skipped` | "se conservan hasta 50", "conservées jusqu'à 50", "bleiben bis zu 50 erhalten", "conservate fino a 50", "mantidas até 50" | "hasta un máximo de 50"… | Mirrors the English's "kept up to 50"; a native may want "a maximum of". Kept. |
+
 **Open questions**
 
 - Italian: "piano" or "programma" for the meal plan (above).
 - Spanish: the Groceries tab, "Compras" or "Compra" (above).
 - Portuguese: `aisle_baking`, and the iOS photo library's name (above).
+- The library views' notes and labels (the 2026-11-18 table above): the clip wording, French "Saisies à la main", and whether recipes are "cooked" or "made".
 - The sample recipe's beans: the Spanish, French, Italian and Portuguese samples say 800 g of
   cooked beans, drained, which is about three tins against the English two cans. German now
   writes "2 Dosen weiße Bohnen (je 400 g)", as German recipes do.
