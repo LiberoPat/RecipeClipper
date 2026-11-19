@@ -6,8 +6,14 @@ import org.json.JSONObject
 
 /**
  * Text shared into the app (#306): a note, an email, a message. Where it goes ([route]) and
- * what the editor opens with ([read]). The rules (#334), in order:
+ * what the editor opens with ([read]). The rules (#334, #350), in order:
  *
+ * 0. **A recipe as schema.org JSON** ([Route.Editor], sorted, #350): what an AI chat writes when
+ *    asked for one, bare, in a ```json fence or among prose. The first JSON object or array in
+ *    the text that [JsonLdRecipeParser] finds a Recipe in (`@graph`, arrays and nesting as for a
+ *    page) opens the editor with its name, ingredients, steps, times and yield. Only the first
+ *    recipe, and never its `url` or image: an AI may make either up. The prose around it is not
+ *    kept. Anything that isn't a recipe falls through to the rules below.
  * 1. **A recipe** ([Route.Editor], sorted): the text splits ([RecipeTextSplitter], in the
  *    language its words say, #208), or is the app's own shared text ([appShared]). It wins over
  *    a link in it: the cook chose this text, and a link beside a recipe may lead anywhere.
@@ -115,10 +121,12 @@ object SharedText {
      * else every non-blank line, trimmed and otherwise as written, as the steps. Steps, because
      * a step is never scaled, converted, bought or used up: an unsorted line can't become a
      * confident wrong number. No name either way: the first line might be "Hi Mum," (as #226
-     * decided for a scan), so Save points out the rule.
+     * decided for a scan), so Save points out the rule. A schema.org Recipe in the text
+     * ([jsonRecipe], #350) comes first, with its name.
      */
     fun read(text: String): Reading {
         val normalized = normalize(text)
+        jsonRecipe(normalized)?.let { return it }
         appShared(normalized)?.let { return it }
         val lines = normalized.split('\n')
         RecipeTextSplitter.detectAndSplitLines(normalized, plain = true)?.let { found ->
@@ -135,7 +143,70 @@ object SharedText {
      * [leftovers] are the lines of a sorted text that ended in no field, as written, in order:
      * the story, "Notes:" and what's under it, a link; the review shows them as the note.
      */
-    data class Reading(val recipe: SplitRecipe, val sorted: Boolean, val leftovers: List<String> = emptyList())
+    data class Reading(
+        val recipe: SplitRecipe,
+        val sorted: Boolean,
+        val leftovers: List<String> = emptyList(),
+        /** The recipe's name when the text carried one (a schema.org Recipe, #350); else blank. */
+        val name: String = ""
+    )
+
+    /** How many places in the text that open a JSON value are tried before giving up. */
+    private const val MAX_JSON_CANDIDATES = 20
+
+    /**
+     * Rule 0 (#350): the first `{...}` or `[...]` in [text] that holds a schema.org Recipe, read
+     * by [JsonLdRecipeParser] (never a second reader). Candidates are cut out by their matching
+     * bracket, aware of strings, so a fence or prose around them doesn't matter; one that isn't a
+     * recipe is skipped whole. Only the parser's rules decide what a recipe is: a name, plus
+     * ingredients or steps. Null when there is none. Its guards hold: a candidate nested too deep
+     * is a candidate that isn't one, and the single `Throwable` catch stays in the parser.
+     */
+    private fun jsonRecipe(text: String): Reading? {
+        if (!text.contains("recipe", ignoreCase = true)) return null
+        var tried = 0
+        var i = 0
+        while (i < text.length && tried < MAX_JSON_CANDIDATES) {
+            if (text[i] != '{' && text[i] != '[') { i++; continue }
+            tried++
+            val end = jsonEnd(text, i)
+            if (end < 0) { i++; continue }
+            val recipe = JsonLdRecipeParser.parse(listOf(text.substring(i, end)), sourceUrl = "")
+            if (recipe != null) {
+                val split = SplitRecipe(
+                    recipe.ingredients, recipe.instructions, recipe.yield,
+                    recipe.prepTime, recipe.cookTime, recipe.totalTime, recipe.language
+                )
+                return Reading(split, sorted = true, name = recipe.name)
+            }
+            i = end
+        }
+        return null
+    }
+
+    /** The index after the bracket that closes the one at [start], or -1. Strings are skipped. */
+    private fun jsonEnd(text: String, start: Int): Int {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for (i in start until text.length) {
+            val c = text[i]
+            if (inString) {
+                when {
+                    escaped -> escaped = false
+                    c == '\\' -> escaped = true
+                    c == '"' -> inString = false
+                }
+                continue
+            }
+            when (c) {
+                '"' -> inString = true
+                '{', '[' -> depth++
+                '}', ']' -> if (--depth == 0) return i + 1
+            }
+        }
+        return -1
+    }
 
     /** One UI language's words in the app's own shared text (`splitter.json`'s `shareText`),
      *  compared with a no-break space ("Portions : 4") as a space: an app in between may swap it. */

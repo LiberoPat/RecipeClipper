@@ -4779,6 +4779,7 @@ scan (#226) are. Behind the `shareText` flag, on both platforms.
 
 - **Where shared text goes** (`SharedText.route`, pure, in `:core` with its Swift port, pinned by
   the corpus's `Shared(…)` rows; the owner's rules from the code review, #334), in order:
+  0. **A recipe as schema.org JSON** (#350, tried before all of these; see below).
   1. **A recipe:** the text splits (`RecipeTextSplitter`, in the language its words say, #208),
      or is the app's own shared text (below). **It wins over a link in it.** The cook chose this
      text; a link beside a recipe (an email signature, "see also", the highlight link Chrome
@@ -4810,7 +4811,8 @@ scan (#226) are. Behind the `shareText` flag, on both platforms.
   ingredients and steps in the text, so it's all under Steps, as written: finish it by hand."
   Steps rather than ingredients (the photo's fallback) because a step is never scaled,
   converted, bought or used up, so an unsorted line can never become a confident wrong number;
-  prose reads as steps, and the cook moves the ingredient lines. **No name either way**: the
+  prose reads as steps, and the cook moves the ingredient lines. **No name either way** (but a
+  schema.org JSON recipe, below, brings its own): the
   first line might be "Hi Mum," or "Fwd:", so Save points out the rule, as a scan's does
   (the title line of the app's own text sits first in the note). Nothing is corrected, and no
   lines are listed to check: typed text has no recogniser to doubt.
@@ -4825,6 +4827,17 @@ scan (#226) are. Behind the `shareText` flag, on both platforms.
   and `ShareLabelsTableTests` (the compiled catalog). The recipe's language is still its own
   words', never the sender's phone's. Tried before the splitter: the two headings on their own
   lines, in order, each with lines under it.
+- **schema.org Recipe JSON** (#350): what an AI chat writes when asked for "a schema.org Recipe",
+  bare, in a ```` ```json ```` fence or among prose, is tried first (`SharedText.jsonRecipe`). The
+  candidates are the text's `{…}` and `[…]`, each cut at its matching bracket (string-aware, at
+  most 20 tried, a failed one skipped whole), read by the existing `JsonLdRecipeParser` (never a
+  second reader: `@graph`, arrays, HowToSection, the depth guards and the one `Throwable` catch
+  all as for a page). The first Recipe wins, so an array of recipes opens its first (a meal-plan
+  import is a follow-up). It opens sorted with `Reading.name` filling the editor's name, plus its
+  ingredients, steps, yield and times; the prose around it is not kept (a chat's "Here you go!"
+  is not the cook's note), and **its `url` and image are never used** (an AI may make either up;
+  the recipe has no source credit). JSON that doesn't parse, or holds no recipe, falls through
+  to the rules above. Saved like any shared text: `MANUAL`, counted by the one `upsert`.
 - **Saved as the cook's own** (`addManual` with the text's language, then the checked recipe's
   words, else English), like a scan: `MANUAL`, `manual:<uuid>`, no source credit, the note as
   the review left it. Nothing is saved until Save; Back discards.

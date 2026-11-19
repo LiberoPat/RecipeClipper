@@ -137,4 +137,74 @@ class SharedTextTest {
         assertEquals(Kind.RECIPE, SharedText.kind(text))
         assertEquals("de", SharedText.read(text).recipe.language)
     }
+
+    // --- A schema.org Recipe as JSON, as an AI chat writes it (#350) ---
+
+    private val json = """
+        {"@context": "https://schema.org", "@type": "Recipe", "name": "Lemon Pasta",
+         "url": "https://made-up.example/lemon-pasta", "image": "https://made-up.example/p.jpg",
+         "recipeYield": "4 servings", "prepTime": "PT10M", "cookTime": "PT15M", "totalTime": "PT25M",
+         "recipeIngredient": ["200 g spaghetti", "1 lemon", "2 tbsp butter"],
+         "recipeInstructions": [
+           {"@type": "HowToStep", "text": "Boil the pasta."},
+           {"@type": "HowToStep", "text": "Toss with butter and lemon."}]}
+    """.trimIndent()
+
+    private fun assertLemonPasta(text: String) {
+        assertEquals(Kind.RECIPE, SharedText.kind(text))
+        val reading = (SharedText.route(text) as Route.Editor).reading
+        assertTrue(reading.sorted)
+        assertEquals("Lemon Pasta", reading.name)
+        assertEquals(listOf("200 g spaghetti", "1 lemon", "2 tbsp butter"), reading.recipe.ingredients)
+        assertEquals(listOf("Boil the pasta.", "Toss with butter and lemon."), reading.recipe.instructions)
+        assertEquals("4 servings", reading.recipe.yield)
+        assertEquals(listOf("10m", "15m", "25m"), listOf(reading.recipe.prepTime, reading.recipe.cookTime, reading.recipe.totalTime))
+        assertTrue(reading.leftovers.isEmpty())
+    }
+
+    @Test fun `bare schema org JSON opens sorted with its name, times and yield`() = assertLemonPasta(json)
+
+    @Test fun `JSON in a fence, with prose around it, is read the same`() {
+        assertLemonPasta("```json\n$json\n```")
+        assertLemonPasta("Sure! Here's a Recipe for you:\n\n```json\n$json\n```\n\nEnjoy [with a salad]! {Serves 4}")
+        assertLemonPasta("Here it is: $json Hope that helps.")
+        assertLemonPasta(json.replace("\n", "\r\n"))
+    }
+
+    @Test fun `a Recipe in a graph, an array of recipes and a section's steps are read as for a page`() {
+        val graph = """{"@context":"https://schema.org","@graph":[{"@type":"WebPage","name":"x"},
+            {"@type":["Thing","Recipe"],"name":"Soup","recipeIngredient":["1 onion"],"recipeInstructions":
+            [{"@type":"HowToSection","name":"Base","itemListElement":[{"@type":"HowToStep","text":"Fry."}]},"Simmer."]}]}"""
+        val soup = SharedText.read("Your recipe:\n$graph").also { assertTrue(it.sorted) }
+        assertEquals("Soup", soup.name)
+        assertEquals(listOf("1 onion"), soup.recipe.ingredients)
+        assertEquals(listOf("Fry.", "Simmer."), soup.recipe.instructions)
+
+        val two = """[{"@type":"Recipe","name":"First","recipeIngredient":["1 egg"]},
+            {"@type":"Recipe","name":"Second","recipeIngredient":["2 eggs"]}]"""
+        assertEquals("First", SharedText.read(two).name)
+    }
+
+    @Test fun `a url in the JSON is not what the text is`() {
+        assertEquals(Kind.RECIPE, SharedText.kind("$json\nhttps://made-up.example/lemon-pasta"))
+        assertEquals(Kind.LINK, SharedText.kind("https://made-up.example/lemon-pasta"))
+    }
+
+    @Test fun `JSON that is broken or isn't a recipe falls through to today's rules`() {
+        val broken = json.dropLast(40)
+        assertFalse(SharedText.read(broken).sorted)
+        assertEquals("", SharedText.read(broken).name)
+        val notRecipe = """{"@type": "Person", "name": "Ann", "note": "recipe for disaster"}"""
+        assertEquals(Kind.TEXT, SharedText.kind(notRecipe))
+        // A Recipe with a name and nothing to cook is not one.
+        assertEquals(Kind.TEXT, SharedText.kind("""{"@type":"Recipe","name":"Empty"}"""))
+        // A plain-text recipe with brackets in it still splits as before.
+        assertEquals(Kind.RECIPE, SharedText.kind(recipe.replace("Grandma's", "Grandma's [best] {recipe}")))
+    }
+
+    @Test fun `JSON nested far too deep is no recipe and never a crash`() {
+        assertFalse(SharedText.read("recipe " + "[".repeat(20_000) + "]".repeat(20_000)).sorted)
+        assertFalse(SharedText.read("recipe " + "{\"a\":".repeat(5_000) + "1" + "}".repeat(5_000)).sorted)
+        assertFalse(SharedText.read("recipe " + "[".repeat(30_000)).sorted)
+    }
 }

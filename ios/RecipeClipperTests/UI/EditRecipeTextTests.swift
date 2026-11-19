@@ -35,6 +35,32 @@ final class EditRecipeTextTests: XCTestCase {
         XCTAssertEqual(state.draft.instructionsText, "Mix.\nBake.")
     }
 
+    func testSchemaOrgJsonInTheTextFillsTheNameFieldsAndTimesSavedAsTypedIn() async {
+        let repository = FakeRecipeRepository()
+        repository.addManualResult = saved(8)
+        let vm = viewModel(
+            "Here you go:\n```json\n{\"@type\":\"Recipe\",\"name\":\"Lemon Pasta\",\"url\":\"https://made-up.example/x\","
+                + "\"recipeYield\":\"4 servings\",\"prepTime\":\"PT10M\",\"recipeIngredient\":[\"200 g spaghetti\",\"1 lemon\"],"
+                + "\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Boil.\"},\"Toss.\"]}\n```",
+            repository: repository
+        )
+        await settleMain(until: { !vm.uiState.loading })
+
+        let state = vm.uiState
+        XCTAssertEqual(state.sharedSorted, true)
+        XCTAssertEqual(state.draft.name, "Lemon Pasta")
+        XCTAssertEqual(state.draft.yield, "4 servings")
+        XCTAssertEqual(state.draft.prepTime, "10m")
+        XCTAssertEqual(state.draft.ingredientsText, "200 g spaghetti\n1 lemon")
+        XCTAssertEqual(state.draft.instructionsText, "Boil.\nToss.")
+        XCTAssertFalse(state.leftovers)
+
+        vm.onSave()
+        await settleMain(until: { vm.uiState.savedId != nil })
+        XCTAssertEqual(repository.addManualCalls.map(\.name), ["Lemon Pasta"])
+        XCTAssertEqual(vm.uiState.savedId, 8)
+    }
+
     func testTextThatDoesNotSplitIsEveryLineAStepAsWritten() async {
         let vm = viewModel("Hi Mum,\nMix the flour with the butter and bake it.\n\nLove, Sam")
         await settleMain(until: { !vm.uiState.loading })

@@ -181,6 +181,7 @@ final class EditRecipeViewModel {
         uiState.note = reading.leftovers.joined(separator: "\n")
         uiState.leftovers = !reading.leftovers.isEmpty
         uiState.draft = RecipeDraft(
+            name: reading.name,
             yield: recipe.yield ?? "", prepTime: recipe.prepTime ?? "", cookTime: recipe.cookTime ?? "",
             totalTime: recipe.totalTime ?? "",
             ingredientsText: recipe.ingredients.joined(separator: "\n"),

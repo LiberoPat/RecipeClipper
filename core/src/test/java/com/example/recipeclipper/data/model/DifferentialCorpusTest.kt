@@ -131,7 +131,7 @@ import java.io.File
  * steps (nil: no recipe) and the yield, prep, cook and total times; write only the text.
  *
  * `Shared("text")` rows (#306) pin [SharedText]: text shared into the app, as where it goes
- * ([SharedText.kind]), whether it sorted, its language, the editor's ingredients and steps, its
+ * ([SharedText.kind]), whether it sorted, its language, its name (#350), the editor's ingredients and steps, its
  * yield, prep, cook and total times, and the lines left over ([SharedText.read]); write only
  * the text.
  *
@@ -409,7 +409,7 @@ class DifferentialCorpusTest {
             val language = reading.recipe.language?.let { q(it) } ?: "nil"
             val r = reading.recipe
             val extras = optionalList(listOf(r.yield, r.prepTime, r.cookTime, r.totalTime))
-            return m.groupValues[1] + "Shared(${q(text)}, $kind, ${reading.sorted}, $language, " +
+            return m.groupValues[1] + "Shared(${q(text)}, $kind, ${reading.sorted}, $language, ${q(reading.name)}, " +
                 "${list(r.ingredients)}, ${list(r.instructions)}, $extras, ${list(reading.leftovers)}),"
         }
         photoRow.find(line)?.let { m ->
