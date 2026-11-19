@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -98,6 +99,8 @@ private fun ViewCard(
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier
             .width(104.dp)
+            // The same height whether a name takes one line or two, so the strip reads as a row.
+            .heightIn(min = 112.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(role = Role.Button, onClick = onClick)

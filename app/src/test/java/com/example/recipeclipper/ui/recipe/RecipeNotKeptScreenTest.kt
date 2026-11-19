@@ -73,9 +73,10 @@ class RecipeNotKeptScreenTest {
             { 0L }, FakeConnectivity(), FakeAppInfo(), FakeTimerAlarmScheduler(),
             entitlements = FakeEntitlements()
         )
+        val saveViewModel = SaveToListViewModel(FakeListRepository())
         compose.setContent {
             CompositionLocalProvider(LocalFlagValues provides FlagValues(setOf(Flag.ONE_COOKBOOK))) {
-                RecipeScreen(onBack = {}, viewModel = viewModel, saveViewModel = SaveToListViewModel(FakeListRepository()))
+                RecipeScreen(onBack = {}, viewModel = viewModel, saveViewModel = saveViewModel)
             }
         }
 

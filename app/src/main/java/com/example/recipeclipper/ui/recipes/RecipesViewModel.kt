@@ -106,10 +106,10 @@ class RecipesViewModel @Inject constructor(
     /** The strip's lists (#345); none without it (tests that aren't about them). */
     lists: ListRepository? = null,
     /** The automatic view's route argument (V4), when opened on one. */
-    savedStateHandle: SavedStateHandle = SavedStateHandle()
+    savedStateHandle: SavedStateHandle? = null
 ) : ViewModel() {
 
-    private val view: RecipeFilter? = RecipeFilter.fromRouteName(savedStateHandle[VIEW_ARG])
+    private val view: RecipeFilter? = RecipeFilter.fromRouteName(savedStateHandle?.get<String>(VIEW_ARG))
 
     // The query box's live value. Kept in a StateFlow, not `remember`, so it survives rotation.
     private val query = MutableStateFlow("")
