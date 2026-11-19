@@ -2,7 +2,9 @@ import Foundation
 
 /// Text shared into the app (#306): a note, an email, a message. Where it goes (`route`) and what
 /// the editor opens with (`read`). Ported line for line from Android's `SharedText`; its doc
-/// comment has the rules (#334): a recipe (the text splits, or is the app's own shared text)
+/// comment has the rules (#334, #350): a recipe as schema.org JSON (what an AI chat writes, bare,
+/// fenced or among prose; the first Recipe `JsonLdRecipeParser` finds, never its url or image)
+/// comes first and opens the editor with its name; then a recipe (the text splits, or is the app's own shared text)
 /// opens the editor even beside a link; a link wins only when the text is essentially just the
 /// link; a list is every line bulleted, headings allowed; else the editor, as written. Nothing
 /// shared is lost: the lines a split leaves out come back as leftovers. Blank text goes nowhere.
@@ -94,6 +96,7 @@ enum SharedText {
     /// converted, bought or used up). No name either way.
     static func read(_ text: String) -> Reading {
         let normalized = normalize(text)
+        if let json = jsonRecipe(normalized) { return json }
         if let shared = appShared(normalized) { return shared }
         let lines = normalized.components(separatedBy: "\n")
         if let found = RecipeTextSplitter.detectAndSplitLines(normalized, plain: true) {
@@ -119,6 +122,72 @@ enum SharedText {
         let recipe: SplitRecipe
         let sorted: Bool
         var leftovers: [String] = []
+        /// The recipe's name when the text carried one (a schema.org Recipe, #350); else blank.
+        var name: String = ""
+    }
+
+    /// How many places in the text that open a JSON value are tried before giving up.
+    private static let maxJsonCandidates = 20
+
+    /// A bracket, quote or backslash as the UTF-16 unit the scan compares.
+    private static func u(_ c: Unicode.Scalar) -> UInt16 { UInt16(c.value) }
+
+    /// Rule 0 (#350): the first `{...}` or `[...]` in the text that holds a schema.org Recipe, read
+    /// by `JsonLdRecipeParser` (never a second reader). See the Kotlin.
+    private static func jsonRecipe(_ text: String) -> Reading? {
+        guard text.range(of: "recipe", options: .caseInsensitive) != nil else { return nil }
+        let units = Array(text.utf16)
+        let ns = text as NSString
+        var tried = 0
+        var i = 0
+        while i < units.count && tried < maxJsonCandidates {
+            if units[i] != u("{") && units[i] != u("[") { i += 1; continue }
+            tried += 1
+            let end = jsonEnd(units, i)
+            if end < 0 { i += 1; continue }
+            let block = ns.substring(with: NSRange(location: i, length: end - i))
+            if let recipe = JsonLdRecipeParser.parse([block], sourceUrl: "") {
+                let split = SplitRecipe(
+                    ingredients: recipe.ingredients, instructions: recipe.instructions, yield: recipe.yield,
+                    prepTime: recipe.prepTime, cookTime: recipe.cookTime, totalTime: recipe.totalTime,
+                    language: recipe.language
+                )
+                return Reading(recipe: split, sorted: true, leftovers: [], name: recipe.name)
+            }
+            i = end
+        }
+        return nil
+    }
+
+    /// The index after the bracket that closes the one at `start`, or -1. Strings are skipped.
+    private static func jsonEnd(_ units: [UInt16], _ start: Int) -> Int {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var i = start
+        while i < units.count {
+            let c = units[i]
+            i += 1
+            if inString {
+                if escaped {
+                    escaped = false
+                } else if c == u("\\") {
+                    escaped = true
+                } else if c == u("\"") {
+                    inString = false
+                }
+                continue
+            }
+            switch c {
+            case u("\""): inString = true
+            case u("{"), u("["): depth += 1
+            case u("}"), u("]"):
+                depth -= 1
+                if depth == 0 { return i }
+            default: break
+            }
+        }
+        return -1
     }
 
     /// One UI language's words in the app's own shared text (`splitter.json`'s `shareText`),

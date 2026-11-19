@@ -55,6 +55,32 @@ class EditRecipeTextViewModelTest {
             assertEquals("Mix.\nBake.", state.draft.instructionsText)
         }
 
+    @Test fun `schema org JSON in the text fills the name, fields and times, saved as typed in (#350)`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { addManualResult = saved(8L) }
+            val vm = viewModel(
+                "Here you go:\n```json\n{\"@type\":\"Recipe\",\"name\":\"Lemon Pasta\",\"url\":\"https://made-up.example/x\"," +
+                    "\"recipeYield\":\"4 servings\",\"prepTime\":\"PT10M\",\"recipeIngredient\":[\"200 g spaghetti\",\"1 lemon\"]," +
+                    "\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Boil.\"},\"Toss.\"]}\n```",
+                repository
+            )
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(true, state.sharedSorted)
+            assertEquals("Lemon Pasta", state.draft.name)
+            assertEquals("4 servings", state.draft.yield)
+            assertEquals("10m", state.draft.prepTime)
+            assertEquals("200 g spaghetti\n1 lemon", state.draft.ingredientsText)
+            assertEquals("Boil.\nToss.", state.draft.instructionsText)
+            assertFalse(state.leftovers)
+
+            vm.onSave()
+            advanceUntilIdle()
+            assertEquals(1, repository.addManualCalls.size)
+            assertEquals(8L, vm.uiState.value.savedId)
+        }
+
     @Test fun `text that doesn't split is every line a step, as written`() =
         runTest(mainDispatcherRule.dispatcher) {
             val vm = viewModel("Hi Mum,\nMix the flour with the butter and bake it.\n\nLove, Sam")

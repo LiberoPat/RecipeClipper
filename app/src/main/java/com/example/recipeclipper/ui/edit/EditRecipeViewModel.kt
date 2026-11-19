@@ -228,6 +228,7 @@ class EditRecipeViewModel @Inject constructor(
                     note = reading.leftovers.joinToString("\n"),
                     leftovers = reading.leftovers.isNotEmpty(),
                     draft = RecipeDraft(
+                        name = reading.name,
                         yield = recipe.yield.orEmpty(),
                         prepTime = recipe.prepTime.orEmpty(),
                         cookTime = recipe.cookTime.orEmpty(),
