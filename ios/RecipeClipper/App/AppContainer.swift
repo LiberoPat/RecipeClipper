@@ -208,7 +208,8 @@ final class AppContainer {
                 library: libraryLimit,
                 extractor: FoundationModelsPageRecipeExtractor(),
                 extractionOn: { featureFlags?.isOn(.llmExtraction) ?? false },
-                photos: photoStore
+                photos: photoStore,
+                versionsOn: { featureFlags?.isOn(.recipeVersions) ?? false }
             ),
             listRepository: DefaultListRepository(db: database, clock: clock),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),

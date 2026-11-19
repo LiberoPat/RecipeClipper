@@ -583,4 +583,91 @@ class RecipeDaoTest {
         assertEquals(setOf(1), row.checkedIngredients)
         assertEquals(false, recipes.saveEdit(12345, row, "EDITED", 6))
     }
+
+    // --- Versions (#354) ---
+
+    private fun version(of: RecipeEntity, url: String, title: String) =
+        recipe(url, viewedAt = 5, title = title).copy(contentOrigin = "CHAT", basedOnUid = of.uid)
+
+    @Test fun `a version is found from its original and the original from the version`() = runBlocking {
+        val soup = recipe("https://a.com/soup", 1, title = "Soup")
+        val soupId = recipes.upsert(soup, HISTORY_LIMIT)
+        val spicy = version(recipes.get(soupId)!!, "manual:1", "Spicy soup")
+        val spicyId = recipes.upsert(spicy, HISTORY_LIMIT)
+        val spicier = version(recipes.get(soupId)!!, "manual:2", "Spicier soup")
+        val spicierId = recipes.upsert(spicier, HISTORY_LIMIT)
+
+        assertEquals(listOf(spicierId, spicyId), recipes.observeVersions(soupId).first().map { it.id })
+        assertEquals("Soup", recipes.observeOriginal(spicyId).first()!!.title)
+        assertNull(recipes.observeOriginal(soupId).first())
+        assertTrue(recipes.observeVersions(spicyId).first().isEmpty())
+    }
+
+    @Test fun `deleting the original keeps its versions and clears their link`() = runBlocking {
+        val soupId = recipes.upsert(recipe("https://a.com/soup", 1), HISTORY_LIMIT)
+        val spicyId = recipes.upsert(version(recipes.get(soupId)!!, "manual:1", "Spicy"), HISTORY_LIMIT)
+
+        recipes.deleteWithLinks(soupId)
+
+        assertNull(recipes.get(soupId))
+        assertNotNull(recipes.get(spicyId))
+        assertNull(recipes.get(spicyId)!!.basedOnUid)
+        assertNull(recipes.observeOriginal(spicyId).first())
+    }
+
+    @Test fun `deleting a version leaves the original alone`() = runBlocking {
+        val soupId = recipes.upsert(recipe("https://a.com/soup", 1), HISTORY_LIMIT)
+        val spicyId = recipes.upsert(version(recipes.get(soupId)!!, "manual:1", "Spicy"), HISTORY_LIMIT)
+
+        recipes.deleteWithLinks(spicyId)
+
+        assertNotNull(recipes.get(soupId))
+        assertTrue(recipes.observeVersions(soupId).first().isEmpty())
+    }
+
+    @Test fun `an undo links the versions again, and a version restored after its original is gone is unlinked`() = runBlocking {
+        val soupId = recipes.upsert(recipe("https://a.com/soup", 1), HISTORY_LIMIT)
+        val soup = recipes.get(soupId)!!
+        val spicyId = recipes.upsert(version(soup, "manual:1", "Spicy"), HISTORY_LIMIT)
+        val spicy = recipes.get(spicyId)!!
+        val versionIds = recipes.versionIdsOf(soup.uid)
+        recipes.deleteWithLinks(soupId)
+
+        recipes.restore(soup, emptyList(), versionIds = versionIds)
+        assertEquals(soup.uid, recipes.get(spicyId)!!.basedOnUid)
+
+        // The version deleted, then the original, then the version's undo: nothing to link to.
+        recipes.deleteWithLinks(spicyId)
+        recipes.deleteWithLinks(soupId)
+        recipes.restore(spicy, emptyList())
+        assertNull(recipes.get(spicyId)!!.basedOnUid)
+    }
+
+    @Test fun `a re-share, an edit and a refresh keep a version's link`() = runBlocking {
+        val soupId = recipes.upsert(recipe("https://a.com/soup", 1), HISTORY_LIMIT)
+        val soup = recipes.get(soupId)!!
+        val spicyId = recipes.upsert(version(soup, "manual:1", "Spicy"), HISTORY_LIMIT)
+
+        // The version's own row, re-shared (its link is the user's version: only a view) and edited.
+        recipes.upsert(recipe("manual:1", 9).copy(contentOrigin = "CHAT"), HISTORY_LIMIT)
+        recipes.saveEdit(spicyId, recipe("manual:1", 9, title = "Hotter"), "CHAT", 7)
+        assertEquals(soup.uid, recipes.get(spicyId)!!.basedOnUid)
+        assertEquals("Hotter", recipes.get(spicyId)!!.title)
+
+        // The original refreshed from its source keeps its uid, so its versions stay linked.
+        recipes.upsert(recipe("https://a.com/soup", 12, title = "Soup, updated"), HISTORY_LIMIT)
+        assertEquals(soup.uid, recipes.get(spicyId)!!.basedOnUid)
+        assertEquals(listOf(spicyId), recipes.observeVersions(soupId).first().map { it.id })
+    }
+
+    @Test fun `the old clean-up removing an original clears its versions' links`() = runBlocking {
+        val soupId = recipes.upsert(recipe("https://a.com/soup", 1), 1)
+        val spicyId = recipes.upsert(version(recipes.get(soupId)!!, "manual:1", "Spicy"), 1)
+
+        // A newer unprotected recipe pushes the older soup out of a history of one.
+        recipes.upsert(recipe("https://a.com/other", 20), 1)
+
+        assertNull(recipes.get(soupId))
+        assertNull(recipes.get(spicyId)!!.basedOnUid)
+    }
 }

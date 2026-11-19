@@ -183,7 +183,7 @@ struct BackupDao {
                 prepTime: r.prepTime, cookTime: r.cookTime, totalTime: r.totalTime, servings: r.servings,
                 sourceType: r.sourceType, lastViewedAt: r.lastViewedAt,
                 checkedIngredients: r.checkedIngredients, notes: r.notes, uid: r.id, language: r.language,
-                contentOrigin: r.contentOrigin, editedAt: r.editedAt
+                contentOrigin: r.contentOrigin, editedAt: r.editedAt, basedOnUid: r.basedOn
             ))
         }
         for update in plan.noteUpdates {

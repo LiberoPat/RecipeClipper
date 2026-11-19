@@ -20,6 +20,8 @@ final class DefaultRecipeRepository: RecipeRepository {
     private let extractor: PageRecipeExtractor
     /// The `llmExtraction` flag (#103), read at each import; the share extension leaves it off.
     private let extractionOn: () -> Bool
+    /// The `recipeVersions` flag (#354), read at each save; the share extension leaves it off.
+    private let versionsOn: () -> Bool
 
     /// How a failed fetch waits before its single retry. Injected so a test doesn't really wait;
     /// throws on cancellation, as `Task.sleep` does.
@@ -51,8 +53,10 @@ final class DefaultRecipeRepository: RecipeRepository {
         library: LibraryLimitSource = FixedLibraryLimit(),
         extractor: PageRecipeExtractor = NoPageRecipeExtractor(),
         extractionOn: @escaping () -> Bool = { false },
-        photos: PhotoStore? = nil
+        photos: PhotoStore? = nil,
+        versionsOn: @escaping () -> Bool = { false }
     ) {
+        self.versionsOn = versionsOn
         self.photos = photos
         self.library = library
         self.extractor = extractor
@@ -297,7 +301,9 @@ final class DefaultRecipeRepository: RecipeRepository {
         }
     }
 
-    func addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool) async -> Recipe? {
+    func addManual(
+        draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool, basedOn: String?
+    ) async -> Recipe? {
         guard draft.isValid else { return nil }
         let now = clock.now()
         var recipe = draft.apply(to: Recipe(
@@ -309,11 +315,13 @@ final class DefaultRecipeRepository: RecipeRepository {
         recipe.editedAt = now
         recipe.language = language
         recipe.notes = notes.flatMap { $0.kTrimmed.isEmpty ? nil : $0.kTrimmed }
-        let record = recipe.toRecord(viewedAt: now)
+        var record = recipe.toRecord(viewedAt: now)
         let limit = library.current()
+        let claim = fromChat && versionsOn() ? basedOn : nil
         do {
             return try await db.write { conn -> Recipe? in
                 let dao = RecipeDao(db: conn)
+                record.basedOnUid = try Self.originalUid(claim, dao: dao)
                 let id = try dao.upsert(record, limit: limit, today: PlanDays.today(millis: now))
                 if id == RecipeDao.notKept { return recipe }
                 return try dao.get(id)?.toDomain()
@@ -322,6 +330,17 @@ final class DefaultRecipeRepository: RecipeRepository {
             dataLog.error("addManual failed: \(String(describing: error), privacy: .public)")
             return nil
         }
+    }
+
+    /// The uid of the recipe here that `basedOn` (an AI reply's `isBasedOn`, #354) names: the
+    /// recipe's saved link as written, else cleaned (a clipped page's link, with the tracking an AI
+    /// may have kept or dropped). Nil when nothing here matches: the claim is ignored and the
+    /// recipe is a plain one from a chat.
+    private static func originalUid(_ basedOn: String?, dao: RecipeDao) throws -> String? {
+        guard let link = basedOn?.kTrimmed, !link.isEmpty else { return nil }
+        if let found = try dao.findByUrl(link) { return found.uid }
+        guard link.lowercased().hasPrefix("http") else { return nil }
+        return try dao.findByUrl(UrlCleaner.clean(link))?.uid
     }
 
     /// The rendered page, or nil once `renderTimeout` runs out (which cancels the render), or
@@ -469,10 +488,11 @@ final class DefaultRecipeRepository: RecipeRepository {
                 let planEntries = try dao.planEntriesFor(id)
                 let menuEntries = try dao.menuEntriesFor(id)
                 let cookedPhotos = try CookedPhotoDao(db: conn).photosFor(id)
-                try dao.delete(id)
+                let versionIds = try dao.versionIdsOf(row.uid)
+                try dao.deleteWithLinks(id)
                 return DeletedRecipe(
                     recipe: row.toDomain(), memberships: memberships, uid: row.uid, planEntries: planEntries,
-                    menuEntries: menuEntries, cookedPhotos: cookedPhotos
+                    menuEntries: menuEntries, cookedPhotos: cookedPhotos, versionIds: versionIds
                 )
             }
         } catch {
@@ -488,7 +508,7 @@ final class DefaultRecipeRepository: RecipeRepository {
             if let uid = one.uid { record.uid = uid }
             return RecipeDao.DeletedRows(
                 recipe: record, crossRefs: one.memberships, planEntries: one.planEntries,
-                menuEntries: one.menuEntries, cookedPhotos: one.cookedPhotos
+                menuEntries: one.menuEntries, cookedPhotos: one.cookedPhotos, versionIds: one.versionIds
             )
         }
         do {
@@ -535,6 +555,14 @@ final class DefaultRecipeRepository: RecipeRepository {
 
     func observeRecipe(id: Int64) -> AnyPublisher<Recipe?, Never> {
         db.observe { conn in try RecipeDao(db: conn).get(id)?.toDomain() }
+    }
+
+    func observeBasedOn(id: Int64) -> AnyPublisher<RecipeLink?, Never> {
+        db.observe { conn in try RecipeDao(db: conn).original(of: id) }
+    }
+
+    func observeVersions(id: Int64) -> AnyPublisher<[RecipeLink], Never> {
+        db.observe { conn in try RecipeDao(db: conn).versions(of: id) }
     }
 
     /// Every recipe but the tour's sample (#151), which never takes a free-tier place.

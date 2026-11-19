@@ -233,8 +233,11 @@ protocol RecipeRepository: AnyObject {
     /// 0: not kept, and the editor stays open. `language` is a scanned recipe's (#226), as its
     /// words said; a recipe typed in has none. `notes` is the recipe's note from the start (#334:
     /// shared text's lines the split left out), as the cook left it. `fromChat` saves it as read
-    /// from a chat's JSON (#355): origin CHAT, otherwise the same as typed in.
-    func addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool) async -> Recipe?
+    /// from a chat's JSON (#355): origin CHAT, otherwise the same as typed in. `basedOn` (#354) is
+    /// the JSON's `isBasedOn`, a recipe's link as written: when it names a recipe here (by its saved
+    /// link, or cleaned), the new recipe is saved as a version of it; anything else is ignored. Only
+    /// with `fromChat` and the `recipeVersions` flag.
+    func addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool, basedOn: String?) async -> Recipe?
 
     /// Opens a recipe from history, a list or home. Counts as a view. Nil if it's gone.
     func open(id: Int64) async -> Recipe?
@@ -289,6 +292,12 @@ protocol RecipeRepository: AnyObject {
     /// the cook's saved place and timers); nil once it is gone.
     func observeRecipe(id: Int64) -> AnyPublisher<Recipe?, Never>
 
+    /// The recipe `id` is a version of (#354), as it changes: nil for none, or once it is deleted.
+    func observeBasedOn(id: Int64) -> AnyPublisher<RecipeLink?, Never>
+
+    /// The versions saved from recipe `id` (#354), newest first, as they change.
+    func observeVersions(id: Int64) -> AnyPublisher<[RecipeLink], Never>
+
     /// How many recipes are saved, of every kind but the tour's sample (#107: the Recipes
     /// screen's count; #151).
     func observeCount() -> AnyPublisher<Int, Never>
@@ -326,16 +335,24 @@ extension RecipeRepository {
 
     /// A recipe typed in by hand, with no language of its own (#29).
     func addManual(draft: RecipeDraft) async -> Recipe? {
-        await addManual(draft: draft, language: nil, notes: nil, fromChat: false)
+        await addManual(draft: draft, language: nil, notes: nil, fromChat: false, basedOn: nil)
     }
 
     func addManual(draft: RecipeDraft, language: String?) async -> Recipe? {
-        await addManual(draft: draft, language: language, notes: nil, fromChat: false)
+        await addManual(draft: draft, language: language, notes: nil, fromChat: false, basedOn: nil)
     }
 
     func addManual(draft: RecipeDraft, language: String?, notes: String?) async -> Recipe? {
-        await addManual(draft: draft, language: language, notes: notes, fromChat: false)
+        await addManual(draft: draft, language: language, notes: notes, fromChat: false, basedOn: nil)
     }
+
+    func addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool) async -> Recipe? {
+        await addManual(draft: draft, language: language, notes: notes, fromChat: fromChat, basedOn: nil)
+    }
+
+    /// Test doubles that have nothing to do with recipe versions (#354) needn't implement these.
+    func observeBasedOn(id: Int64) -> AnyPublisher<RecipeLink?, Never> { Just(nil).eraseToAnyPublisher() }
+    func observeVersions(id: Int64) -> AnyPublisher<[RecipeLink], Never> { Just([]).eraseToAnyPublisher() }
 
     func observeCount() -> AnyPublisher<Int, Never> {
         observeHistory(query: "").map(\.count).removeDuplicates().eraseToAnyPublisher()

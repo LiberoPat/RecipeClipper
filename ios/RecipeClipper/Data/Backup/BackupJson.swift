@@ -7,7 +7,7 @@ import Foundation
 ///   "recipes":     [{ "id", "sourceUrl", "sourceType", "title", "imageUrl", "ingredients",
 ///                     "instructions", "prepTime", "cookTime", "totalTime", "servings",
 ///                     "lastViewedAt", "checkedIngredients", "notes", "language",
-///                     "contentOrigin", "editedAt" }],
+///                     "contentOrigin", "editedAt", "basedOn" }],
 ///   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
 ///   "memberships": [{ "recipeId", "listId", "addedAt" }],
 ///   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
@@ -130,7 +130,8 @@ enum BackupJson {
                 notes: try r.string(o, "notes"),
                 language: try r.string(o, "language"),
                 contentOrigin: (try r.string(o, "contentOrigin")).flatMap { $0.isEmpty ? nil : $0 } ?? "PARSED",
-                editedAt: try r.int64(o, "editedAt")
+                editedAt: try r.int64(o, "editedAt"),
+                basedOn: (try r.string(o, "basedOn")).flatMap { $0.isBlank ? nil : $0 }
             )
         }
         try requireUniqueIds(recipes.map(\.id), "recipes")
@@ -435,6 +436,7 @@ enum BackupJson {
             "language": r.language ?? NSNull(),
             "contentOrigin": r.contentOrigin,
             "editedAt": r.editedAt.map { NSNumber(value: $0) } ?? NSNull(),
+            "basedOn": r.basedOn ?? NSNull(),
         ]
     }
 
