@@ -320,6 +320,7 @@ struct RootView: View {
         return ScreenHost2(makeA: make, makeB: container.makeSaveToListViewModel) { vm, saveVM in
             RecipeScreen(
                 vm: vm, saveVM: saveVM, onEdit: { push(.editRecipe(id: $0)) },
+                onOpenRecipe: { push(.recipe(id: $0)) },
                 makePlanVM: container.makeAddToPlanViewModel, makeGroceriesVM: container.makeAddToGroceriesViewModel,
                 onClip: { push(.clip($0)) },
                 onClipBlocked: onClipBlocked,

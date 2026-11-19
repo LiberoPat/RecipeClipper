@@ -173,6 +173,10 @@ struct RecipeUiState: Equatable {
     var cookFinished: FinishedCook?
     /// A step's ingredient link was tapped (#254): the lines it names, until the cook goes back.
     var ingredientJump: IngredientJump?
+    /// The recipe this one is a version of (#354), to say "Based on" and open it; nil for none.
+    var basedOn: RecipeLink?
+    /// The versions saved from this recipe (#354), newest first, quietly listed under its steps.
+    var versions: [RecipeLink] = []
 
     /// Cook mode's opened ingredients bar for the current step (#286): its lines first, then the
     /// rest; nil lists every line as written. Derived from `content`, `cook` and `asWrittenSteps`

@@ -126,6 +126,9 @@ enum SharedText {
         var name: String = ""
         /// Read from a schema.org Recipe's JSON (#350): the editor saves it as from a chat (#355).
         var fromChat: Bool = false
+        /// The JSON's `isBasedOn` (#354), as written: the `sourceUrl` of the recipe it changed, or
+        /// nil. Only a claim: the repository finds the recipe, and an unmatched one is ignored.
+        var basedOn: String? = nil
     }
 
     /// How many places in the text that open a JSON value are tried before giving up.
@@ -154,7 +157,10 @@ enum SharedText {
                     prepTime: recipe.prepTime, cookTime: recipe.cookTime, totalTime: recipe.totalTime,
                     language: recipe.language
                 )
-                return Reading(recipe: split, sorted: true, leftovers: [], name: recipe.name, fromChat: true)
+                return Reading(
+                    recipe: split, sorted: true, leftovers: [], name: recipe.name, fromChat: true,
+                    basedOn: JsonLdRecipeParser.isBasedOn([block])
+                )
             }
             i = end
         }

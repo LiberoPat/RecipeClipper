@@ -75,6 +75,7 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var addManualLanguages: [String?] = []
     private(set) var addManualNotes: [String?] = []
     private(set) var addManualFromChat: [Bool] = []
+    private(set) var addManualBasedOn: [String?] = []
 
     @MainActor func updateFromSource(id: Int64) async -> ParseResult {
         updateFromSourceCalls.append(id)
@@ -86,8 +87,11 @@ final class FakeRecipeRepository: RecipeRepository {
         return saveEditResult
     }
 
-    @MainActor func addManual(draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool) async -> Recipe? {
+    @MainActor func addManual(
+        draft: RecipeDraft, language: String?, notes: String?, fromChat: Bool, basedOn: String?
+    ) async -> Recipe? {
         addManualFromChat.append(fromChat)
+        addManualBasedOn.append(basedOn)
         addManualCalls.append(draft)
         addManualLanguages.append(language)
         addManualNotes.append(notes)
@@ -174,6 +178,18 @@ final class FakeRecipeRepository: RecipeRepository {
     /// that isn't there.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never> {
         recent.map { Array($0.prefix(limit)) }.eraseToAnyPublisher()
+    }
+
+    /// What `observeBasedOn` and `observeVersions` emit, by recipe id (#354).
+    let basedOn = CurrentValueSubject<[Int64: RecipeLink], Never>([:])
+    let versions = CurrentValueSubject<[Int64: [RecipeLink]], Never>([:])
+
+    func observeBasedOn(id: Int64) -> AnyPublisher<RecipeLink?, Never> {
+        basedOn.map { $0[id] }.eraseToAnyPublisher()
+    }
+
+    func observeVersions(id: Int64) -> AnyPublisher<[RecipeLink], Never> {
+        versions.map { $0[id] ?? [] }.eraseToAnyPublisher()
     }
 
     /// What `observeRecipe` emits, by id (#286); an id not here emits nil.

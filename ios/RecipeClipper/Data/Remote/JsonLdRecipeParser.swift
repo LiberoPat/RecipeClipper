@@ -38,6 +38,25 @@ enum JsonLdRecipeParser {
         return nil
     }
 
+    /// The `isBasedOn` of the first Recipe in `jsonLdBlocks` (#354): what an AI's reply names as the
+    /// recipe it changed. A string, or a schema.org thing's `@id` or `url`, or the first of an array
+    /// of them; trimmed; nil when absent or blank. Found as `parse` finds the Recipe, under the same
+    /// depth guard.
+    static func isBasedOn(_ jsonLdBlocks: [String]) -> String? {
+        for block in jsonLdBlocks {
+            guard let value = parseJson(block), let node = findRecipeNode(value, depth: 0) else { continue }
+            return basedOnText(node["isBasedOn"])
+        }
+        return nil
+    }
+
+    private static func basedOnText(_ node: Any?) -> String? {
+        if let s = node as? String { return s.kTrimmed.isEmpty ? nil : s.kTrimmed }
+        if let o = node as? [String: Any] { return basedOnText(o["@id"]) ?? basedOnText(o["url"]) }
+        if let a = node as? [Any], let first = a.first { return basedOnText(first) }
+        return nil
+    }
+
     private static let htmlLang = JRegex(
         #"<html\b(?:[^>"']|"[^"]*"|'[^']*')*?(?<![\w:-])lang\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))"#,
         ignoreCase: true

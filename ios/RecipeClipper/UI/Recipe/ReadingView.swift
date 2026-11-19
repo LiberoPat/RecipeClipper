@@ -8,6 +8,8 @@ struct ReadingView: View {
     let vm: RecipeViewModel
     /// "Your cooks" (#116); nil leaves it out.
     var photos: CookedPhotosViewModel? = nil
+    /// Opens another recipe (#354): a version's original, or an original's version.
+    var onOpenRecipe: (Int64) -> Void = { _ in }
     /// The step-number column grows with the numbers in it (titleMedium follows .headline).
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -29,7 +31,7 @@ struct ReadingView: View {
                 Text(recipe.name)
                     .textStyle(Typography.headlineSmall)
                     .foregroundStyle(Palette.onBackground)
-                    .padding(.bottom, sourceUrl == nil && recipe.origin != .chat ? 14 : 0)
+                    .padding(.bottom, sourceUrl == nil && recipe.origin != .chat && state.basedOn == nil ? 14 : 0)
                 if let domain = content.sourceDomain, let sourceUrl {
                     SourceCredit(domain: domain, url: sourceUrl, clipped: recipe.origin == .clipped)
                         .padding(.bottom, 4)
@@ -49,8 +51,13 @@ struct ReadingView: View {
                         .textStyle(Typography.bodyMedium)
                         .foregroundStyle(Palette.muted)
                         .padding(.top, 2)
-                        .padding(.bottom, 14)
+                        .padding(.bottom, state.basedOn == nil ? 14 : 0)
                         .accessibilityIdentifier("recipe.fromAChat")
+                }
+                // A version of another recipe (#354): its original is one tap away.
+                if let original = state.basedOn, sourceUrl == nil {
+                    BasedOnLine(original: original, onOpen: onOpenRecipe)
+                        .padding(.bottom, 14)
                 }
                 Times(prep: recipe.prepTime, cook: recipe.cookTime, total: recipe.totalTime)
                     .padding(.bottom, 16)
@@ -123,6 +130,12 @@ struct ReadingView: View {
                         asWritten: state.asWrittenSteps.contains(index),
                         toggle: { vm.onStepAsWrittenToggle(index) }
                     ))
+                }
+
+                // The versions saved from this recipe (#354), quietly after the steps.
+                if !state.versions.isEmpty, !state.notKept {
+                    VersionsSection(versions: state.versions, onOpen: onOpenRecipe)
+                        .padding(.top, 24)
                 }
 
                 // After the steps: the reading view still opens on the recipe, and a note like
