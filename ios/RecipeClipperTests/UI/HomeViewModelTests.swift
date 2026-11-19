@@ -37,6 +37,20 @@ final class HomeViewModelTests: XCTestCase {
 
     // "Paste a link" (#286): the Recipes screen's alert, opened from Home's tile.
 
+    // "Ask an AI" (#351): the fourth tile opens its sheet.
+
+    func testTheAskAiTileOpensItsSheetAndDismissingClosesIt() async {
+        let vm = HomeViewModel(repository: FakeRecipeRepository())
+        await settleMain()
+        XCTAssertFalse(vm.uiState.askAiOpen)
+
+        vm.onAskAi()
+        XCTAssertTrue(vm.uiState.askAiOpen)
+
+        vm.onAskAiDismissed()
+        XCTAssertFalse(vm.uiState.askAiOpen)
+    }
+
     func testThePasteTileOpensTheAlertEmptyAndGoReturnsTheNormalisedLink() async {
         let vm = HomeViewModel(repository: FakeRecipeRepository())
         await settleMain()

@@ -25,7 +25,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.common.MenuItemText
 
 /**
- * Overflow menu: "Add to plan" (#49) and "Add to groceries" (#50), Edit, "Update from source" for the user's version of a linked recipe (#29),
+ * Overflow menu: "Add to plan" (#49) and "Add to groceries" (#50), Edit, "Change this recipe" (#353), "Update from source" for the user's version of a linked recipe (#29),
  * behind a warning that the edits will be lost, and Delete, behind a confirm dialog naming
  * the recipe.
  */
@@ -41,7 +41,8 @@ internal fun RecipeOverflowMenu(
     onAddToPlan: (() -> Unit)? = null,
     onAddToGroceries: (() -> Unit)? = null,
     onSendFile: (() -> Unit)? = null,
-    onPrint: (() -> Unit)? = null
+    onPrint: (() -> Unit)? = null,
+    onChangeWithAi: (() -> Unit)? = null
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var confirming by rememberSaveable { mutableStateOf(false) }
@@ -90,6 +91,17 @@ internal fun RecipeOverflowMenu(
                 onClick = {
                     expanded = false
                     onPrint()
+                }
+            )
+        }
+        // Change this recipe (#353): a prompt for any AI chat, with this recipe in it.
+        if (onChangeWithAi != null) {
+            DropdownMenuItem(
+                text = { MenuItemText(stringResource(R.string.action_change_recipe), stringResource(R.string.menu_desc_change_recipe)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_sparkle), contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    onChangeWithAi()
                 }
             )
         }

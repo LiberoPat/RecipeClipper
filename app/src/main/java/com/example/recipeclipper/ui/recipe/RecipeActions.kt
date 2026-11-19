@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.core.app.ShareCompat
 import androidx.core.net.toUri
 import com.example.recipeclipper.data.model.UnitSystem
+import com.example.recipeclipper.ui.askai.AskAiViewModel
 import com.example.recipeclipper.ui.groceries.AddToGroceriesViewModel
 import com.example.recipeclipper.ui.plan.AddToPlanViewModel
 import com.example.recipeclipper.ui.print.PrintViewModel
@@ -52,7 +53,9 @@ internal class RecipeActions(
     /** "Send as file" (#149): the recipe as a small file for someone else's app; null hides it. */
     val onSendFile: (() -> Unit)? = null,
     /** "Print or save as PDF" (#318): the recipe as shown, to the print dialog; null hides it. */
-    val onPrint: (() -> Unit)? = null
+    val onPrint: (() -> Unit)? = null,
+    /** "Change this recipe" (#353): a prompt for an AI chat with the recipe in it; null hides it. */
+    val onChangeWithAi: (() -> Unit)? = null
 )
 
 /**
@@ -69,9 +72,11 @@ internal fun rememberRecipeActions(
     groceriesViewModel: AddToGroceriesViewModel?,
     sendFileViewModel: SendFileViewModel?,
     printViewModel: PrintViewModel?,
+    askAiViewModel: AskAiViewModel?,
     onOpenSaveSheet: () -> Unit,
     onOpenPlanSheet: () -> Unit,
-    onOpenGroceriesSheet: () -> Unit
+    onOpenGroceriesSheet: () -> Unit,
+    onOpenChangeSheet: () -> Unit
 ): RecipeActions {
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -83,7 +88,7 @@ internal fun rememberRecipeActions(
     val askForNotifications = rememberNotificationPrompt(onGranted = viewModel::onNotificationsAllowed)
     return remember(
         viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel, groceriesViewModel, sendFileViewModel,
-        printViewModel
+        printViewModel, askAiViewModel
     ) {
         RecipeActions(
             onBack = onBack,
@@ -178,7 +183,8 @@ internal fun rememberRecipeActions(
                     val name = (viewModel.uiState.value.content as? RecipeContent.Success)?.recipe?.name.orEmpty()
                     viewModel.printBlocks(printLabels(resources))?.let { printViewModel.printRecipe(name, it) }
                 }
-            }
+            },
+            onChangeWithAi = if (askAiViewModel == null) null else onOpenChangeSheet
         )
     }
 }

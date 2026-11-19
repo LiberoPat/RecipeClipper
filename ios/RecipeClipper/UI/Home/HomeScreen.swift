@@ -1,8 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Home (#286): Continue cooking as a photo card with where the cook stopped, then the three ways
-/// in (Paste a link, Scan a recipe, Type a recipe), Recently viewed as a row of photos, and the
+/// Home (#286): Continue cooking as a photo card with where the cook stopped, then the ways in
+/// (Paste a link, Scan a recipe, Type a recipe, and Ask an AI, #351), Recently viewed as a row of photos, and the
 /// Recipes / Lists rows with their counts. Sections with nothing in them don't appear, but the
 /// Recipes / Lists block always does. Settings is the gear beside the title.
 struct HomeScreen: View {
@@ -19,8 +19,12 @@ struct HomeScreen: View {
     var onScan: (([Data]) -> Void)? = nil
     /// One cookbook (#345): "See all" on Recently viewed, opening Recipes in that order; nil hides it.
     var onSeeAllRecent: (() -> Void)? = nil
+    /// Makes "Ask an AI"'s sheet (#351); nil (the askAi flag off, or tests) leaves the tile out.
+    /// Made on first use and kept for the screen's life.
+    var makeAskAiVM: (() -> AskAiViewModel)? = nil
 
     @State private var restoring = false
+    @State private var askAiVM: AskAiViewModel?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// The gear grows a little with the title beside it, capped: it is chrome.
     @ScaledMetric(relativeTo: .title) private var gearScaled: CGFloat = 20
@@ -61,7 +65,15 @@ struct HomeScreen: View {
 
                 // The three ways in (#286): Paste a link, Scan a recipe (the photoText flag,
                 // #226) and Type a recipe (#29), as equal tiles.
-                AddRecipeBlock(onPasteLink: vm.onPasteLink, onScan: onScan, onTypeRecipe: onNewRecipe)
+                AddRecipeBlock(
+                    onPasteLink: vm.onPasteLink, onScan: onScan, onTypeRecipe: onNewRecipe,
+                    onAskAi: makeAskAiVM.map { make in
+                        {
+                            askAiVM = askAiVM ?? make()
+                            vm.onAskAi()
+                        }
+                    }
+                )
                     .padding(.top, 20)
 
                 if !state.recent.isEmpty {
@@ -134,6 +146,22 @@ struct HomeScreen: View {
             Button(Strings.cancel, role: .cancel, action: vm.onLinkDismissed)
             Button(Strings.go) { if let url = vm.onOpenLink() { onOpenUrl(url) } }
                 .disabled(!vm.uiState.canOpenLink)
+        }
+        // Ask an AI (#351): a prompt to copy or share; the sheet starts over each time.
+        .sheet(isPresented: Binding(
+            get: { vm.uiState.askAiOpen },
+            set: { open in
+                if !open {
+                    askAiVM?.onReset()
+                    vm.onAskAiDismissed()
+                }
+            }
+        )) {
+            if let askAiVM {
+                AskAiSheet(vm: askAiVM)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
         }
         // The same picker as Settings' Import.
         .fileImporter(isPresented: $restoring, allowedContentTypes: [.json, .plainText, .zip]) { result in

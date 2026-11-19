@@ -46,7 +46,7 @@ mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
 (`reddit` flag, #11), or the photo read on the device and checked by the cook (`photoText`,
-#198), and your own photos scanned the same way (#226), or text shared in (#306); running timers outside the app
+#198), and your own photos scanned the same way (#226), or text shared in (#306); "Ask an AI" prompts that come back as recipe JSON (#351, #353); running timers outside the app
 (a Live Activity, an ongoing notification) and the Tonight and Groceries widgets (#309); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
@@ -205,7 +205,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   with `oneCookbook` off). Views are questions about stored data, never
   filing. Recently viewed is a sort, not a place.
 - **Home** (#286): "Continue cooking" (the most recent) as a resume card;
-  Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles; "Recently
+  Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles, then a full-width Ask an AI tile (#351); "Recently
   viewed" (the five before it) as photos, with "See all" (opens Recipes
   sorted Recently viewed); Recipes and Lists rows with counts
   (always shown); the Settings gear. Empty sections hide. **No "Saved"

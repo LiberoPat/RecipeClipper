@@ -37,6 +37,8 @@ import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
 import com.example.recipeclipper.ui.print.PrintEffect
 import com.example.recipeclipper.ui.print.PrintViewModel
+import com.example.recipeclipper.ui.askai.AskAiViewModel
+import com.example.recipeclipper.ui.askai.ChangeRecipeSheet
 import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
@@ -67,18 +69,22 @@ fun RecipeScreen(
     // "Print or save as PDF" (#318),
     printViewModel: PrintViewModel? = null,
     // and using up the pantry when cook mode is finished or "I made this" adds a photo (#147).
-    useUpViewModel: PantryUseUpViewModel? = null
+    useUpViewModel: PantryUseUpViewModel? = null,
+    // "Change this recipe" (#353), behind the askAi flag.
+    askAiViewModel: AskAiViewModel? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val saveState by saveViewModel.uiState.collectAsStateWithLifecycle()
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
     var planSheetOpen by rememberSaveable { mutableStateOf(false) }
     var groceriesSheetOpen by rememberSaveable { mutableStateOf(false) }
+    var changeSheetOpen by rememberSaveable { mutableStateOf(false) }
     val actions = rememberRecipeActions(
-        viewModel, onBack, onEdit, planViewModel, groceriesViewModel, sendFileViewModel, printViewModel,
+        viewModel, onBack, onEdit, planViewModel, groceriesViewModel, sendFileViewModel, printViewModel, askAiViewModel,
         onOpenSaveSheet = { sheetOpen = true },
         onOpenPlanSheet = { planSheetOpen = true },
-        onOpenGroceriesSheet = { groceriesSheetOpen = true }
+        onOpenGroceriesSheet = { groceriesSheetOpen = true },
+        onOpenChangeSheet = { changeSheetOpen = true }
     )
 
     // The recipe is gone the moment the delete lands; leave the screen rather than show it
@@ -228,6 +234,9 @@ fun RecipeScreen(
             }
             if (groceriesSheetOpen && recipeId != null && groceriesViewModel != null) {
                 AddToGroceriesSheet(groceriesViewModel, onDismiss = { groceriesSheetOpen = false })
+            }
+            if (changeSheetOpen && askAiViewModel != null && content is RecipeContent.Success) {
+                ChangeRecipeSheet(content.recipe, onDismiss = { changeSheetOpen = false }, viewModel = askAiViewModel)
             }
             if (useUpViewModel != null) PantryUseUpUi(useUpViewModel, snackbarHostState)
         }

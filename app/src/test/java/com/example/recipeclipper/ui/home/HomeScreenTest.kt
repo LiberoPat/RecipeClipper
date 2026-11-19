@@ -73,7 +73,7 @@ class HomeScreenTest {
 
     private val preferences = com.example.recipeclipper.fake.FakeAppPreferences()
 
-    private fun show(oneCookbook: Boolean = false): Taps {
+    private fun show(oneCookbook: Boolean = false, askAi: Boolean = false): Taps {
         val taps = Taps()
         // Built outside setContent: a ViewModel constructed inside a composable would be
         // rebuilt on every recomposition. A fixed clock, so a timer's time left is known.
@@ -88,10 +88,25 @@ class HomeScreenTest {
                 onNewRecipe = { taps.newRecipe++ },
                 onResumeCooking = { taps.resumed = it },
                 viewModel = viewModel,
-                oneCookbook = oneCookbook
+                oneCookbook = oneCookbook,
+                askAiEnabled = askAi
             )
         }
         return taps
+    }
+
+    /** Ask an AI (#351): the fourth tile, behind its flag. */
+    @Test
+    fun askAiIsATileWhileItsFlagIsOn() {
+        show(askAi = true)
+        compose.onNodeWithTag("homeAskAi").assertIsDisplayed()
+        compose.onNodeWithText("Ask an AI").assertIsDisplayed()
+    }
+
+    @Test
+    fun withTheFlagOffThereIsNoAskAiTile() {
+        show(askAi = false)
+        compose.onAllNodesWithTag("homeAskAi").assertCountEquals(0)
     }
 
     /** One cookbook (#345): Recently viewed has "See all", which opens Recipes in that order. */

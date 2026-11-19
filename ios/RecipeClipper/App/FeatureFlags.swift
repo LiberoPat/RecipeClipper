@@ -34,6 +34,8 @@ enum Flag: String, CaseIterable {
     /// One cookbook (#345): nothing is removed automatically; the free tier (50) opens a new recipe unsaved
     /// at the limit; Recipes shows a strip of views in place of the filter pills; Home's Recently viewed gains See all.
     case oneCookbook
+    /// "Ask an AI" (#351, #353): prompts that come back as schema.org Recipe JSON, from Home and the recipe's menu.
+    case askAi
 }
 
 /// One flag as `shared/flags.json` declares it.

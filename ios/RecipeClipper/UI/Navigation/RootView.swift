@@ -101,7 +101,8 @@ struct RootView: View {
                     onSeeAllRecent: container.featureFlags.isOn(.oneCookbook) ? {
                         vm.onSeeAllRecent()
                         router.push(.recipes)
-                    } : nil
+                    } : nil,
+                    makeAskAiVM: container.makeAskAiViewModel
                 )
             }
             .navigationDestination(for: Route.self) { route in
@@ -328,7 +329,8 @@ struct RootView: View {
                 makePhotosVM: container.makeCookedPhotosViewModel,
                 makeSendFileVM: container.makeSendFileViewModel,
                 makeUseUpVM: container.makePantryUseUpViewModel,
-                makePrintVM: container.makePrintViewModel
+                makePrintVM: container.makePrintViewModel,
+                makeAskAiVM: container.makeAskAiViewModel
             )
         }
         // The reading view and cook mode are full screen, so a recipe still opens on the recipe.

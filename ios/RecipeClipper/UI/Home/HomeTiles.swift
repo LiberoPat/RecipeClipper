@@ -8,6 +8,8 @@ struct AddRecipeBlock: View {
     let onPasteLink: () -> Void
     let onScan: (([Data]) -> Void)?
     let onTypeRecipe: () -> Void
+    /// "Ask an AI" (#351): nil (the askAi flag off) leaves the tile out.
+    var onAskAi: (() -> Void)? = nil
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -35,6 +37,14 @@ struct AddRecipeBlock: View {
                 .accessibilityIdentifier("home.typeRecipe")
             }
             .fixedSize(horizontal: false, vertical: true)
+            // Ask an AI (#351): a prompt for any chat app, whose answer comes back as shared text.
+            if let onAskAi {
+                Button(action: onAskAi) {
+                    HomeTile(icon: "sparkles", name: Strings.askAi, hint: Strings.homeAskAiHint, wide: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.askAi")
+            }
             Text(Strings.homeShareHint)
                 .textStyle(Typography.bodySmall)
                 .foregroundStyle(Palette.muted)
@@ -49,24 +59,16 @@ private struct HomeTile: View {
     let name: String
     let hint: String
     var filled = false
+    /// Across the row: the icon, then the name over its hint.
+    var wide = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(filled ? Palette.onPrimary : Palette.accentText)
-                .frame(width: 36, height: 36)
-                .background(
-                    filled ? Color.white.opacity(0.18) : Palette.accentText.opacity(0.12),
-                    in: RoundedRectangle(cornerRadius: 10)
-                )
-                .accessibilityHidden(true)
-            Text(name)
-                .textStyle(Typography.titleSmall)
-                .foregroundStyle(filled ? Palette.onPrimary : Palette.onBackground)
-            Text(hint)
-                .textStyle(Typography.bodySmall)
-                .foregroundStyle(filled ? Palette.onPrimary.opacity(0.85) : Palette.muted)
+        Group {
+            if wide {
+                HStack(alignment: .center, spacing: 12) { iconBox; words }
+            } else {
+                VStack(alignment: .leading, spacing: 6) { iconBox; words }
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 12)
@@ -74,6 +76,30 @@ private struct HomeTile: View {
         .background(filled ? Palette.primary : Palette.surfaceContainer, in: RoundedRectangle(cornerRadius: 16))
         .contentShape(RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+    }
+
+    private var iconBox: some View {
+        Image(systemName: icon)
+            .font(.system(size: 17, weight: .medium))
+            .foregroundStyle(filled ? Palette.onPrimary : Palette.accentText)
+            .frame(width: 36, height: 36)
+            .background(
+                filled ? Color.white.opacity(0.18) : Palette.accentText.opacity(0.12),
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var words: some View {
+        VStack(alignment: .leading, spacing: wide ? 2 : 6) {
+            Text(name)
+                .textStyle(Typography.titleSmall)
+                .foregroundStyle(filled ? Palette.onPrimary : Palette.onBackground)
+            Text(hint)
+                .textStyle(Typography.bodySmall)
+                .foregroundStyle(filled ? Palette.onPrimary.opacity(0.85) : Palette.muted)
+        }
     }
 }
 

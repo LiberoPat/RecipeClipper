@@ -4892,6 +4892,60 @@ scan (#226) are. Behind the `shareText` flag, on both platforms.
   driven, so the UI test takes the app's own path and fails with the flag off). Sharing from
   Notes, Mail, Messages or a selection, and the trampoline's task behaviour, need a phone.
 
+## Ask an AI: prompts that come back as recipe JSON (#351, #353, 2026-11-19)
+
+People plan meals with an AI chat and share the answer back in (#350). Without guidance the
+replies vary; Ask an AI makes them reliable. **No AI runs in the app**: a prompt goes out by Copy
+(the clipboard) or the system share sheet, and the answer comes back as shared text. Behind the
+`askAi` flag (on by default), on both platforms.
+
+- **Entry points.** Home's fourth tile, **Ask an AI** (full width, under Paste a link / Scan /
+  Type), opens a sheet; the recipe screen's overflow menu has **Change this recipe**. Both are
+  absent with the flag off.
+- **The sheet.** A "What do you want to cook?" field, then three radio rows: *What I describe
+  above* (the default; needs words), *What can I make?* and *Plan my week*. A ready prompt turns
+  the field into "Anything else? (optional)", added to the prompt as "Also: …". *What can I
+  make?* is off while nothing is in stock. **Copy prompt** (reads "Copied" until anything
+  changes) and **Share**. Closing the sheet starts it over empty.
+- **What a ready prompt carries** (read by the ViewModel from what it follows itself, never
+  once): *What can I make?*: the pantry items in stock, those **Use it up** (#305) calls soon
+  (expiring today or tomorrow, not a staple) first as "use these up first", then the rest, each
+  with its quantity as typed; capped at 60 items. *Plan my week*: the seven days from today as
+  `YYYY-MM-DD (Weekday)` lines, the Favorites list's recipe titles (as ideas) and the titles of
+  recipes marked cooked, latest first (as "don't repeat"), each capped at 15; a list with
+  nothing is left out. Only titles and pantry names leave the app, and only when the cook shares
+  or copies.
+- **Every prompt asks for schema.org Recipe JSON in a ```json block**, names the fields to use
+  (`name`, `description`, `recipeYield` as the servings, ISO 8601 `prepTime` and `cookTime`,
+  `recipeIngredient` strings with amounts, `recipeInstructions` as `HowToStep`), follows the
+  Settings **units** (As written / Metric / Ounces: one sentence each) and **oven temperature**
+  (nothing for As written), and says "write it in" the UI language's own name. The prompt
+  itself is in the UI language: its sentences are `ai_prompt_*` strings in the six languages on
+  both platforms (drafts for a native speaker, like the rest), read into `AskAiPrompt.Words` by
+  the screen, as `RecipeShareText` takes its labels. `AskAiWordsTest` pins the English strings
+  to `Words.ENGLISH`.
+- **The meal-plan format** (what *Plan my week* asks for, and what #352's import reads): **one
+  JSON array in one ```json block, one schema.org Recipe object per listed day, in the order
+  listed, each with one extra property, `"day"`, holding that day's date exactly as listed
+  (`YYYY-MM-DD`)**. `JsonLdRecipeParser` finds each Recipe in the array as it does any; the day
+  is read from the object beside it. (A meal type, `recipeCategory`, is left out: Week files a
+  planned recipe under Dinner, which is what the prompt asks for.)
+- **Change this recipe.** The prompt is the cook's request, the recipe as schema.org JSON and the
+  reply format. **`isBasedOn` is the recipe's `sourceUrl`**: the one id every recipe has, unique
+  and never changing (the cleaned link of a clipped page, `manual:<uuid>` for a typed-in one, so
+  it survives an edit, an export and an import), and a URL, as schema.org's `isBasedOn` takes.
+  The prompt asks for it to be kept exactly; #354 finds the original by it. The JSON is written
+  by hand (`AskAiPrompt.recipeJson`: two-space indent, fixed key order, one step per line,
+  escaped as JSON, empty fields left out), so both apps print the same bytes; times and the
+  yield stay as stored, ingredients as stored (not scaled or converted: the prompt asks for the
+  units).
+- **Pure and tested.** `AskAiPrompt` (`:core`, `data/model`; iOS `Data/Model/AskAiPrompt.swift`)
+  builds every prompt; `AskAiPromptTest` and `AskAiPromptTests` hold the same expectations word
+  for word. The ViewModels (`AskAiViewModel`, both platforms) are tested over fakes; Home's tile
+  and the sheet over fakes on Android (`AskAiSheetTest`, `ChangeRecipeMenuTest`), and
+  `AskAiWiringTest` checks every recipe route passes the ViewModel, as `PrintWiringTest` does.
+- **Not here:** reading the answer (#350, #352), saving a version linked to its original (#354).
+
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
 The owner's report: a card's fraction symbol came out as "%". Measured first, on two cards drawn

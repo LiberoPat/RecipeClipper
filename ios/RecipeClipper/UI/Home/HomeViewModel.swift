@@ -9,6 +9,8 @@ struct HomeUiState: Equatable {
     var loaded = false
     var pastingLink = false
     var linkInput = ""
+    /// The "Ask an AI" sheet (#351) is open.
+    var askAiOpen = false
     var continueCooking: RecipeSummary?
     /// Where the cook stopped on `continueCooking` (#286); nil when it isn't being cooked.
     var resume: CookResume?
@@ -107,6 +109,15 @@ final class HomeViewModel {
     }
 
     deinit { tickTask?.cancel() }
+
+    /// The "Ask an AI" tile (#351): opens its sheet.
+    func onAskAi() {
+        uiState.askAiOpen = true
+    }
+
+    func onAskAiDismissed() {
+        uiState.askAiOpen = false
+    }
 
     /// "See all" on Recently viewed (#345): Recipes opens in that order, whatever it was left on.
     func onSeeAllRecent() {

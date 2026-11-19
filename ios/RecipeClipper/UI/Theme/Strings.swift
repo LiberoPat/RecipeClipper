@@ -821,4 +821,59 @@ enum Strings {
     static var settingsValueRemindersOn: String { String(localized: "settings_value_reminders_on") }
     static var settingsValueRemindersOff: String { String(localized: "settings_value_reminders_off") }
     static var settingsValueUnlocked: String { String(localized: "settings_value_unlocked") }
+
+    // Ask an AI (#351, #353): Home's tile and sheet, and the recipe menu's Change this recipe
+    static var askAi: String { String(localized: "action_ask_ai") }
+    static var homeAskAiHint: String { String(localized: "home_ask_ai_hint") }
+    static var askAiTitle: String { String(localized: "ask_ai_title") }
+    static var askAiIntro: String { String(localized: "ask_ai_intro") }
+    static var askAiField: String { String(localized: "ask_ai_field") }
+    static var askAiFieldExtra: String { String(localized: "ask_ai_field_extra") }
+    static var askAiKindDescribe: String { String(localized: "ask_ai_kind_describe") }
+    static var askAiKindDescribeHint: String { String(localized: "ask_ai_kind_describe_hint") }
+    static var askAiKindMake: String { String(localized: "ask_ai_kind_make") }
+    static var askAiKindMakeHint: String { String(localized: "ask_ai_kind_make_hint") }
+    static var askAiKindMakeEmpty: String { String(localized: "ask_ai_kind_make_empty") }
+    static var askAiKindPlan: String { String(localized: "ask_ai_kind_plan") }
+    static var askAiKindPlanHint: String { String(localized: "ask_ai_kind_plan_hint") }
+    static var askAiCopy: String { String(localized: "ask_ai_copy") }
+    static var askAiCopied: String { String(localized: "ask_ai_copied") }
+    static var askAiShare: String { String(localized: "ask_ai_share") }
+    static var changeRecipe: String { String(localized: "action_change_recipe") }
+    static var menuDescChangeRecipe: String { String(localized: "menu_desc_change_recipe") }
+    static var changeRecipeTitle: String { String(localized: "change_recipe_title") }
+    static var changeRecipeIntro: String { String(localized: "change_recipe_intro") }
+    static var changeRecipeField: String { String(localized: "change_recipe_field") }
+    static var changeRecipePlaceholder: String { String(localized: "change_recipe_placeholder") }
+
+    /// The words of the prompts Ask an AI copies (#351), in the UI language: the weekday names are
+    /// the calendar's own (Sunday first, as `PlanDays.dayOfWeek` counts).
+    static var askAiWords: AskAiPrompt.Words {
+        let weekdays = Calendar.current.weekdaySymbols
+        return AskAiPrompt.Words(
+            language: String(localized: "ai_prompt_language"),
+            weekday: { weekdays[$0 - 1] },
+            wantToCook: { String(localized: "ai_prompt_want_to_cook \($0)") },
+            changeThis: { String(localized: "ai_prompt_change_this \($0)") },
+            recipeBelow: String(localized: "ai_prompt_recipe_below"),
+            whatCanIMake: String(localized: "ai_prompt_what_can_i_make"),
+            useUpFirst: { String(localized: "ai_prompt_use_up_first \($0)") },
+            inPantry: { String(localized: "ai_prompt_in_pantry \($0)") },
+            planIntro: String(localized: "ai_prompt_plan_intro"),
+            favourites: { String(localized: "ai_prompt_favourites \($0)") },
+            cookedLately: { String(localized: "ai_prompt_cooked_lately \($0)") },
+            alsoWish: { String(localized: "ai_prompt_also \($0)") },
+            replyOne: String(localized: "ai_prompt_reply_one"),
+            replyPlan: String(localized: "ai_prompt_reply_plan \(AskAiPrompt.dayField)"),
+            replyChanged: String(localized: "ai_prompt_reply_changed"),
+            recipeFields: String(localized: "ai_prompt_recipe_fields"),
+            unitsAsWritten: String(localized: "ai_prompt_units_as_written"),
+            unitsMetric: String(localized: "ai_prompt_units_metric"),
+            unitsOunces: String(localized: "ai_prompt_units_ounces"),
+            temperatureCelsius: String(localized: "ai_prompt_temperature_c"),
+            temperatureFahrenheit: String(localized: "ai_prompt_temperature_f"),
+            writeIn: { String(localized: "ai_prompt_write_in \($0)") },
+            noteOutside: String(localized: "ai_prompt_note_outside")
+        )
+    }
 }

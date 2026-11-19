@@ -56,7 +56,9 @@ class RecipeScreenFixture(
     val decisions: com.example.recipeclipper.fake.FakeDecisionRepository? = null,
     /** Set to show "Print or save as PDF" (#318), handing what it prints to [printer]. */
     val print: com.example.recipeclipper.ui.print.PrintViewModel? = null,
-    val printer: com.example.recipeclipper.ui.print.Printer = com.example.recipeclipper.ui.print.SystemPrinter
+    val printer: com.example.recipeclipper.ui.print.Printer = com.example.recipeclipper.ui.print.SystemPrinter,
+    /** Set to show "Change this recipe" (#353), as the navigation does with the askAi flag on. */
+    val askAi: com.example.recipeclipper.ui.askai.AskAiViewModel? = null
 ) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
@@ -125,7 +127,8 @@ class RecipeScreenFixture(
                 photosViewModel = photosViewModel,
                 sendFileViewModel = sendFile,
                 useUpViewModel = useUpViewModel,
-                printViewModel = print
+                printViewModel = print,
+                askAiViewModel = askAi
             )
           }
         }

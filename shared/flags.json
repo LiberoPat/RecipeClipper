@@ -77,6 +77,12 @@
       "description": "One cookbook: every recipe stays until the cook deletes it (the old clean-up of recipes in no list past 50 is gone), the free tier's limit is 50 and a new recipe at the limit is opened but not saved, under the quiet Not saved bar with Unlock (nothing old is removed to make room), and Recipes shows a strip of views (Not in a list, Cooked, Typed by you) followed by the lists, in place of the filter pills. Home's Recently viewed gains See all. Off, the app is as before: the clean-up of 50, the free tier's swap at 20, the filter pills.",
       "defaults": { "debug": true, "release": true },
       "issue": 345
+    },
+    {
+      "key": "askAi",
+      "description": "Ask an AI: Home's fourth tile opens a sheet that copies or shares a prompt for any chat app (what to cook; What can I make from the pantry, items to use up first; Plan my week from favourites and recently cooked), and the recipe screen's menu gains Change this recipe (the recipe as schema.org JSON plus the cook's request). Every prompt asks for schema.org Recipe JSON in a json block, with the servings and the units from Settings, in the UI language; the answer comes back as shared text. No AI runs in the app. Off, neither entry is shown.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 351
     }
   ]
 }
