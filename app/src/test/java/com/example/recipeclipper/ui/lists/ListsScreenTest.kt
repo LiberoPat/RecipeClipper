@@ -10,6 +10,9 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -107,15 +110,17 @@ class ListsScreenTest {
         assertEquals(1, plainTile(2))
     }
 
-    /** Three lists fill a row and a half; "New list" takes the place beside the last. */
+    /** #371: the "+" sits beside the title, above every cover, and there is no tile at the end. */
     @Test
-    fun newListIsTheLastTile() {
+    fun theNewListPlusIsBesideTheTitleNotAtTheEndOfTheGrid() {
         show()
 
-        val last = compose.onNodeWithTag("lists.cover.3").getBoundsInRoot()
-        val tile = compose.onNodeWithText("New list").getBoundsInRoot()
-        assertEquals(last.top, tile.top)
-        assertTrue(tile.left > last.left)
+        val plus = compose.onNodeWithContentDescription("New list").getBoundsInRoot()
+        val title = compose.onNodeWithText("Lists").getBoundsInRoot()
+        val firstCover = compose.onNodeWithTag("lists.cover.1").getBoundsInRoot()
+        assertTrue(plus.left > title.right)
+        assertTrue(plus.bottom <= firstCover.top)
+        compose.onAllNodesWithText("New list").assertCountEquals(0)
     }
 
     // --- Creating a list ---
@@ -124,7 +129,7 @@ class ListsScreenTest {
     fun newListOpensANameFieldWithCreateDisabledUntilThereIsAName() {
         show()
 
-        compose.onNodeWithText("New list").performClick()
+        compose.onNodeWithContentDescription("New list").performClick()
 
         compose.onNodeWithText("List name").assertIsDisplayed()
         compose.onNodeWithText("Create").assertIsNotEnabled()
@@ -136,7 +141,7 @@ class ListsScreenTest {
     fun creatingAListAddsItEmptyAndClosesTheField() {
         show()
 
-        compose.onNodeWithText("New list").performClick()
+        compose.onNodeWithContentDescription("New list").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Soups")
         compose.onNodeWithText("Create").performClick()
 
@@ -145,14 +150,14 @@ class ListsScreenTest {
         assertEquals(listOf("Soups" to null), repository.createCalls)
         compose.onNodeWithText("Soups").assertIsDisplayed()
         compose.onNodeWithText("List name").assertDoesNotExist()
-        compose.onNodeWithText("New list").assertIsDisplayed()
+        compose.onNodeWithContentDescription("New list").assertIsDisplayed()
     }
 
     @Test
     fun cancelClosesTheFieldWithoutCreating() {
         show()
 
-        compose.onNodeWithText("New list").performClick()
+        compose.onNodeWithContentDescription("New list").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Soups")
         compose.onNodeWithText("Cancel").performClick()
 

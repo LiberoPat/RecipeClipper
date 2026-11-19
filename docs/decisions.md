@@ -369,6 +369,9 @@ things, and the three list ViewModels need nothing from the recipe side, so
   lists first), each with the name and count ("Empty" at zero) under it, and
   "New list" (a dashed tile with a plus) last. The tile opens today's inline
   field, full width under the grid, in the tile's place until Create or Cancel.
+  *Changed (#371, owner, 2026-11-19):* the tile was out of reach below many lists, so it is gone: a
+  **"+" beside the title** (the top bar on iOS, as the Recipes "+") starts the same flow, the name
+  field opening just under the title, labelled `lists_new_list_tile`.
   A cover is a mosaic of up to four photos from the list's recipes, most
   recently added first: four make a 2×2, one fills the square, two sit side by
   side, three put the newest on the left half and the next two stacked on the
@@ -2874,8 +2877,8 @@ bends the settled link field: an always-visible field became a tile that opens i
   lists), then a fixed "Lists" header with "All lists" and "+" above a lists strip, then the final
   one: **a single Lists card at the front of the views strip**, in the views' card style, its count
   the number of lists, title `nav_lists`, opening the Lists screen (Back returns to Recipes). No
-  strip of the lists on Recipes and no "+" there: a list is made on the Lists screen (its New list
-  tile, last in the grid) or in the save-to-list sheet (needs a recipe). `lists_all` was added and
+  strip of the lists on Recipes and no "+" there: a list is made on the Lists screen (its "+" beside the
+  title) or in the save-to-list sheet (needs a recipe). `lists_all` was added and
   removed again. The card shows whenever the strip does.
 - **The tour:** `HOME_LINK` is anchored to the Paste a link tile, and now reads "…or tap here
   to paste one."

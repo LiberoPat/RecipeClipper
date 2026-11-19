@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Every list as a square cover in a two-column grid (#286), built-ins first, with "New list"
-/// as the last tile. Renaming and deleting are on the list's own screen, so this one only
-/// lists and creates. There is no empty state: the built-in lists are seeded when the
+/// Every list as a square cover in a two-column grid (#286), built-ins first. A "+" in the top
+/// bar, as on Recipes, makes a new list (#371; it was the grid's last tile, out of reach below
+/// many lists), its name field opening just under the title. Renaming and deleting are on the
+/// list's own screen, so this one only lists and creates. There is no empty state: the built-in lists are seeded when the
 /// database is created.
 ///
 /// The grid is rows of HStacks in a plain VStack, not a LazyVGrid: there are only ever a few
@@ -22,8 +23,20 @@ struct ListsScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 ScreenTitle(Strings.listsTitle).padding(.bottom, 14)
+                // The "+" opens today's inline field, under the title, full width.
+                if state.creatingList {
+                    NewListControl(
+                        creating: true,
+                        name: state.newListName,
+                        onStart: vm.onStartCreating,
+                        onNameChange: vm.onNewListNameChange,
+                        onCancel: vm.onCancelCreating,
+                        onCreate: vm.onCreateList
+                    )
+                    .padding(.bottom, 18)
+                }
                 VStack(spacing: 18) {
-                    ForEach(CoverTile.rows(state.lists, newList: !state.creatingList, perRow: perRow)) { row in
+                    ForEach(CoverTile.rows(state.lists, perRow: perRow)) { row in
                         HStack(alignment: .top, spacing: 12) {
                             ForEach(row.tiles) { tile in
                                 cell(tile, state: state).frame(maxWidth: .infinity, alignment: .leading)
@@ -35,18 +48,6 @@ struct ListsScreen: View {
                         }
                     }
                 }
-                // The tile opens into today's inline field, under the grid, full width.
-                if state.creatingList {
-                    NewListControl(
-                        creating: true,
-                        name: state.newListName,
-                        onStart: vm.onStartCreating,
-                        onNameChange: vm.onNewListNameChange,
-                        onCancel: vm.onCancelCreating,
-                        onCreate: vm.onCreateList
-                    )
-                    .padding(.top, 18)
-                }
             }
             .padding(.horizontal, 20)
             .readableColumn()
@@ -56,27 +57,30 @@ struct ListsScreen: View {
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: vm.onStartCreating) { Image(systemName: "plus") }
+                    .accessibilityLabel(Strings.newListTile)
+                    .accessibilityIdentifier("lists.newList")
+            }
+        }
     }
 
     @ViewBuilder private func cell(_ tile: CoverTile, state: ListsUiState) -> some View {
         switch tile {
         case .list(let list):
             ListCoverTile(list: list, photos: state.coverPhotos[list.id] ?? []) { onOpenList(list.id) }
-        case .newList:
-            NewListTile(action: vm.onStartCreating)
         }
     }
 }
 
-/// One cell of the grid. Ids are prefixed, so a list's can never collide with the tile's.
+/// One cell of the grid, a list's cover. Ids are prefixed.
 private enum CoverTile: Identifiable {
     case list(RecipeList)
-    case newList
 
     var id: String {
         switch self {
         case .list(let list): return "list-\(list.id)"
-        case .newList: return "new-list"
         }
     }
 
@@ -85,10 +89,9 @@ private enum CoverTile: Identifiable {
         var id: String { tiles[0].id }
     }
 
-    /// The lists in order, then the New list tile (unless its field is open), `perRow` to a row.
-    static func rows(_ lists: [RecipeList], newList: Bool, perRow: Int) -> [Row] {
-        var tiles = lists.map { CoverTile.list($0) }
-        if newList { tiles.append(.newList) }
+    /// The lists in order, `perRow` to a row.
+    static func rows(_ lists: [RecipeList], perRow: Int) -> [Row] {
+        let tiles = lists.map { CoverTile.list($0) }
         return stride(from: 0, to: tiles.count, by: perRow).map {
             Row(tiles: Array(tiles[$0..<min($0 + perRow, tiles.count)]))
         }
