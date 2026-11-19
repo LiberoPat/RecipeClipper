@@ -33,6 +33,8 @@ struct RecipeScreen: View {
     var makeUseUpVM: (() -> PantryUseUpViewModel)? = nil
     /// Makes "Print or save as PDF" (#318); nil (the flag off, or tests) leaves it out.
     var makePrintVM: (() -> PrintViewModel)? = nil
+    /// Makes "Change this recipe" (#353); nil (the askAi flag off, or tests) leaves it out.
+    var makeAskAiVM: (() -> AskAiViewModel)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var systemScheme
@@ -49,6 +51,8 @@ struct RecipeScreen: View {
     @State private var sendFileVM: SendFileViewModel?
     @State private var useUpVM: PantryUseUpViewModel?
     @State private var printVM: PrintViewModel?
+    @State private var askAiVM: AskAiViewModel?
+    @State private var changing = false
 
     var body: some View {
         let state = vm.uiState
@@ -158,6 +162,14 @@ struct RecipeScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        // "Change this recipe" (#353): the request, then a prompt to copy or share; starts over each time.
+        .sheet(isPresented: $changing, onDismiss: { askAiVM?.onReset() }) {
+            if let askAiVM, let recipe = vm.uiState.content.success?.recipe {
+                ChangeRecipeSheet(vm: askAiVM, recipe: recipe)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
         .alert(
             Strings.deleteRecipeTitle(content?.recipe.name ?? ""),
             isPresented: $confirmingDelete
@@ -237,7 +249,7 @@ struct RecipeScreen: View {
 
     /// Something of this screen's own is over it (#190): a sheet, a dialog, a cover or a snackbar.
     private func covered(_ state: RecipeUiState) -> Bool {
-        sheetOpen || planSheet != nil || groceriesSheet != nil || confirmingDelete || confirmingUpdate
+        sheetOpen || planSheet != nil || groceriesSheet != nil || changing || confirmingDelete || confirmingUpdate
             || state.unlockNotice != nil || state.updateError != nil || state.notKept
             || photosVM?.uiState.open != nil || photosVM?.uiState.deleted != nil
             || useUpVM?.uiState.sheet != nil || useUpVM?.uiState.updated != nil
@@ -331,6 +343,16 @@ struct RecipeScreen: View {
                     Text(Strings.print); Text(Strings.menuDescPrint); Image(systemName: "printer")
                 }
                 .accessibilityIdentifier("recipe.print")
+            }
+            // Change this recipe (#353): a prompt for any AI chat, with this recipe in it.
+            if let makeAskAiVM {
+                Button {
+                    askAiVM = askAiVM ?? makeAskAiVM()
+                    changing = true
+                } label: {
+                    Text(Strings.changeRecipe); Text(Strings.menuDescChangeRecipe); Image(systemName: "sparkles")
+                }
+                .accessibilityIdentifier("recipe.changeWithAi")
             }
             Button { onEdit(content.recipe.id) } label: {
                 Label(Strings.edit, systemImage: "pencil")

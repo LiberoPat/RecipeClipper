@@ -344,6 +344,14 @@ final class AppContainer {
         return { PrintViewModel(recipes: recipes, preferences: preferences, decisions: decisions) }
     }
 
+    /// Makes "Ask an AI"'s ViewModel (#351, #353); nil with the `askAi` flag off.
+    var makeAskAiViewModel: (() -> AskAiViewModel)? {
+        guard featureFlags.isOn(.askAi) else { return nil }
+        let pantry = pantryRepository, lists = listRepository, recipes = recipeRepository
+        let preferences = preferences, clock = clock
+        return { AskAiViewModel(pantry: pantry, lists: lists, recipes: recipes, preferences: preferences, clock: clock) }
+    }
+
     /// Makes "Send as file"'s ViewModel (#149); nil without a share file repository.
     var makeSendFileViewModel: (() -> SendFileViewModel)? {
         guard let share = shareFileRepository else { return nil }
