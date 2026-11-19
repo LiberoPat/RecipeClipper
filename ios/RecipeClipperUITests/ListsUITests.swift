@@ -56,6 +56,29 @@ final class ListsUITests: RecipeUITestCase {
         require(newListTile, "the tile back once the field closes")
     }
 
+    /// Reorder lists (#381): press and hold Lunch, drag it onto Favorites, let go. Lunch is first
+    /// now, and stays first on coming back to the screen (the order was stored). The ViewModel
+    /// tests carry the rules; this proves the system drag reaches them.
+    func testAHeldCoverDraggedOntoAnotherTakesItsPlace() {
+        launch(flags: ["reorderLists"])
+        openLists()
+
+        let lunch = require(row("Lunch"))
+        lunch.press(forDuration: 1.5, thenDragTo: require(row("Favorites")), withVelocity: .slow, thenHoldForDuration: 1.0)
+
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "lists-after-reorder"
+        shot.lifetime = .keepAlways
+        add(shot)
+        let favorites = require(row("Favorites"))
+        XCTAssertLessThan(lunch.frame.minX, favorites.frame.minX, "Lunch before Favorites")
+        XCTAssertEqual(lunch.frame.minY, favorites.frame.minY, accuracy: 1, "still in the first row")
+
+        back()
+        openLists()
+        XCTAssertLessThan(require(row("Lunch")).frame.minX, require(row("Favorites")).frame.minX)
+    }
+
     func testTappingACoverOpensTheList() {
         launch()
         openLists()

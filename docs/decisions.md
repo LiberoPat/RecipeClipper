@@ -382,7 +382,7 @@ things, and the three list ViewModels need nothing from the recipe side, so
   a plain VStack rather than a `LazyVGrid`, so every cover is in the
   accessibility tree, and puts one cover to a row at the accessibility text
   sizes, where half the width would break a name mid-word. A list's own screen
-  is unchanged.
+  is unchanged. The covers are in the cook's own order (#381, below), not "built-ins first".
 - `ListDetailViewModel` collects the list into its own `MutableStateFlow` in
   `init` rather than reading it back off `uiState`. `uiState` is
   `stateIn(WhileSubscribed(...))`, so its `value` is the initial state
@@ -5047,6 +5047,83 @@ it. Behind the `recipeVersions` flag (on by default in debug and release), on bo
   from the Kotlin) for `isBasedOn`; the editor's `addManual` claim in `EditRecipeTextViewModelTest`
   and `EditRecipeTextTests`; the recipe screen in `RecipeVersionsTest`.
 
+## Reorder lists: the cook's own order (#381, 2026-11-19)
+
+The cook drags lists into their own order on the Lists screen (the cover grid), and that order is
+what every place that lists lists shows: Lists, the save-to-list sheet, Recipes' list tiles (they
+read `observeLists`), and an export file. Behind the `reorderLists` flag (on by default in debug and
+release), on both platforms.
+
+- **`lists.sortOrder` is the position, and the only thing lists sort by.** The column was already
+  there (seeded 0 to 5, a new list took max + 1, export and import carried it), but every list query
+  sorted `isBuiltIn DESC` first and `sortOrder` second, so a seeded list could never be moved after
+  a user's. Now `ORDER BY sortOrder, id` everywhere (`ListDao.observeLists`, `BackupDao`'s two list
+  queries; iOS's twins). `isBuiltIn` means only "seeded"; `isFavorites` still guards the delete, and
+  Favorites reorders like any other list.
+- **The migration only numbers.** Room 17 to 18 (`MIGRATION_17_18`, `MigrationTest`; a JVM twin,
+  `ListsRenumberMigrationTest`, runs it on every build) and iOS `user_version` 16 to 17
+  (`numberListsInShownOrder`) renumber every list 0, 1, 2... in exactly the order it was shown
+  (`isBuiltIn DESC, sortOrder, id`), so nobody's order changes on upgrade. Data only: the schema
+  JSON for 18 differs from 17 in the version. The ranks are written one by one, not with a
+  self-referencing `UPDATE`. Old upgrades had left user lists sharing a position with seeded ones
+  (`MIGRATION_1_2` appended Breakfast and Snacks after user lists); the numbering settles that.
+- **A new list goes last** (`COALESCE(MAX(sortOrder), -1) + 1`, as before). Deleting leaves a gap,
+  which nothing minds: only the order counts, and the next `reorder` closes it.
+- **Storing it.** `ListDao.reorder(orderedIds)` (one transaction, so the screen sees one change):
+  the named lists first in that order, then any list not named (one created while a drag was in
+  flight) in the order it had, ids that are not lists ignored, every list ending with a distinct
+  position. `ListRepository.reorderLists`, through `ErrorLog.guard` (iOS: `perform`).
+- **The ViewModel owns the drag.** `ListsViewModel` keeps the stored order (collected itself, not read
+  off `uiState`, the `WhileSubscribed` rule) and a `Drag(id, order)`; `uiState.lists` is the drag's
+  order while one is in flight and `draggingId` says which cover is held. `onDragStart`,
+  `onDragOver(target)` (the held cover takes that cover's place, the ones between shift),
+  `onDragEnd` (stores once, and only if the order changed), `onDragCancel`; and `onMoveEarlier` /
+  `onMoveLater` for the accessible route, stored at once. Nothing is written while the finger is
+  down, so a cancelled drag leaves no trace.
+- **Android's gesture is ours, no library.** `Modifier.gridReorderGestures` (`ListsReorder.kt`) is
+  `detectDragGesturesAfterLongPress` on the `LazyVerticalGrid`, using `layoutInfo.visibleItemsInfo`
+  to find the cover under the finger and the one the held cover's centre is over, and scrolling
+  the grid when the finger is within 72dp of an edge. The held cover rides the finger
+  (`graphicsLayer`: translated by finger minus grab point minus its current cell, 1.05 scale, a
+  shadow, `zIndex`) and the others `animateItem()` to their new places. A tap still opens the list.
+  Chosen over a reorder library (`sh.calvin.reorderable` would do it) because the grid is small, the
+  lazy grid already reports where everything is, and a dependency for one screen was not worth it.
+  The tile's key is `list-<id>` and the new-list tile and header have other keys, so neither is
+  ever dragged over.
+- **iOS uses the system's drag and drop.** `.onDrag` on each cover (the long-press lift, with its
+  haptic) and `.onDrop` with `ListDropDelegate`: `dropEntered` on a cover calls `onDragOver`, a drop on
+  a cover, or on the screen around the covers, calls `onDragEnd`; leaving the screen mid-drag
+  calls `onDragCancel`. The grid is `CoverGridLayout`, a `Layout`, in place of the rows of
+  `HStack`s: the old rows were keyed by their first cover, so moving a cover between rows rebuilt
+  the one being held and lost the drop target. One `ForEach` in a custom layout keeps every cover's
+  identity as it changes row, animates (`.snappy`), and, being not lazy, keeps every cover in the
+  accessibility tree as before.
+- **Accessible alternative.** Each cover has **Move earlier** / **Move later** (TalkBack's actions
+  menu through `customActions`; VoiceOver's actions through `accessibilityActions`), absent where the
+  move isn't possible (the first can't go earlier). Two strings, `lists_move_earlier` and
+  `lists_move_later`, in six languages on both platforms (drafts for a native speaker).
+- **Flag off.** The cover grid has no drag and no actions, and the repository gives the order from
+  before: a stable sort of the stored order with seeded lists first (`DefaultListRepository`'s
+  `inShownOrder`, iOS's `reorderOn`). The stored positions are kept, so turning the flag back on
+  brings the cook's order back. New lists still go last.
+- **Export and import.** `BackupList.sortOrder` was already in the file (`"sortOrder"`); the export now
+  writes lists in position order, so file order is the cook's order. Import still **merges, never
+  replaces**: a list already here (matched by uid, by name, or Favorites by flag) keeps its place, and
+  a list the file adds goes after the lists here, in the file's order (`maxSortOrder + 1...`), whatever
+  positions the file carries. An older file with none (read as 0) imports the same way.
+- **Not done.** No drag on the Recipes screen's list tiles (Recipes shows the order, #373 is changing
+  that screen); no reordering of meal types, which have their own `sortOrder`.
+- **Tests.** `ListDaoTest` (order, `reorder`, new list last, delete, export order),
+  `ListOrderRepositoryTest` (both readers, the flag), `ListsRenumberMigrationTest` and
+  `MigrationTest` (17 to 18), `ListsViewModelTest`, `ListsScreenTest` (actions, a held-and-dragged
+  cover, a tap), `BackupMergerTest`, `DatabaseErrorTest` on Android; `ListDaoTests`, `ListOrderTests`
+  (including the user_version 16 file), `ListsViewModelTests` and `BackupMergerTests` on iOS, and
+  one iOS UI test, `ListsUITests.testAHeldCoverDraggedOntoAnotherTakesItsPlace`
+  (`press(forDuration:thenDragTo:)`, launched with `-uiTestFlags reorderLists`, because UI tests
+  start with every flag off): it passed three times in a row. The ViewModel owns every rule; the
+  test only proves the system drag reaches it. Android's gesture is checked by `ListsScreenTest`'s
+  touch-input drag.
+
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
 The owner's report: a card's fraction symbol came out as "%". Measured first, on two cards drawn
@@ -5522,7 +5599,7 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 17** (iOS `user_version` 16): `recipes`
+Room database `recipe_clipper.db`, **version 18** (iOS `user_version` 17): `recipes`
 (with nullable `notes`, `language`, `cookState`, `servingsTarget`, `editedAt` and `basedOnUid`,
 #354, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
 `meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51; `runningLow`, #194), `menus` and

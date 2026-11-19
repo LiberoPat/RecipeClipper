@@ -24,6 +24,8 @@ final class FakeListRepository: ListRepository {
     private(set) var createCalls: [(name: String, recipeId: Int64?)] = []
     private(set) var renameCalls: [(listId: Int64, name: String)] = []
     private(set) var deleteCalls: [Int64] = []
+    /// Every order `reorderLists` was given, in order.
+    private(set) var reorderCalls: [[Int64]] = []
     private(set) var recipesInQueries: [Int64] = []
 
     private var nextId: Int64 = 100
@@ -78,6 +80,16 @@ final class FakeListRepository: ListRepository {
             membership.send(membership.value.union([Membership(recipeId: addRecipeId, listId: id)]))
         }
         return id
+    }
+
+    /// As the SQL does it: the named lists first, in that order, then the rest as they were.
+    @MainActor func reorderLists(_ orderedIds: [Int64]) async {
+        reorderCalls.append(orderedIds)
+        let byId = Dictionary(lists.value.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var seen = Set<Int64>()
+        let named = orderedIds.filter { byId[$0] != nil && seen.insert($0).inserted }
+        let rest = lists.value.map(\.id).filter { !seen.contains($0) }
+        lists.send((named + rest).compactMap { byId[$0] })
     }
 
     @MainActor func rename(listId: Int64, name: String) async {

@@ -40,6 +40,8 @@ enum Flag: String, CaseIterable {
     case mealPlanImport
     /// Recipe versions (#354): an AI's change to a recipe is saved linked to its original.
     case recipeVersions
+    /// Reorder lists (#381): drag the covers on the Lists screen into your own order, used wherever lists are shown.
+    case reorderLists
 }
 
 /// One flag as `shared/flags.json` declares it.

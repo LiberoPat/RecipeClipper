@@ -258,7 +258,10 @@ struct RootView: View {
             ScreenHost(container.makeDeveloperSettingsViewModel) { vm in DeveloperSettingsScreen(vm: vm) }
         case .lists:
             ScreenHost(container.makeListsViewModel) { vm in
-                ListsScreen(vm: vm, onOpenList: { push(.listDetail(id: $0)) })
+                ListsScreen(
+                    vm: vm, onOpenList: { push(.listDetail(id: $0)) },
+                    reorderEnabled: container.featureFlags.isOn(.reorderLists)
+                )
             }
         case .editRecipe(let id):
             // Saving replaces the edit screen and, when editing, the recipe screen under it.
