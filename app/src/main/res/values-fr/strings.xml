@@ -304,7 +304,7 @@
     <string name="mealplan_cut_off">La réponse a été coupée, donc seules ces recettes sont arrivées. Demandez à l\'IA de continuer pour le reste.</string>
     <string name="error_cut_off">Cette réponse a été coupée avant la fin de la recette. Demandez à l\'IA de la renvoyer, ou de continuer.</string>
     <string name="cutoff_copy_action">Copier un message pour l\'IA</string>
-    <string name="cutoff_copied">Copié. Collez-le dans le chat, puis partagez la réponse avec cette appli.</string>
+    <string name="cutoff_copied">Copié. Collez-le dans le chat, puis partagez ou collez ici la réponse.</string>
     <string name="cutoff_ask_plan">Votre réponse a été coupée. Envoyez la suite du plan, s\'il vous plaît : une recette pour chacun de ces jours : %1$s. Utilisez le même format JSON qu\'avant, dans un seul bloc de code ```json.</string>
     <string name="cutoff_ask_plan_rest">Votre réponse a été coupée. Envoyez la suite du plan, s\'il vous plaît : une recette pour chacun des jours restants. Utilisez le même format JSON qu\'avant, dans un seul bloc de code ```json.</string>
     <string name="cutoff_ask_recipe">Votre réponse a été coupée. Renvoyez la recette complète en JSON schema.org Recipe, dans un seul bloc de code ```json.</string>

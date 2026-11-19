@@ -400,7 +400,7 @@
     <string name="mealplan_cut_off">The answer was cut off, so only these recipes came through. Ask the AI to continue for the rest.</string>
     <string name="error_cut_off">That answer was cut off before the recipe ended. Ask the AI to send it again, or to continue.</string>
     <string name="cutoff_copy_action">Copy a message for the AI</string>
-    <string name="cutoff_copied">Copied. Paste it into the chat, then share the reply with this app.</string>
+    <string name="cutoff_copied">Copied. Paste it into the chat, then share or paste the reply here.</string>
     <string name="cutoff_ask_plan">Your answer was cut off. Please send the rest of the plan: one recipe for each of these days: %1$s. Use the same JSON format as before, in one ```json code block.</string>
     <string name="cutoff_ask_plan_rest">Your answer was cut off. Please send the rest of the plan: one recipe for each of the remaining days. Use the same JSON format as before, in one ```json code block.</string>
     <string name="cutoff_ask_recipe">Your answer was cut off. Please send the whole recipe again as schema.org Recipe JSON in one ```json code block.</string>

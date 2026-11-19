@@ -5900,37 +5900,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kopiert. Füge sie in den Chat ein und teile die Antwort dann mit dieser App."
+            "value" : "Kopiert. Füge sie in den Chat ein und teile die Antwort dann hier oder füge sie hier ein."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copied. Paste it into the chat, then share the reply with this app."
+            "value" : "Copied. Paste it into the chat, then share or paste the reply here."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiado. Pégalo en el chat y luego comparte la respuesta con esta app."
+            "value" : "Copiado. Pégalo en el chat y luego comparte o pega aquí la respuesta."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copié. Collez-le dans le chat, puis partagez la réponse avec cette appli."
+            "value" : "Copié. Collez-le dans le chat, puis partagez ou collez ici la réponse."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiato. Incollalo nella chat, poi condividi la risposta con questa app."
+            "value" : "Copiato. Incollalo nella chat, poi condividi o incolla qui la risposta."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiado. Cole no chat e depois compartilhe a resposta com este app."
+            "value" : "Copiado. Cole no chat e depois compartilhe ou cole a resposta aqui."
           }
         }
       }

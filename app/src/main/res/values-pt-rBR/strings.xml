@@ -304,7 +304,7 @@
     <string name="mealplan_cut_off">A resposta foi cortada, então só estas receitas chegaram. Peça à IA para continuar com o resto.</string>
     <string name="error_cut_off">Essa resposta foi cortada antes de a receita terminar. Peça à IA para enviá-la de novo ou continuar.</string>
     <string name="cutoff_copy_action">Copiar uma mensagem para a IA</string>
-    <string name="cutoff_copied">Copiado. Cole no chat e depois compartilhe a resposta com este app.</string>
+    <string name="cutoff_copied">Copiado. Cole no chat e depois compartilhe ou cole a resposta aqui.</string>
     <string name="cutoff_ask_plan">Sua resposta foi cortada. Envie o resto do plano, por favor: uma receita para cada um destes dias: %1$s. Use o mesmo formato JSON de antes, em um único bloco de código ```json.</string>
     <string name="cutoff_ask_plan_rest">Sua resposta foi cortada. Envie o resto do plano, por favor: uma receita para cada um dos dias restantes. Use o mesmo formato JSON de antes, em um único bloco de código ```json.</string>
     <string name="cutoff_ask_recipe">Sua resposta foi cortada. Envie a receita completa de novo como JSON schema.org Recipe em um único bloco de código ```json.</string>

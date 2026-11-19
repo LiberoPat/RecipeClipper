@@ -4969,7 +4969,7 @@ Behind the `mealPlanImport` flag (on by default; off, the first recipe opens the
   earliest day read, and the days of it with no whole recipe are named; with no readable day, or
   nothing missing in the block, it asks for "the remaining days". The view layer copies it
   (clipboard / `UIPasteboard`) and the note becomes "Copied. Paste it into the chat, then share
-  the reply with this app." (no snackbar). The reply (prose and a fence first, a plan of the
+  or paste the reply here." (no snackbar). The reply (prose and a fence first, a plan of the
   missing days) reads as a normal plan; **one** missing day makes a single recipe, which opens the
   editor as any single recipe does.
 - **Cut off with no whole recipe** (the text ends inside the first recipe, or inside the one recipe

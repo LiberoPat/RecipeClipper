@@ -304,7 +304,7 @@
     <string name="mealplan_cut_off">La risposta è stata interrotta, quindi sono arrivate solo queste ricette. Chiedi all\'IA di continuare per il resto.</string>
     <string name="error_cut_off">Quella risposta è stata interrotta prima della fine della ricetta. Chiedi all\'IA di inviarla di nuovo o di continuare.</string>
     <string name="cutoff_copy_action">Copia un messaggio per l\'IA</string>
-    <string name="cutoff_copied">Copiato. Incollalo nella chat, poi condividi la risposta con questa app.</string>
+    <string name="cutoff_copied">Copiato. Incollalo nella chat, poi condividi o incolla qui la risposta.</string>
     <string name="cutoff_ask_plan">La tua risposta è stata interrotta. Invia il resto del piano, per favore: una ricetta per ciascuno di questi giorni: %1$s. Usa lo stesso formato JSON di prima, in un unico blocco di codice ```json.</string>
     <string name="cutoff_ask_plan_rest">La tua risposta è stata interrotta. Invia il resto del piano, per favore: una ricetta per ciascuno dei giorni rimanenti. Usa lo stesso formato JSON di prima, in un unico blocco di codice ```json.</string>
     <string name="cutoff_ask_recipe">La tua risposta è stata interrotta. Invia di nuovo la ricetta completa come JSON schema.org Recipe in un unico blocco di codice ```json.</string>
