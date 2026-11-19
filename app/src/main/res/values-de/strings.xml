@@ -114,6 +114,7 @@
     <string name="sort_name">Name</string>
     <string name="sort_date_added">Zuletzt hinzugefügt</string>
     <string name="cd_clear_search">Suche löschen</string>
+    <string name="snackbar_restore_full">Wiederherstellen nicht möglich: Deine Sammlung ist voll</string>
     <string name="snackbar_deleted_one">„%1$s“ gelöscht</string>
     <plurals name="snackbar_deleted_many">
         <item quantity="one">%1$d Rezept gelöscht</item>

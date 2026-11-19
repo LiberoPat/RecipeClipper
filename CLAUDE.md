@@ -223,7 +223,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 - **Deleting a recipe** is a hard delete: a Recipes swipe with an undo
   snackbar (a burst of swipes shares one all-or-nothing undo), or the recipe
   screen's overflow menu with a confirmation dialog (no undo). The user's
-  photos go with it.
+  photos go with it. On the free tier an Undo that would take the library
+  past its limit restores none and says so (#345).
 - **Sharing a recipe out** sends plain text (no Markdown), as shown on
   screen, scaled and converted, without the source link. The share icon sits
   beside Back in the reading view, not in cook mode.

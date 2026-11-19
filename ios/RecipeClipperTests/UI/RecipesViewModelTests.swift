@@ -148,6 +148,72 @@ final class RecipesViewModelTests: XCTestCase {
         XCTAssertEqual(repository.restoreCalls, [removed])
     }
 
+    // One cookbook (#345): the repository answers whether the free library had room for the Undo.
+
+    func testAnUndoTheFullFreeLibraryRefusesSaysSoAndTheDeleteStands() async {
+        let repository = FakeRecipeRepository()
+        let removed = deleted(1, "Chicken Adobo")
+        repository.deleteResults[1] = removed
+        repository.restoreOutcome = .libraryFull
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
+        await settleMain()
+        vm.onDelete(testSummary(1, title: "Chicken Adobo"))
+        await settleMain()
+        XCTAssertFalse(vm.uiState.restoreRefused)
+
+        vm.onUndoDelete()
+        await settleMain()
+
+        XCTAssertTrue(vm.uiState.restoreRefused)
+        XCTAssertEqual(vm.uiState.pendingDeletes, [])
+        XCTAssertEqual(repository.restoreAllCalls, [[removed]])
+        XCTAssertTrue(repository.restoreCalls.isEmpty)
+        // The delete stands, so what only an undo needed (the photo files) goes.
+        XCTAssertEqual(repository.forgetCalls, [removed])
+
+        vm.onRestoreRefusedShown()
+        XCTAssertFalse(vm.uiState.restoreRefused)
+    }
+
+    func testABurstsUndoIsAskedForAsOneAndRefusedAsOne() async {
+        let repository = FakeRecipeRepository()
+        let a = deleted(1, "A")
+        let b = deleted(2, "B")
+        repository.deleteResults = [1: a, 2: b]
+        repository.restoreOutcome = .libraryFull
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
+        await settleMain()
+        vm.onDelete(testSummary(1, title: "A"))
+        await settleMain()
+        vm.onDelete(testSummary(2, title: "B"))
+        await settleMain()
+
+        vm.onUndoDelete()
+        await settleMain()
+
+        XCTAssertEqual(repository.restoreAllCalls, [[a, b]], "one request for the whole burst")
+        XCTAssertTrue(repository.restoreCalls.isEmpty)
+        XCTAssertTrue(vm.uiState.restoreRefused)
+        XCTAssertEqual(Set(repository.forgetCalls.map(\.recipe.id)), [1, 2])
+    }
+
+    func testAnUndoThatHasRoomSaysNothingAndForgetsNothing() async {
+        let repository = FakeRecipeRepository()
+        let removed = deleted(1, "Chicken Adobo")
+        repository.deleteResults[1] = removed
+        let vm = RecipesViewModel(repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep)
+        await settleMain()
+        vm.onDelete(testSummary(1, title: "Chicken Adobo"))
+        await settleMain()
+
+        vm.onUndoDelete()
+        await settleMain()
+
+        XCTAssertFalse(vm.uiState.restoreRefused)
+        XCTAssertEqual(repository.restoreCalls, [removed])
+        XCTAssertTrue(repository.forgetCalls.isEmpty)
+    }
+
     func testDismissingTheSnackbarClearsPendingDeletesWithoutRestoring() async {
         let repository = FakeRecipeRepository()
         repository.deleteResults[1] = deleted(1, "Chicken Adobo")

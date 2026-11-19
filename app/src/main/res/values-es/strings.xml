@@ -116,6 +116,7 @@
     <string name="sort_name">Nombre</string>
     <string name="sort_date_added">Añadidas recientemente</string>
     <string name="cd_clear_search">Borrar búsqueda</string>
+    <string name="snackbar_restore_full">No se pudo restaurar: tu biblioteca está llena</string>
     <string name="snackbar_deleted_one">«%1$s» eliminada</string>
     <plurals name="snackbar_deleted_many">
         <item quantity="one">%1$d receta eliminada</item>

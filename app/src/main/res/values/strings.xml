@@ -194,6 +194,7 @@
     <string name="sort_name">Name</string>
     <string name="sort_date_added">Date added</string>
     <string name="cd_clear_search">Clear search</string>
+    <string name="snackbar_restore_full">Couldn\'t restore: your library is full</string>
     <string name="snackbar_deleted_one">Deleted \"%1$s\"</string>
     <!-- English only ever uses "other" here (the one-item case is snackbar_deleted_one, which
          names the recipe instead of counting). Declared as plurals anyway: languages with

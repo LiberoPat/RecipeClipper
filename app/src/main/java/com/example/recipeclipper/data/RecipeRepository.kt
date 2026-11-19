@@ -150,7 +150,26 @@ interface RecipeRepository {
     suspend fun delete(id: Long): DeletedRecipe?
 
     /** Undoes a [delete]: the recipe comes back with its original id and list membership. */
-    suspend fun restore(deleted: DeletedRecipe)
+    suspend fun restore(deleted: DeletedRecipe): RestoreOutcome = restoreAll(listOf(deleted))
+
+    /**
+     * Undoes a burst of [delete]s, all or nothing (#345): under the free tier's limit a restore
+     * that would take the library past it restores none and answers [RestoreOutcome.LIBRARY_FULL],
+     * the same one `LibraryLimit` check as every other way in, in the one transaction. Unlocked, or
+     * with the free tier off, it always restores.
+     */
+    suspend fun restoreAll(deleted: List<DeletedRecipe>): RestoreOutcome
+
+    /** How an undo of a delete went (#345). */
+    enum class RestoreOutcome {
+        RESTORED,
+
+        /** Not restored: the free library is at its limit, so the recipe stays deleted. */
+        LIBRARY_FULL,
+
+        /** Not restored: a database error, degraded to nothing as every other write. */
+        FAILED
+    }
 
     /** The [delete] stands (no undo now): removes what only an undo needed, its photo files. */
     suspend fun forget(deleted: DeletedRecipe) {}

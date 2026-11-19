@@ -261,8 +261,11 @@ protocol RecipeRepository: AnyObject {
     /// Hard delete; memberships go with it. Nil if it was already gone.
     func delete(id: Int64) async -> DeletedRecipe?
 
-    /// Undoes `delete`: same id, same list membership.
-    func restore(_ deleted: DeletedRecipe) async
+    /// Undoes a burst of `delete`s, all or nothing (#345): under the free tier's limit a restore that
+    /// would take the library past it restores none and answers `.libraryFull`, the same one
+    /// `LibraryLimit` check as every other way in, in the one transaction. Unlocked, or with the
+    /// free tier off, it always restores. Same ids, same list membership.
+    func restoreAll(_ deleted: [DeletedRecipe]) async -> RestoreOutcome
 
     /// The `delete` stands (no undo now): removes what only an undo needed, its photo files (#116).
     func forget(_ deleted: DeletedRecipe) async
@@ -304,8 +307,21 @@ protocol RecipeRepository: AnyObject {
     func formatSampleTimes() async
 }
 
+/// How an undo of a delete went (#345).
+enum RestoreOutcome: Equatable {
+    case restored
+    /// Not restored: the free library is at its limit, so the recipe stays deleted.
+    case libraryFull
+    /// Not restored: a database error, degraded to nothing as every other write.
+    case failed
+}
+
 extension RecipeRepository {
     func forget(_ deleted: DeletedRecipe) async {}
+
+    /// Undoes one `delete`.
+    @discardableResult
+    func restore(_ deleted: DeletedRecipe) async -> RestoreOutcome { await restoreAll([deleted]) }
 
     /// A recipe typed in by hand, with no language of its own (#29).
     func addManual(draft: RecipeDraft) async -> Recipe? {

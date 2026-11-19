@@ -3066,8 +3066,21 @@ off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, 
   reads the limit the app mirrors into the App Group suite (`library_limit`: now also `capped`) and
   applies the same `upsert`. Tests for each path: Android `OneCookbookLimitTest`,
   `OneCookbookDaoTest`, `OneCookbookImportTest`; iOS `OneCookbookTests`.
-  Known edge: Undo after a swipe delete restores the recipe whatever the count (it is the cook's own
-  recipe coming back), so delete, add one, then Undo within the snackbar's seconds can leave 51.
+- **Undo takes the same limit** (owner, 2026-11-18). Undo after a swipe delete on Recipes (or on a
+  view's screen, the same ViewModel; the recipe screen's delete has no undo) used to restore whatever
+  the count, so delete one at 50, add one, Undo left 51, and repeating grew the library by one a
+  cycle. Now `restoreAll` (Android `RecipeRepository.restoreAll`, `RecipeDao.restoreAll`; iOS
+  `RecipeRepository.restoreAll`, `RecipeDao.restoreAll`) checks `LibraryLimit.Capped` in the one
+  transaction, counting as `upsert` does (the tour's sample counts toward nothing): if restoring would
+  take the library past the limit it restores **none** and answers `LIBRARY_FULL` / `.libraryFull`.
+  A burst shares one all-or-nothing undo, so a burst that doesn't fit all fits none. Then the delete
+  stands (the photo files are forgotten, as when the snackbar times out) and the screen says once, in a
+  plain snackbar with no action, "Couldn't restore: your library is full" (`snackbar_restore_full`; the
+  undo's own outcome, so within "snackbars are only for undo"). Unlocked, or with `freeTier` or
+  `oneCookbook` off, Undo restores as before. No Unlock action on it: after a refusal nothing is held
+  to restore, so unlocking from there could only unlock, not bring the recipe back. Tests: Android
+  `OneCookbookUndoTest`, `RecipesViewModelTest`, `RecipesScreenTest`; iOS `OneCookbookUndoTests`,
+  `RecipesViewModelTests`.
 - **Recipes is a cookbook.** Under search, a **strip of automatic views** followed by the lists, in
   place of V1's pills: Not in a list (the `isSaved` `EXISTS`, as the bookmark), Cooked (any
   `cooked_photos` row, so "Mark as cooked" counts, #173), Typed by you (`contentOrigin = 'MANUAL'`,

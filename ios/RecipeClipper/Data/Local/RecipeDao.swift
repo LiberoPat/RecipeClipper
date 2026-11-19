@@ -175,6 +175,34 @@ struct RecipeDao {
         }
     }
 
+    /// What a delete took of one recipe, for `restoreAll`.
+    struct DeletedRows {
+        let recipe: RecipeRecord
+        let crossRefs: [ListMembership]
+        let planEntries: [MealPlanEntryRecord]
+        let menuEntries: [MenuEntryRecord]
+        let cookedPhotos: [CookedPhotoRecord]
+    }
+
+    /// Undoes a burst of deletes, all or nothing, under `limit` (#345). A `.capped` library (the
+    /// free tier, locked) restores none of them when they would take it past its limit, the same
+    /// count as `upsert`'s (the tour's sample counts toward nothing): without this an Undo would let
+    /// delete, add one, Undo grow the library by one each time. Anything else restores. Returns
+    /// whether it restored. Call inside a write (one transaction).
+    func restoreAll(_ rows: [DeletedRows], limit: LibraryLimit) throws -> Bool {
+        if case .capped(let max) = limit {
+            let adding = rows.filter { $0.recipe.sourceUrl != SampleRecipe.sourceUrl }.count
+            if try count() + adding > max { return false }
+        }
+        for row in rows {
+            try restore(
+                row.recipe, crossRefs: row.crossRefs, planEntries: row.planEntries,
+                menuEntries: row.menuEntries, cookedPhotos: row.cookedPhotos
+            )
+        }
+        return true
+    }
+
     /// Titles or ingredients containing `query`, case-insensitively; everything when `query`
     /// is empty — one code path, not two queries picked in Swift.
     ///

@@ -116,6 +116,7 @@
     <string name="sort_name">Nome</string>
     <string name="sort_date_added">Data di aggiunta</string>
     <string name="cd_clear_search">Cancella la ricerca</string>
+    <string name="snackbar_restore_full">Impossibile ripristinare: la tua raccolta è piena</string>
     <string name="snackbar_deleted_one">«%1$s» eliminata</string>
     <plurals name="snackbar_deleted_many">
         <item quantity="one">%1$d ricetta eliminata</item>

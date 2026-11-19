@@ -426,6 +426,22 @@ class RecipesScreenTest {
         compose.onNodeWithText("Undo").assertDoesNotExist()
     }
 
+    /** One cookbook (#345): the free library is full, so Undo restores nothing and says so. */
+    @Test
+    fun anUndoTheFullFreeLibraryRefusesSaysSo() {
+        repository.restoreOutcome = RecipeRepository.RestoreOutcome.LIBRARY_FULL
+        show(adobo, carbonara)
+        waitFor("Chicken Adobo")
+        swipeAway(adobo)
+        waitFor("Undo")
+
+        compose.onNodeWithText("Undo").performClick()
+
+        waitFor("Couldn't restore: your library is full")
+        assertTrue(repository.restoreCalls.isEmpty())
+        compose.onNodeWithText("Chicken Adobo").assertDoesNotExist()
+    }
+
     /** A burst of swipes shares one snackbar, which counts them instead of naming one. */
     @Test
     fun aBurstOfSwipesSharesOneSnackbar() {
