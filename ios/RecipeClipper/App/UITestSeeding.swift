@@ -208,6 +208,7 @@ enum UITestSeeding {
             autoBackup: arguments.contains(backupFolderFlag)
                 ? AutoBackup(backups: backupRepository, folder: UITestBackupFolder(), store: MemoryAutoBackupStore(), clock: clock)
                 : nil,
+            paprikaImportRepository: DefaultPaprikaImportRepository(db: database, clock: clock, library: libraryLimit),
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             tourPreferences: preferences,
             photoTextReader: ProcessInfo.processInfo.environment[UITestPhotoTextReader.visionKey] == "1"

@@ -182,6 +182,47 @@ enum Strings {
         return parts.joined(separator: " ")
     }
 
+    // Settings → Your recipes: import from Paprika (#382)
+    static var paprikaImportTitle: String { String(localized: "paprika_import_title") }
+    static var paprikaImportDescription: String { String(localized: "paprika_import_description") }
+    static var paprikaImporting: String { String(localized: "paprika_importing") }
+
+    /// What an import from Paprika did, one sentence per count that isn't zero: imported (or "nothing
+    /// new" / "nothing could be read"), already here, left out for the limit, entries that weren't
+    /// recipes or couldn't be read, and that the pictures inside the file weren't kept.
+    static func paprikaSummary(_ s: PaprikaSummary) -> String {
+        var parts: [String] = []
+        if s.imported > 0 {
+            parts.append(String(localized: "paprika_imported \(s.imported)"))
+        } else if s.skippedForLimit == 0 && s.alreadyHere > 0 {
+            parts.append(String(localized: "paprika_imported_nothing"))
+        } else if s.skippedForLimit == 0 {
+            parts.append(String(localized: "paprika_nothing_found"))
+        }
+        if s.alreadyHere > 0 && (s.imported > 0 || s.skippedForLimit > 0) {
+            parts.append(String(localized: "backup_already_here \(s.alreadyHere)"))
+        }
+        if s.skippedForLimit > 0, let free = s.freeLimit {
+            parts.append(String(localized: "backup_skipped_free \(s.skippedForLimit) \(free)"))
+        } else if s.skippedForLimit > 0 {
+            parts.append(String(localized: "backup_skipped \(s.skippedForLimit) \(historyLimit)"))
+        }
+        if s.notRecipes > 0 { parts.append(String(localized: "paprika_not_recipes \(s.notRecipes)")) }
+        if s.unreadable > 0 { parts.append(String(localized: "paprika_unreadable \(s.unreadable)")) }
+        if s.photosNotImported && s.imported > 0 { parts.append(String(localized: "paprika_photos_not_imported")) }
+        return parts.joined(separator: " ")
+    }
+
+    static func message(for error: PaprikaError) -> String {
+        switch error {
+        case .notAPaprikaFile: return String(localized: "paprika_error_not_paprika")
+        case .damaged: return String(localized: "paprika_error_damaged")
+        case .tooLarge: return String(localized: "paprika_error_too_large")
+        case .readFailed: return String(localized: "backup_error_read_failed")
+        case .saveFailed: return String(localized: "backup_error_save_failed")
+        }
+    }
+
     static func message(for error: BackupError) -> String {
         switch error {
         case .notABackup: return String(localized: "backup_error_not_a_backup")

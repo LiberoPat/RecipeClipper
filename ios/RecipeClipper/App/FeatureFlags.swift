@@ -40,6 +40,8 @@ enum Flag: String, CaseIterable {
     case mealPlanImport
     /// Recipe versions (#354): an AI's change to a recipe is saved linked to its original.
     case recipeVersions
+    /// Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library.
+    case paprikaImport
 }
 
 /// One flag as `shared/flags.json` declares it.

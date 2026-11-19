@@ -16,6 +16,8 @@ final class AppContainer {
     let connectivity: Connectivity
     let backupRepository: BackupRepository
     let backupFiles: BackupFiles
+    /// Import from Paprika (#382); nil under test unless given.
+    let paprikaImportRepository: PaprikaImportRepository?
     let appInfo: AppInfo
     let alarms: TimerAlarmScheduler
     /// The one path that squares the countdowns outside the app (#309) with the database (#333).
@@ -94,6 +96,7 @@ final class AppContainer {
         libraryMirror: DefaultsLibraryLimit? = nil,
         cookedPhotoRepository: CookedPhotoRepository? = nil,
         autoBackup: AutoBackup? = nil,
+        paprikaImportRepository: PaprikaImportRepository? = nil,
         shareFileRepository: ShareFileRepository? = nil,
         // Unless given, every tooltip is seen: a unit test sees none it didn't ask for.
         tourPreferences: TourPreferences = MemoryTourPreferences(),
@@ -104,6 +107,7 @@ final class AppContainer {
         self.useUpLog = useUpLog
         self.shareFileRepository = shareFileRepository
         self.autoBackup = autoBackup
+        self.paprikaImportRepository = paprikaImportRepository
         self.cookedPhotoRepository = cookedPhotoRepository
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -247,6 +251,7 @@ final class AppContainer {
                 backups: backupRepository, folder: ICloudBackupFolder(),
                 store: UserDefaultsAutoBackupStore(defaults: defaults), clock: clock
             ),
+            paprikaImportRepository: DefaultPaprikaImportRepository(db: database, clock: clock, library: libraryLimit),
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             // Under XCTest (the unit tests' host) every tooltip is seen, as for any test container.
             tourPreferences: testing ? MemoryTourPreferences() : preferences,
@@ -491,7 +496,8 @@ final class AppContainer {
         SettingsViewModel(
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
             flags: featureFlags, notificationPermission: notificationPermission,
-            shortSteps: shortStepRepository, entitlements: entitlements, autoBackup: autoBackup, clock: clock
+            shortSteps: shortStepRepository, entitlements: entitlements, autoBackup: autoBackup, clock: clock,
+            paprika: paprikaImportRepository
         )
     }
 

@@ -5047,6 +5047,94 @@ it. Behind the `recipeVersions` flag (on by default in debug and release), on bo
   from the Kotlin) for `isBasedOn`; the editor's `addManual` claim in `EditRecipeTextViewModelTest`
   and `EditRecipeTextTests`; the recipe screen in `RecipeVersionsTest`.
 
+## Import from Paprika (#382, 2026-11-19)
+
+The owner asked for a one-time import from another recipe app, starting with Paprika's export
+(`.paprikarecipes`). Settings, Your recipes gains **Import from Paprika** beside Export and Import
+(the same status line under them: progress, then a summary or the cause), behind the `paprikaImport`
+flag (on by default in debug and release), on both platforms. Other apps' formats are separate issues.
+
+- **The format** (field names from the open-source libpaprika crate's `Recipe`, not from an export of
+  ours: see "Not verified"): a zip with one `<name>.paprikarecipe` entry per recipe, each a
+  gzip-compressed JSON object: `name`, `ingredients` and `directions` as newline-separated text,
+  `notes`, `servings`, `prep_time`, `cook_time`, `total_time`, `source`, `source_url`, `image_url`,
+  `categories` (names), `photo_data` (base64 JPEG), `uid`, `created`, and more that are ignored. A
+  missing, null or unknown field is simply absent; a number where text goes keeps its digits.
+- **Reading.** Android: `PaprikaArchive` and `PaprikaRecipeParser` in `:core` (`java.util.zip`'s
+  `ZipFile` over a copy of the picked file in the cache, which is deleted after; `GZIPInputStream`;
+  `org.json`). iOS: `PaprikaZipReader` (Apple's Compression framework, which reads the raw DEFLATE
+  both a zip entry and a gzip body hold, over the memory-mapped file; the zip structure and the gzip
+  header and checksum are read by hand, as `BackupArchive` does, so there is still no third-party
+  dependency) and `PaprikaRecipeParser` (Foundation only, so `CoreImportsTests` covers it). The
+  reader is outside the pure files on iOS only because of Compression.
+- **A stranger's file is not believed** (`PaprikaLimits`, the same numbers on both platforms): at most
+  10 000 entries, 32 MiB unpacked per entry, 2 GiB unpacked in all, a 2 GiB file. An entry's declared size
+  over the cap is refused without unpacking; the real size is counted as it unpacks and stops at the
+  cap (a 700-byte fixture that unpacks to 40 MB is dropped as one unreadable entry); the entry count
+  and the total are refused for the whole file (`TOO_LARGE`, nothing imported). An entry's name is only
+  compared (`isRecipeEntry`: a file called `*.paprikarecipe`, not hidden, not under `__MACOSX/`), never
+  used as a path; nothing is written to disk but Android's cache copy of the file itself.
+- **What is counted.** Entries that aren't recipes (folders, macOS copies, a readme) are ignored, not
+  counted. A JSON object with no name, or with neither ingredients nor steps (the parsers' rule), is
+  **not a recipe**: skipped and counted. An entry that isn't gzip, isn't UTF-8, isn't JSON, isn't an
+  object, is nested too deep, or is over a cap is **unreadable**: counted, and the rest still import.
+  A file that isn't a zip, or is a zip with no recipe entry, is `NOT_A_PAPRIKA_FILE`; one cut short or with
+  a broken directory is `DAMAGED`; both import nothing. `PaprikaError` is a cause, the screen picks the words.
+- **Never invent, text as written.** Names, lines, notes and servings are Paprika's, trimmed; lines
+  are split on newlines, blanks dropped (as the editor's `RecipeDraft.lines`). Times go through
+  `Durations.format` with the words of the recipe's language (detected from its own name and
+  ingredients as for any recipe with none declared, never the phone's): a whole-string phrase
+  ("1 hour 30 minutes") renders like ISO ("1h 30m"), a zero total is absent, anything else
+  ("Overnight") stays as written. `source_url` is kept only if it is a real web link (`WebImageUrl`),
+  cleaned by `UrlCleaner`; `image_url` only as a web picture link.
+- **Identity: how a second import adds nothing.** The key is the recipe's cleaned `source_url`; else
+  `manual:paprika-<uid>` (Paprika's id lower-cased, only if it is plain `[A-Za-z0-9-]{1,64}`, so an id
+  can't smuggle a link or a path into the key); else `manual:paprika-h<hash>`, an FNV-1a (64 bits) of
+  the name, ingredients and steps, for a file with no ids (pinned in both platforms' tests). The key
+  is the recipe's `sourceUrl`, so a recipe that is already here by that key, shared, clipped or
+  imported before, is **already here**: it keeps its content, ticks and last view, and only gains
+  Paprika's note if it has none (`BackupMerger`, import "merges, never replaces or deletes"). A
+  recipe twice in one file counts as already here too, the first winning.
+- **Never re-fetched.** A recipe with a link is `EDITED` (with `editedAt` the import's time), the
+  cook's version: a re-share of its link opens it as imported without fetching, and "Update from
+  source" is the way to the site's. One with no link is `MANUAL` with its `manual:` key: it appears
+  under Typed by you, which is what Paprika's typed-in recipes are, and the old clean-up (with
+  `oneCookbook` off) never removes it. Both are exactly the values a backup keeps (#29).
+- **The one limit.** The recipes become a `Backup` with no lists and no memberships and go through
+  `BackupDao.importBackup`, the route every import takes (`BackupMerger`, `capsEveryRecipe`: #345), in one
+  transaction: at the free limit what fits comes in (in the file's order: the first recipe is the most
+  recently viewed, a millisecond apart, so Recipes keeps the file's order, listed ones first as for any
+  import), the rest are counted in `skippedForLimit` with "the free app keeps 50 recipes" (the existing
+  strings), and **nothing old is removed**. Unlimited, every recipe comes in. A database failure writes
+  nothing (`SAVE_FAILED`). The result is `PaprikaSummary`: imported, already here, skipped for the limit,
+  not recipes, unreadable, and whether the file carried pictures.
+- **Photos are not imported (decision for the owner).** The app has no storage for a recipe's own
+  picture: `imageUrl` is a web link, and the only local photo store is "I made this" (#116), whose rows
+  are cookings (the Cooked view counts any of them), so putting Paprika's `photo_data` there would be
+  wrong, and a new scheme (a column, a file store, backup rules and an export field) is a feature of
+  its own. So the recipe keeps `image_url` when Paprika has one (a web link, as a parsed recipe's), and
+  `photo_data` is dropped; when the file carried pictures, the summary says "The pictures stored inside
+  the file weren't imported."
+- **Categories are not filed into lists (decision for the owner).** "Lists are deliberate": adding
+  to one is an explicit second act, and `docs/decisions.md` settles nothing for imports from other
+  apps, so Paprika's categories are read and left. Mapping them (a list per category, by name, as the
+  backup merges lists) is a small follow-up if the owner wants it. `source`, `description`, `rating`,
+  `difficulty`, `nutritional_info`, `scale` and `created` are not kept either.
+- **Strings.** 12 new, in six languages on both platforms (`paprika_*`; drafts for a native speaker,
+  `docs/translations.md`); the already-here and free-limit sentences are the backup's.
+- **Tests.** The shared fixtures `shared/fixtures/paprika/*.paprikarecipes` (made by
+  `tools/paprika-fixtures/make_fixtures.py`: valid, truncated, bad entries, a declared 4 GB entry, a
+  small file that unpacks to 40 MB) are read by `PaprikaArchiveTest` and `PaprikaZipReaderTests` with the
+  same counts, the parser by `PaprikaRecipeParserTest`/`PaprikaRecipeParserTests`, the mapping by
+  `PaprikaImportTest`/`PaprikaImportTests`, the repository (identity, a second import, a recipe already
+  here, the free limit, failures) by `DefaultPaprikaImportRepositoryTest` over an in-memory DAO and
+  `PaprikaImportRepositoryTests` over in-memory SQLite, and the Settings state and words by
+  `SettingsPaprikaImportViewModelTest`, `SettingsPaprikaImportScreenTest` and `SettingsPaprikaImportTests`.
+  Nothing here is under the differential corpus's scope.
+- **Not verified.** A real Paprika export (the fixtures follow the format as libpaprika documents it, not
+  a file Paprika made), the system file picker choosing a `.paprikarecipes` file from Drive or iCloud on a
+  phone, and a very large export (hundreds of MB) on a low-memory phone.
+
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
 The owner's report: a card's fraction symbol came out as "%". Measured first, on two cards drawn
