@@ -32,6 +32,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.askai.AskAiSheet
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.settings.BackupStatus
 import com.example.recipeclipper.ui.settings.BackupStatusText
@@ -42,8 +43,8 @@ import com.example.recipeclipper.ui.recipes.PasteLinkDialog
 import androidx.compose.ui.platform.testTag
 
 /**
- * Home (#286): Continue cooking as a photo card with where the cook stopped, then the three
- * ways in (Paste a link, Scan a recipe, Type a recipe), Recently viewed as a row of photos, and
+ * Home (#286): Continue cooking as a photo card with where the cook stopped, then the ways in
+ * (Paste a link, Scan a recipe, Type a recipe, and Ask an AI, #351), Recently viewed as a row of photos, and
  * the Recipes / Lists rows with their counts. Sections with nothing in them don't appear, but
  * the Recipes / Lists block always does. Settings is the gear beside the title.
  */
@@ -60,6 +61,8 @@ fun HomeScreen(
     onResumeCooking: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
+    /** "Ask an AI" (#351): the fourth tile and its sheet. */
+    askAiEnabled: Boolean = LocalFlagValues.current.isOn(Flag.ASK_AI),
     /** One cookbook (#345): Recently viewed gains "See all". */
     oneCookbook: Boolean = LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK)
 ) {
@@ -84,6 +87,7 @@ fun HomeScreen(
                 onDismiss = viewModel::onLinkDismiss
             )
         }
+        if (state.askAiOpen && askAiEnabled) AskAiSheet(onDismiss = viewModel::onAskAiDismiss)
         TooltipHost(TooltipScreen.HOME) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 LazyColumn(
@@ -134,7 +138,8 @@ fun HomeScreen(
                         AddRecipeBlock(
                             onPasteLink = viewModel::onPasteLink,
                             onScan = onScan.takeIf { scanEnabled },
-                            onTypeRecipe = onNewRecipe
+                            onTypeRecipe = onNewRecipe,
+                            onAskAi = viewModel::onAskAi.takeIf { askAiEnabled }
                         )
                     }
 

@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -41,7 +42,13 @@ import com.example.recipeclipper.ui.tour.tooltipAnchor
  * tiles, then a muted line saying a link can be shared from any app.
  */
 @Composable
-internal fun AddRecipeBlock(onPasteLink: () -> Unit, onScan: ((List<String>) -> Unit)?, onTypeRecipe: () -> Unit) {
+internal fun AddRecipeBlock(
+    onPasteLink: () -> Unit,
+    onScan: ((List<String>) -> Unit)?,
+    onTypeRecipe: () -> Unit,
+    /** "Ask an AI" (#351): null (the askAi flag off) leaves the tile out. */
+    onAskAi: (() -> Unit)? = null
+) {
     Column(Modifier.padding(top = 20.dp)) {
         Text(
             stringResource(R.string.cd_add_recipe).uppercase(),
@@ -65,6 +72,13 @@ internal fun AddRecipeBlock(onPasteLink: () -> Unit, onScan: ((List<String>) -> 
             }
             HomeTile(R.drawable.ic_pen, R.string.action_type_recipe, R.string.home_type_hint, onTypeRecipe, tile)
         }
+        // Ask an AI (#351): a prompt for any chat app, whose answer comes back as shared text.
+        if (onAskAi != null) {
+            HomeTile(
+                R.drawable.ic_sparkle, R.string.action_ask_ai, R.string.home_ask_ai_hint, onAskAi,
+                Modifier.padding(top = 8.dp).fillMaxWidth().testTag("homeAskAi"), wide = true
+            )
+        }
         Text(
             stringResource(R.string.home_share_hint),
             style = MaterialTheme.typography.bodySmall,
@@ -78,17 +92,15 @@ internal fun AddRecipeBlock(onPasteLink: () -> Unit, onScan: ((List<String>) -> 
 @Composable
 private fun HomeTile(
     @DrawableRes icon: Int, @StringRes name: Int, @StringRes hint: Int, onClick: () -> Unit,
-    modifier: Modifier = Modifier, filled: Boolean = false
+    modifier: Modifier = Modifier, filled: Boolean = false, wide: Boolean = false
 ) {
     val colors = MaterialTheme.colorScheme
     val content = if (filled) colors.onPrimary else colors.onSurface
-    Column(
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = modifier.fillMaxSize().clip(RoundedCornerShape(16.dp))
-            .background(if (filled) colors.primary else colors.surfaceContainer)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 12.dp)
-    ) {
+    val tileModifier = modifier.then(if (wide) Modifier else Modifier.fillMaxSize()).clip(RoundedCornerShape(16.dp))
+        .background(if (filled) colors.primary else colors.surfaceContainer)
+        .clickable(role = Role.Button, onClick = onClick)
+        .padding(horizontal = 10.dp, vertical = 12.dp)
+    val iconBox: @Composable () -> Unit = {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
@@ -96,11 +108,25 @@ private fun HomeTile(
         ) {
             Icon(painterResource(icon), null, tint = if (filled) content else colors.tertiary, modifier = Modifier.size(20.dp))
         }
+    }
+    val words: @Composable () -> Unit = {
         Text(stringResource(name), style = MaterialTheme.typography.titleSmall, color = content)
         Text(
             stringResource(hint),
             style = MaterialTheme.typography.bodySmall,
             color = if (filled) content.copy(alpha = 0.85f) else colors.onSurfaceVariant
         )
+    }
+    if (wide) {
+        // Across the row: the icon, then the name over its hint.
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically, modifier = tileModifier) {
+            iconBox()
+            Column { words() }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = tileModifier) {
+            iconBox()
+            words()
+        }
     }
 }

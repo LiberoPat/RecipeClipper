@@ -46,6 +46,21 @@ class HomeViewModelTest {
             assertEquals(summaries.drop(1), vm.uiState.value.recent)
         }
 
+    @Test fun `the Ask an AI tile opens its sheet, and dismissing closes it`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = HomeViewModel(FakeRecipeRepository())
+        collectEagerly(vm.uiState)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.askAiOpen)
+
+        vm.onAskAi()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.askAiOpen)
+
+        vm.onAskAiDismiss()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.askAiOpen)
+    }
+
     @Test fun `loaded stays false until the repository answers`() = runTest(mainDispatcherRule.dispatcher) {
         val repository = FakeRecipeRepository()
         val vm = HomeViewModel(repository)

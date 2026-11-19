@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.recipeclipper.ui.mealtypes.MealTypesScreen
+import com.example.recipeclipper.ui.askai.askAiViewModelIfOn
 import com.example.recipeclipper.ui.print.printViewModelIfOn
 import com.example.recipeclipper.ui.recipe.RecipeScreen
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
@@ -57,7 +58,8 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
             photosViewModel = hiltViewModel(),
             sendFileViewModel = hiltViewModel(),
             printViewModel = printViewModelIfOn(),
-            useUpViewModel = hiltViewModel()
+            useUpViewModel = hiltViewModel(),
+            askAiViewModel = askAiViewModelIfOn()
         )
     }
 }

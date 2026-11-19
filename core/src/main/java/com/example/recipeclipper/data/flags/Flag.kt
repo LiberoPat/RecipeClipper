@@ -40,7 +40,9 @@ enum class Flag(val key: String) {
     /** One cookbook (#345): nothing is removed automatically; the free tier (50) opens a new recipe unsaved at the limit; Recipes' views strip. */
     ONE_COOKBOOK("oneCookbook"),
     /** "Use it up" (#305): the saved recipes that use a pantry item about to expire. */
-    USE_IT_UP("useItUp");
+    USE_IT_UP("useItUp"),
+    /** "Ask an AI" (#351, #353): prompts that come back as schema.org Recipe JSON, from Home and the recipe's menu. */
+    ASK_AI("askAi");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

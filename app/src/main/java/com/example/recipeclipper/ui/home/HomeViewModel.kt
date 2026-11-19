@@ -45,6 +45,8 @@ import javax.inject.Inject
 data class HomeUiState(
     val loaded: Boolean = false,
     val linkInput: String? = null,
+    /** The "Ask an AI" sheet (#351) is open. */
+    val askAiOpen: Boolean = false,
     val continueCooking: RecipeSummary? = null,
     /** Where the cook stopped on [continueCooking] (#286); null when it isn't being cooked. */
     val resume: CookResume? = null,
@@ -116,6 +118,7 @@ class HomeViewModel @Inject constructor(
 
     private val link = MutableStateFlow<String?>(null)
     private val restore = MutableStateFlow<BackupStatus>(BackupStatus.Idle)
+    private val askAi = MutableStateFlow(false)
 
     private val backupState: Flow<AutoBackupState?> =
         autoBackup?.state ?: flowOf(null)
@@ -161,12 +164,12 @@ class HomeViewModel @Inject constructor(
      * LazyColumn, since one recipe rendered in two sections under one key.
      */
     val uiState: StateFlow<HomeUiState> = combine(
-        combine(recentRecipes, resume, ::Pair),
+        combine(recentRecipes, resume, askAi, ::Triple),
         counts,
         link,
         restore,
         backupState
-    ) { (recentAndSample, resume), (recipeCount, listCount), linkInput, restoring, backup ->
+    ) { (recentAndSample, resume, askAiOpen), (recipeCount, listCount), linkInput, restoring, backup ->
         // The sample alone (#151) still offers the restore row, and no folder card: there is
         // nothing of the user's to restore over or to lose.
         val (recent, onlySample) = recentAndSample
@@ -174,6 +177,7 @@ class HomeViewModel @Inject constructor(
         HomeUiState(
             loaded = true,
             linkInput = linkInput,
+            askAiOpen = askAiOpen,
             continueCooking = latest,
             // Only the latest recipe's own place: never the one before it, for a moment.
             resume = resume?.takeIf { it.recipeId == latest?.id },
@@ -194,6 +198,15 @@ class HomeViewModel @Inject constructor(
     /** The "Paste a link" tile (#286): opens the dialog, empty. */
     fun onPasteLink() {
         link.value = ""
+    }
+
+    /** The "Ask an AI" tile (#351): opens its sheet. */
+    fun onAskAi() {
+        askAi.value = true
+    }
+
+    fun onAskAiDismiss() {
+        askAi.value = false
     }
 
     fun onLinkChange(text: String) {

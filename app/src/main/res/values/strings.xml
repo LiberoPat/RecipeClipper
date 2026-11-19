@@ -789,4 +789,51 @@
         <item quantity="one">%1$d item marked run out</item>
         <item quantity="other">%1$d items marked run out</item>
     </plurals>
+
+    <!-- Ask an AI (#351, #353): Home's tile and sheet, and the recipe menu's Change this recipe -->
+    <string name="action_ask_ai">Ask an AI</string>
+    <string name="home_ask_ai_hint">A prompt for any chat app</string>
+    <string name="ask_ai_title">Ask an AI</string>
+    <string name="ask_ai_intro">Copy a prompt into any chat app. Share the answer back to Recipe Clipper and it opens here for you to check.</string>
+    <string name="ask_ai_field">What do you want to cook?</string>
+    <string name="ask_ai_field_extra">Anything else? (optional)</string>
+    <string name="ask_ai_kind_describe">What I describe above</string>
+    <string name="ask_ai_kind_describe_hint">Your own words</string>
+    <string name="ask_ai_kind_make">What can I make?</string>
+    <string name="ask_ai_kind_make_hint">From your pantry, what expires soon first</string>
+    <string name="ask_ai_kind_make_empty">The pantry is empty</string>
+    <string name="ask_ai_kind_plan">Plan my week</string>
+    <string name="ask_ai_kind_plan_hint">A week of dinners from your favourites, not what you cooked lately</string>
+    <string name="ask_ai_copy">Copy prompt</string>
+    <string name="ask_ai_copied">Copied</string>
+    <string name="ask_ai_share">Share</string>
+    <string name="action_change_recipe">Change this recipe</string>
+    <string name="menu_desc_change_recipe">A prompt for any AI chat</string>
+    <string name="change_recipe_title">Change this recipe</string>
+    <string name="change_recipe_intro">Copy a prompt with this recipe and your request into any AI chat. Share the answer back to Recipe Clipper to check it.</string>
+    <string name="change_recipe_field">What should change?</string>
+    <string name="change_recipe_placeholder">Make it vegetarian</string>
+    <!-- The prompt Ask an AI copies (#351) is written in the UI language. ai_prompt_language is the language's own name, for "write it in ...". Keep ```json, @context, recipeYield and the other schema.org names as they are. -->
+    <string name="ai_prompt_language">English</string>
+    <string name="ai_prompt_want_to_cook">I want to cook: %1$s</string>
+    <string name="ai_prompt_change_this">Please change this recipe: %1$s</string>
+    <string name="ai_prompt_recipe_below">The recipe, as schema.org Recipe JSON:</string>
+    <string name="ai_prompt_what_can_i_make">What can I make with what I have at home? Suggest one recipe I can cook mostly from my pantry.</string>
+    <string name="ai_prompt_use_up_first">Use these up first, they expire soon: %1$s.</string>
+    <string name="ai_prompt_in_pantry">Also in my pantry: %1$s.</string>
+    <string name="ai_prompt_plan_intro">Plan one dinner recipe for each of these days:</string>
+    <string name="ai_prompt_favourites">Recipes I like, for ideas: %1$s.</string>
+    <string name="ai_prompt_cooked_lately">I cooked these lately, so please don\'t repeat them: %1$s.</string>
+    <string name="ai_prompt_also">Also: %1$s</string>
+    <string name="ai_prompt_reply_one">Reply with exactly one recipe as schema.org Recipe JSON, in a ```json code block.</string>
+    <string name="ai_prompt_reply_plan">Reply with a JSON array in one ```json code block: one schema.org Recipe object for each day listed, in the same order. Give each object one extra property, \"%1$s\", holding that day\'s date exactly as listed (YYYY-MM-DD).</string>
+    <string name="ai_prompt_reply_changed">Reply with the changed recipe as schema.org Recipe JSON, in a ```json code block, keeping \"isBasedOn\" exactly as it is.</string>
+    <string name="ai_prompt_recipe_fields">Use @context, @type \"Recipe\", name, description (one sentence), recipeYield (the servings, for example \"4 servings\"), prepTime and cookTime (ISO 8601, for example PT15M), recipeIngredient (a list of strings, each with its amount) and recipeInstructions (a list of HowToStep objects, each with text).</string>
+    <string name="ai_prompt_units_as_written">Use the units that suit the recipe.</string>
+    <string name="ai_prompt_units_metric">Give amounts in metric units (g, kg, ml, l), never cups or ounces.</string>
+    <string name="ai_prompt_units_ounces">Give weights in ounces and pounds, and volumes in cups and spoons.</string>
+    <string name="ai_prompt_temperature_c">Give oven temperatures in °C.</string>
+    <string name="ai_prompt_temperature_f">Give oven temperatures in °F.</string>
+    <string name="ai_prompt_write_in">Write it in %1$s.</string>
+    <string name="ai_prompt_note_outside">Put anything else you want to say outside the code block.</string>
 </resources>
