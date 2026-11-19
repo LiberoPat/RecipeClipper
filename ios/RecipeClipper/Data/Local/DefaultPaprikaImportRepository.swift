@@ -12,7 +12,16 @@ protocol PaprikaImportRepository: AnyObject {
     /// Merges the recipes of the picked `.paprikarecipes` file in (never replaces, never deletes;
     /// see `PaprikaImport`). A file that can't be read writes nothing and says why. With `filing`
     /// (#387) each recipe's Paprika categories put it in lists of those names.
-    func importPaprika(_ url: URL, filing: Bool) async -> PaprikaResult
+    ///
+    /// `source` (#390) says whose file it is: the Recipe Keeper import is the same route with its
+    /// own reader and key.
+    func importPaprika(_ url: URL, filing: Bool, source: ImportSource) async -> PaprikaResult
+}
+
+extension PaprikaImportRepository {
+    func importPaprika(_ url: URL, filing: Bool) async -> PaprikaResult {
+        await importPaprika(url, filing: filing, source: .paprika)
+    }
 }
 
 /// Where a picked Paprika file is read (Android's `PaprikaFiles`), so the repository stays free of
@@ -20,7 +29,13 @@ protocol PaprikaImportRepository: AnyObject {
 protocol PaprikaFiles: AnyObject {
     /// The picked file's recipes, or why not (`.readFailed` if it couldn't be opened). Each recipe's
     /// picture is stored as it is read (#386): the recipe names the stored file.
-    func read(_ url: URL) async -> PaprikaRead
+    ///
+    /// `source` (#390) picks the reader: a Paprika file, or a Recipe Keeper zip.
+    func read(_ url: URL, source: ImportSource) async -> PaprikaRead
+}
+
+extension PaprikaFiles {
+    func read(_ url: URL) async -> PaprikaRead { await read(url, source: .paprika) }
 }
 
 /// The real `PaprikaImportRepository` (Android's `DefaultPaprikaImportRepository`): the file is
@@ -46,9 +61,9 @@ final class DefaultPaprikaImportRepository: PaprikaImportRepository {
         self.library = library
     }
 
-    func importPaprika(_ url: URL, filing: Bool) async -> PaprikaResult {
+    func importPaprika(_ url: URL, filing: Bool, source: ImportSource) async -> PaprikaResult {
         let contents: PaprikaContents
-        switch await files.read(url) {
+        switch await files.read(url, source: source) {
         case .failure(let error): return .failure(error)
         case .success(let read): contents = read
         }
@@ -59,7 +74,7 @@ final class DefaultPaprikaImportRepository: PaprikaImportRepository {
             ))
         }
         let now = clock.now()
-        let mapped = PaprikaImport.toBackup(contents.recipes, now: now, filing: filing) { UUID().uuidString.lowercased() }
+        let mapped = PaprikaImport.toBackup(contents.recipes, now: now, filing: filing, source: source) { UUID().uuidString.lowercased() }
         let limit = library.current()
         // The pictures are already in the store (named for the merger by their own names). Those no
         // recipe ends up with (a recipe already here, one the limit left out, a failed write) go.
@@ -86,7 +101,7 @@ final class DefaultPaprikaImportRepository: PaprikaImportRepository {
                 listsMade: summary.listsAdded
             ))
         } catch {
-            dataLog.error("paprika import failed: \(String(describing: error), privacy: .public)")
+            dataLog.error("\(source.keyPrefix) import failed: \(String(describing: error), privacy: .public)")
             if let photos { await photos.delete(Array(stored)) }
             return .failure(.saveFailed)
         }
@@ -105,16 +120,20 @@ final class FilePaprikaFiles: PaprikaFiles {
         self.photos = photos
     }
 
-    func read(_ url: URL) async -> PaprikaRead {
+    func read(_ url: URL, source: ImportSource) async -> PaprikaRead {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         do {
             let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
             if size > limits.maxFileBytes { return .failure(.tooLarge) }
             let data = try Data(contentsOf: url, options: .mappedIfSafe)
-            return PaprikaZipReader.read(data, limits: limits, storePhoto: photos.map { store in { store.importData($0) } })
+            let store = photos.map { store in { store.importData($0) } }
+            switch source {
+            case .paprika: return PaprikaZipReader.read(data, limits: limits, storePhoto: store)
+            case .recipeKeeper: return RecipeKeeperZipReader.read(data, limits: limits, storePhoto: store)
+            }
         } catch {
-            dataLog.error("read paprika file failed: \(String(describing: error), privacy: .public)")
+            dataLog.error("read \(source.keyPrefix) file failed: \(String(describing: error), privacy: .public)")
             return .failure(.readFailed)
         }
     }

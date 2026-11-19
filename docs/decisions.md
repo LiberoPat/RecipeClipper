@@ -5147,6 +5147,92 @@ flag (on by default in debug and release), on both platforms. Other apps' format
   in the by-hand run), the system file picker choosing a `.paprikarecipes` file from Drive or iCloud on a
   phone, and a very large export (hundreds of MB) on a low-memory phone.
 
+## Import from Recipe Keeper (#390, 2026-11-19)
+
+The owner asked for Recipe Keeper next (Mealie and AnyList are separate issues). Settings, Your recipes
+gains **Import from Recipe Keeper** under Import from Paprika, behind the `recipeKeeperImport` flag (on
+by default in debug and release), on both platforms. It is **the Paprika import's route with another
+reader**: the same repository, `PaprikaImport.toBackup`, `BackupDao.importBackup`, `BackupMerger`, the one
+`LibraryLimit`, the stored photo (#386), the categories-to-lists switch (#387) and the summary, so every
+rule in "Import from Paprika" holds here (merge, never replace or delete; at the free limit what fits
+comes in and the rest is counted; the user's version is never refetched; a cancelled or failed write
+leaves nothing). What follows is only what differs.
+
+- **What was generalised, lightly.** `ImportSource` (`paprika`, `recipeKeeper`) says which reader reads the
+  file and the prefix of a recipe's own key; `PaprikaImportRepository.import(uri, filing, source)` and
+  `PaprikaFiles.read(uri, source)` take it (iOS: `importPaprika(_:filing:source:)`, `read(_:source:)`, each with a
+  Paprika default so #383's callers did not change). The Recipe Keeper reader hands back the same
+  `PaprikaRecipe`/`PaprikaContents`/`PaprikaRead` (so `PaprikaSummary` too), and `PaprikaError` gained
+  `NOT_A_RECIPE_KEEPER_FILE`. Names still say Paprika where #383 put them: renaming was left out to keep this
+  diff reviewable. In Settings the **one switch** ("Put recipes in lists by their categories", its title no
+  longer says Paprika) serves both rows and shows when either is on; it is this visit's choice for both.
+- **The format** (no published spec: from the open-source importers RecipeSage's and Mealie's, Norish's
+  notes on a real 488-recipe export, and a sample page one of them tests with; see "Not verified"). The
+  export is `RecipeKeeper_YYYYMMDD_HHMMSS.zip`: `recipes.html`, at the root or inside one wrapper folder, and
+  `images/<recipeId>_<N>.jpg`. Each recipe is a `div.recipe-details`, read **by `itemprop` only**, because the
+  visible labels are translated ("Portate", "Porzioni") and the itemprops are not. The HTML is not
+  strict (`<meta>` never closed, attributes unquoted, `itemprop=photo0/` whose value is "photo0/"), so
+  it is read leniently: Jsoup on Android, `HtmlTree` (the microdata parser's Jsoup stand-in) on iOS. A value
+  is a `<meta>`'s `content`, else the element's text (the first `recipeCourse` is a `<span>`, any more are `<meta>`).
+- **Fields kept** (`RecipeKeeperParser`, in `:core`; iOS's twin is Foundation only and sits under
+  `CoreImportsTests`): `name`; `recipeIngredients` (one `<p>` per line, blanks dropped; a line whose whole text is
+  bold is a heading, stored as a line **ending in a colon** as `IngredientHeading` reads them, a colon added if it
+  has none; a bold word inside a line is no heading); `recipeDirections` (one `<p>` per step, blanks dropped, a
+  leading `1. ` to `999. ` and its space stripped and nothing else: "2 minutes before…" and "2.5 cups" stay);
+  `recipeYield` as written ("Serves 6-8", "4 persone": no number invented, so a recipe with no leading number
+  has no stepper, as for any); `prepTime` and `cookTime` as the ISO text Recipe Keeper writes, through the
+  existing time rules (`PT0S` is none, `PT1H` is "1h"; no total time is made up: the old importers' prep plus
+  cook is a number the cook did not see); `recipeNotes` (its `<p>`s joined with newlines); `recipeSource`
+  **only when it is an http(s) link** (Recipe Keeper writes "Recipe Keeper" or "n/a" for a typed-in recipe), cleaned
+  by `UrlCleaner`; `recipeIsFavourite` `True`; the photos. Not kept: nutrition, rating, share id, serving size
+  (the app has no field for them, and nothing is guessed).
+- **Lists** (the switch on): `recipeCourse`, `recipeCategory` and `recipeCollection` values are all list names, in
+  that order, then the #387 rules as for Paprika's categories (found by trimmed, case-insensitive name,
+  else made; a recipe the limit leaves out is filed nowhere). `recipeIsFavourite` files it in Favorites by
+  `isFavorites`, never by name. A course is a list like a category (the owner's wording, "by the switch"); a
+  cook who keeps seeded lists will find "Dessert" beside "Desserts", which is the cook's to merge.
+- **Identity: how a second import adds nothing.** The cleaned source link; else `manual:recipekeeper-<recipeId>`
+  (lower-cased, only if plain `[A-Za-z0-9-]{1,64}`); else `manual:recipekeeper-h<hash>` of name and text, the
+  same FNV-1a as Paprika's. The prefix keeps a Paprika recipe and a Recipe Keeper one with the same text
+  apart. Two blocks with one `recipeId` in a file are one recipe (the first wins, the second's lists join).
+  A recipe with a link is `EDITED`, one without is `MANUAL` (Typed by you), as for Paprika.
+- **Photos** (#386). `photo0`, `photo1`, … are sorted by their number; the first that can be stored is the
+  recipe's own, so a missing or broken `photo0` falls back to `photo1` (at most 10 tried). A `src` is
+  resolved against the page's folder inside the zip and **only ever compared with entry names**: `.` and
+  `..` are folded away, a `..` that would leave the zip, a scheme (`https:`, `file:`), an absolute path, a
+  backslash or a drive letter is no picture, a percent-encoded name is read decoded, case is ignored. A recipe
+  none of whose pictures could be stored counts one in `photosLeftOut`; the recipe comes in.
+- **A stranger's file is not believed**: the caps are `PaprikaLimits` (10 000 entries, 32 MiB for the page, 8 MiB
+  a picture, 2 GiB unpacked in all, a 2 GiB file; an entry's declared size is a claim and the real size is
+  counted as it unpacks). Unlike Paprika's per-recipe entries the page is one entry, so a page over its cap
+  is `TOO_LARGE` for the whole file and nothing is imported; a picture over its cap is left out and counted.
+  `recipes.html` is the shallowest such entry (not `__MACOSX/`, not hidden); no page, or a page with no
+  `div.recipe-details`, is `NOT_A_RECIPE_KEEPER_FILE`; a cut-short zip is `DAMAGED`. The page is decoded as
+  UTF-8 leniently (a stray byte costs a character, not the library) with a BOM stripped. A block with no
+  name, or with neither ingredients nor steps, is **not a recipe** (counted); there are no per-entry
+  "unreadable" counts. Deep nesting cannot overflow: Jsoup on Android, a flat tree on iOS (whose open-element
+  search is capped at the nearest 128, so a million unclosed `<div>`s cost seconds, not hours; shared with the
+  microdata fallback). A page that lies about its size reads as `TOO_LARGE` on Android and `DAMAGED` on iOS
+  (the inflater only says it failed); both import nothing.
+- **Strings.** 6 plus the generalised switch title in six languages on both platforms (`recipekeeper_*`; drafts
+  for a native speaker, `docs/translations.md`); the picker takes any file (a plain `.zip` has no type of its own).
+- **Tests.** `shared/fixtures/recipekeeper/*.zip`, made by `tools/recipekeeper-fixtures/make_fixtures.py` (valid:
+  a real-export-style page with unquoted attributes, bold and colon headings, numbered steps with empty
+  paragraphs, an Italian recipe with translated labels, a favourite, a course given twice, a non-URL source,
+  a `PT0S` time, a recipe repeated by id, a recipe with no id, a percent-encoded picture name, a missing
+  picture and one that is not an image; also a wrapper folder with a BOM and macOS junk; not Recipe
+  Keeper's; truncated; a 40 MB page; a page claiming 4 GB; pictures that are too big or claim to be; 100 000
+  nested divs), read by `RecipeKeeperArchiveTest`/`RecipeKeeperZipReaderTests` with the same counts; the parser
+  by `RecipeKeeperParserTest`/`RecipeKeeperParserTests`; the mapping by `RecipeKeeperImportTest`/`RecipeKeeperImportTests`;
+  the repository by `DefaultRecipeKeeperImportRepositoryTest` (in-memory DAO) and `RecipeKeeperImportRepositoryTests`
+  (in-memory SQLite); the Settings state and words by `SettingsRecipeKeeperImportViewModelTest`,
+  `SettingsRecipeKeeperImportScreenTest` and `SettingsRecipeKeeperImportTests`.
+- **Not verified.** A real export: no Recipe Keeper account or file was available, so the fixtures follow what
+  the importers above document (the sample page one of them uses is the model for the markup), not a file
+  Recipe Keeper made. Whether `recipeCollection` is a `<meta>` as categories are (no real export had one; the parser
+  reads any element carrying the itemprop, `<meta>` or text), a recipe whose yield is a bare number, and the
+  system picker choosing the `.zip` from Drive or iCloud on a phone.
+
 ## A recipe's own photo (#386, 2026-11-19)
 
 The owner's decision, from the Paprika import: a recipe can have a picture of its own, stored on the

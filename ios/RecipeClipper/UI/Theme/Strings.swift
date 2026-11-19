@@ -192,10 +192,12 @@ enum Strings {
     /// What an import from Paprika did, one sentence per count that isn't zero: imported (or "nothing
     /// new" / "nothing could be read"), already here, left out for the limit, entries that weren't
     /// recipes or couldn't be read, and that the pictures inside the file weren't kept.
-    static func paprikaSummary(_ s: PaprikaSummary) -> String {
+    static func paprikaSummary(_ s: PaprikaSummary, importedKey source: ImportSource = .paprika) -> String {
         var parts: [String] = []
         if s.imported > 0 {
-            parts.append(String(localized: "paprika_imported \(s.imported)"))
+            parts.append(source == .recipeKeeper
+                ? String(localized: "recipekeeper_imported \(s.imported)")
+                : String(localized: "paprika_imported \(s.imported)"))
         } else if s.skippedForLimit == 0 && s.alreadyHere > 0 {
             parts.append(String(localized: "paprika_imported_nothing"))
         } else if s.skippedForLimit == 0 {
@@ -216,11 +218,19 @@ enum Strings {
         return parts.joined(separator: " ")
     }
 
-    static func message(for error: PaprikaError) -> String {
+    // Settings → Your recipes: import from Recipe Keeper (#390)
+    static var recipeKeeperImportTitle: String { String(localized: "recipekeeper_import_title") }
+    static var recipeKeeperImportDescription: String { String(localized: "recipekeeper_import_description") }
+    static var recipeKeeperImporting: String { String(localized: "recipekeeper_importing") }
+
+    /// Why an import from another app failed, in words; `source` picks Recipe Keeper's own "too large".
+    static func message(for error: PaprikaError, source: ImportSource = .paprika) -> String {
         switch error {
         case .notAPaprikaFile: return String(localized: "paprika_error_not_paprika")
+        case .notARecipeKeeperFile: return String(localized: "recipekeeper_error_not_recipekeeper")
         case .damaged: return String(localized: "paprika_error_damaged")
-        case .tooLarge: return String(localized: "paprika_error_too_large")
+        case .tooLarge:
+            return source == .recipeKeeper ? String(localized: "recipekeeper_error_too_large") : String(localized: "paprika_error_too_large")
         case .readFailed: return String(localized: "backup_error_read_failed")
         case .saveFailed: return String(localized: "backup_error_save_failed")
         }

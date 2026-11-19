@@ -1,10 +1,13 @@
 import Foundation
 
 /// Why a Paprika file wasn't imported (#382; Android's `PaprikaError`): the cause, never the
-/// words (the screen picks those).
+/// words (the screen picks those). The causes are shared with the Recipe Keeper import (#390),
+/// which reads through the same repository.
 enum PaprikaError: Equatable {
     /// Not a zip, or a zip with no `.paprikarecipe` entry in it.
     case notAPaprikaFile
+    /// Not a zip, or a zip with no `recipes.html` of Recipe Keeper's in it (#390).
+    case notARecipeKeeperFile
     /// A zip that is cut short or broken in its structure. Nothing was imported.
     case damaged
     /// More entries, or more unpacked text, than any real export holds (`PaprikaLimits`).
@@ -64,7 +67,10 @@ struct PaprikaSummary: Equatable {
 }
 
 /// Paprika's recipes as a `Backup` (#382; Android's `PaprikaImport`), so they merge like any
-/// import: through `BackupMerger`, the one place that applies the library limit to a file. Pure.
+/// import: through `BackupMerger`, the one place that applies the library limit to a file. Pure. The Recipe Keeper import (#390)
+/// maps its recipes to the same `PaprikaRecipe` and comes through here too; its `ImportSource` only
+/// changes the prefix of a recipe's own key (`manual:recipekeeper-<recipeId>`, else
+/// `manual:recipekeeper-h<hash>`).
 ///
 /// - **Identity** (what makes a second import of the same file add nothing): the recipe's cleaned
 ///   source link when it has a real one, so it also meets the same recipe shared or clipped here;
@@ -95,10 +101,11 @@ enum PaprikaImport {
         var repeated: Int
     }
 
-    static func identity(_ recipe: PaprikaRecipe) -> String {
+    static func identity(_ recipe: PaprikaRecipe, source: ImportSource = .paprika) -> String {
         if let link = recipe.sourceUrl { return UrlCleaner.clean(link) }
-        if let uid = recipe.uid, isPlain(uid) { return ManualRecipe.newSourceUrl("paprika-" + uid.lowercased()) }
-        return ManualRecipe.newSourceUrl("paprika-h" + contentHash(recipe))
+        let prefix = source.keyPrefix
+        if let uid = recipe.uid, isPlain(uid) { return ManualRecipe.newSourceUrl("\(prefix)-" + uid.lowercased()) }
+        return ManualRecipe.newSourceUrl("\(prefix)-h" + contentHash(recipe))
     }
 
     /// `[A-Za-z0-9-]{1,64}`: an id that can't smuggle a link or a path into the key.
@@ -140,12 +147,14 @@ enum PaprikaImport {
         }
     }
 
-    static func toBackup(_ recipes: [PaprikaRecipe], now: Int64, filing: Bool = false, newUid: () -> String) -> Mapped {
+    static func toBackup(
+        _ recipes: [PaprikaRecipe], now: Int64, filing: Bool = false, source: ImportSource = .paprika, newUid: () -> String
+    ) -> Mapped {
         var order: [String] = []
         var entries: [String: Entry] = [:]
         var repeated = 0
         for recipe in recipes {
-            let key = identity(recipe)
+            let key = identity(recipe, source: source)
             if let seen = entries[key] {
                 repeated += 1
                 seen.add(recipe.categories)
