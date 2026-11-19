@@ -26,6 +26,9 @@ enum ShareImportUiState: Equatable {
     /// Text holding a recipe, or neither a link nor a list (#306): left for the app
     /// (`PendingText`), whose editor the cook checks it in (never saved unchecked).
     case textInApp
+    /// Text holding a week of recipes with days (#352): left for the app (`PendingPlan`), whose
+    /// review the cook checks it in (never saved unreviewed).
+    case planInApp
 }
 
 /// The share extension's one screen. The import itself is `RecipeRepository.importFromUrl`, the
@@ -50,6 +53,10 @@ final class ShareImportViewModel {
     /// nil leaves nothing.
     @ObservationIgnored private let shareTextOn: () -> Bool
     @ObservationIgnored private let pendingText: PendingText?
+    /// The `mealPlanImport` flag as the app mirrors it (#352), and where a week of recipes in the
+    /// text is left for the app; nil leaves nothing.
+    @ObservationIgnored private let mealPlanOn: () -> Bool
+    @ObservationIgnored private let pendingPlan: PendingPlan?
     /// The images a share carried, staged as a scan's pages (#226), when it had no link.
     @ObservationIgnored private var scanPages: [String] = []
     @ObservationIgnored private let clock: Clock
@@ -75,7 +82,8 @@ final class ShareImportViewModel {
         makeReceiveList: (@MainActor () -> ReceiveListViewModel?)? = nil,
         redditOn: @escaping () -> Bool = { true }, pendingClip: PendingClip? = nil,
         pendingScan: PendingScan? = nil, shareTextOn: @escaping () -> Bool = { false },
-        pendingText: PendingText? = nil, clock: Clock = SystemClock()
+        pendingText: PendingText? = nil, clock: Clock = SystemClock(),
+        mealPlanOn: @escaping () -> Bool = { false }, pendingPlan: PendingPlan? = nil
     ) {
         self.repository = repository
         self.connectivity = connectivity
@@ -85,6 +93,8 @@ final class ShareImportViewModel {
         self.pendingScan = pendingScan
         self.shareTextOn = shareTextOn
         self.pendingText = pendingText
+        self.mealPlanOn = mealPlanOn
+        self.pendingPlan = pendingPlan
         self.clock = clock
     }
 
@@ -128,6 +138,7 @@ final class ShareImportViewModel {
             if !scanPages.isEmpty, let pendingScan {
                 pendingClip?.clear()
                 pendingText?.clear()
+                pendingPlan?.clear()
                 pendingScan.put(scanPages, at: clock.now())
                 uiState = .scanInApp
                 return
@@ -150,6 +161,7 @@ final class ShareImportViewModel {
         pendingClip?.clear()
         pendingScan?.clear()
         pendingText?.clear()
+        pendingPlan?.clear()
         loadTask = Task { [weak self, repository, input] in
             let result = await repository.importFromUrl(input.url, renderedPage: input.page)
             guard !Task.isCancelled, let self else { return }
@@ -176,10 +188,21 @@ final class ShareImportViewModel {
     /// pictures, or a link item apart from the text (Safari's URL beside a title: the text is
     /// then the link's caption, which the route couldn't see) to follow instead (#334).
     private func leavesText() -> Bool {
+        // A week of recipes with days (#352) goes to its own review, beside a link or pictures too,
+        // as a recipe does: the app reads the text again.
+        if shareTextOn(), mealPlanOn(), let pendingPlan, let text, MealPlanImport.read(text) != nil {
+            pendingClip?.clear()
+            pendingScan?.clear()
+            pendingText?.clear()
+            pendingPlan.put(text, at: clock.now())
+            uiState = .planInApp
+            return true
+        }
         guard shareTextOn(), let pendingText, let text, case .editor(let reading) = textRoute,
               reading.sorted || (!withPictures && (input == nil || SharedText.link(text) != nil)) else { return false }
         pendingClip?.clear()
         pendingScan?.clear()
+        pendingPlan?.clear()
         pendingText.put(reading, at: clock.now())
         uiState = .textInApp
         return true

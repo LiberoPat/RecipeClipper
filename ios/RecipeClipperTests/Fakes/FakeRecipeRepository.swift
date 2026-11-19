@@ -71,6 +71,7 @@ final class FakeRecipeRepository: RecipeRepository {
     var saveEditResult: Recipe?
     private(set) var saveEditCalls: [(id: Int64, draft: RecipeDraft)] = []
     var addManualResult: Recipe?
+    var addManualQueue: [Recipe?] = []
     private(set) var addManualCalls: [RecipeDraft] = []
     private(set) var addManualLanguages: [String?] = []
     private(set) var addManualNotes: [String?] = []
@@ -91,6 +92,8 @@ final class FakeRecipeRepository: RecipeRepository {
         addManualCalls.append(draft)
         addManualLanguages.append(language)
         addManualNotes.append(notes)
+        // A queue of answers, one per call, when a test stages several (#352); else the one result.
+        if !addManualQueue.isEmpty { return addManualQueue.removeFirst() }
         return addManualResult
     }
 

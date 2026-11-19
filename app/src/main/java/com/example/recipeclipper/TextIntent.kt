@@ -2,6 +2,7 @@ package com.example.recipeclipper
 
 import android.content.Intent
 import com.example.recipeclipper.data.model.ReceivedList
+import com.example.recipeclipper.data.remote.MealPlanImport
 import com.example.recipeclipper.data.remote.SharedText
 import com.example.recipeclipper.ui.navigation.Routes
 
@@ -20,6 +21,9 @@ object TextIntent {
 
         /** The editor on [text], read once ([reading]); MainActivity leaves it in `SharedTextInbox`. */
         data class Review(val text: String, val reading: SharedText.Reading) : Target
+
+        /** A week of recipes with days (#352): the meal-plan review, on [plan] read once from [text]. */
+        data class Plan(val text: String, val plan: MealPlanImport.Plan) : Target
     }
 
     /** The text [intent] carries, or null. A picture's text (#334) and a selection need the flag. */
@@ -38,11 +42,13 @@ object TextIntent {
      * With shareText on (#306), where [SharedText.route] says: a recipe opens the editor to check,
      * even beside a link, as does text that is neither a link nor a list; a link imports; a list
      * is offered. Beside pictures ([withPictures], #334) only a recipe wins; anything else leaves
-     * the pictures to the scan. Otherwise, as before #306: the first link imports, and lines are
+     * the pictures to the scan. With [mealPlanOn] (#352), a week of recipes with days opens the
+     * meal-plan review instead (also beside pictures: it is a recipe too). Otherwise, as before #306: the first link imports, and lines are
      * offered as a list (#149).
      */
-    fun target(text: String, shareTextOn: Boolean, withPictures: Boolean = false): Target? {
+    fun target(text: String, shareTextOn: Boolean, withPictures: Boolean = false, mealPlanOn: Boolean = false): Target? {
         if (shareTextOn) {
+            if (mealPlanOn) MealPlanImport.read(text)?.let { return Target.Plan(text, it) }
             return when (val route = SharedText.route(text)) {
                 is SharedText.Route.Editor ->
                     if (route.reading.sorted || !withPictures) Target.Review(text, route.reading) else null

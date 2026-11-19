@@ -37,12 +37,15 @@ final class ShareViewController: UIViewController {
         // Images shared in are left for the app's scan review too (#226).
         // Text holding a recipe is left for the app's editor too (#306).
         let shareText = defaults.map(DefaultsShareTextSwitch.init)
+        // A week of recipes in the text is left for the app's meal-plan review (#352).
+        let mealPlan = defaults.map(DefaultsMealPlanSwitch.init)
         let viewModel = ShareImportViewModel(
             repository: repository, connectivity: PathConnectivity(),
             makeReceiveList: { db.flatMap(makeReceiveList) },
             redditOn: { reddit?.isOn ?? true }, pendingClip: defaults.map(PendingClip.init),
             pendingScan: defaults.map { PendingScan(defaults: $0, pages: ScanPages.shared()) },
-            shareTextOn: { shareText?.isOn ?? true }, pendingText: defaults.map(PendingText.init)
+            shareTextOn: { shareText?.isOn ?? true }, pendingText: defaults.map(PendingText.init),
+            mealPlanOn: { mealPlan?.isOn ?? true }, pendingPlan: defaults.map(PendingPlan.init)
         )
         return (viewModel, repository)
     }
