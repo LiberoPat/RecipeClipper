@@ -204,6 +204,31 @@
     <string name="backup_error_read_failed">Impossible d\'ouvrir ce fichier.</string>
     <string name="backup_error_save_failed">Impossible d\'enregistrer les recettes importées. Rien n\'a changé.</string>
     <string name="backup_error_export_failed">Impossible de créer le fichier d\'exportation.</string>
+    <!-- Settings → Your recipes: import from Paprika (#382) -->
+    <string name="paprika_import_title">Importer depuis Paprika</string>
+    <string name="paprika_import_description">Ajouter les recettes d\'un fichier d\'exportation Paprika (.paprikarecipes). Rien de ce qui est déjà là n\'est remplacé ni supprimé.</string>
+    <string name="paprika_importing">Lecture du fichier Paprika…</string>
+    <string name="paprika_imported_nothing">Rien de nouveau : toutes les recettes de ce fichier sont déjà là.</string>
+    <string name="paprika_nothing_found">Aucune recette n\'a pu être lue dans ce fichier.</string>
+    <string name="paprika_photos_not_imported">Les photos stockées dans le fichier n\'ont pas été importées.</string>
+    <string name="paprika_error_not_paprika">Ce fichier n\'est pas une exportation Paprika. Choisissez un fichier .paprikarecipes.</string>
+    <string name="paprika_error_damaged">Ce fichier est endommagé ou incomplet. Rien n\'a été importé.</string>
+    <string name="paprika_error_too_large">Ce fichier est bien plus volumineux qu\'une exportation Paprika ne devrait l\'être. Rien n\'a été importé.</string>
+    <plurals name="paprika_imported">
+        <item quantity="one">%d recette importée depuis Paprika.</item>
+        <item quantity="many">%d de recettes importées depuis Paprika.</item>
+        <item quantity="other">%d recettes importées depuis Paprika.</item>
+    </plurals>
+    <plurals name="paprika_not_recipes">
+        <item quantity="one">%d entrée sans nom, ou sans ingrédients ni étapes, a été laissée de côté.</item>
+        <item quantity="many">%d d\'entrées sans nom, ou sans ingrédients ni étapes, ont été laissées de côté.</item>
+        <item quantity="other">%d entrées sans nom, ou sans ingrédients ni étapes, ont été laissées de côté.</item>
+    </plurals>
+    <plurals name="paprika_unreadable">
+        <item quantity="one">%d entrée n\'a pas pu être lue.</item>
+        <item quantity="many">%d d\'entrées n\'ont pas pu être lues.</item>
+        <item quantity="other">%d entrées n\'ont pas pu être lues.</item>
+    </plurals>
     <string name="temperature_as_written">Comme dans la recette</string>
     <string name="temperature_as_written_description">Exactement la température de la recette</string>
     <string name="temperature_celsius">Celsius (°C)</string>

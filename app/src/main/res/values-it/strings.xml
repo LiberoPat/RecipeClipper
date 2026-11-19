@@ -204,6 +204,31 @@
     <string name="backup_error_read_failed">Impossibile aprire quel file.</string>
     <string name="backup_error_save_failed">Impossibile salvare le ricette importate. Non è stato modificato nulla.</string>
     <string name="backup_error_export_failed">Impossibile creare il file di esportazione.</string>
+    <!-- Settings → Your recipes: import from Paprika (#382) -->
+    <string name="paprika_import_title">Importa da Paprika</string>
+    <string name="paprika_import_description">Aggiunge le ricette di un file di esportazione di Paprika (.paprikarecipes). Niente di ciò che c\'è già viene sostituito o eliminato.</string>
+    <string name="paprika_importing">Lettura del file Paprika…</string>
+    <string name="paprika_imported_nothing">Niente di nuovo: tutte le ricette di quel file sono già qui.</string>
+    <string name="paprika_nothing_found">Non è stato possibile leggere nessuna ricetta da quel file.</string>
+    <string name="paprika_photos_not_imported">Le immagini salvate nel file non sono state importate.</string>
+    <string name="paprika_error_not_paprika">Quel file non è un\'esportazione di Paprika. Scegli un file .paprikarecipes.</string>
+    <string name="paprika_error_damaged">Quel file è danneggiato o incompleto. Non è stato importato nulla.</string>
+    <string name="paprika_error_too_large">Quel file è molto più grande di quanto dovrebbe essere un\'esportazione di Paprika. Non è stato importato nulla.</string>
+    <plurals name="paprika_imported">
+        <item quantity="one">%d ricetta importata da Paprika.</item>
+        <item quantity="many">%d di ricette importate da Paprika.</item>
+        <item quantity="other">%d ricette importate da Paprika.</item>
+    </plurals>
+    <plurals name="paprika_not_recipes">
+        <item quantity="one">%d voce senza nome, o senza ingredienti né passaggi, è stata esclusa.</item>
+        <item quantity="many">%d di voci senza nome, o senza ingredienti né passaggi, sono state escluse.</item>
+        <item quantity="other">%d voci senza nome, o senza ingredienti né passaggi, sono state escluse.</item>
+    </plurals>
+    <plurals name="paprika_unreadable">
+        <item quantity="one">Non è stato possibile leggere %d voce.</item>
+        <item quantity="many">Non è stato possibile leggere %d di voci.</item>
+        <item quantity="other">Non è stato possibile leggere %d voci.</item>
+    </plurals>
     <string name="temperature_as_written">Come nella ricetta</string>
     <string name="temperature_as_written_description">Esattamente la temperatura della ricetta</string>
     <string name="temperature_celsius">Celsius (°C)</string>

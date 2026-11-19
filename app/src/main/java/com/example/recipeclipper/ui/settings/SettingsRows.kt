@@ -32,6 +32,8 @@ import com.example.recipeclipper.data.HISTORY_LIMIT
 import com.example.recipeclipper.data.backup.BackupDestination
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.ImportSummary
+import com.example.recipeclipper.data.backup.PaprikaSummary
+import com.example.recipeclipper.data.remote.PaprikaError
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 import com.example.recipeclipper.ui.sharefile.shareFileUri
@@ -101,6 +103,15 @@ internal fun BackupStatusText(status: BackupStatus) {
         BackupStatus.Exporting -> stringResource(R.string.backup_exporting)
         BackupStatus.Importing -> stringResource(R.string.backup_importing)
         is BackupStatus.Imported -> importSummaryText(resources, status.summary)
+        BackupStatus.ImportingPaprika -> stringResource(R.string.paprika_importing)
+        is BackupStatus.ImportedPaprika -> paprikaSummaryText(resources, status.summary)
+        is BackupStatus.PaprikaFailed -> when (status.error) {
+            PaprikaError.NOT_A_PAPRIKA_FILE -> stringResource(R.string.paprika_error_not_paprika)
+            PaprikaError.DAMAGED -> stringResource(R.string.paprika_error_damaged)
+            PaprikaError.TOO_LARGE -> stringResource(R.string.paprika_error_too_large)
+            PaprikaError.READ_FAILED -> stringResource(R.string.backup_error_read_failed)
+            PaprikaError.SAVE_FAILED -> stringResource(R.string.backup_error_save_failed)
+        }
         is BackupStatus.Failed -> when (val error = status.error) {
             BackupError.NotABackup -> stringResource(R.string.backup_error_not_a_backup)
             is BackupError.NewerVersion -> stringResource(R.string.backup_error_newer_version, error.found)
@@ -113,11 +124,41 @@ internal fun BackupStatusText(status: BackupStatus) {
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
-        color = if (status is BackupStatus.Failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
+        color = if (status is BackupStatus.Failed || status is BackupStatus.PaprikaFailed) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.onBackground
+        },
         modifier = Modifier
             .padding(top = 8.dp)
             .semantics { liveRegion = LiveRegionMode.Polite }
     )
+}
+
+/**
+ * What an import from Paprika did (#382), one sentence per count that isn't zero: imported (or
+ * "nothing new" / "nothing could be read"), already here, left out for the limit, entries that
+ * weren't recipes or couldn't be read, and that the pictures inside the file weren't kept.
+ */
+private fun paprikaSummaryText(resources: android.content.res.Resources, s: PaprikaSummary): String {
+    val parts = mutableListOf<String>()
+    when {
+        s.imported > 0 -> parts += resources.getQuantityString(R.plurals.paprika_imported, s.imported, s.imported)
+        s.skippedForLimit == 0 && s.alreadyHere > 0 -> parts += resources.getString(R.string.paprika_imported_nothing)
+        s.skippedForLimit == 0 -> parts += resources.getString(R.string.paprika_nothing_found)
+    }
+    if (s.alreadyHere > 0 && (s.imported > 0 || s.skippedForLimit > 0)) {
+        parts += resources.getQuantityString(R.plurals.backup_already_here, s.alreadyHere, s.alreadyHere)
+    }
+    if (s.skippedForLimit > 0) {
+        parts += s.freeLimit?.let {
+            resources.getQuantityString(R.plurals.backup_skipped_free, s.skippedForLimit, s.skippedForLimit, it)
+        } ?: resources.getQuantityString(R.plurals.backup_skipped, s.skippedForLimit, s.skippedForLimit, HISTORY_LIMIT)
+    }
+    if (s.notRecipes > 0) parts += resources.getQuantityString(R.plurals.paprika_not_recipes, s.notRecipes, s.notRecipes)
+    if (s.unreadable > 0) parts += resources.getQuantityString(R.plurals.paprika_unreadable, s.unreadable, s.unreadable)
+    if (s.photosNotImported && s.imported > 0) parts += resources.getString(R.string.paprika_photos_not_imported)
+    return parts.joinToString(" ")
 }
 
 private fun importSummaryText(resources: android.content.res.Resources, summary: ImportSummary): String {
@@ -216,6 +257,9 @@ internal fun shareExport(context: Context, uriString: String, title: String) {
 
 /** What the file picker offers. Some file managers label .json as a generic binary. */
 internal val IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "application/octet-stream", "application/zip")
+
+/** A Paprika export (#382) has no MIME type of its own: any file may be picked, and a wrong one is told so. */
+internal val PAPRIKA_MIME_TYPES = arrayOf("*/*")
 
 /** An independent toggle: a title, a one-line description, and a [Switch] — never a
  *  checkmark, which would read as an exclusive choice among its siblings. */

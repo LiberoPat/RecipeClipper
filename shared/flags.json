@@ -95,6 +95,12 @@
       "description": "Recipe versions: JSON shared in whose isBasedOn names a recipe in the library (its link, as Change this recipe wrote it) is saved as a version of it, linked by the original's uid. The version shows Based on the original (a tap opens it) and the original lists its versions. Off, the link is neither saved nor shown, and the recipe is a plain chat recipe.",
       "defaults": { "debug": true, "release": true },
       "issue": 354
+    },
+    {
+      "key": "paprikaImport",
+      "description": "Import from Paprika: Settings, Your recipes gains a row that reads a Paprika export (.paprikarecipes, a zip of gzipped JSON recipes) into the library. Each recipe is kept as the cook's own version (never refreshed from its link), nothing here is replaced or deleted, the free limit says how many were left out, and the pictures inside the file are not kept. Off, the row is not shown.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 382
     }
   ]
 }

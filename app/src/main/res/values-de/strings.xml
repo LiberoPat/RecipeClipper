@@ -193,6 +193,28 @@
     <string name="backup_error_read_failed">Diese Datei konnte nicht geöffnet werden.</string>
     <string name="backup_error_save_failed">Die importierten Rezepte konnten nicht gespeichert werden. Es wurde nichts geändert.</string>
     <string name="backup_error_export_failed">Die Exportdatei konnte nicht erstellt werden.</string>
+    <!-- Settings → Your recipes: import from Paprika (#382) -->
+    <string name="paprika_import_title">Aus Paprika importieren</string>
+    <string name="paprika_import_description">Rezepte aus einer Paprika-Exportdatei (.paprikarecipes) hinzufügen. Dabei wird nichts ersetzt oder gelöscht.</string>
+    <string name="paprika_importing">Paprika-Datei wird gelesen…</string>
+    <string name="paprika_imported_nothing">Nichts Neues: Alle Rezepte in dieser Datei sind schon vorhanden.</string>
+    <string name="paprika_nothing_found">Aus dieser Datei konnte kein Rezept gelesen werden.</string>
+    <string name="paprika_photos_not_imported">Die in der Datei gespeicherten Bilder wurden nicht importiert.</string>
+    <string name="paprika_error_not_paprika">Das ist keine Paprika-Exportdatei. Wähle eine .paprikarecipes-Datei.</string>
+    <string name="paprika_error_damaged">Diese Datei ist beschädigt oder unvollständig. Es wurde nichts importiert.</string>
+    <string name="paprika_error_too_large">Diese Datei ist viel größer, als ein Paprika-Export sein sollte. Es wurde nichts importiert.</string>
+    <plurals name="paprika_imported">
+        <item quantity="one">%d Rezept aus Paprika importiert.</item>
+        <item quantity="other">%d Rezepte aus Paprika importiert.</item>
+    </plurals>
+    <plurals name="paprika_not_recipes">
+        <item quantity="one">%d Eintrag ohne Namen oder ohne Zutaten und Schritte wurde ausgelassen.</item>
+        <item quantity="other">%d Einträge ohne Namen oder ohne Zutaten und Schritte wurden ausgelassen.</item>
+    </plurals>
+    <plurals name="paprika_unreadable">
+        <item quantity="one">%d Eintrag konnte nicht gelesen werden.</item>
+        <item quantity="other">%d Einträge konnten nicht gelesen werden.</item>
+    </plurals>
     <string name="temperature_as_written">Wie im Rezept</string>
     <string name="temperature_as_written_description">Genau die Temperatur aus dem Rezept</string>
     <string name="temperature_celsius">Celsius (°C)</string>

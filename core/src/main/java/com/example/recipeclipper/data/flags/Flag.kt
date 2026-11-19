@@ -46,7 +46,9 @@ enum class Flag(val key: String) {
     /** Meal-plan import (#352): a week of AI recipes shared in opens a review, kept and planned on their days in Week. */
     MEAL_PLAN_IMPORT("mealPlanImport"),
     /** Recipe versions (#354): an AI's change to a recipe is saved linked to its original. */
-    RECIPE_VERSIONS("recipeVersions");
+    RECIPE_VERSIONS("recipeVersions"),
+    /** Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library. */
+    PAPRIKA_IMPORT("paprikaImport");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

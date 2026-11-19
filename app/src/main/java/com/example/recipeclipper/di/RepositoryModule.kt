@@ -57,6 +57,13 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun backupRepository(impl: DefaultBackupRepository): BackupRepository
 
+    /** Import from Paprika (#382). */
+    @Binds
+    @Singleton
+    abstract fun paprikaImportRepository(
+        impl: com.example.recipeclipper.data.DefaultPaprikaImportRepository
+    ): com.example.recipeclipper.data.PaprikaImportRepository
+
     /** The shared file that carries recipes and items to someone else (#149). */
     @Binds
     @Singleton
