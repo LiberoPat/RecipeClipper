@@ -8,6 +8,8 @@ struct RecipesScreen: View {
     let onOpenRecipe: (Int64) -> Void
     var onNewRecipe: () -> Void = {}
     var onOpenUrl: (String) -> Void = { _ in }
+    /// Pasted text that isn't a link (#372): the editor, the meal-plan review, Groceries' list sheet.
+    var onOpenPasted: (PasteTarget) -> Void = { _ in }
     /// "Scan a recipe" (#226): the pictures taken or picked, in order; nil hides it (flag off).
     var onScan: (([Data]) -> Void)? = nil
     /// One cookbook (#345): the views strip in place of the filter pills, and a bookmark to save from a
@@ -21,6 +23,11 @@ struct RecipesScreen: View {
     @State private var saveSheetOpen = false
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
     @State private var sideInset = ReadableWidth.gutter
+
+    /// A link imports as always; any other pasted text goes where the same text shared would (#372).
+    private func openPasted(_ target: PasteTarget) {
+        if case .link(let url) = target { onOpenUrl(url) } else { onOpenPasted(target) }
+    }
 
     var body: some View {
         let state = vm.uiState
@@ -123,17 +130,18 @@ struct RecipesScreen: View {
                 }
             }
         }
-        .alert(Strings.pasteLink, isPresented: Binding(
+        // "Paste a link" takes any recipe text (#372): a link imports, anything else goes where a
+        // share of it would.
+        .sheet(isPresented: Binding(
             get: { vm.uiState.pastingLink },
             set: { presented in if !presented { vm.onLinkDismissed() } }
         )) {
-            TextField(Strings.labelRecipeUrl, text: Binding(get: { vm.uiState.linkInput }, set: vm.onLinkChange))
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-            Button(Strings.cancel, role: .cancel, action: vm.onLinkDismissed)
-            Button(Strings.go) { if let url = vm.onOpenLink() { onOpenUrl(url) } }
-                .disabled(!state.canOpenLink)
+            PasteLinkSheet(
+                text: Binding(get: { vm.uiState.linkInput }, set: vm.onLinkChange),
+                canOpen: vm.uiState.canOpenLink, noRecipe: vm.uiState.linkNoRecipe,
+                onOpen: { if let target = vm.onOpenLink() { openPasted(target) } },
+                onCancel: vm.onLinkDismissed
+            )
         }
         .overlay(alignment: .bottom) {
             if state.restoreRefused {

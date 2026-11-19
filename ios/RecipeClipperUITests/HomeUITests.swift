@@ -115,14 +115,14 @@ final class HomeUITests: RecipeUITestCase {
 
     // "Add a recipe" (#286): three equal tiles in place of the link field.
 
-    func testSomethingThatIsNotALinkCannotBeOpened() {
+    func testNothingTypedCannotBeOpened() {
         launch(.standard)
 
         require(homePasteLink).tap()
-        let field = require(app.alerts.textFields.firstMatch, "the Paste a link alert")
-        field.typeText("not a link")
+        let field = require(app.descendants(matching: .any)["pasteField"], "the Paste a link sheet")
+        field.tap()
 
-        XCTAssertFalse(app.alerts.buttons["Go"].isEnabled)
+        XCTAssertFalse(app.buttons["pasteGo"].isEnabled)
         XCTAssertFalse(bookmark.exists, "no recipe screen should have opened")
     }
 

@@ -7,6 +7,8 @@ import UIKit
 /// shared text.
 struct AskAiSheet: View {
     let vm: AskAiViewModel
+    /// "Paste the answer" (#372): where the pasted text leads, for the screen to open.
+    var onOpenPasted: (PasteTarget) -> Void = { _ in }
 
     var body: some View {
         let state = vm.uiState
@@ -37,6 +39,26 @@ struct AskAiSheet: View {
                     prompt: { vm.prompt(words: Strings.askAiWords) }, onCopied: vm.onCopied
                 )
                 .padding(.top, 16)
+                // The answer comes back (#372): read from the clipboard once, on this tap, never on
+                // its own. A platform effect, so here, not in the ViewModel.
+                Button {
+                    if let target = vm.onPasteAnswer(UIPasteboard.general.string) { onOpenPasted(target) }
+                } label: {
+                    Text(Strings.askAiPaste)
+                        .textStyle(Typography.labelLarge)
+                        .foregroundStyle(Palette.accentText)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(RoundedRectangle(cornerRadius: 14).strokeBorder(Palette.outline, lineWidth: 1))
+                }
+                .padding(.top, 12)
+                .accessibilityIdentifier("askAiPaste")
+                if let problem = state.pasteProblem {
+                    Text(problem == .empty ? Strings.askAiPasteEmpty : Strings.askAiPasteNone)
+                        .textStyle(Typography.bodySmall)
+                        .foregroundStyle(Palette.error)
+                        .padding(.top, 8)
+                        .accessibilityIdentifier("askAiPasteProblem")
+                }
             }
             .padding(.horizontal, 20)
             .readableColumn()

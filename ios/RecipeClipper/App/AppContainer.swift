@@ -292,15 +292,32 @@ final class AppContainer {
     func makeHomeViewModel() -> HomeViewModel {
         HomeViewModel(
             repository: recipeRepository, backups: backupRepository, files: backupFiles,
-            lists: listRepository, clock: clock, preferences: preferences
+            lists: listRepository, clock: clock, preferences: preferences, pasted: pastedTextRouter
         )
+    }
+
+    /// Where pasted text goes (#372), as a share of it would: the flags read as they stand.
+    var pastedTextRouter: PastedTextRouter {
+        PastedTextRouter(
+            shareTextOn: { [featureFlags] in featureFlags.isOn(.shareText) },
+            mealPlanOn: { [featureFlags] in featureFlags.isOn(.mealPlanImport) }
+        )
+    }
+
+    /// A list pasted in the app (#372), waiting for Groceries' "Add this list" sheet to open on it.
+    var pendingListText: String?
+
+    /// The waiting list's text, once.
+    func takePendingList() -> String? {
+        defer { pendingListText = nil }
+        return pendingListText
     }
 
     func makeRecipesViewModel(view: RecipeFilter? = nil) -> RecipesViewModel {
         RecipesViewModel(
             repository: recipeRepository, preferences: preferences, library: libraryPolicy,
             cookedSort: cookedPhotoRepository != nil, countdowns: timerCountdowns,
-            view: view, lists: listRepository
+            view: view, lists: listRepository, pasted: pastedTextRouter
         )
     }
 
@@ -364,7 +381,8 @@ final class AppContainer {
         guard featureFlags.isOn(.askAi) else { return nil }
         let pantry = pantryRepository, lists = listRepository, recipes = recipeRepository
         let preferences = preferences, clock = clock
-        return { AskAiViewModel(pantry: pantry, lists: lists, recipes: recipes, preferences: preferences, clock: clock) }
+        let pasted = pastedTextRouter
+        return { AskAiViewModel(pantry: pantry, lists: lists, recipes: recipes, preferences: preferences, clock: clock, pasted: pasted) }
     }
 
     /// Makes "Send as file"'s ViewModel (#149); nil without a share file repository.
