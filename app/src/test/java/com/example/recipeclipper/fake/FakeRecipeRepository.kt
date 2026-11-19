@@ -6,6 +6,8 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeDraft
+import com.example.recipeclipper.data.model.RecipeCounts
+import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
@@ -178,10 +180,28 @@ class FakeRecipeRepository : RecipeRepository {
         forgetCalls += deleted
     }
 
-    override fun observeHistory(query: String): Flow<List<RecipeSummary>> {
+    /** Every filter [observeHistory] was called with, in order (#345). */
+    val historyFilters = mutableListOf<RecipeFilter>()
+
+    /**
+     * Honours the filter by [RecipeSummary.isSaved], as the SQL does by the cross-ref table, but
+     * not the query (the tests push what they want listed).
+     */
+    override fun observeHistory(query: String, filter: RecipeFilter): Flow<List<RecipeSummary>> {
         historyQueries += query
-        return history
+        historyFilters += filter
+        return history.map { rows ->
+            when (filter) {
+                RecipeFilter.ALL -> rows
+                RecipeFilter.IN_A_LIST -> rows.filter { it.isSaved }
+                RecipeFilter.NOT_IN_A_LIST -> rows.filter { !it.isSaved }
+            }
+        }
     }
+
+    /** Counted from what [history] holds (#345). */
+    override fun observeRecipeCounts(): Flow<RecipeCounts> =
+        history.map { rows -> RecipeCounts(rows.size, rows.count { it.isSaved }) }
 
     /**
      * Honours [limit], like the SQL `LIMIT` it stands in for. Without this a test could push

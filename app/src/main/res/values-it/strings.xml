@@ -17,7 +17,7 @@
     <string name="cd_share_recipe">Condividi la ricetta</string>
     <string name="cd_more_options">Altre opzioni</string>
     <string name="delete_recipe_title">Eliminare «%1$s»?</string>
-    <string name="delete_recipe_body">La ricetta verrà rimossa dalla cronologia e da tutte le liste in cui si trova. L\'operazione non si può annullare.</string>
+    <string name="delete_recipe_body">La ricetta verrà rimossa dalle tue ricette e da tutte le liste in cui si trova. L\'operazione non si può annullare.</string>
     <string name="label_prep">Preparazione</string>
     <string name="label_cook">Cottura</string>
     <string name="label_total">Totale</string>
@@ -93,6 +93,13 @@
     <string name="recipes_title">Ricette</string>
     <string name="recipes_empty">Ancora niente. Le ricette che apri vengono conservate qui, e con + ne aggiungi una a mano o da un link.</string>
     <string name="recipes_no_results">Nessuna ricetta corrisponde a «%1$s».</string>
+    <string name="recipes_filter_all">Tutte</string>
+    <string name="recipes_filter_in_list">In una lista</string>
+    <string name="recipes_filter_not_in_list">In nessuna lista</string>
+    <string name="recipes_empty_in_list">Nessuna ricetta è ancora in una lista. Salvane una in una lista con il suo segnalibro.</string>
+    <string name="recipes_empty_not_in_list">Ogni ricetta è in una lista.</string>
+    <!-- %1$d is the cap on recipes in no list (50). -->
+    <string name="recipes_cull_note">Le ricette senza lista vengono conservate fino a %1$d. Oltre, le prime a essere eliminate sono quelle aperte meno di recente. Salva una ricetta in una lista per conservarla.</string>
     <string name="label_search_recipes">Cerca titoli e ingredienti</string>
     <string name="cd_add_recipe">Aggiungi una ricetta</string>
     <string name="action_type_recipe">Scrivi una ricetta</string>
@@ -171,9 +178,9 @@
         <item quantity="other">%d ricette erano già qui.</item>
     </plurals>
     <plurals name="backup_skipped">
-        <item quantity="one">%1$d ricetta meno recente senza lista non è stata aggiunta: la cronologia conserva le %2$d più recenti.</item>
-        <item quantity="many">%1$d di ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$d più recenti.</item>
-        <item quantity="other">%1$d ricette meno recenti senza lista non sono state aggiunte: la cronologia conserva le %2$d più recenti.</item>
+        <item quantity="one">%1$d ricetta meno recente senza lista non è stata aggiunta: le ricette senza lista vengono conservate fino a %2$d.</item>
+        <item quantity="many">%1$d di ricette meno recenti senza lista non sono state aggiunte: le ricette senza lista vengono conservate fino a %2$d.</item>
+        <item quantity="other">%1$d ricette meno recenti senza lista non sono state aggiunte: le ricette senza lista vengono conservate fino a %2$d.</item>
     </plurals>
     <string name="backup_error_not_a_backup">Quel file non è un\'esportazione di Recipe Clipper.</string>
     <string name="backup_error_newer_version">Quel file è stato creato con una versione più recente di Recipe Clipper (formato %1$d). Aggiorna l\'app per importarlo.</string>
@@ -208,7 +215,7 @@
     <string name="save_to_list_new_list_note">%1$s va nella nuova lista.</string>
     <string name="rename_list_title">Rinomina la lista</string>
     <string name="delete_list_title">Eliminare «%1$s»?</string>
-    <string name="delete_list_body">La lista verrà rimossa. Le sue ricette resteranno nella cronologia.</string>
+    <string name="delete_list_body">La lista verrà rimossa. Le sue ricette resteranno in Ricette.</string>
     <string name="action_delete_list">Elimina la lista</string>
 
     <!-- Bottom tabs (#47) -->
@@ -365,7 +372,7 @@
     <string name="cd_clip_remove_line">Rimuovi la riga %1$d</string>
     <string name="clip_save">Salva ricetta</string>
     <string name="update_from_source_clip_title">Sostituire il tuo ritaglio?</string>
-    <string name="update_from_source_clip_body">La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nelle tue liste e nella cronologia.</string>
+    <string name="update_from_source_clip_body">La pagina viene ricaricata e il nome, gli ingredienti, i passaggi e la foto che hai ritagliato vengono sostituiti dai dati della ricetta del sito. Resta nelle tue liste e in Ricette.</string>
     <string name="clipped_by_you">Ritagliata da te</string>
     <string name="clipped_by_you_on">Ritagliata da te · %1$s</string>
     <string name="extracted_from_page">Presa dal testo della pagina: verificala con la fonte</string>
@@ -631,8 +638,8 @@
     <string name="cd_cooked_mark">Cucinata, senza foto, %1$s</string>
     <string name="cd_delete_cooked_mark">Rimuovi dai tuoi piatti</string>
     <string name="cooked_mark_deleted">Rimosso dai tuoi piatti</string>
-    <string name="delete_recipe_body_photo">La ricetta verrà rimossa dalla cronologia e da tutte le liste in cui si trova, insieme alla tua foto. L\'operazione non si può annullare.</string>
-    <string name="delete_recipe_body_photos">La ricetta verrà rimossa dalla cronologia e da tutte le liste in cui si trova, insieme alle tue %1$d foto. L\'operazione non si può annullare.</string>
+    <string name="delete_recipe_body_photo">La ricetta verrà rimossa dalle tue ricette e da tutte le liste in cui si trova, insieme alla tua foto. L\'operazione non si può annullare.</string>
+    <string name="delete_recipe_body_photos">La ricetta verrà rimossa dalle tue ricette e da tutte le liste in cui si trova, insieme alle tue %1$d foto. L\'operazione non si può annullare.</string>
     <!-- The automatic backup copy (#150). -->
     <string name="auto_backup_title">Copia di backup automatica</string>
     <string name="auto_backup_description">Tiene una copia di tutto, foto comprese, in una cartella a tua scelta, e la aggiorna dopo ogni modifica</string>

@@ -19,7 +19,7 @@
     <string name="cd_share_recipe">Share recipe</string>
     <string name="cd_more_options">More options</string>
     <string name="delete_recipe_title">Delete \"%1$s\"?</string>
-    <string name="delete_recipe_body">This removes it from history and any lists it\'s in. This can\'t be undone.</string>
+    <string name="delete_recipe_body">This removes it from your recipes and any lists it\'s in. This can\'t be undone.</string>
     <string name="label_prep">Prep</string>
     <string name="label_cook">Cook</string>
     <string name="label_total">Total</string>
@@ -72,7 +72,7 @@
     <string name="cd_clip_remove_line">Remove line %1$d</string>
     <string name="clip_save">Save recipe</string>
     <string name="update_from_source_clip_title">Replace your clip?</string>
-    <string name="update_from_source_clip_body">This loads the page again and replaces the name, ingredients, steps and photo you clipped with the site\'s own recipe data. It stays in your lists and history.</string>
+    <string name="update_from_source_clip_body">This loads the page again and replaces the name, ingredients, steps and photo you clipped with the site\'s own recipe data. It stays in your lists and in Recipes.</string>
     <string name="clipped_by_you">Clipped by you</string>
     <string name="clipped_by_you_on">Clipped by you · %1$s</string>
     <string name="extracted_from_page">Picked from the page text — check against the source</string>
@@ -167,10 +167,17 @@
     <string name="home_open_recipe">Open recipe</string>
     <string name="home_timer_left">%1$s left</string>
 
-    <!-- History screen -->
+    <!-- Recipes screen -->
     <string name="recipes_title">Recipes</string>
     <string name="recipes_empty">Nothing yet. Recipes you open are kept here, and + adds one by hand or from a link.</string>
     <string name="recipes_no_results">No recipes match \"%1$s\".</string>
+    <string name="recipes_filter_all">All</string>
+    <string name="recipes_filter_in_list">In a list</string>
+    <string name="recipes_filter_not_in_list">Not in a list</string>
+    <string name="recipes_empty_in_list">No recipes are in a list yet. Save one to a list with its bookmark.</string>
+    <string name="recipes_empty_not_in_list">Every recipe is in a list.</string>
+    <!-- %1$d is the cap on recipes in no list (50). -->
+    <string name="recipes_cull_note">Recipes in no list are kept up to %1$d. Past that, the ones you opened longest ago go first. Save one to a list to keep it.</string>
     <string name="label_search_recipes">Search titles and ingredients</string>
     <string name="cd_add_recipe">Add a recipe</string>
     <string name="action_type_recipe">Type a recipe</string>
@@ -253,10 +260,10 @@
         <item quantity="one">%d recipe was already here.</item>
         <item quantity="other">%d recipes were already here.</item>
     </plurals>
-    <!-- %2$d is the history limit (50). -->
+    <!-- %2$d is the cap on recipes in no list (50). -->
     <plurals name="backup_skipped">
-        <item quantity="one">%1$d older recipe in no list wasn\'t added: history keeps the %2$d most recent.</item>
-        <item quantity="other">%1$d older recipes in no list weren\'t added: history keeps the %2$d most recent.</item>
+        <item quantity="one">%1$d older recipe in no list wasn\'t added: recipes in no list are kept up to %2$d.</item>
+        <item quantity="other">%1$d older recipes in no list weren\'t added: recipes in no list are kept up to %2$d.</item>
     </plurals>
     <string name="backup_error_not_a_backup">That file isn\'t a Recipe Clipper export.</string>
     <string name="backup_error_newer_version">That file was made by a newer version of Recipe Clipper (format %1$d). Update the app to import it.</string>
@@ -301,7 +308,7 @@
     <string name="delete_list_title">Delete \"%1$s\"?</string>
     <!-- Deliberately says what does NOT happen: deleting a list is not deleting its recipes,
          and that is the thing someone would hesitate over. -->
-    <string name="delete_list_body">The list is removed. The recipes in it stay in your history.</string>
+    <string name="delete_list_body">The list is removed. The recipes in it are still in Recipes.</string>
     <string name="action_delete_list">Delete list</string>
 
     <!-- Bottom tabs (#47) -->
@@ -660,9 +667,9 @@
     <string name="cd_cooked_mark">Cooked, no photo, %1$s</string>
     <string name="cd_delete_cooked_mark">Remove from your cooks</string>
     <string name="cooked_mark_deleted">Removed from your cooks</string>
-    <string name="delete_recipe_body_photo">This removes it from history and any lists it\'s in, with your photo of it. This can\'t be undone.</string>
+    <string name="delete_recipe_body_photo">This removes it from your recipes and any lists it\'s in, with your photo of it. This can\'t be undone.</string>
     <!-- Two or more (one has its own string): every shipped language says "N photos" alike. -->
-    <string name="delete_recipe_body_photos" tools:ignore="PluralsCandidate">This removes it from history and any lists it\'s in, with your %1$d photos of it. This can\'t be undone.</string>
+    <string name="delete_recipe_body_photos" tools:ignore="PluralsCandidate">This removes it from your recipes and any lists it\'s in, with your %1$d photos of it. This can\'t be undone.</string>
     <!-- The automatic backup copy (#150). -->
     <string name="auto_backup_title">Automatic backup copy</string>
     <string name="auto_backup_description">Keeps a copy of everything, photos included, in a folder you choose, and refreshes it after changes</string>

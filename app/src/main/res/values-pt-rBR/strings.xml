@@ -17,7 +17,7 @@
     <string name="cd_share_recipe">Compartilhar receita</string>
     <string name="cd_more_options">Mais opções</string>
     <string name="delete_recipe_title">Excluir “%1$s”?</string>
-    <string name="delete_recipe_body">A receita será removida do histórico e de todas as listas em que estiver. Isso não pode ser desfeito.</string>
+    <string name="delete_recipe_body">A receita será removida das suas receitas e de todas as listas em que estiver. Isso não pode ser desfeito.</string>
     <string name="label_prep">Preparo</string>
     <string name="label_cook">Cozimento</string>
     <string name="label_total">Total</string>
@@ -93,6 +93,13 @@
     <string name="recipes_title">Receitas</string>
     <string name="recipes_empty">Nada por aqui ainda. As receitas que você abrir ficam guardadas aqui, e com + você adiciona uma à mão ou por um link.</string>
     <string name="recipes_no_results">Nenhuma receita encontrada para “%1$s”.</string>
+    <string name="recipes_filter_all">Todas</string>
+    <string name="recipes_filter_in_list">Em uma lista</string>
+    <string name="recipes_filter_not_in_list">Em nenhuma lista</string>
+    <string name="recipes_empty_in_list">Nenhuma receita está em uma lista ainda. Salve uma em uma lista com o marcador dela.</string>
+    <string name="recipes_empty_not_in_list">Todas as receitas estão em uma lista.</string>
+    <!-- %1$d is the cap on recipes in no list (50). -->
+    <string name="recipes_cull_note">As receitas sem lista são mantidas até %1$d. Depois disso, as abertas há mais tempo são removidas primeiro. Salve uma receita em uma lista para mantê-la.</string>
     <string name="label_search_recipes">Buscar títulos e ingredientes</string>
     <string name="cd_add_recipe">Adicionar uma receita</string>
     <string name="action_type_recipe">Digitar uma receita</string>
@@ -171,9 +178,9 @@
         <item quantity="other">%d receitas já estavam aqui.</item>
     </plurals>
     <plurals name="backup_skipped">
-        <item quantity="one">%1$d receita antiga sem lista não foi adicionada: o histórico mantém as %2$d mais recentes.</item>
-        <item quantity="many">%1$d de receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$d mais recentes.</item>
-        <item quantity="other">%1$d receitas antigas sem lista não foram adicionadas: o histórico mantém as %2$d mais recentes.</item>
+        <item quantity="one">%1$d receita antiga sem lista não foi adicionada: as receitas sem lista são mantidas até %2$d.</item>
+        <item quantity="many">%1$d de receitas antigas sem lista não foram adicionadas: as receitas sem lista são mantidas até %2$d.</item>
+        <item quantity="other">%1$d receitas antigas sem lista não foram adicionadas: as receitas sem lista são mantidas até %2$d.</item>
     </plurals>
     <string name="backup_error_not_a_backup">Esse arquivo não é uma exportação do Recipe Clipper.</string>
     <string name="backup_error_newer_version">Esse arquivo foi criado com uma versão mais recente do Recipe Clipper (formato %1$d). Atualize o app para importá-lo.</string>
@@ -208,7 +215,7 @@
     <string name="save_to_list_new_list_note">%1$s vai para a nova lista.</string>
     <string name="rename_list_title">Renomear lista</string>
     <string name="delete_list_title">Excluir “%1$s”?</string>
-    <string name="delete_list_body">A lista será removida. As receitas dela continuam no seu histórico.</string>
+    <string name="delete_list_body">A lista será removida. As receitas dela continuam em Receitas.</string>
     <string name="action_delete_list">Excluir lista</string>
 
     <!-- Bottom tabs (#47) -->
@@ -365,7 +372,7 @@
     <string name="cd_clip_remove_line">Remover a linha %1$d</string>
     <string name="clip_save">Salvar receita</string>
     <string name="update_from_source_clip_title">Substituir seu recorte?</string>
-    <string name="update_from_source_clip_body">Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. A receita continua nas suas listas e no histórico.</string>
+    <string name="update_from_source_clip_body">Isso carrega a página de novo e substitui o nome, os ingredientes, os passos e a foto que você recortou pelos dados de receita do próprio site. A receita continua nas suas listas e em Receitas.</string>
     <string name="clipped_by_you">Recortada por você</string>
     <string name="clipped_by_you_on">Recortada por você · %1$s</string>
     <string name="extracted_from_page">Extraída do texto da página: confira com o original</string>
@@ -631,8 +638,8 @@
     <string name="cd_cooked_mark">Feita, sem foto, %1$s</string>
     <string name="cd_delete_cooked_mark">Excluir registro</string>
     <string name="cooked_mark_deleted">Registro excluído</string>
-    <string name="delete_recipe_body_photo">A receita será removida do histórico e de todas as listas em que estiver, com a sua foto. Isso não pode ser desfeito.</string>
-    <string name="delete_recipe_body_photos">A receita será removida do histórico e de todas as listas em que estiver, com as suas %1$d fotos. Isso não pode ser desfeito.</string>
+    <string name="delete_recipe_body_photo">A receita será removida das suas receitas e de todas as listas em que estiver, com a sua foto. Isso não pode ser desfeito.</string>
+    <string name="delete_recipe_body_photos">A receita será removida das suas receitas e de todas as listas em que estiver, com as suas %1$d fotos. Isso não pode ser desfeito.</string>
     <!-- The automatic backup copy (#150). -->
     <string name="auto_backup_title">Cópia de backup automática</string>
     <string name="auto_backup_description">Mantém uma cópia de tudo, fotos incluídas, em uma pasta que você escolher, e a atualiza depois de cada mudança</string>

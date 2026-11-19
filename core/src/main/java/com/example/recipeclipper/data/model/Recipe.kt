@@ -130,6 +130,23 @@ enum class RecipeSort {
 }
 
 /**
+ * Which recipes the Recipes screen lists (#345, V1): all, those in at least one list ("saved",
+ * derived from the cross-ref table), or those in none. Not remembered: it opens on [ALL].
+ */
+enum class RecipeFilter { ALL, IN_A_LIST, NOT_IN_A_LIST }
+
+/** How many recipes there are, and how many of them are in at least one list (#345). */
+data class RecipeCounts(val all: Int, val inList: Int) {
+    val notInList: Int get() = all - inList
+
+    fun of(filter: RecipeFilter): Int = when (filter) {
+        RecipeFilter.ALL -> all
+        RecipeFilter.IN_A_LIST -> inList
+        RecipeFilter.NOT_IN_A_LIST -> notInList
+    }
+}
+
+/**
  * Why a [ParseResult] or a load failed, as a cause rather than a sentence: a parser or a
  * repository has no business choosing presentation copy. The UI resolves one of these to
  * text via `stringResource`. [FetchFailed.detail] is the exception, not to be confused for

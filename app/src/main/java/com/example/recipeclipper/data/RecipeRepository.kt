@@ -10,6 +10,8 @@ import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeDraft
+import com.example.recipeclipper.data.model.RecipeCounts
+import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
@@ -154,7 +156,10 @@ interface RecipeRepository {
     suspend fun forget(deleted: DeletedRecipe) {}
 
     /** Titles and ingredients matching [query]; everything when [query] is blank. */
-    fun observeHistory(query: String): Flow<List<RecipeSummary>>
+    fun observeHistory(query: String, filter: RecipeFilter = RecipeFilter.ALL): Flow<List<RecipeSummary>>
+
+    /** How many recipes there are, and how many are in a list: the Recipes filter's counts (#345). */
+    fun observeRecipeCounts(): Flow<RecipeCounts>
 
     fun observeRecent(limit: Int): Flow<List<RecipeSummary>>
 

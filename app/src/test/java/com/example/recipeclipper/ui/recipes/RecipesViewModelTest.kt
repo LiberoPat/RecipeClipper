@@ -4,6 +4,8 @@ import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.collectEagerly
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.entity.RecipeEntity
+import com.example.recipeclipper.data.model.RecipeCounts
+import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.LibraryLimit
@@ -16,6 +18,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -383,5 +386,120 @@ class RecipesViewModelTest {
         advanceUntilIdle()
 
         assertNull(vm.uiState.value.linkInput)
+    }
+
+    // --- The filter (#345) ---
+
+    private fun saved(id: Long) = summary(id).copy(isSaved = true)
+
+    @Test fun `the filter opens on All, with the library's counts`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { history.value = listOf(saved(1), summary(2), summary(3)) }
+        val vm = RecipesViewModel(repository, FakeAppPreferences())
+        collectEagerly(vm.uiState)
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(RecipeFilter.ALL, state.filter)
+        assertEquals(RecipeCounts(all = 3, inList = 1), state.counts)
+        assertEquals(2, state.counts!!.notInList)
+        assertEquals(listOf(1L, 2L, 3L), state.recipes!!.map { it.id })
+        assertTrue(state.showsFilter)
+    }
+
+    @Test fun `a filter goes to the repository at once, with the query`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { history.value = listOf(saved(1), summary(2), summary(3)) }
+        val vm = RecipesViewModel(repository, FakeAppPreferences())
+        collectEagerly(vm.uiState)
+        advanceUntilIdle()
+
+        vm.onFilterChange(RecipeFilter.NOT_IN_A_LIST)
+        advanceUntilIdle()
+        assertEquals(RecipeFilter.NOT_IN_A_LIST, vm.uiState.value.filter)
+        assertEquals(listOf(2L, 3L), vm.uiState.value.recipes!!.map { it.id })
+
+        vm.onFilterChange(RecipeFilter.IN_A_LIST)
+        advanceUntilIdle()
+        assertEquals(listOf(1L), vm.uiState.value.recipes!!.map { it.id })
+
+        // Search applies inside the filter: the query and the filter are asked together.
+        vm.onQueryChange("soup")
+        advanceUntilIdle()
+        assertEquals("soup", repository.historyQueries.last())
+        assertEquals(RecipeFilter.IN_A_LIST, repository.historyFilters.last())
+        assertEquals(RecipeFilter.IN_A_LIST, vm.uiState.value.filter)
+    }
+
+    @Test fun `the counts ignore the filter, and the pills stay when a filter matches nothing`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { history.value = listOf(summary(1), summary(2)) }
+            val vm = RecipesViewModel(repository, FakeAppPreferences())
+            collectEagerly(vm.uiState)
+            vm.onFilterChange(RecipeFilter.IN_A_LIST)
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(emptyList<RecipeSummary>(), state.recipes)
+            assertEquals(RecipeCounts(2, 0), state.counts)
+            assertTrue(state.showsFilter)
+        }
+
+    @Test fun `an empty library has no filter to show`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = RecipesViewModel(FakeRecipeRepository(), FakeAppPreferences())
+        collectEagerly(vm.uiState)
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.showsFilter)
+    }
+
+    @Test fun `the clean-up note shows only under Not in a list, with the cap, while that clean-up applies`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = FakeRecipeRepository().apply { history.value = listOf(saved(1), summary(2)) }
+            val library = FakeLibraryPolicy(LibraryLimit.History(50))
+            val vm = RecipesViewModel(repository, FakeAppPreferences(), library)
+            collectEagerly(vm.uiState)
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.showsCullNote) // All
+
+            vm.onFilterChange(RecipeFilter.IN_A_LIST)
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.showsCullNote)
+
+            vm.onFilterChange(RecipeFilter.NOT_IN_A_LIST)
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.showsCullNote)
+            assertEquals(50, vm.uiState.value.cullKeep)
+
+            // The free tier and an unlocked library have their own rules: no note.
+            library.limit = LibraryLimit.Free(20)
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.showsCullNote)
+            library.limit = LibraryLimit.Unlimited
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.showsCullNote)
+        }
+
+    @Test fun `no note is shown over an empty Not in a list`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { history.value = listOf(saved(1)) }
+        val vm = RecipesViewModel(repository, FakeAppPreferences())
+        collectEagerly(vm.uiState)
+        vm.onFilterChange(RecipeFilter.NOT_IN_A_LIST)
+        advanceUntilIdle()
+
+        assertEquals(emptyList<RecipeSummary>(), vm.uiState.value.recipes)
+        assertFalse(vm.uiState.value.showsCullNote)
+    }
+
+    @Test fun `a filter change never blanks the list`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository().apply { history.value = listOf(saved(1), summary(2), summary(3)) }
+        val vm = RecipesViewModel(repository, FakeAppPreferences())
+        val seen = mutableListOf<List<Long>?>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.uiState.collect { seen += it.recipes?.map { r -> r.id } }
+        }
+        advanceUntilIdle()
+        vm.onFilterChange(RecipeFilter.IN_A_LIST)
+        advanceUntilIdle()
+        assertEquals(listOf(1L), seen.last())
+        assertTrue(seen.drop(seen.indexOfFirst { it != null }).none { it == null })
     }
 }

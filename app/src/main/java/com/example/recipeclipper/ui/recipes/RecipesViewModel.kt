@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.model.RecipeCounts
+import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.home.UrlInput
@@ -34,6 +36,10 @@ import javax.inject.Inject
  * [deleteBatch] names the burst they belong to, null when none is pending: the snackbar is keyed
  * on it, so further swipes update one snackbar's count in place instead of replacing it (#268).
  * [linkInput] is the "Paste a link" dialog's text, or null while the dialog is closed.
+ * [filter] is All / In a list / Not in a list (#345), applied by the query beside the search;
+ * [counts] are the library's, whatever the filter or search, null until the database answers.
+ * [cullKeep] is the cap on recipes in no list (the old history's 50) while it applies, null
+ * when nothing clears on its own.
  */
 data class RecipesUiState(
     val query: String = "",
@@ -43,8 +49,22 @@ data class RecipesUiState(
     val sort: RecipeSort = RecipeSort.RECENTLY_VIEWED,
     val linkInput: String? = null,
     /** The free library's quiet count (#107); null when there is no limit to count against. */
-    val count: LibraryCount? = null
+    val count: LibraryCount? = null,
+    val filter: RecipeFilter = RecipeFilter.ALL,
+    val counts: RecipeCounts? = null,
+    val cullKeep: Int? = null
 ) {
+    /** The filter shows once there is a recipe to filter, and stays when a filter matches none. */
+    val showsFilter: Boolean get() = (counts?.all ?: 0) > 0
+
+    /**
+     * The quiet line saying recipes in no list are cleared past [cullKeep] (#345): only under
+     * "Not in a list", only where that clean-up applies (the free tier and an unlocked
+     * library have their own rules), and only with a row to read it over.
+     */
+    val showsCullNote: Boolean
+        get() = cullKeep != null && filter == RecipeFilter.NOT_IN_A_LIST && !recipes.isNullOrEmpty()
+
     /** The dialog's Open is enabled only for what reads as a link (`UrlInput`). */
     val canOpenLink: Boolean get() = linkInput?.let(UrlInput::normalize) != null
 
@@ -84,6 +104,8 @@ class RecipesViewModel @Inject constructor(
         .map { it.recipeSort }
         .distinctUntilChanged()
     private val linkInput = MutableStateFlow<String?>(null)
+    // In the ViewModel, not `remember`, so it survives rotation; not stored, so Recipes opens on All.
+    private val filter = MutableStateFlow(RecipeFilter.ALL)
 
     // What swipe-to-dismiss captured, keyed by recipe id so a second swipe within the
     // snackbar's few seconds cannot overwrite the first and strand it. A plain field: the
@@ -91,10 +113,12 @@ class RecipesViewModel @Inject constructor(
     // deadlines this way.
     private val captured = LinkedHashMap<Long, RecipeRepository.DeletedRecipe>()
 
-    private val recipes: StateFlow<List<RecipeSummary>?> = query
-        .debounce(250)
-        .distinctUntilChanged()
-        .flatMapLatest { repository.observeHistory(it) }
+    // The debounce is the typing's alone: a tap on a filter answers at once.
+    private val recipes: StateFlow<List<RecipeSummary>?> = combine(
+        query.debounce(250).distinctUntilChanged(),
+        filter
+    ) { q, f -> q to f }
+        .flatMapLatest { (q, f) -> repository.observeHistory(q, f) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // Only on the free tier: unlocked, or with the flag off, there is nothing to count against.
@@ -102,16 +126,30 @@ class RecipesViewModel @Inject constructor(
         (limit as? LibraryLimit.Free)?.let { LibraryCount(saved, it.max) }
     }
 
+    private val counts = repository.observeRecipeCounts()
+
+    // Whether recipes in no list are cleared past a cap: the old history's, with the free tier off.
+    private val cullKeep = library.limits.map { (it as? LibraryLimit.History)?.keep }
+
     val uiState: StateFlow<RecipesUiState> =
         combine(
             combine(query, recipes, pendingDeletes, sort, linkInput) { q, found, pending, order, link ->
                 RecipesUiState(q, found?.let { sorted(it, order) }, pending.titles, pending.batch, order, link)
             },
-            count
-        ) { state, saved -> state.copy(count = saved) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipesUiState())
+            count,
+            filter,
+            counts,
+            cullKeep
+        ) { state, saved, picked, all, keep ->
+            state.copy(count = saved, filter = picked, counts = all, cullKeep = keep)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipesUiState())
 
     fun onQueryChange(text: String) {
         query.value = text
+    }
+
+    fun onFilterChange(value: RecipeFilter) {
+        filter.value = value
     }
 
     fun onSortChange(value: RecipeSort) {

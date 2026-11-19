@@ -30,6 +30,9 @@ data class RecipeSummaryRow(
     val sourceUrl: String = ""
 )
 
+/** [RecipeDao.observeLibraryCounts]: every recipe, and those in at least one list (#345). */
+data class LibraryCountsRow(val total: Int, val inList: Int)
+
 /** A recipe's saved cook progress, with what a timer alert needs to name it. */
 data class CookStateRow(
     val id: Long,
@@ -181,6 +184,9 @@ abstract class RecipeDao {
     )
     abstract fun observeHistory(): Flow<List<RecipeSummaryRow>>
 
+    /** Every recipe matching [query] (see the two-argument form), in a list or not. */
+    fun observeHistory(query: String): Flow<List<RecipeSummaryRow>> = observeHistory(query, LISTED_ANY)
+
     /**
      * Same as [observeHistory], filtered to titles or ingredients containing [query]
      * (case-insensitive). An empty [query] returns everything, in one code path rather than
@@ -189,6 +195,10 @@ abstract class RecipeDao {
      * `instr()`, not `LIKE`: SQLite treats `%` and `_` in a `LIKE` pattern as wildcards, so a
      * search for "100% whole wheat" would silently misbehave. `instr()` does plain substring
      * matching and needs no ESCAPE clause.
+     *
+     * [listed] is the Recipes screen's filter (#345): [LISTED_ANY], [LISTED_YES] (in at least one
+     * list) or [LISTED_NO]. It is the same `EXISTS` as the `isSaved` column, so a row's bookmark
+     * and the filter can't disagree; the search still applies inside it.
      */
     @Query(
         """
@@ -198,13 +208,25 @@ abstract class RecipeDao {
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
                sourceUrl
         FROM recipes
-        WHERE :query = ''
+        WHERE (:query = ''
            OR instr(lower(title), lower(:query)) > 0
-           OR instr(lower(ingredients), lower(:query)) > 0
+           OR instr(lower(ingredients), lower(:query)) > 0)
+          AND (:listed = -1
+           OR EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) = :listed)
         ORDER BY lastViewedAt DESC, id DESC
         """
     )
-    abstract fun observeHistory(query: String): Flow<List<RecipeSummaryRow>>
+    abstract fun observeHistory(query: String, listed: Int): Flow<List<RecipeSummaryRow>>
+
+    /** How many recipes there are and how many are in a list, for the filter's counts (#345). */
+    @Query(
+        """
+        SELECT COUNT(*) AS total,
+               COALESCE(SUM(EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)), 0) AS inList
+        FROM recipes
+        """
+    )
+    abstract fun observeLibraryCounts(): Flow<LibraryCountsRow>
 
     @Query(
         """
@@ -369,6 +391,11 @@ abstract class RecipeDao {
     }
 
     companion object {
+        /** [observeHistory]'s `listed` argument (#345): any recipe, one in a list, one in none. */
+        const val LISTED_ANY = -1
+        const val LISTED_YES = 1
+        const val LISTED_NO = 0
+
         /** The `today` that protects no planned recipe from the cull: no day is on or after
          *  it. The default for callers with no plan in mind; the repository passes today. */
         const val NO_PLAN_PROTECTION = Long.MAX_VALUE

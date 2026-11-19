@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.HISTORY_LIMIT
 import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.local.dao.LibraryCountsRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
@@ -392,6 +393,63 @@ class RecipeDaoTest {
         recipes.upsert(recipe("https://a.com/2", viewedAt = 200, title = "Sourdough Bread"), HISTORY_LIMIT)
 
         assertEquals(listOf(id), recipes.observeHistory("100%").first().map { it.id })
+    }
+
+    // --- The Recipes filter (#345) ---
+
+    @Test
+    fun theFilterSplitsRecipesByListMembership() = runBlocking {
+        val inList = recipes.upsert(recipe("https://a.com/1", viewedAt = 300), HISTORY_LIMIT)
+        val inTwo = recipes.upsert(recipe("https://a.com/2", viewedAt = 200), HISTORY_LIMIT)
+        val none = recipes.upsert(recipe("https://a.com/3", viewedAt = 100), HISTORY_LIMIT)
+        putInList(inList, listId = 1)
+        putInList(inTwo, listId = 1)
+        putInList(inTwo, listId = 2)
+
+        assertEquals(listOf(inList, inTwo, none), recipes.observeHistory("", RecipeDao.LISTED_ANY).first().map { it.id })
+        assertEquals(listOf(inList, inTwo), recipes.observeHistory("", RecipeDao.LISTED_YES).first().map { it.id })
+        assertEquals(listOf(none), recipes.observeHistory("", RecipeDao.LISTED_NO).first().map { it.id })
+        // The one-argument form is every recipe.
+        assertEquals(3, recipes.observeHistory("").first().size)
+    }
+
+    @Test
+    fun theSearchStillAppliesInsideTheFilter() = runBlocking {
+        val listedAdobo = recipes.upsert(recipe("https://a.com/1", viewedAt = 300, title = "Chicken Adobo"), HISTORY_LIMIT)
+        val looseAdobo = recipes.upsert(recipe("https://a.com/2", viewedAt = 200, title = "Pork Adobo"), HISTORY_LIMIT)
+        val looseStew = recipes.upsert(recipe("https://a.com/3", viewedAt = 100, title = "Beef Stew"), HISTORY_LIMIT)
+        putInList(listedAdobo, listId = 1)
+
+        assertEquals(listOf(listedAdobo), recipes.observeHistory("adobo", RecipeDao.LISTED_YES).first().map { it.id })
+        assertEquals(listOf(looseAdobo), recipes.observeHistory("adobo", RecipeDao.LISTED_NO).first().map { it.id })
+        assertEquals(listOf(looseStew), recipes.observeHistory("stew", RecipeDao.LISTED_NO).first().map { it.id })
+        assertEquals(emptyList<Long>(), recipes.observeHistory("stew", RecipeDao.LISTED_YES).first().map { it.id })
+    }
+
+    @Test
+    fun theFilterFollowsAListChangeAtOnce() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)
+        assertEquals(listOf(id), recipes.observeHistory("", RecipeDao.LISTED_NO).first().map { it.id })
+
+        putInList(id, listId = 1)
+
+        assertEquals(emptyList<Long>(), recipes.observeHistory("", RecipeDao.LISTED_NO).first().map { it.id })
+        assertEquals(listOf(id), recipes.observeHistory("", RecipeDao.LISTED_YES).first().map { it.id })
+    }
+
+    @Test
+    fun theCountsAreEveryRecipeAndThoseInAList() = runBlocking {
+        assertEquals(LibraryCountsRow(0, 0), recipes.observeLibraryCounts().first())
+
+        val a = recipes.upsert(recipe("https://a.com/1", viewedAt = 300), HISTORY_LIMIT)
+        val b = recipes.upsert(recipe("https://a.com/2", viewedAt = 200), HISTORY_LIMIT)
+        recipes.upsert(recipe("https://a.com/3", viewedAt = 100), HISTORY_LIMIT)
+        putInList(a, listId = 1)
+        putInList(a, listId = 2)
+        putInList(b, listId = 1)
+
+        // A recipe in two lists counts once.
+        assertEquals(LibraryCountsRow(3, 2), recipes.observeLibraryCounts().first())
     }
 
     // --- Delete and restore ---
