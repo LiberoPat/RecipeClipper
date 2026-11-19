@@ -2,7 +2,7 @@ import XCTest
 @testable import RecipeClipper
 
 /// One cookbook (#345, Android's RecipesViewModelTest additions): the strip's counts and lists, a
-/// view opened on its own screen, the count against 50 and Home's See all.
+/// view opened on its own screen, the count against 50 and the strip's New list (#371).
 @MainActor
 final class OneCookbookViewModelTests: XCTestCase {
     private func summary(_ id: Int64, saved: Bool = false, cooked: Int64? = nil, link: String = "", chat: Bool = false) -> RecipeSummary {
@@ -96,11 +96,37 @@ final class OneCookbookViewModelTests: XCTestCase {
         XCTAssertFalse(vm.showsCullNote)
     }
 
-    func testSeeAllOnHomeOpensRecipesRecentlyViewed() async {
-        let preferences = FakeAppPreferences()
-        preferences.recipeSort = .name
-        let vm = HomeViewModel(repository: FakeRecipeRepository(), preferences: preferences)
-        vm.onSeeAllRecent()
-        XCTAssertEqual(preferences.recipeSort, .recentlyViewed)
+    /// #371: the strip's "New list" card makes an empty list, as the Lists screen's New list does.
+    func testTheNewListCardCreatesAnEmptyListAndIgnoresABlankName() async {
+        let lists = FakeListRepository()
+        let vm = RecipesViewModel(
+            repository: FakeRecipeRepository(), preferences: FakeAppPreferences(), sleep: immediateSleep, lists: lists
+        )
+        vm.onNewList()
+        XCTAssertTrue(vm.uiState.creatingList)
+
+        vm.onNewListNameChange("   ")
+        XCTAssertNil(vm.onCreateList())
+        XCTAssertTrue(lists.createCalls.isEmpty)
+
+        vm.onNewListNameChange("  Weeknights ")
+        await vm.onCreateList()?.value
+        XCTAssertEqual(lists.createCalls.map(\.name), ["Weeknights"])
+        XCTAssertNil(lists.createCalls.first?.recipeId)
+        XCTAssertFalse(vm.uiState.creatingList)
+        XCTAssertEqual(vm.uiState.newListName, "")
+    }
+
+    func testDismissingTheNewListAlertCreatesNothing() async {
+        let lists = FakeListRepository()
+        let vm = RecipesViewModel(
+            repository: FakeRecipeRepository(), preferences: FakeAppPreferences(), sleep: immediateSleep, lists: lists
+        )
+        vm.onNewList()
+        vm.onNewListNameChange("Nope")
+        vm.onNewListDismissed()
+
+        XCTAssertFalse(vm.uiState.creatingList)
+        XCTAssertTrue(lists.createCalls.isEmpty)
     }
 }

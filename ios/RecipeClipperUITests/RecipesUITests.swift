@@ -125,13 +125,6 @@ final class RecipesUITests: RecipeUITestCase {
         require(text("Save to"), "the save-to-list sheet")
     }
 
-    /// #345: Home's Recently viewed gains See all, which opens Recipes.
-    func testHomeSeeAllOpensRecipes() {
-        launch(flags: ["oneCookbook"])
-        require(app.buttons["home.seeAll"], "See all").tap()
-        require(app.textFields["Search titles and ingredients"], "Recipes")
-    }
-
     func testSearchMatchesTitles() {
         launch()
         openRecipes()

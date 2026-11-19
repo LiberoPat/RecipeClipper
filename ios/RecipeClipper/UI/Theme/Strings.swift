@@ -307,7 +307,6 @@ enum Strings {
     static var homeTitle: String { WidgetStrings.appName }
     static var labelRecipeUrl: String { String(localized: "label_recipe_url") }
     static var sectionContinueCooking: String { String(localized: "section_continue_cooking") }
-    static var sectionRecentlyViewed: String { String(localized: "section_recently_viewed") }
     static var homeEmptyHint: String { String(localized: "home_empty_hint") }
     // Home (#286): the resume card and the Add a recipe tiles
     static var homePasteLinkHint: String { String(localized: "home_paste_link_hint") }
@@ -340,7 +339,6 @@ enum Strings {
     static var recipesEmptyChat: String { String(localized: "recipes_empty_chat") }
     static var recipesEmptyCooked: String { String(localized: "recipes_empty_cooked") }
     static var recipesEmptyTyped: String { String(localized: "recipes_empty_typed") }
-    static var homeSeeAll: String { String(localized: "home_see_all") }
     static func recipesCullNote(_ keep: Int) -> String { String(localized: "recipes_cull_note \(keep)") }
     static var searchRecipes: String { String(localized: "label_search_recipes") }
     static var addRecipe: String { String(localized: "cd_add_recipe") }

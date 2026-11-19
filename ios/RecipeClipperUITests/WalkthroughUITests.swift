@@ -82,7 +82,7 @@ final class WalkthroughUITests: RecipeUITestCase {
         pause()
     }
 
-    /// Opens a recipe from Home: Continue cooking (a plain title) or a Recently viewed row.
+    /// Opens a recipe from Home (Continue cooking, a plain title) or from the Recipes screen it is already on.
     func open(_ title: String) {
         let continueCooking = app.staticTexts[title].firstMatch
         (row(title).exists ? row(title) : require(continueCooking, title)).tap()

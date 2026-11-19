@@ -2860,10 +2860,19 @@ bends the settled link field: an always-visible field became a tile that opens i
   are two tiles. Type a recipe is the #29 editor. The muted line under the tiles ("Or share a
   link to Recipe Clipper from any app.") replaces the subtitle under the title. On iOS the
   tiles stack at the accessibility sizes.
-- **Recently viewed** is a row of photos with their names, the five before Continue cooking,
-  keyed `recent-<id>` as Home's sections always are.
+- **Recently viewed** was a row of photos with their names, the five before Continue cooking.
+  **Removed (#371, owner, 2026-11-19):** it repeated the top five of Recipes, whose default sort
+  is Recently viewed (#345's research: recent is a sort over the one library, never a home
+  section). Home now lists only Continue cooking's recipe. The Recipes sort stays.
 - **Counts:** Recipes is what the Recipes screen lists (`observeHistory("")`, so the tour's
   sample counts, as in its "N recipes" line); Lists is every list.
+- **Home's rows after #371 (owner, 2026-11-19):** the Recipes bottom tab opens Home, so Home's
+  Recipes row (and the shelf's See all) was the only way into the Recipes screen: the row stays.
+  The Lists row goes **with `oneCookbook` on** (the lists are cards on Recipes' strip; redundant),
+  and stays with it off, where Recipes has no list cards. The Lists screen and its route stay.
+  The one thing the row alone offered, making a list with no recipe in hand, moved to a
+  **"+ New list" card** at the end of Recipes' strip (Android a dialog, iOS an alert: the Lists
+  screen's name field, Cancel/Create and strings, creating an empty list).
 - **The tour:** `HOME_LINK` is anchored to the Paste a link tile, and now reads "…or tap here
   to paste one."
 - Unchanged: the empty-library hint and "Restore from a backup file", the one-time backup
@@ -3091,9 +3100,10 @@ off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, 
   opens the list. Counts come from the one `observeRecipeCounts` query (no migration). Views are
   questions about what is stored, never a filing step: "Lists are deliberate", "Only Favorites is
   permanent", "No Saved section" and "Search is on Recipes only" are untouched, and Home keeps its
-  Recipes and Lists rows.
-- **Recently viewed** is a sort (still the default) and Home's shelf, which gains **See all**: it sets
-  the remembered sort to Recently viewed and opens Recipes.
+  Recipes row (its Lists row only with `oneCookbook` off, #371).
+- **Recently viewed** is a sort (still the default), no longer also Home's shelf: #345 first gave
+  the shelf a **See all** (it set the sort and opened Recipes), and #371 removed the shelf and
+  See all together (2026-11-19: the shelf repeated Recipes' top five).
 - **A recipe in no list has an outlined bookmark** on its row (not in a view's header), opening the
   existing save-to-list sheet (checkboxes that write at once, "+ New list" inline); the recipe then
   leaves Not in a list by itself.

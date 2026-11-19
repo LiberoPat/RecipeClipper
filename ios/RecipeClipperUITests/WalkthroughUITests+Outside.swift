@@ -74,7 +74,8 @@ extension WalkthroughUITests {
         require(app.buttons["Cancel"].firstMatch, "the dialog's Cancel").tap()
         pause()
         back()
-        openLists()
+        // One cookbook (#371): Home has no Lists row; Dinner is a card on Recipes' strip.
+        openRecipes()
         require(row("Dinner"), "Dinner").tap()
         pause(1.5)
         recipeMenu("Make a cookbook")

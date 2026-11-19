@@ -80,7 +80,6 @@
     <string name="timers_up">Tempo scaduto</string>
     <string name="label_recipe_url">URL della ricetta</string>
     <string name="section_continue_cooking">Continua a cucinare</string>
-    <string name="section_recently_viewed">Viste di recente</string>
     <string name="home_empty_hint">Le ricette che apri compariranno qui.</string>
     <!-- Home (#286): the resume card and the Add a recipe tiles -->
     <string name="home_paste_link_hint">Da qualsiasi sito o da Reddit</string>
@@ -108,7 +107,6 @@
     <string name="recipes_view_chat">Da una chat</string>
     <string name="recipes_view_chat_note">Ricette lette da una chat con un\'IA. Controlla tempi e temperature prima di fidarti.</string>
     <string name="recipes_empty_chat">Ancora niente da una chat. Condividi la ricetta di una chat con l\'app.</string>
-    <string name="home_see_all">Vedi tutte</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
     <string name="recipes_cull_note">Le ricette senza lista vengono conservate fino a %1$d. Oltre questo limite, vengono eliminate per prime quelle aperte meno di recente. Salva una ricetta in una lista per conservarla.</string>
     <string name="label_search_recipes">Cerca titoli e ingredienti</string>

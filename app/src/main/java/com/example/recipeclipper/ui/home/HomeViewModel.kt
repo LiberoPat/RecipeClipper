@@ -11,8 +11,6 @@ import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.backup.AutoBackupPolicy
 import com.example.recipeclipper.data.importFile
-import com.example.recipeclipper.data.local.AppPreferences
-import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.recipe.CookController
@@ -50,7 +48,6 @@ data class HomeUiState(
     val continueCooking: RecipeSummary? = null,
     /** Where the cook stopped on [continueCooking] (#286); null when it isn't being cooked. */
     val resume: CookResume? = null,
-    val recent: List<RecipeSummary> = emptyList(),
     /** The Recipes and Lists rows' counts (#286); null until known. */
     val recipeCount: Int? = null,
     val listCount: Int? = null,
@@ -111,9 +108,7 @@ class HomeViewModel @Inject constructor(
     // The Lists row's count (#286); null shows none.
     private val lists: ListRepository? = null,
     // The resume card's timer counts down from its saved deadline against this (#286).
-    private val clock: Clock = Clock { System.currentTimeMillis() },
-    // "See all" (#345) opens Recipes in Recently viewed order, the sort it remembers; null leaves it.
-    private val preferences: AppPreferences? = null
+    private val clock: Clock = Clock { System.currentTimeMillis() }
 ) : ViewModel() {
 
     private val link = MutableStateFlow<String?>(null)
@@ -123,9 +118,9 @@ class HomeViewModel @Inject constructor(
     private val backupState: Flow<AutoBackupState?> =
         autoBackup?.state ?: flowOf(null)
 
-    /** The six most recent, and whether the only one is the tour's sample (#151). */
+    /** The two most recent (Continue cooking, and whether it stands alone), and whether the only one is the tour's sample (#151). */
     private val recentRecipes: Flow<Pair<List<RecipeSummary>, Boolean>> =
-        repository.observeRecent(RECENT_COUNT + 1)
+        repository.observeRecent(RECENT_COUNT)
             .map { recent -> recent to (recent.size == 1 && recent[0].id == repository.sampleId()) }
             .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
@@ -155,13 +150,11 @@ class HomeViewModel @Inject constructor(
     )
 
     /**
-     * The most recent recipe is the "continue cooking" card; the five before it are "recent".
+     * The most recent recipe is the "continue cooking" card.
      *
-     * There is deliberately no "Saved" section. Home used to carry one, fed by a
-     * `observeRecentlySaved` query, but it showed the same recipes as "Recently viewed" —
-     * saving something usually means you just opened it — and Lists already answers "what
-     * have I kept?" properly. The duplication was visible on screen and also crashed the
-     * LazyColumn, since one recipe rendered in two sections under one key.
+     * There is deliberately no "Saved" section and no "Recently viewed" shelf (#371): both
+     * repeated what Recipes shows (Recently viewed is its default sort), and the duplication
+     * once crashed the LazyColumn, one recipe in two sections under one key.
      */
     val uiState: StateFlow<HomeUiState> = combine(
         combine(recentRecipes, resume, askAi, ::Triple),
@@ -181,7 +174,6 @@ class HomeViewModel @Inject constructor(
             continueCooking = latest,
             // Only the latest recipe's own place: never the one before it, for a moment.
             resume = resume?.takeIf { it.recipeId == latest?.id },
-            recent = recent.drop(1),
             recipeCount = recipeCount,
             listCount = listCount,
             restore = if (backups != null) restoring else BackupStatus.Idle,
@@ -225,11 +217,6 @@ class HomeViewModel @Inject constructor(
     }
 
     /** "Restore from a backup file" (#150): the file the user picked, merged in like Import. */
-    /** "See all" on Recently viewed (#345): Recipes opens in that order, whatever it was left on. */
-    fun onSeeAllRecent() {
-        preferences?.recipeSort = RecipeSort.RECENTLY_VIEWED
-    }
-
     fun onRestorePicked(uri: String) {
         val backups = backups ?: return
         val files = files ?: return
@@ -249,7 +236,8 @@ class HomeViewModel @Inject constructor(
     }
 
     private companion object {
-        const val RECENT_COUNT = 5
+        /** Continue cooking, and whether a second recipe exists (for the sample check). */
+        const val RECENT_COUNT = 2
 
         /** How often a running timer's time left is recomputed, as in cook mode. */
         const val TICK_MS = CookController.TICK_MS

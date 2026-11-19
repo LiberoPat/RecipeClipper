@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
@@ -41,7 +42,8 @@ import com.example.recipeclipper.data.model.RecipeList
 
 /**
  * One cookbook (#345, V4): under search, a strip of the automatic views (Not in a list, Cooked,
- * Typed by you, From a chat) followed by the lists, each a small card with its count. A view opens as its own
+ * Typed by you, From a chat) followed by the lists, each a small card with its count, then a
+ * "New list" card (#371). A view opens as its own
  * screen (Back goes to Recipes); a list opens its own screen. The views never ask the cook to
  * file anything: they are questions about what is already stored.
  */
@@ -51,6 +53,8 @@ internal fun RecipesViewsStrip(
     lists: List<RecipeList>,
     onOpenView: (RecipeFilter) -> Unit,
     onOpenList: (Long) -> Unit,
+    /** The "New list" card after the lists (#371). */
+    onNewList: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyRow(
@@ -74,6 +78,15 @@ internal fun RecipesViewsStrip(
                 count = list.recipeCount,
                 onClick = { onOpenList(list.id) },
                 modifier = Modifier.testTag("recipesList-${list.id}")
+            )
+        }
+        item(key = "new-list") {
+            ViewCard(
+                icon = rememberVectorPainter(Icons.Default.Add),
+                name = stringResource(R.string.lists_new_list_tile),
+                count = null,
+                onClick = onNewList,
+                modifier = Modifier.testTag("recipesNewList")
             )
         }
     }

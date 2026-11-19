@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// One cookbook (#345, V4): under search, a strip of the automatic views (Not in a list, Cooked,
-/// Typed by you) followed by the lists, each a small card with its count. A view opens as its own
+/// Typed by you) followed by the lists, each a small card with its count, then a "New list" card (#371). A view opens as its own
 /// screen (Back goes to Recipes); a list opens its own screen. The views never ask the cook to
 /// file anything: they are questions about what is already stored. Android's `RecipesViewsStrip`.
 struct RecipesViewsStrip: View {
@@ -9,6 +9,8 @@ struct RecipesViewsStrip: View {
     let lists: [RecipeList]
     let onOpenView: (RecipeFilter) -> Void
     let onOpenList: (Int64) -> Void
+    /// The "New list" card after the lists (#371).
+    let onNewList: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
     private var width: CGFloat { min(104 * scale, 170) }
@@ -28,6 +30,7 @@ struct RecipesViewsStrip: View {
                         count: list.recipeCount, id: "recipes.list.\(list.id)"
                     ) { onOpenList(list.id) }
                 }
+                card(systemImage: "plus", name: Strings.newListTile, count: nil, id: "recipes.newList", action: onNewList)
             }
             .padding(.vertical, 12)
         }

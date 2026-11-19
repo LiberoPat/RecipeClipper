@@ -102,33 +102,3 @@ private struct HomeTile: View {
         }
     }
 }
-
-/// Recently viewed (#286): the five before Continue cooking, as a row of photos with their names.
-struct RecentlyViewedRow: View {
-    let recipes: [RecipeSummary]
-    let onOpenRecipe: (Int64) -> Void
-    /// The thumbnail's own scaling (`RecipeThumbnail`), so a name wraps under its photo.
-    @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
-    private var width: CGFloat { min(84 * scale, 126) }
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(recipes) { recipe in
-                    Button { onOpenRecipe(recipe.id) } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            RecipeThumbnail(url: recipe.imageUrl, base: 84)
-                            Text(recipe.title)
-                                .textStyle(Typography.labelMedium)
-                                .foregroundStyle(Palette.onBackground)
-                                .lineLimit(2)
-                        }
-                        .frame(width: width, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .accessibilityIdentifier("home.recent")
-    }
-}

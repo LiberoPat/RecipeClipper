@@ -38,7 +38,8 @@ struct RecipesScreen: View {
                     // One cookbook (#345): the views, then the lists, in place of the pills.
                     if state.showsViewsStrip {
                         RecipesViewsStrip(
-                            counts: state.counts, lists: state.lists, onOpenView: onOpenView, onOpenList: onOpenList
+                            counts: state.counts, lists: state.lists, onOpenView: onOpenView, onOpenList: onOpenList,
+                            onNewList: vm.onNewList
                         )
                         .listRowSeparator(.hidden)
                     }
@@ -134,6 +135,16 @@ struct RecipesScreen: View {
             Button(Strings.cancel, role: .cancel, action: vm.onLinkDismissed)
             Button(Strings.go) { if let url = vm.onOpenLink() { onOpenUrl(url) } }
                 .disabled(!state.canOpenLink)
+        }
+        // The strip's "New list" card (#371): the Lists screen's create flow, as an alert.
+        .alert(Strings.newListTile, isPresented: Binding(
+            get: { vm.uiState.creatingList },
+            set: { presented in if !presented { vm.onNewListDismissed() } }
+        )) {
+            TextField(Strings.listName, text: Binding(get: { vm.uiState.newListName }, set: vm.onNewListNameChange))
+            Button(Strings.cancel, role: .cancel, action: vm.onNewListDismissed)
+            Button(Strings.create) { vm.onCreateList() }
+                .disabled(vm.uiState.newListName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .overlay(alignment: .bottom) {
             if state.restoreRefused {

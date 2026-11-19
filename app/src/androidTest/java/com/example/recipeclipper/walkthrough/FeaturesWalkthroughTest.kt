@@ -4,7 +4,9 @@ import android.content.Intent
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.DecisionModel
@@ -129,7 +131,9 @@ class FeaturesWalkthroughTest : WalkthroughBase() {
         waitForSystemScreen(6000) // the print dialog
         systemBack()
         back()
-        tapScrolling(hasText("Lists") and hasText("›"))
+        // One cookbook (#371): Home has no Lists row; Dinner is a card on Recipes' strip.
+        tapScrolling(hasText("Recipes") and hasText("›"))
+        compose.onNodeWithTag("recipesViewsStrip").performScrollToNode(hasText("Dinner"))
         tap("Dinner", 2000)
         menu("Make a cookbook")
         waitForSystemScreen() // the share sheet, with "Dinner.pdf"

@@ -26,6 +26,9 @@ struct RecipesUiState: Equatable {
     var counts: RecipeCounts?
     var view: RecipeFilter?
     var lists: [RecipeList] = []
+    /// The strip's "New list" card (#371): its alert is open, and the name typed.
+    var creatingList = false
+    var newListName = ""
     /// An Undo was refused, the free library being full (#345): the screen says so once.
     var restoreRefused = false
 
@@ -60,6 +63,7 @@ final class RecipesViewModel {
     @ObservationIgnored private var historySubscription: AnyCancellable?
     @ObservationIgnored private var countSubscription: AnyCancellable?
     @ObservationIgnored private var listsSubscription: AnyCancellable?
+    @ObservationIgnored private let lists: ListRepository?
     @ObservationIgnored private let library: LibraryPolicy?
     /// Recently cooked (#116) only while its flag is on; stored, it reads as the default.
     @ObservationIgnored private let cookedSort: Bool
@@ -82,6 +86,7 @@ final class RecipesViewModel {
         view: RecipeFilter? = nil, lists: ListRepository? = nil
     ) {
         self.cookedSort = cookedSort
+        self.lists = lists
         self.countdowns = countdowns
         self.repository = repository
         self.preferences = preferences
@@ -190,6 +195,28 @@ final class RecipesViewModel {
         guard sort != uiState.sort else { return }
         uiState.sort = sort
         if let found { uiState.recipes = Self.sorted(found, sort) }
+    }
+
+    /// The strip's "New list" card (#371): opens the name alert, empty.
+    func onNewList() {
+        uiState.newListName = ""
+        uiState.creatingList = true
+    }
+
+    func onNewListNameChange(_ text: String) { uiState.newListName = text }
+
+    /// The alert went away by itself; only the flag is cleared, as with "Paste a link".
+    func onNewListDismissed() { uiState.creatingList = false }
+
+    /// Creates the list, empty as on the Lists screen (no recipe in hand); a blank name is ignored.
+    /// Returns the work so a test can await it.
+    @discardableResult
+    func onCreateList() -> Task<Void, Never>? {
+        let name = uiState.newListName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, let lists else { return nil }
+        uiState.creatingList = false
+        uiState.newListName = ""
+        return Task { _ = await lists.createList(name: name, addRecipeId: nil) }
     }
 
     /// "Paste a link" from the + menu: opens the alert, empty.

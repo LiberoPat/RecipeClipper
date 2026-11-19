@@ -134,6 +134,14 @@ fun RecipesScreen(
                 onDismiss = viewModel::onLinkDismiss
             )
         }
+        state.newListName?.let { name ->
+            NewListDialog(
+                name = name,
+                onNameChange = viewModel::onNewListNameChange,
+                onCreate = viewModel::onCreateList,
+                onDismiss = viewModel::onNewListDismiss
+            )
+        }
         if (saveSheetOpen && saveViewModel != null) {
             SaveToListBottomSheet(saveViewModel, onDismiss = { saveSheetOpen = false })
         }
@@ -180,7 +188,7 @@ fun RecipesScreen(
                         when {
                             // One cookbook (#345): the views, then the lists, in place of the pills.
                             oneCookbook && state.showsViewsStrip ->
-                                RecipesViewsStrip(state.counts, state.lists, onOpenView, onOpenList)
+                                RecipesViewsStrip(state.counts, state.lists, onOpenView, onOpenList, viewModel::onNewList)
                             !oneCookbook && state.showsFilter ->
                                 RecipeFilterPills(state.filter, state.counts, viewModel::onFilterChange)
                         }

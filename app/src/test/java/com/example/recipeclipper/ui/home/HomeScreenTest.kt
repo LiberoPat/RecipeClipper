@@ -2,7 +2,6 @@ package com.example.recipeclipper.ui.home
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -10,8 +9,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollToIndex
-import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.Clock
@@ -71,13 +68,11 @@ class HomeScreenTest {
         var url: String? = null
     }
 
-    private val preferences = com.example.recipeclipper.fake.FakeAppPreferences()
-
     private fun show(oneCookbook: Boolean = false, askAi: Boolean = false): Taps {
         val taps = Taps()
         // Built outside setContent: a ViewModel constructed inside a composable would be
         // rebuilt on every recomposition. A fixed clock, so a timer's time left is known.
-        val viewModel = HomeViewModel(repository, lists = lists, clock = Clock { NOW }, preferences = preferences)
+        val viewModel = HomeViewModel(repository, lists = lists, clock = Clock { NOW })
         compose.setContent {
             HomeScreen(
                 onOpenUrl = { taps.url = it },
@@ -109,64 +104,18 @@ class HomeScreenTest {
         compose.onAllNodesWithTag("homeAskAi").assertCountEquals(0)
     }
 
-    /** One cookbook (#345): Recently viewed has "See all", which opens Recipes in that order. */
+    /** #371: the others are Recipes' to show, not a shelf on Home. */
     @Test
-    fun seeAllOpensRecipesRecentlyViewed() {
-        repository.recent.value = listOf(summary(1, "Newest"), summary(2, "Older"))
-        preferences.recipeSort = com.example.recipeclipper.data.model.RecipeSort.NAME
-        val taps = show(oneCookbook = true)
-
-        compose.onNodeWithTag("home.seeAll").performClick()
-
-        assertEquals(1, taps.recipes)
-        assertEquals(com.example.recipeclipper.data.model.RecipeSort.RECENTLY_VIEWED, preferences.recipeSort)
-    }
-
-    @Test
-    fun withTheFlagOffThereIsNoSeeAll() {
-        repository.recent.value = listOf(summary(1, "Newest"), summary(2, "Older"))
-        show(oneCookbook = false)
-
-        compose.onNodeWithText("Recently viewed").assertIsDisplayed()
-        compose.onAllNodesWithTag("home.seeAll").assertCountEquals(0)
-    }
-
-    @Test
-    fun theNewestRecipeIsContinueCookingAndTheRestAreRecentlyViewed() {
+    fun theNewestRecipeIsContinueCookingAndThereIsNoRecentlyViewedShelf() {
         repository.recent.value = listOf(summary(1, "Newest"), summary(2, "Older"))
         show()
 
         compose.onNodeWithText("CONTINUE COOKING").assertIsDisplayed()
-        compose.onNodeWithText("Recently viewed").assertIsDisplayed()
         compose.onNodeWithText("Newest").assertIsDisplayed()
-        compose.onNodeWithText("Older").assertIsDisplayed()
-    }
-
-    /**
-     * The regression guard for the crash that prompted these tests: Home rendering a full set
-     * of rows at once. Duplicate LazyColumn keys throw during measure, so this fails loudly
-     * rather than subtly if the keying breaks again.
-     */
-    @Test
-    fun aFullHomeRendersWithoutDuplicateKeys() {
-        repository.recent.value = (1L..10L).map { summary(it, "Recipe $it") }
-        show()
-
-        compose.onNodeWithText("Recipe 1").assertIsDisplayed() // continue cooking
-        compose.onNodeWithText("Recipe 2").assertIsDisplayed() // first recently viewed
-    }
-
-    /** Six are fetched, one becomes "Continue cooking", so at most five are listed below it. */
-    @Test
-    fun recentlyViewedStopsAtFive() {
-        repository.recent.value = (1L..10L).map { summary(it, "Recipe $it") }
-        show()
-
-        // A row of photos (#286): the fifth is off to the side until the row scrolls.
-        compose.onNodeWithTag("home.recent").performScrollToNode(hasText("Recipe 6"))
-        compose.onNodeWithText("Recipe 6").assertIsDisplayed()
-        compose.onNodeWithTag("home.recent").performScrollToIndex(4)
-        compose.onNodeWithText("Recipe 7").assertDoesNotExist()
+        compose.onNodeWithText("Recently viewed").assertDoesNotExist()
+        compose.onNodeWithText("Older").assertDoesNotExist()
+        compose.onAllNodesWithTag("home.recent").assertCountEquals(0)
+        compose.onAllNodesWithTag("home.seeAll").assertCountEquals(0)
     }
 
     @Test
@@ -180,11 +129,11 @@ class HomeScreenTest {
     }
 
     @Test
-    fun tappingARecipeOpensIt() {
-        repository.recent.value = listOf(summary(1, "Newest"), summary(7, "Older"))
+    fun tappingContinueCookingsRecipeOpensIt() {
+        repository.recent.value = listOf(summary(7, "Newest"))
         val taps = show()
 
-        compose.onNodeWithText("Older").performClick()
+        compose.onNodeWithText("Newest").performClick()
 
         assertEquals(7L, taps.recipe)
     }
@@ -207,6 +156,16 @@ class HomeScreenTest {
 
         assertEquals(1, taps.recipes)
         assertEquals(1, taps.lists)
+    }
+
+    /** #371: with one cookbook the Recipes screen lists the lists, so Home keeps only the Recipes row. */
+    @Test
+    fun withOneCookbookThereIsNoListsRow() {
+        val taps = show(oneCookbook = true)
+
+        compose.onNodeWithText("Lists").assertDoesNotExist()
+        compose.onNodeWithText("Recipes").performClick()
+        assertEquals(1, taps.recipes)
     }
 
     /** All three entries are unconditional — they used to come and go with the database. */
