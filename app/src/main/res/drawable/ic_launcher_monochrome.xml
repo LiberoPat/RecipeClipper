@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed icons (Android 13+): the same ribbon as one flat colour with real holes; the system tints it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <path
+        android:fillColor="#000000"
+        android:fillType="evenOdd"
+        android:pathData="M332,303A36,36 0 0 1 368,267H656A36,36 0 0 1 692,303V757L512,650L332,757ZM400.0,488V343A11,11 0 0 1 422.0,343V452H435.0V343A11,11 0 0 1 457.0,343V452H470.0V343A11,11 0 0 1 492.0,343V452V488C492.0,536 461,524 461,582V629A15,15 0 0 1 431,629V582C431,524 400.0,536 400.0,488ZM554.0,454.8A47,66 0 1 1 602.0,454.8C593,498.8 593,514.8 593,544.8V629A15,15 0 0 1 563,629V544.8C563,514.8 563,498.8 554.0,454.8Z" />
+</vector>
