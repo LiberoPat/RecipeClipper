@@ -346,4 +346,23 @@ class BackupJsonTest {
             error(head + """"lists":[{"id":"l","name":"L"}],"memberships":[{"recipeId":"nope","listId":"l"}]}""")
         )
     }
+
+    /** Recipe versions (#354): the shared fixture, read the same way by iOS's `BackupJsonTests`. */
+    @Test fun `a version's link to its original reads, round-trips, and older files have none`() {
+        val backup = decodeOrFail(fixture("backup-v1-versions.json"))
+        assertEquals(
+            listOf(null, "r-soup", "r-spicy", "r-deleted", "r-self"),
+            backup.recipes.map { it.basedOn }
+        )
+        assertEquals(backup, decodeOrFail(BackupJson.encode(backup)))
+        assertTrue(decodeOrFail(fixture("backup-v1.json")).recipes.all { it.basedOn == null })
+        val first = org.json.JSONObject(BackupJson.encode(decodeOrFail(fixture("backup-v1.json"))))
+            .getJSONArray("recipes").getJSONObject(0)
+        assertTrue(first.has("basedOn") && first.isNull("basedOn"))
+    }
+
+    @Test fun `a blank basedOn reads as none`() {
+        val text = fixture("backup-v1-versions.json").replace("\"basedOn\": \"r-soup\"", "\"basedOn\": \"  \"")
+        assertEquals(null, decodeOrFail(text).recipes[1].basedOn)
+    }
 }

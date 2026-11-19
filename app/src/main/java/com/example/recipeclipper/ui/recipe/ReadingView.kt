@@ -126,6 +126,8 @@ internal fun ReadingView(
                             modifier = Modifier.padding(top = 2.dp).testTag("fromAChat")
                         )
                     }
+                    // A version of another recipe (#354): its original is one tap away.
+                    state.basedOn?.let { BasedOnLine(it, actions.onOpenRecipe) }
                     Spacer(Modifier.height(14.dp))
                 }
                 Times(recipe.prepTime, recipe.cookTime, recipe.totalTime)
@@ -201,6 +203,10 @@ internal fun ReadingView(
                 }
             }
 
+            // The versions saved from this recipe (#354), quietly after the steps.
+            if (state.versions.isNotEmpty() && !state.notKept) item {
+                VersionsSection(state.versions, actions.onOpenRecipe)
+            }
             // After the steps: the reading view still opens on the recipe, and a note like
             // "needs 10 more minutes" is read once the method is.
             // A recipe that wasn't kept (#107) has nowhere to keep a note.

@@ -42,6 +42,10 @@ final class RecipeViewModel {
     // Waits for offline -> online while an offline / fetch-failed error is showing.
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     @ObservationIgnored private var settingsSubscription: AnyCancellable?
+    // The recipe it is a version of and its own versions (#354), followed once it is loaded.
+    @ObservationIgnored private var versionsSubscription: AnyCancellable?
+    // The `recipeVersions` flag (#354); on when a test passes no flags, as it is by default.
+    @ObservationIgnored private let versionsOn: () -> Bool
 
     // Where a failed load goes, with the `reddit` flag (#11), read at each load as the source
     // reads it at each fetch; on when a test passes no flags, as it is by default.
@@ -78,6 +82,7 @@ final class RecipeViewModel {
         countdowns: TimerCountdownSync? = nil
     ) {
         self.entitlements = entitlements
+        versionsOn = { flags?.isOn(.recipeVersions) ?? true }
         self.sleep = sleep
         self.countdowns = countdowns
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
@@ -179,6 +184,7 @@ final class RecipeViewModel {
                 uiState.notes = recipe.notes ?? ""
                 cookMode.restore(recipe)
                 chef.start()
+                if !uiState.notKept { observeVersions(of: recipe.id) }
                 askModel()
                 if openInCookMode {
                     openInCookMode = false
@@ -193,6 +199,19 @@ final class RecipeViewModel {
                 if error.reloadsOnReconnect { reloadOnReconnect() }
             }
         }
+    }
+
+    /// The recipe it is a version of and its own versions (#354), as they change, behind the
+    /// `recipeVersions` flag.
+    private func observeVersions(of id: Int64) {
+        versionsSubscription = nil
+        guard versionsOn() else { return }
+        versionsSubscription = Publishers.CombineLatest(repository.observeBasedOn(id: id), repository.observeVersions(id: id))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] basedOn, versions in
+                self?.uiState.basedOn = basedOn
+                self?.uiState.versions = versions
+            }
     }
 
     /// While an offline or fetch-failed error is on screen, waits for the connection to go from

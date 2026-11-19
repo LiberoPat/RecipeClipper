@@ -107,6 +107,10 @@
     <string name="recipes_view_chat">Da una chat</string>
     <string name="recipes_view_chat_note">Ricette lette da una chat con un\'IA. Controlla tempi e temperature prima di fidarti.</string>
     <string name="recipes_empty_chat">Ancora niente da una chat. Condividi la ricetta di una chat con l\'app.</string>
+    <!-- A recipe saved from an AI answer that changed another (#354): %1$s is the original's title. -->
+    <string name="recipe_based_on">Basata su %1$s</string>
+    <string name="recipe_versions_heading">Versioni</string>
+    <string name="cd_open_recipe_named">Apri %1$s</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
     <string name="recipes_cull_note">Le ricette senza lista vengono conservate fino a %1$d. Oltre questo limite, vengono eliminate per prime quelle aperte meno di recente. Salva una ricetta in una lista per conservarla.</string>
     <string name="label_search_recipes">Cerca titoli e ingredienti</string>

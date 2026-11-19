@@ -290,6 +290,13 @@ struct ListMembership: Equatable {
     let addedAt: Int64
 }
 
+/// A recipe named by another (#354): the original a version is based on, or one of a recipe's
+/// versions. Just what a row of "Based on" or "Versions" shows and opens.
+struct RecipeLink: Equatable, Identifiable {
+    let id: Int64
+    let title: String
+}
+
 /// What a delete removed: enough for `restore` to undo it, list membership included.
 /// `recipe` is the full stored row (id, ticked ingredients, lastViewedAt all intact).
 /// Callers treat it as opaque — they hold it and hand it back.
@@ -304,4 +311,6 @@ struct DeletedRecipe: Equatable {
     var menuEntries: [MenuEntryRecord] = []
     /// Its own photos (#116): their rows; the files stay until `RecipeRepository.forget`.
     var cookedPhotos: [CookedPhotoRecord] = []
+    /// The rows that were versions of it (#354): an undo links them to it again.
+    var versionIds: [Int64] = []
 }

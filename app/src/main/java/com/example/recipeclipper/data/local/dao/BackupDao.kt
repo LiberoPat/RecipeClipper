@@ -277,7 +277,8 @@ abstract class BackupDao {
                     notes = r.notes,
                     language = r.language,
                     contentOrigin = r.contentOrigin,
-                    editedAt = r.editedAt
+                    editedAt = r.editedAt,
+                    basedOnUid = r.basedOn
                 )
             )
         }

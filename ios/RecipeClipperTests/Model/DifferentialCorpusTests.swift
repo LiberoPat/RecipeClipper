@@ -86,6 +86,8 @@ import XCTest
 // lines left over (SharedText.read). Write only `Shared("text"),`.
 // Meal-plan rows (#352): text shared in as a week of recipes, then MealPlanImport.read's meals in order, each
 // `Meal("name", epochDay or nil, [ingredients], [steps])` (none: not a plan). Write only `PlanText("text"),`.
+// Version rows (#354): text shared into the app, then the recipe its JSON's isBasedOn names (nil:
+// none), from SharedText.read. Write only `Based("text"),`.
 // Photo rows (#208): a photo's lines, then PhotoTextSorter.sort's language, whether they sorted, the
 // ingredients, steps, the lines to check one by one (flags: the line in the box, as listed, and
 // why) and those listed only as large. Write only `Photo(["ZUTATEN", "2 Eier", …]),`.
@@ -2161,6 +2163,27 @@ final class DifferentialCorpusTests: XCTestCase {
         Shared("Grandma's [best] {recipe}\n\nIngredients:\n- 2 cups flour\n- 1 tsp salt\n\nMethod:\n1. Mix the flour and salt.\n2. Bake for 20 minutes.", .recipe, true, "en", "", ["2 cups flour", "1 tsp salt"], ["Mix the flour and salt.", "Bake for 20 minutes."], [nil, nil, nil, nil], ["Grandma's [best] {recipe}"]),
     ]
 
+    private struct Based {
+        let text: String; let basedOn: String?
+        init(_ text: String, _ basedOn: String?) { self.text = text; self.basedOn = basedOn }
+    }
+
+    // Version rows (#354): see the header. Write only the text.
+    private static let basedOns: [Based] = [
+        Based("{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"],\"isBasedOn\":\"manual:1b2c\"}", "manual:1b2c"),
+        Based("Sure! Here you go:\n\n```json\n{\n  \"@type\": \"Recipe\",\n  \"name\": \"Spicier Soup\",\n  \"recipeIngredient\": [\"1 onion\", \"1 chilli\"],\n  \"recipeInstructions\": [{\"@type\": \"HowToStep\", \"text\": \"Simmer.\"}],\n  \"isBasedOn\": \"  https://example.com/soup  \"\n}\n```\nEnjoy!", "https://example.com/soup"),
+        Based("{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"],\"isBasedOn\":{\"@id\":\"https://example.com/soup\"}}", "https://example.com/soup"),
+        Based("{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"],\"isBasedOn\":{\"@type\":\"Recipe\",\"url\":\"https://example.com/soup\"}}", "https://example.com/soup"),
+        Based("{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"],\"isBasedOn\":[\"manual:a\",\"manual:b\"]}", "manual:a"),
+        Based("{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"WebPage\",\"name\":\"x\"},{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"],\"isBasedOn\":\"manual:g\"}]}", "manual:g"),
+        Based("{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"],\"isBasedOn\":\"   \"}", nil),
+        Based("{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"],\"isBasedOn\":[]}", nil),
+        Based("{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"],\"isBasedOn\":42}", nil),
+        Based("{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"]}", nil),
+        Based("Grandma's scones\n\nIngredients:\n- 2 cups flour\n- 1 tsp salt\n\nMethod:\n1. Mix the flour and salt.\n2. Bake for 20 minutes.", nil),
+        Based("manual:1b2c", nil),
+    ]
+
     private struct Photo {
         let lines: [String]; let language: String?; let sorted: Bool
         let ingredients: [String]; let instructions: [String]; let flags: [LineFlag]; let large: [String]
@@ -2587,6 +2610,12 @@ final class DifferentialCorpusTests: XCTestCase {
                 XCTAssertEqual(item.recipe.ingredients, meal.ingredients, row.text)
                 XCTAssertEqual(item.recipe.instructions, meal.instructions, row.text)
             }
+        }
+    }
+
+    func testSharedBasedOnMatchesKotlin() {
+        for row in Self.basedOns {
+            XCTAssertEqual(SharedText.read(row.text).basedOn, row.basedOn, row.text)
         }
     }
 

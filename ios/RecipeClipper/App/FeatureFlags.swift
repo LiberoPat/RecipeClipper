@@ -38,6 +38,8 @@ enum Flag: String, CaseIterable {
     case askAi
     /// Meal-plan import (#352): a week of AI recipes shared in opens a review, kept and planned on their days in Week.
     case mealPlanImport
+    /// Recipe versions (#354): an AI's change to a recipe is saved linked to its original.
+    case recipeVersions
 }
 
 /// One flag as `shared/flags.json` declares it.

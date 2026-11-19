@@ -62,6 +62,38 @@ final class EditRecipeTextTests: XCTestCase {
         XCTAssertEqual(vm.uiState.savedId, 8)
     }
 
+    func testJsonThatNamesTheRecipeItChangedIsSavedWithThatClaim() async {
+        let repository = FakeRecipeRepository()
+        repository.addManualResult = saved(8)
+        let vm = viewModel(
+            "{\"@type\":\"Recipe\",\"name\":\"Spicier Soup\",\"isBasedOn\":\"https://example.com/soup\","
+                + "\"recipeIngredient\":[\"1 onion\",\"1 chilli\"],\"recipeInstructions\":[\"Simmer.\"]}",
+            repository: repository
+        )
+        await settleMain(until: { !vm.uiState.loading })
+
+        vm.onSave()
+        await settleMain(until: { vm.uiState.savedId != nil })
+
+        XCTAssertEqual(repository.addManualBasedOn, ["https://example.com/soup"])
+        XCTAssertEqual(repository.addManualFromChat, [true])
+        XCTAssertEqual(vm.uiState.savedId, 8)
+    }
+
+    func testJsonWithNoIsBasedOnIsSavedWithNoClaim() async {
+        let repository = FakeRecipeRepository()
+        repository.addManualResult = saved(8)
+        let vm = viewModel(
+            "{\"@type\":\"Recipe\",\"name\":\"Soup\",\"recipeIngredient\":[\"1 onion\"]}", repository: repository
+        )
+        await settleMain(until: { !vm.uiState.loading })
+
+        vm.onSave()
+        await settleMain(until: { vm.uiState.savedId != nil })
+
+        XCTAssertEqual(repository.addManualBasedOn, [nil])
+    }
+
     func testTextThatDoesNotSplitIsEveryLineAStepAsWritten() async {
         let vm = viewModel("Hi Mum,\nMix the flour with the butter and bake it.\n\nLove, Sam")
         await settleMain(until: { !vm.uiState.loading })

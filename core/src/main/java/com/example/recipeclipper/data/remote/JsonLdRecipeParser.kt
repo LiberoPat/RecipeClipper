@@ -148,6 +148,31 @@ internal object JsonLdRecipeParser {
 
     private fun dayOf(node: JSONObject): String? = (node.opt("day") as? String)?.trim()?.ifEmpty { null }
 
+    /**
+     * The `isBasedOn` of the first Recipe in [jsonLdBlocks] (#354): what an AI's reply names as
+     * the recipe it changed. A string, or a schema.org thing's `@id` or `url`, or the first of an
+     * array of them; trimmed; null when absent or blank. Found as [parse] finds the Recipe, under
+     * the same depth guard and the same single `Throwable` catch.
+     */
+    fun isBasedOn(jsonLdBlocks: List<String>): String? {
+        for (block in jsonLdBlocks) {
+            val node = try {
+                findRecipeNode(JSONTokener(block).nextValue())
+            } catch (e: Throwable) {
+                null
+            }
+            if (node != null) return basedOnText(node.opt("isBasedOn"))
+        }
+        return null
+    }
+
+    private fun basedOnText(node: Any?): String? = when (node) {
+        is String -> node.trim().ifEmpty { null }
+        is JSONObject -> basedOnText(node.opt("@id")) ?: basedOnText(node.opt("url"))
+        is JSONArray -> if (node.length() > 0) basedOnText(node.opt(0)) else null
+        else -> null
+    }
+
     // --- Locating the Recipe object inside arbitrarily nested JSON-LD ---
 
     private fun findRecipeNode(node: Any?, depth: Int = 0): JSONObject? {

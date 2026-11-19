@@ -136,6 +136,10 @@ data class ImportPlan(
  *   left as it is, never merged or renamed. Its meals follow the plan's rules (a recipe meal
  *   needs its recipe here, a note always comes in, no meal type means Dinner). A menu's recipes
  *   come in like listed ones, since the cull keeps them too. A menu left with no meals is dropped.
+ * - **Versions** (#354): a new recipe's `basedOn` (its original's uid in the file) stays only if
+ *   that recipe is here after the import, under the uid it has then; a link to a recipe that
+ *   isn't (skipped for the limit, or not in the file) is dropped. The recipes themselves come
+ *   in as any other. One already here keeps what it has: import never changes a link.
  * - **Typed-in recipes** (#102, origin MANUAL, or CHAT, #355) come in like listed ones, and one here counts as
  *   listed: the cull never removes them.
  * - **Photos of the user's own cooking** (#116) come in unless their uid is already here, and
@@ -315,6 +319,21 @@ object BackupMerger {
 
         // --- Groceries: by uid only, after what's on the list, keeping a recipe that's here.
         val written = newRecipes.mapTo(HashSet()) { Target.New(it.id) as Target }
+
+        // --- Versions (#354): a new recipe keeps its link to its original only if that recipe is
+        // here after the import, by the uid it has then (a matched one takes this phone's); else
+        // the link is dropped and the recipe stands alone. Never to itself.
+        val hereUidById = existingRecipes.associate { it.id to it.uid }
+        val hereUids = existingRecipes.mapTo(HashSet()) { it.uid }
+        fun survivingUid(fileId: String): String? = when (val target = recipeTargets[fileId]) {
+            is Target.Existing -> hereUidById[target.id]
+            is Target.New -> target.uid.takeIf { target in written }
+            null -> fileId.takeIf { it in hereUids }
+        }
+        val linkedRecipes = newRecipes.map { recipe ->
+            val original = recipe.basedOn?.let(::survivingUid)?.takeIf { it != recipe.id }
+            if (original == recipe.basedOn) recipe else recipe.copy(basedOn = original)
+        }
         val newGroceries = backup.groceries.filter { it.id !in existingGroceryUids }.map { item ->
             val recipe = item.recipeId?.let { recipeTargets[it] }?.takeIf { it is Target.Existing || it in written }
             NewGrocery(item, recipe)
@@ -378,7 +397,7 @@ object BackupMerger {
         }
 
         return ImportPlan(
-            newRecipes = newRecipes,
+            newRecipes = linkedRecipes,
             noteUpdates = noteUpdates,
             newLists = newListsByName.values.toList(),
             // A recipe left out by the cap (#345) takes no list membership with it.

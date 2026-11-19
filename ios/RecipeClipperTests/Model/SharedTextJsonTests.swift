@@ -78,4 +78,37 @@ final class SharedTextJsonTests: XCTestCase {
         )
         XCTAssertFalse(SharedText.read("recipe " + String(repeating: "[", count: 30_000)).sorted)
     }
+
+    // MARK: isBasedOn (#354): the recipe a chat's answer says it changed
+
+    /// `json` with an `isBasedOn` of `value` (raw JSON) added, or none for nil.
+    private func withBasedOn(_ value: String?) -> String {
+        guard let value else { return json }
+        return String(json.dropLast()) + ", \"isBasedOn\": \(value)}"
+    }
+
+    private func basedOn(_ value: String?) -> String? { SharedText.read(withBasedOn(value)).basedOn }
+
+    func testIsBasedOnIsReadAsAStringAnObjectsIdOrUrlOrTheFirstOfAnArray() {
+        XCTAssertEqual(basedOn("\"manual:1b2c\""), "manual:1b2c")
+        XCTAssertEqual(basedOn("\"  https://example.com/soup \""), "https://example.com/soup")
+        XCTAssertEqual(basedOn("{\"@id\": \"https://example.com/soup\"}"), "https://example.com/soup")
+        XCTAssertEqual(basedOn("{\"@type\": \"Recipe\", \"url\": \"https://example.com/soup\"}"), "https://example.com/soup")
+        XCTAssertEqual(basedOn("[\"manual:a\", \"manual:b\"]"), "manual:a")
+    }
+
+    func testNoIsBasedOnOrABlankOrOddOneIsNone() {
+        for value in [nil, "\"\"", "\"   \"", "[]", "42", "{}"] {
+            XCTAssertNil(basedOn(value), value ?? "none")
+        }
+    }
+
+    func testIsBasedOnIsReadFromAFenceAGraphAndProseAndNeverFromPlainText() {
+        let text = withBasedOn("\"manual:1b2c\"")
+        XCTAssertEqual(SharedText.read("```json\n\(text)\n```").basedOn, "manual:1b2c")
+        XCTAssertEqual(SharedText.read("Here you go: \(text) Enjoy!").basedOn, "manual:1b2c")
+        let graph = #"{"@graph":[{"@type":"Recipe","name":"Soup","recipeIngredient":["1 onion"],"isBasedOn":"manual:g"}]}"#
+        XCTAssertEqual(SharedText.read(graph).basedOn, "manual:g")
+        XCTAssertNil(SharedText.read("manual:1b2c").basedOn)
+    }
 }

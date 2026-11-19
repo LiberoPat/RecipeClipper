@@ -37,7 +37,12 @@ data class RecipeEntity(
      *  source's words, anything else the user's version, never refreshed by a re-share. */
     @ColumnInfo(defaultValue = "PARSED")
     val contentOrigin: String = "PARSED",
-    val editedAt: Long? = null      // when the user last saved an edit; null if never
+    val editedAt: Long? = null,     // when the user last saved an edit; null if never
+    /** The `uid` of the recipe this one is a version of (#354, an AI's change saved linked to its
+     *  original), or null. A uid, not a row id, so it survives an export and an import. No foreign
+     *  key: a delete clears it by hand (`RecipeDao.clearOrphanedLinks`), so it never points at
+     *  nothing. */
+    val basedOnUid: String? = null
 )
 
 @Entity(tableName = "lists", indices = [Index(value = ["uid"], unique = true)])

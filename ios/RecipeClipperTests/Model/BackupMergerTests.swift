@@ -355,4 +355,67 @@ final class BackupMergerTests: XCTestCase {
         XCTAssertEqual(result.newMenus.map(\.menu.id), ["menu-b"])
         XCTAssertEqual(result.newMenus.first?.entries.map(\.entry.id), ["gen-1"])
     }
+
+    // MARK: Versions (#354): the shared fixture's links, the same expectations as Android's BackupMergerTest
+
+    private func links(_ plan: ImportPlan) -> [String: String?] {
+        Dictionary(uniqueKeysWithValues: plan.newRecipes.map { ($0.id, $0.basedOn) })
+    }
+
+    private func versionRecipe(_ id: String, _ url: String, _ origin: String, _ basedOn: String?) -> BackupRecipe {
+        BackupRecipe(
+            id: id, sourceUrl: url, sourceType: "BLOG", title: id, imageUrl: nil, ingredients: ["1 egg"],
+            instructions: ["Cook."], prepTime: nil, cookTime: nil, totalTime: nil, servings: nil, lastViewedAt: 5,
+            checkedIngredients: [], notes: nil, contentOrigin: origin, basedOn: basedOn
+        )
+    }
+
+    func testVersionsKeepTheirLinksToOriginalsThatComeInToo() throws {
+        let result = plan(try decodeOrFail(backupFixture("backup-v1-versions")), recipes: [], lists: [], historyLimit: 50)
+        // A link to a recipe that isn't in the file, or to itself, is dropped.
+        let expected: [String: String?] = [
+            "r-soup": nil, "r-spicy": "r-soup", "r-spicier": "r-spicy", "r-lost": nil, "r-self": nil,
+        ]
+        XCTAssertEqual(links(result), expected)
+    }
+
+    func testAVersionLinksToTheMatchingRecipeAlreadyHereByItsUidHere() throws {
+        let here = [ExistingRecipe(id: 1, uid: "e-soup", sourceUrl: "https://example.com/soup", hasNotes: false, isListed: false)]
+        let result = plan(try decodeOrFail(backupFixture("backup-v1-versions")), recipes: here, lists: [], historyLimit: 50)
+        XCTAssertEqual(result.newRecipes.map(\.id), ["r-spicy", "r-spicier", "r-lost", "r-self"])
+        XCTAssertEqual(links(result)["r-spicy"], "e-soup")
+        XCTAssertEqual(links(result)["r-spicier"], "r-spicy")
+    }
+
+    func testAVersionWhoseOriginalIsOnlyHereNotInTheFileLinksToItByUid() {
+        let backup = Backup(
+            exportedAt: 0,
+            recipes: [versionRecipe("r-version", "manual:v", "CHAT", "e-bread"), versionRecipe("r-other", "manual:o", "CHAT", "e-nothing")],
+            lists: [], memberships: []
+        )
+        let expected: [String: String?] = ["r-version": "e-bread", "r-other": nil]
+        XCTAssertEqual(links(plan(backup)), expected)
+    }
+
+    func testAVersionsOriginalLeftOutByTheLimitDropsTheLinkNotTheVersion() {
+        let backup = Backup(
+            exportedAt: 0,
+            recipes: [versionRecipe("r-soup", "https://example.com/soup", "PARSED", nil), versionRecipe("r-v", "manual:v", "CHAT", "r-soup")],
+            lists: [], memberships: []
+        )
+        // No free place in history: the unlisted soup is skipped; the typed-in version still comes in.
+        let result = plan(backup, recipes: [], historyLimit: 0)
+        let expected: [String: String?] = ["r-v": nil]
+        XCTAssertEqual(links(result), expected)
+        XCTAssertEqual(result.summary.recipesSkipped, 1)
+    }
+
+    func testARecipeAlreadyHereKeepsWhatItHasAndAVersionOfItLinksToItsUidHere() throws {
+        let here = [ExistingRecipe(id: 1, uid: "e-spicy", sourceUrl: "manual:aaaa", hasNotes: false, isListed: true)]
+        let result = plan(try decodeOrFail(backupFixture("backup-v1-versions")), recipes: here, lists: [], historyLimit: 50)
+        XCTAssertNil(links(result)["r-spicy"] ?? nil)
+        XCTAssertFalse(result.newRecipes.contains { $0.id == "r-spicy" })
+        XCTAssertEqual(result.summary.recipesAlreadyHere, 1)
+        XCTAssertEqual(links(result)["r-spicier"], "e-spicy")
+    }
 }

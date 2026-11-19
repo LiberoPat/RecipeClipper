@@ -55,7 +55,9 @@ internal class RecipeActions(
     /** "Print or save as PDF" (#318): the recipe as shown, to the print dialog; null hides it. */
     val onPrint: (() -> Unit)? = null,
     /** "Change this recipe" (#353): a prompt for an AI chat with the recipe in it; null hides it. */
-    val onChangeWithAi: (() -> Unit)? = null
+    val onChangeWithAi: (() -> Unit)? = null,
+    /** "Based on" and "Versions" (#354): opens that recipe. */
+    val onOpenRecipe: (recipeId: Long) -> Unit = {}
 )
 
 /**
@@ -68,6 +70,7 @@ internal fun rememberRecipeActions(
     viewModel: RecipeViewModel,
     onBack: () -> Unit,
     onEdit: (recipeId: Long) -> Unit,
+    onOpenRecipe: (recipeId: Long) -> Unit,
     planViewModel: AddToPlanViewModel?,
     groceriesViewModel: AddToGroceriesViewModel?,
     sendFileViewModel: SendFileViewModel?,
@@ -87,7 +90,7 @@ internal fun rememberRecipeActions(
     // allowed, the countdown that permission refused is posted (#333).
     val askForNotifications = rememberNotificationPrompt(onGranted = viewModel::onNotificationsAllowed)
     return remember(
-        viewModel, onBack, onEdit, context, uriHandler, askForNotifications, planViewModel, groceriesViewModel, sendFileViewModel,
+        viewModel, onBack, onEdit, onOpenRecipe, context, uriHandler, askForNotifications, planViewModel, groceriesViewModel, sendFileViewModel,
         printViewModel, askAiViewModel
     ) {
         RecipeActions(
@@ -184,7 +187,8 @@ internal fun rememberRecipeActions(
                     viewModel.printBlocks(printLabels(resources))?.let { printViewModel.printRecipe(name, it) }
                 }
             },
-            onChangeWithAi = if (askAiViewModel == null) null else onOpenChangeSheet
+            onChangeWithAi = if (askAiViewModel == null) null else onOpenChangeSheet,
+            onOpenRecipe = onOpenRecipe
         )
     }
 }

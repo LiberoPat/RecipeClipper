@@ -195,7 +195,7 @@ final class PantryDaoTests: XCTestCase {
             let old = try SQLiteConnection(path: path)
             try old.execute("PRAGMA foreign_keys = ON")
             try AppDatabase.migrate(old, upTo: 8)
-            try RecipeDao(db: old).insert(RecipeRecord(
+            try RecipeDao(db: old).insertBeforeVersions(RecipeRecord(
                 id: 7, sourceUrl: "https://example.com/a", title: "Adobo", imageUrl: nil,
                 ingredients: ["1 cup soy sauce"], instructions: ["Simmer."], prepTime: nil, cookTime: nil,
                 totalTime: nil, servings: "4", sourceType: "BLOG", lastViewedAt: 123

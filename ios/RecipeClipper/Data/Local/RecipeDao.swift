@@ -42,13 +42,13 @@ struct RecipeDao {
         try db.run(
             """
             INSERT INTO recipes (\(RecipeRecord.columns))
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             r.id == 0 ? nil : r.id, r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
             JSONColumns.encode(r.checkedIngredients), r.notes, r.uid, r.language, r.cookState, r.servingsTarget,
-            r.contentOrigin, r.editedAt
+            r.contentOrigin, r.editedAt, r.basedOnUid
         )
         return db.lastInsertRowId
     }
@@ -110,6 +110,58 @@ struct RecipeDao {
         try db.run("DELETE FROM recipes WHERE id = ?", id)
     }
 
+    /// `delete` for a recipe the cook deleted (#354): the versions of it keep their place, but
+    /// their link clears, so none points at a recipe that is gone. Call inside a write.
+    func deleteWithLinks(_ id: Int64) throws {
+        try delete(id)
+        try clearOrphanedLinks()
+    }
+
+    /// Clears every version link whose original is no longer here (#354): after any delete.
+    func clearOrphanedLinks() throws {
+        try db.run(
+            """
+            UPDATE recipes SET basedOnUid = NULL
+            WHERE basedOnUid IS NOT NULL AND basedOnUid NOT IN (SELECT uid FROM recipes)
+            """
+        )
+    }
+
+    /// The versions of the recipe with `uid`, read before its delete so an undo can link them again.
+    func versionIdsOf(_ uid: String) throws -> [Int64] {
+        try db.query("SELECT id FROM recipes WHERE basedOnUid = ?", uid) { $0.int64(0) }
+    }
+
+    /// Links the recipes `ids` to the original `uid` again: an undo of its delete.
+    func relink(_ ids: [Int64], uid: String) throws {
+        for id in ids { try db.run("UPDATE recipes SET basedOnUid = ? WHERE id = ?", uid, id) }
+    }
+
+    /// The recipe `id` is a version of (#354); nil for none.
+    func original(of id: Int64) throws -> RecipeLink? {
+        try db.queryOne(
+            """
+            SELECT o.id, o.title FROM recipes v
+            JOIN recipes o ON o.uid = v.basedOnUid
+            WHERE v.id = ?
+            """,
+            id
+        ) { RecipeLink(id: $0.int64(0), title: $0.string(1)) }
+    }
+
+    /// The versions of recipe `id` (#354), newest first.
+    func versions(of id: Int64) throws -> [RecipeLink] {
+        try db.query(
+            """
+            SELECT v.id, v.title FROM recipes v
+            JOIN recipes o ON o.uid = v.basedOnUid
+            WHERE o.id = ?
+            ORDER BY v.id DESC
+            """,
+            id
+        ) { RecipeLink(id: $0.int64(0), title: $0.string(1)) }
+    }
+
     /// Read before `delete`, like `crossRefsFor`: the recipe's planned meals cascade with it.
     func planEntriesFor(_ recipeId: Int64) throws -> [MealPlanEntryRecord] {
         try db.query(
@@ -143,9 +195,12 @@ struct RecipeDao {
     /// longer exists.
     func restore(
         _ recipe: RecipeRecord, crossRefs: [ListMembership], planEntries: [MealPlanEntryRecord] = [],
-        menuEntries: [MenuEntryRecord] = [], cookedPhotos: [CookedPhotoRecord] = []
+        menuEntries: [MenuEntryRecord] = [], cookedPhotos: [CookedPhotoRecord] = [], versionIds: [Int64] = []
     ) throws {
         try insert(recipe)
+        // Its versions link to it again (#354); its own link only if its original is still here.
+        try relink(versionIds, uid: recipe.uid)
+        try clearOrphanedLinks()
         // Its own photos (#116): their files were kept for exactly this.
         let photos = CookedPhotoDao(db: db)
         for photo in cookedPhotos { try photos.insert(photo) }
@@ -183,6 +238,8 @@ struct RecipeDao {
         let planEntries: [MealPlanEntryRecord]
         let menuEntries: [MenuEntryRecord]
         let cookedPhotos: [CookedPhotoRecord]
+        /// The rows that were versions of it (#354), linked again by an undo.
+        var versionIds: [Int64] = []
     }
 
     /// Undoes a burst of deletes, all or nothing, under `limit` (#345). A `.capped` library (the
@@ -198,7 +255,7 @@ struct RecipeDao {
         for row in rows {
             try restore(
                 row.recipe, crossRefs: row.crossRefs, planEntries: row.planEntries,
-                menuEntries: row.menuEntries, cookedPhotos: row.cookedPhotos
+                menuEntries: row.menuEntries, cookedPhotos: row.cookedPhotos, versionIds: row.versionIds
             )
         }
         return true
@@ -365,13 +422,16 @@ struct RecipeDao {
             if case .capped(let max) = limit, try count() >= max { return Self.notKept }
             if case .free(let max) = limit, try count() >= max {
                 guard let oldest = try oldestCullable(today: today) else { return Self.notKept }
-                try delete(oldest)
+                try deleteWithLinks(oldest)
             }
             var inserted = fresh
             inserted.id = 0
             id = try insert(inserted)
         }
-        if case .history(let keep) = limit { try cullHistory(keep: keep, today: today) }
+        if case .history(let keep) = limit {
+            try cullHistory(keep: keep, today: today)
+            try clearOrphanedLinks()
+        }
         return id
     }
 
