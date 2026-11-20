@@ -17,7 +17,8 @@ struct RecipesScreen: View {
     var oneCookbook = false
     var saveVM: SaveToListViewModel? = nil
     var onOpenView: (RecipeFilter) -> Void = { _ in }
-    var onOpenList: (Int64) -> Void = { _ in }
+    /// The strip's Lists card (#371): the Lists screen, Back to here.
+    var onOpenLists: () -> Void = {}
 
     @State private var scanSource: ScanSource?
     @State private var saveSheetOpen = false
@@ -45,7 +46,8 @@ struct RecipesScreen: View {
                     // One cookbook (#345): the views, then the lists, in place of the pills.
                     if state.showsViewsStrip {
                         RecipesViewsStrip(
-                            counts: state.counts, lists: state.lists, onOpenView: onOpenView, onOpenList: onOpenList
+                            counts: state.counts, listCount: state.lists.count, onOpenView: onOpenView,
+                            onOpenLists: onOpenLists
                         )
                         .listRowSeparator(.hidden)
                     }

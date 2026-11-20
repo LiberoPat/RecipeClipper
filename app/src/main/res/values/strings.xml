@@ -155,7 +155,6 @@
     <!-- Home screen -->
     <string name="home_title" translatable="false">Recipe Clipper</string>
     <string name="section_continue_cooking">Continue cooking</string>
-    <string name="section_recently_viewed">Recently viewed</string>
     <string name="home_empty_hint">Recipes you open will show up here.</string>
     <!-- Home (#286): the resume card and the Add a recipe tiles -->
     <string name="home_paste_link_hint">A link or a recipe\'s text</string>
@@ -189,7 +188,6 @@
     <string name="recipe_based_on">Based on %1$s</string>
     <string name="recipe_versions_heading">Versions</string>
     <string name="cd_open_recipe_named">Open %1$s</string>
-    <string name="home_see_all">See all</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
     <string name="recipes_cull_note">Recipes in no list are kept up to %1$d. Past that, the ones you opened longest ago go first. Save one to a list to keep it.</string>
     <string name="label_search_recipes">Search titles and ingredients</string>

@@ -2,7 +2,7 @@ import XCTest
 @testable import RecipeClipper
 
 /// One cookbook (#345, Android's RecipesViewModelTest additions): the strip's counts and lists, a
-/// view opened on its own screen, the count against 50 and Home's See all.
+/// view opened on its own screen, the count against 50.
 @MainActor
 final class OneCookbookViewModelTests: XCTestCase {
     private func summary(_ id: Int64, saved: Bool = false, cooked: Int64? = nil, link: String = "", chat: Bool = false) -> RecipeSummary {
@@ -94,13 +94,5 @@ final class OneCookbookViewModelTests: XCTestCase {
         await settleMain()
         XCTAssertNil(vm.cullKeep)
         XCTAssertFalse(vm.showsCullNote)
-    }
-
-    func testSeeAllOnHomeOpensRecipesRecentlyViewed() async {
-        let preferences = FakeAppPreferences()
-        preferences.recipeSort = .name
-        let vm = HomeViewModel(repository: FakeRecipeRepository(), preferences: preferences)
-        vm.onSeeAllRecent()
-        XCTAssertEqual(preferences.recipeSort, .recentlyViewed)
     }
 }

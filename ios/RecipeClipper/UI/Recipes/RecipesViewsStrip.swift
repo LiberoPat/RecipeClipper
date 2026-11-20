@@ -1,14 +1,15 @@
 import SwiftUI
 
-/// One cookbook (#345, V4): under search, a strip of the automatic views (Not in a list, Cooked,
-/// Typed by you) followed by the lists, each a small card with its count. A view opens as its own
-/// screen (Back goes to Recipes); a list opens its own screen. The views never ask the cook to
-/// file anything: they are questions about what is already stored. Android's `RecipesViewsStrip`.
+/// One cookbook (#345, V4): under search, one strip of cards: Lists first (#371: it opens the Lists
+/// screen, its count the number of lists), then the automatic views (Not in a list, Cooked, Typed by
+/// you, From a chat), each with its count. A view opens as its own screen and so does Lists (Back
+/// goes to Recipes). The views never ask the cook to file anything: they are questions about what
+/// is already stored. Android's `RecipesViewsStrip`.
 struct RecipesViewsStrip: View {
     let counts: RecipeCounts?
-    let lists: [RecipeList]
+    let listCount: Int
     let onOpenView: (RecipeFilter) -> Void
-    let onOpenList: (Int64) -> Void
+    let onOpenLists: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
     private var width: CGFloat { min(104 * scale, 170) }
@@ -16,17 +17,15 @@ struct RecipesViewsStrip: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: 8) {
+                card(
+                    systemImage: "square.grid.2x2", name: Strings.navLists, count: listCount,
+                    id: "recipes.lists", action: onOpenLists
+                )
                 ForEach(RecipeFilter.views, id: \.self) { view in
                     card(
                         systemImage: Self.icon(view), name: RecipeFilterPills.name(view), count: counts?.of(view),
                         id: "recipes.view.\(view.rawValue)"
                     ) { onOpenView(view) }
-                }
-                ForEach(lists) { list in
-                    card(
-                        systemImage: list.isFavorites ? "heart" : "list.bullet", name: list.name,
-                        count: list.recipeCount, id: "recipes.list.\(list.id)"
-                    ) { onOpenList(list.id) }
                 }
             }
             .padding(.vertical, 12)

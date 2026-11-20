@@ -33,7 +33,7 @@ class HomeViewModelTest {
     private fun summary(id: Long, title: String = "Recipe $id") =
         RecipeSummary(id = id, title = title, imageUrl = null, totalTime = null, lastViewedAt = id, isSaved = false)
 
-    @Test fun `continueCooking is the most recent, recent is the five before it`() =
+    @Test fun `continueCooking is the most recent, and nothing else is listed (#371)`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = FakeRecipeRepository()
             // Newest first, as the repository's real query would order it.
@@ -44,7 +44,6 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             assertEquals(summaries[0], vm.uiState.value.continueCooking)
-            assertEquals(summaries.drop(1), vm.uiState.value.recent)
         }
 
     @Test fun `the Ask an AI tile opens its sheet, and dismissing closes it`() = runTest(mainDispatcherRule.dispatcher) {

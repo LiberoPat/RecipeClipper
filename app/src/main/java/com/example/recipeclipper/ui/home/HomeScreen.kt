@@ -45,9 +45,10 @@ import androidx.compose.ui.platform.testTag
 
 /**
  * Home (#286): Continue cooking as a photo card with where the cook stopped, then the ways in
- * (Paste a link, Scan a recipe, Type a recipe, and Ask an AI, #351), Recently viewed as a row of photos, and
- * the Recipes / Lists rows with their counts. Sections with nothing in them don't appear, but
- * the Recipes / Lists block always does. Settings is the gear beside the title.
+ * (Paste a link, Scan a recipe, Type a recipe, and Ask an AI, #351), and the Recipes row with its
+ * count (and the Lists row, without `oneCookbook`). No Recently viewed shelf (#371): Recipes'
+ * default sort is that. Sections with nothing in them don't appear, but
+ * the Recipes row always does. Settings is the gear beside the title.
  */
 @Composable
 fun HomeScreen(
@@ -66,7 +67,7 @@ fun HomeScreen(
     scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
     /** "Ask an AI" (#351): the fourth tile and its sheet. */
     askAiEnabled: Boolean = LocalFlagValues.current.isOn(Flag.ASK_AI),
-    /** One cookbook (#345): Recently viewed gains "See all". */
+    /** One cookbook (#345): Recipes lists the lists and makes new ones, so no Lists row here (#371). */
     oneCookbook: Boolean = LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -150,19 +151,6 @@ fun HomeScreen(
                         )
                     }
 
-                    if (state.recent.isNotEmpty()) {
-                        item(key = "recent") {
-                            RecentlyViewed(
-                                state.recent, onOpenRecipe,
-                                onSeeAll = if (oneCookbook) {
-                                    { viewModel.onSeeAllRecent(); onOpenRecipes() }
-                                } else {
-                                    null
-                                }
-                            )
-                        }
-                    }
-
                     if (state.loaded && state.continueCooking == null) {
                         item {
                             Spacer(Modifier.height(28.dp))
@@ -214,7 +202,7 @@ fun HomeScreen(
                         Spacer(Modifier.height(20.dp))
                         Hairline()
                         NavRow(stringResource(R.string.recipes_title), state.recipeCount, onOpenRecipes)
-                        NavRow(stringResource(R.string.nav_lists), state.listCount, onOpenLists)
+                        if (!oneCookbook) NavRow(stringResource(R.string.nav_lists), state.listCount, onOpenLists)
                     }
                 }
             }

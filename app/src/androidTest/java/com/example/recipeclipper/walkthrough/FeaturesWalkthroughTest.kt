@@ -129,7 +129,9 @@ class FeaturesWalkthroughTest : WalkthroughBase() {
         waitForSystemScreen(6000) // the print dialog
         systemBack()
         back()
-        tapScrolling(hasText("Lists") and hasText("›"))
+        // One cookbook (#371): Home has no Lists row; Recipes' strip starts with a Lists card.
+        tapScrolling(hasText("Recipes") and hasText("›"))
+        tap("Lists")
         tap("Dinner", 2000)
         menu("Make a cookbook")
         waitForSystemScreen() // the share sheet, with "Dinner.pdf"

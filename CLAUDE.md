@@ -199,17 +199,17 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Reached from the gear beside the Home title;
   another entry point is the owner's call.
-- **Recipes** (#345, V4): under search, a strip of automatic views (Not in a
-  list, Cooked, Typed by you, From a chat; each its own screen, Back to Recipes) then the
-  lists, in place of V1's All / In a list / Not in a list pills (those stay
-  with `oneCookbook` off). Views are questions about stored data, never
-  filing. Recently viewed is a sort, not a place.
+- **Recipes** (#345, V4): under search, one strip of cards: Lists first (#371: opens the
+  Lists screen, Back to Recipes), then the automatic views (Not in a list, Cooked, Typed by
+  you, From a chat; each its own screen), in place of V1's All / In a list / Not in a list pills
+  (those stay with `oneCookbook` off). Views are questions about stored data, never filing.
+  Recently viewed is a sort, not a place.
 - **Home** (#286): "Continue cooking" (the most recent) as a resume card;
-  Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles, then a full-width Ask an AI tile (#351); "Recently
-  viewed" (the five before it) as photos, with "See all" (opens Recipes
-  sorted Recently viewed); Recipes and Lists rows with counts
-  (always shown); the Settings gear. Empty sections hide. **No "Saved"
-  section**: it duplicated Recently viewed. Search is on Recipes only.
+  Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles, then a full-width Ask an AI tile (#351); one Recipes
+  row with its count (a Lists row too only with `oneCookbook` off); the
+  Settings gear. Empty sections hide. **No "Saved" section and no "Recently
+  viewed" shelf** (#371): both repeated Recipes, whose default sort is
+  Recently viewed. Search is on Recipes only.
 - **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry; Settings is not
   a tab. Each keeps its own back stack; the bar hides on the reading view and
   in cook mode.

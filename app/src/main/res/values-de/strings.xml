@@ -77,7 +77,6 @@
     <string name="timer_start">⏱  Timer für %1$s starten</string>
     <string name="timers_up">Zeit ist um</string>
     <string name="section_continue_cooking">Weiterkochen</string>
-    <string name="section_recently_viewed">Zuletzt angesehen</string>
     <string name="home_empty_hint">Rezepte, die du öffnest, erscheinen hier.</string>
     <!-- Home (#286): the resume card and the Add a recipe tiles -->
     <string name="home_paste_link_hint">Ein Link oder der Text eines Rezepts</string>
@@ -109,7 +108,6 @@
     <string name="recipe_based_on">Basiert auf %1$s</string>
     <string name="recipe_versions_heading">Versionen</string>
     <string name="cd_open_recipe_named">%1$s öffnen</string>
-    <string name="home_see_all">Alle ansehen</string>
     <!-- %1$d is the cap on recipes in no list (50). -->
     <string name="recipes_cull_note">Rezepte ohne Liste bleiben bis zu %1$d erhalten. Sind es mehr, werden zuerst die entfernt, die du am längsten nicht geöffnet hast. Speichere ein Rezept in einer Liste, um es zu behalten.</string>
     <string name="label_search_recipes">Titel und Zutaten durchsuchen</string>

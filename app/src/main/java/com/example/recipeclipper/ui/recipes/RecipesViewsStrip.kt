@@ -14,10 +14,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,20 +35,20 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
-import com.example.recipeclipper.data.model.RecipeList
 
 /**
- * One cookbook (#345, V4): under search, a strip of the automatic views (Not in a list, Cooked,
- * Typed by you, From a chat) followed by the lists, each a small card with its count. A view opens as its own
- * screen (Back goes to Recipes); a list opens its own screen. The views never ask the cook to
- * file anything: they are questions about what is already stored.
+ * One cookbook (#345, V4): under search, one strip of cards: Lists first (#371: it opens the Lists
+ * screen, its count the number of lists), then the automatic views (Not in a list, Cooked, Typed by
+ * you, From a chat), each with its count. A view opens as its own screen and so does Lists (Back
+ * goes to Recipes). The views never ask the cook to file anything: they are questions about what
+ * is already stored.
  */
 @Composable
 internal fun RecipesViewsStrip(
     counts: RecipeCounts?,
-    lists: List<RecipeList>,
+    listCount: Int,
     onOpenView: (RecipeFilter) -> Unit,
-    onOpenList: (Long) -> Unit,
+    onOpenLists: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyRow(
@@ -58,6 +56,15 @@ internal fun RecipesViewsStrip(
         contentPadding = PaddingValues(vertical = 12.dp),
         modifier = modifier.fillMaxWidth().testTag("recipesViewsStrip")
     ) {
+        item(key = "lists") {
+            ViewCard(
+                icon = painterResource(R.drawable.ic_view_lists),
+                name = stringResource(R.string.nav_lists),
+                count = listCount,
+                onClick = onOpenLists,
+                modifier = Modifier.testTag("recipesLists")
+            )
+        }
         items(RecipeFilter.views, key = { "view-${it.name}" }) { view ->
             ViewCard(
                 icon = viewIcon(view),
@@ -65,15 +72,6 @@ internal fun RecipesViewsStrip(
                 count = counts?.of(view),
                 onClick = { onOpenView(view) },
                 modifier = Modifier.testTag("recipesView-${view.name}")
-            )
-        }
-        items(lists, key = { "list-${it.id}" }) { list ->
-            ViewCard(
-                icon = rememberVectorPainter(if (list.isFavorites) Icons.Default.Favorite else Icons.AutoMirrored.Filled.List),
-                name = list.name,
-                count = list.recipeCount,
-                onClick = { onOpenList(list.id) },
-                modifier = Modifier.testTag("recipesList-${list.id}")
             )
         }
     }

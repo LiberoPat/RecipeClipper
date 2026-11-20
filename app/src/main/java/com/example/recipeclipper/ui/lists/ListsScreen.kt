@@ -16,6 +16,10 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -23,7 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -33,9 +39,10 @@ import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
- * Every list as a square cover in a two-column grid (#286), built-ins first, with "New list"
- * as the last tile. Renaming and deleting are on the list's own screen, so this one only
- * lists and creates — one place a list is managed from.
+ * Every list as a square cover in a two-column grid (#286), built-ins first. A "+" beside the
+ * title makes a new list (#371; it was the grid's last tile, out of reach below many lists), its
+ * name field opening just under the title. Renaming and deleting are on the list's own screen,
+ * so this one only lists and creates — one place a list is managed from.
  *
  * There is no empty state: the built-in lists are seeded when the database is created, so
  * this screen is never actually empty.
@@ -64,9 +71,26 @@ fun ListsScreen(
                     Column {
                         BackButton(onBack)
                         Spacer(Modifier.height(12.dp))
-                        Text(
-                            stringResource(R.string.lists_title),
-                            style = MaterialTheme.typography.headlineMedium
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(R.string.lists_title),
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = viewModel::onStartCreating, modifier = Modifier.testTag("lists.newList")) {
+                                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.lists_new_list_tile))
+                            }
+                        }
+                    }
+                }
+
+                if (state.creatingList) {
+                    item(key = "new-list-field", span = { GridItemSpan(maxLineSpan) }) {
+                        NewListField(
+                            name = state.newListName,
+                            onNameChange = viewModel::onNewListNameChange,
+                            onCancel = viewModel::onCancelCreating,
+                            onCreate = viewModel::onCreateList
                         )
                     }
                 }
@@ -79,25 +103,12 @@ fun ListsScreen(
                         onClick = { onOpenList(list.id) }
                     )
                 }
-
-                if (state.creatingList) {
-                    item(key = "new-list-field", span = { GridItemSpan(maxLineSpan) }) {
-                        NewListField(
-                            name = state.newListName,
-                            onNameChange = viewModel::onNewListNameChange,
-                            onCancel = viewModel::onCancelCreating,
-                            onCreate = viewModel::onCreateList
-                        )
-                    }
-                } else {
-                    item(key = "new-list") { NewListTile(onClick = viewModel::onStartCreating) }
-                }
             }
         }
     }
 }
 
-/** The tile opens into today's inline field, spanning the grid, with Cancel and Create. */
+/** The "+" opens today's inline field, spanning the grid, with Cancel and Create. */
 @Composable
 private fun NewListField(
     name: String,

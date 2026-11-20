@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.recipes
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -26,8 +27,8 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
 /**
- * One cookbook (#345, V4): under search a strip of views (Not in a list, Cooked, Typed by you)
- * and then the lists, each with its count; a view opens as a screen of its own; a recipe in no
+ * One cookbook (#345, V4): under search a strip of cards, Lists first (#371) and then the views
+ * (Not in a list, Cooked, Typed by you), each with its count; a view opens as a screen of its own; a recipe in no
  * list has an outlined bookmark that opens the save-to-list sheet. With the flag off, the
  * filter pills of step 1 stand and none of this shows.
  */
@@ -46,7 +47,7 @@ class RecipesOneCookbookScreenTest {
     private val bread = RecipeSummary(3, "Banana Bread", null, null, 0, isSaved = false, sourceUrl = "manual:abc")
 
     private var openedView: RecipeFilter? = null
-    private var openedList: Long? = null
+    private var openedLists = 0
 
     init {
         repository.history.value = listOf(adobo, carbonara, bread)
@@ -70,7 +71,7 @@ class RecipesOneCookbookScreenTest {
                 onBack = {},
                 onOpenRecipe = {},
                 onOpenView = { openedView = it },
-                onOpenList = { openedList = it },
+                onOpenLists = { openedLists++ },
                 viewModel = viewModel,
                 oneCookbook = oneCookbook,
                 saveViewModel = save,
@@ -80,21 +81,31 @@ class RecipesOneCookbookScreenTest {
     }
 
     @Test
-    fun theStripHoldsTheViewsWithTheirCountsThenTheLists() {
+    fun theStripHoldsTheListsCardThenTheViewsWithTheirCounts() {
         show()
         waitForText("Banana Bread")
         compose.onNodeWithTag("recipesViewsStrip").assertIsDisplayed()
+        // Lists first, with how many lists there are (#371); no strip of the lists themselves.
+        compose.onNodeWithTag("recipesLists").assertIsDisplayed()
+        compose.onNodeWithText("Lists").assertIsDisplayed()
+        compose.onAllNodesWithTag("recipesList-1").assertCountEquals(0)
+        compose.onAllNodesWithTag("recipesListsStrip").assertCountEquals(0)
         // Not in a list 2, Cooked 1, Typed by you 1: counted from what is stored.
         compose.onNodeWithTag("recipesView-NOT_IN_A_LIST").assertIsDisplayed()
         compose.onNodeWithTag("recipesView-COOKED").assertIsDisplayed()
         compose.onNodeWithTag("recipesView-TYPED").assertIsDisplayed()
         compose.onNodeWithText("Not in a list").assertIsDisplayed()
         compose.onNodeWithText("Typed by you").assertIsDisplayed()
-        // The lists follow on the same strip, which scrolls.
-        compose.onNodeWithTag("recipesViewsStrip").performScrollToNode(hasTestTag("recipesList-2"))
-        compose.onNodeWithTag("recipesList-1").assertExists()
-        compose.onNodeWithTag("recipesList-2").assertIsDisplayed()
-        compose.onNodeWithText("Favorites").assertExists()
+    }
+
+    /** #371: the Lists card opens the Lists screen (Back returns here). */
+    @Test
+    fun theListsCardOpensTheListsScreen() {
+        show()
+        waitForText("Banana Bread")
+        compose.onNodeWithTag("recipesLists").performClick()
+
+        assertEquals(1, openedLists)
     }
 
     @Test
@@ -115,14 +126,11 @@ class RecipesOneCookbookScreenTest {
     }
 
     @Test
-    fun aViewOpensItsScreenAndAListOpensItsOwn() {
+    fun aViewOpensItsScreen() {
         show()
         waitForText("Banana Bread")
         compose.onNodeWithTag("recipesView-COOKED").performClick()
         assertEquals(RecipeFilter.COOKED, openedView)
-        compose.onNodeWithTag("recipesViewsStrip").performScrollToNode(hasTestTag("recipesList-2"))
-        compose.onNodeWithTag("recipesList-2").performClick()
-        assertEquals(2L, openedList)
     }
 
     @Test

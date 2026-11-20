@@ -146,8 +146,9 @@ class RedditRecipeSourceTest {
     }
 
     @Test fun `offline is Offline`() = runBlocking {
-        server.close() // nothing listening: the connection is refused
-        val result = RedditRecipeSource(FakeConnectivity(online = false), base = base).fetch(postUrl)
+        // Port 1 is privileged, so nothing in a test run listens there and the connection is refused.
+        // (Closing this test's server wasn't enough: a test running alongside could take its port.)
+        val result = RedditRecipeSource(FakeConnectivity(online = false), base = "http://127.0.0.1:1").fetch(postUrl)
         assertEquals(ParseResult.Error(ParseError.Offline), result)
     }
 

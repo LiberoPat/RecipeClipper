@@ -73,7 +73,8 @@ extension WalkthroughUITests {
         pause(5)
         require(app.buttons["Cancel"].firstMatch, "the dialog's Cancel").tap()
         pause()
-        back()
+        backToHome()
+        // `start(flags:)` leaves oneCookbook off, so Home still has its Lists row.
         openLists()
         require(row("Dinner"), "Dinner").tap()
         pause(1.5)

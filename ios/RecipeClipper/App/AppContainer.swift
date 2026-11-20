@@ -283,7 +283,7 @@ final class AppContainer {
     func makeHomeViewModel() -> HomeViewModel {
         HomeViewModel(
             repository: recipeRepository, backups: backupRepository, files: backupFiles,
-            lists: listRepository, clock: clock, preferences: preferences, pasted: pastedTextRouter
+            lists: listRepository, clock: clock, pasted: pastedTextRouter
         )
     }
 

@@ -4,7 +4,7 @@ import XCTest
 @MainActor
 final class HomeViewModelTests: XCTestCase {
 
-    func testContinueCookingIsTheMostRecentAndRecentIsTheFiveBeforeIt() async {
+    func testContinueCookingIsTheMostRecent() async {
         let repository = FakeRecipeRepository()
         // Newest first, as the repository's real query would order it.
         let summaries = (1 ... 6).reversed().map { testSummary(Int64($0)) }
@@ -13,16 +13,6 @@ final class HomeViewModelTests: XCTestCase {
         await settleMain()
 
         XCTAssertEqual(vm.uiState.continueCooking, summaries[0])
-        XCTAssertEqual(vm.uiState.recent, Array(summaries.dropFirst()))
-    }
-
-    func testAsksForSixSoHomeNeverShowsMoreThanFiveRecent() async {
-        let repository = FakeRecipeRepository()
-        repository.recent.send((1 ... 20).reversed().map { testSummary(Int64($0)) })
-        let vm = HomeViewModel(repository: repository)
-        await settleMain()
-
-        XCTAssertEqual(vm.uiState.recent.count, HomeViewModel.recentCount)
     }
 
     func testLoadedStaysFalseUntilTheRepositoryAnswers() async {

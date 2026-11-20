@@ -369,6 +369,9 @@ things, and the three list ViewModels need nothing from the recipe side, so
   lists first), each with the name and count ("Empty" at zero) under it, and
   "New list" (a dashed tile with a plus) last. The tile opens today's inline
   field, full width under the grid, in the tile's place until Create or Cancel.
+  *Changed (#371, owner, 2026-11-19):* the tile was out of reach below many lists, so it is gone: a
+  **"+" beside the title** (the top bar on iOS, as the Recipes "+") starts the same flow, the name
+  field opening just under the title, labelled `lists_new_list_tile`.
   A cover is a mosaic of up to four photos from the list's recipes, most
   recently added first: four make a 2×2, one fills the square, two sit side by
   side, three put the newest on the left half and the next two stacked on the
@@ -2861,10 +2864,23 @@ bends the settled link field: an always-visible field became a tile that opens i
   are two tiles. Type a recipe is the #29 editor. The muted line under the tiles ("Or share a
   link to Recipe Clipper from any app.") replaces the subtitle under the title. On iOS the
   tiles stack at the accessibility sizes.
-- **Recently viewed** is a row of photos with their names, the five before Continue cooking,
-  keyed `recent-<id>` as Home's sections always are.
+- **Recently viewed** was a row of photos with their names, the five before Continue cooking.
+  **Removed (#371, owner, 2026-11-19):** it repeated the top five of Recipes, whose default sort
+  is Recently viewed (#345's research: recent is a sort over the one library, never a home
+  section). Home now lists only Continue cooking's recipe. The Recipes sort stays.
 - **Counts:** Recipes is what the Recipes screen lists (`observeHistory("")`, so the tour's
   sample counts, as in its "N recipes" line); Lists is every list.
+- **Home's rows after #371 (owner, 2026-11-19):** the Recipes bottom tab opens Home, so Home's
+  Recipes row (and the shelf's See all) was the only way into the Recipes screen: the row stays.
+  The Lists row goes **with `oneCookbook` on** (redundant with Recipes), and stays with it off, where
+  Recipes has no Lists card. The Lists screen and its route stay. Reaching it from Recipes took
+  three tries (owner, 2026-11-19): two cards at the end of the strip (too far to scroll to with many
+  lists), then a fixed "Lists" header with "All lists" and "+" above a lists strip, then the final
+  one: **a single Lists card at the front of the views strip**, in the views' card style, its count
+  the number of lists, title `nav_lists`, opening the Lists screen (Back returns to Recipes). No
+  strip of the lists on Recipes and no "+" there: a list is made on the Lists screen (its "+" beside the
+  title) or in the save-to-list sheet (needs a recipe). `lists_all` was added and
+  removed again. The card shows whenever the strip does.
 - **The tour:** `HOME_LINK` is anchored to the Paste a link tile, and now reads "…or tap here
   to paste one."
 - Unchanged: the empty-library hint and "Restore from a backup file", the one-time backup
@@ -3082,19 +3098,20 @@ off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, 
   to restore, so unlocking from there could only unlock, not bring the recipe back. Tests: Android
   `OneCookbookUndoTest`, `RecipesViewModelTest`, `RecipesScreenTest`; iOS `OneCookbookUndoTests`,
   `RecipesViewModelTests`.
-- **Recipes is a cookbook.** Under search, a **strip of automatic views** followed by the lists, in
-  place of V1's pills: Not in a list (the `isSaved` `EXISTS`, as the bookmark), Cooked (any
+- **Recipes is a cookbook.** Under search, a **strip of cards**, Lists first (#371, see Home's rows),
+  then the automatic views, in place of V1's pills: Not in a list (the `isSaved` `EXISTS`, as the bookmark), Cooked (any
   `cooked_photos` row, so "Mark as cooked" counts, #173), Typed by you (`contentOrigin = 'MANUAL'`,
   never the tour's sample, so scanned and shared-text recipes count too), From a chat (`contentOrigin = 'CHAT'`, #355). Each is a card with its
   count; a view opens as **its own screen** (route `recipes/view/{view}`, Back to Recipes; iOS
   `Route.recipesView`) which is the Recipes screen over the same ViewModel with its filter fixed: title,
-  a one-line note, search, sort, swipe to delete with the usual undo, no strip, no + menu. A list card
-  opens the list. Counts come from the one `observeRecipeCounts` query (no migration). Views are
+  a one-line note, search, sort, swipe to delete with the usual undo, no strip, no + menu. The Lists card
+  opens the Lists screen. Counts come from the one `observeRecipeCounts` query (no migration). Views are
   questions about what is stored, never a filing step: "Lists are deliberate", "Only Favorites is
   permanent", "No Saved section" and "Search is on Recipes only" are untouched, and Home keeps its
-  Recipes and Lists rows.
-- **Recently viewed** is a sort (still the default) and Home's shelf, which gains **See all**: it sets
-  the remembered sort to Recently viewed and opens Recipes.
+  Recipes row (its Lists row only with `oneCookbook` off, #371).
+- **Recently viewed** is a sort (still the default), no longer also Home's shelf: #345 first gave
+  the shelf a **See all** (it set the sort and opened Recipes), and #371 removed the shelf and
+  See all together (2026-11-19: the shelf repeated Recipes' top five).
 - **A recipe in no list has an outlined bookmark** on its row (not in a view's header), opening the
   existing save-to-list sheet (checkboxes that write at once, "+ New list" inline); the recipe then
   leaves Not in a list by itself.

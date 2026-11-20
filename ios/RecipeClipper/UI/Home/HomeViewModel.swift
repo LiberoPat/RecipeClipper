@@ -16,7 +16,6 @@ struct HomeUiState: Equatable {
     var continueCooking: RecipeSummary?
     /// Where the cook stopped on `continueCooking` (#286); nil when it isn't being cooked.
     var resume: CookResume?
-    var recent: [RecipeSummary] = []
     /// The Recipes and Lists rows' counts (#286); nil until known.
     var recipeCount: Int?
     var listCount: Int?
@@ -65,7 +64,8 @@ struct CookResume: Equatable {
 @MainActor
 @Observable
 final class HomeViewModel {
-    static let recentCount = 5
+    /// Continue cooking, and whether a second recipe exists (for the sample check).
+    static let recentCount = 2
     /// How often a running timer's time left is recomputed, as in cook mode.
     static let tick = Duration.milliseconds(250)
 
@@ -77,8 +77,6 @@ final class HomeViewModel {
     @ObservationIgnored private let repository: RecipeRepository
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private let sleep: Sleep
-    // "See all" on Recently viewed (#345) sets the sort Recipes opens in; nil leaves it.
-    @ObservationIgnored private let preferences: AppPreferences?
     // "Paste a link" takes any text (#372): where it goes is the shared-text route's; nil opens links only.
     @ObservationIgnored private let pasted: PastedTextRouter?
     // The resume card (#286): the latest recipe followed as its cook progress is saved.
@@ -87,15 +85,14 @@ final class HomeViewModel {
     @ObservationIgnored private var cookCancellable: AnyCancellable?
     @ObservationIgnored private var tickTask: Task<Void, Never>?
 
-    /// The most recent recipe is the "continue cooking" card; the five before it are "recent".
-    /// There is deliberately no "Saved" section (see CLAUDE.md, UI decisions). `lists` gives the
+    /// The most recent recipe is the "continue cooking" card. There is deliberately no "Saved"
+    /// section and no "Recently viewed" shelf (#371; see CLAUDE.md, UI decisions). `lists` gives the
     /// Lists row its count (#286; nil shows none).
     init(
         repository: RecipeRepository, backups: BackupRepository? = nil, files: BackupFiles? = nil,
         lists: ListRepository? = nil, clock: Clock = SystemClock(), sleep: @escaping Sleep = Sleeps.real,
-        preferences: AppPreferences? = nil, pasted: PastedTextRouter? = nil
+        pasted: PastedTextRouter? = nil
     ) {
-        self.preferences = preferences
         self.pasted = pasted
         self.repository = repository
         self.backups = backups
@@ -124,19 +121,13 @@ final class HomeViewModel {
         uiState.askAiOpen = false
     }
 
-    /// "See all" on Recently viewed (#345): Recipes opens in that order, whatever it was left on.
-    func onSeeAllRecent() {
-        preferences?.recipeSort = .recentlyViewed
-    }
-
     private func observeRecent() {
-        repository.observeRecent(limit: Self.recentCount + 1)
+        repository.observeRecent(limit: Self.recentCount)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] recent in
                 guard let self else { return }
                 uiState.loaded = true
                 uiState.continueCooking = recent.first
-                uiState.recent = Array(recent.dropFirst())
                 uiState.onlySample = false
                 follow(recent.first?.id)
                 // The sample alone (#151) still offers the restore row: there is nothing of
@@ -144,7 +135,7 @@ final class HomeViewModel {
                 if recent.count == 1, let only = recent.first {
                     Task { [weak self, repository] in
                         let sample = await repository.sampleId()
-                        guard let self, uiState.continueCooking?.id == only.id, uiState.recent.isEmpty else { return }
+                        guard let self, uiState.continueCooking?.id == only.id else { return }
                         uiState.onlySample = sample == only.id
                     }
                 }

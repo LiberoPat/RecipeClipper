@@ -82,9 +82,15 @@ final class WalkthroughUITests: RecipeUITestCase {
         pause()
     }
 
-    /// Opens a recipe from Home: Continue cooking (a plain title) or a Recently viewed row.
+    /// Opens a recipe from Home (Continue cooking, a plain title) or from the Recipes screen it is already on.
     func open(_ title: String) {
         let continueCooking = app.staticTexts[title].firstMatch
+        // Home lists only the most recent recipe (#371); any other is Recipes' row.
+        // (Continue cooking loads a beat after Home, so give it that beat before going to Recipes.)
+        if !row(title).waitForExistence(timeout: 3) && !continueCooking.exists && homePasteLink.exists {
+            openRecipes()
+            pause(0.8)
+        }
         (row(title).exists ? row(title) : require(continueCooking, title)).tap()
         require(bookmark, "the recipe screen for \(title)")
         pause()

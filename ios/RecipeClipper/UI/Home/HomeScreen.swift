@@ -2,8 +2,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Home (#286): Continue cooking as a photo card with where the cook stopped, then the ways in
-/// (Paste a link, Scan a recipe, Type a recipe, and Ask an AI, #351), Recently viewed as a row of photos, and the
-/// Recipes / Lists rows with their counts. Sections with nothing in them don't appear, but the
+/// (Paste a link, Scan a recipe, Type a recipe, and Ask an AI, #351), and the Recipes / Lists rows
+/// with their counts (no Lists row with `oneCookbook`). No Recently viewed shelf (#371): Recipes' default sort is that. Sections with nothing in them don't appear, but the
 /// Recipes / Lists block always does. Settings is the gear beside the title.
 struct HomeScreen: View {
     let vm: HomeViewModel
@@ -16,11 +16,11 @@ struct HomeScreen: View {
     let onOpenRecipes: () -> Void
     let onOpenLists: () -> Void
     let onOpenSettings: () -> Void
+    /// One cookbook (#345): Recipes lists the lists and makes new ones, so no Lists row here (#371).
+    var oneCookbook = false
     var onNewRecipe: () -> Void = {}
     /// "Scan a recipe" (#226): the pictures taken or picked, in order; nil hides it (flag off).
     var onScan: (([Data]) -> Void)? = nil
-    /// One cookbook (#345): "See all" on Recently viewed, opening Recipes in that order; nil hides it.
-    var onSeeAllRecent: (() -> Void)? = nil
     /// Makes "Ask an AI"'s sheet (#351); nil (the askAi flag off, or tests) leaves the tile out.
     /// Made on first use and kept for the screen's life.
     var makeAskAiVM: (() -> AskAiViewModel)? = nil
@@ -83,20 +83,6 @@ struct HomeScreen: View {
                 )
                     .padding(.top, 20)
 
-                if !state.recent.isEmpty {
-                    HStack {
-                        SectionHeading(Strings.sectionRecentlyViewed)
-                        if let onSeeAllRecent {
-                            Button(Strings.homeSeeAll, action: onSeeAllRecent)
-                                .buttonStyle(TextActionStyle())
-                                .accessibilityIdentifier("home.seeAll")
-                        }
-                    }
-                    .padding(.top, 24)
-                    RecentlyViewedRow(recipes: state.recent, onOpenRecipe: onOpenRecipe)
-                        .padding(.top, 10)
-                }
-
                 if state.loaded && state.continueCooking == nil {
                     Text(Strings.homeEmptyHint)
                         .textStyle(Typography.bodyLarge)
@@ -127,8 +113,10 @@ struct HomeScreen: View {
                     Hairline()
                     NavRow(title: Strings.recipesTitle, detail: state.recipeCount.map { "\($0)" }, action: onOpenRecipes)
                         .accessibilityIdentifier("home.nav.recipes")
-                    NavRow(title: Strings.navLists, detail: state.listCount.map { "\($0)" }, action: onOpenLists)
-                        .accessibilityIdentifier("home.nav.lists")
+                    if !oneCookbook {
+                        NavRow(title: Strings.navLists, detail: state.listCount.map { "\($0)" }, action: onOpenLists)
+                            .accessibilityIdentifier("home.nav.lists")
+                    }
                 }
                 .padding(.top, 20)
             }

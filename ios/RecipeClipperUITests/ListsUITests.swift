@@ -1,14 +1,14 @@
 import XCTest
 
 /// The Lists screen's covers (#286): a two-column grid of lists, each with its name and count
-/// under its cover, and "New list" as the last tile. Which photos a cover shows is covered by
+/// under its cover, and a "+" (the top bar, #371) to make a new list. Which photos a cover shows is covered by
 /// ListDaoTests (the SQL) and ListsViewModelTests; the seeded recipes here have none.
 ///
 /// The standard seed: Weeknights (Adobo, Carbonara) is the cook's own list, so it comes after
 /// the six seeded lists; Favorites and Dinner hold Adobo; the rest are empty.
 final class ListsUITests: RecipeUITestCase {
 
-    private var newListTile: XCUIElement { app.buttons["lists.newList"] }
+    private var newListPlus: XCUIElement { app.buttons["lists.newList"] }
 
     func testEveryListIsACoverWithItsNameAndCount() {
         launch()
@@ -31,29 +31,29 @@ final class ListsUITests: RecipeUITestCase {
         XCTAssertLessThan(require(row("Snacks")).frame.minY, require(row("Weeknights")).frame.minY)
     }
 
-    /// Seven lists: Weeknights alone in the fourth row, New list beside it.
-    func testNewListIsTheLastTile() {
+    /// #371: the "+" is in the top bar, above the first cover, with no tile after the last one.
+    func testTheNewListPlusIsInTheTopBarNotAtTheEndOfTheGrid() {
         launch()
         openLists()
 
-        let last = require(row("Weeknights")).frame
-        let tile = require(newListTile).frame
-        XCTAssertEqual(tile.minY, last.minY, accuracy: 1)
-        XCTAssertGreaterThan(tile.minX, last.minX)
+        let plus = require(newListPlus).frame
+        let first = require(row("Favorites")).frame
+        XCTAssertLessThan(plus.maxY, first.minY)
+        assertAbsent(app.staticTexts["New list"])
     }
 
-    func testTheNewListTileCreatesAnEmptyList() {
+    func testThePlusCreatesAnEmptyList() {
         launch()
         openLists()
 
-        newListTile.tap()
+        newListPlus.tap()
         let field = require(app.textFields["List name"])
         field.tap()
         field.typeText("Soups")
         app.buttons["Create"].tap()
 
         requireState(row("Soups"), "label CONTAINS 'Empty'")
-        require(newListTile, "the tile back once the field closes")
+        require(newListPlus, "the + still there once the field closes")
     }
 
     func testTappingACoverOpensTheList() {

@@ -100,13 +100,9 @@ struct RootView: View {
                     onOpenRecipes: { router.push(.recipes) },
                     onOpenLists: { router.push(.lists) },
                     onOpenSettings: { router.push(.settings) },
+                    oneCookbook: container.featureFlags.isOn(.oneCookbook),
                     onNewRecipe: { router.push(.editRecipe(id: nil)) },
                     onScan: scanHandler(push: router.push),
-                    // One cookbook (#345): Recently viewed gains See all, which opens Recipes in that order.
-                    onSeeAllRecent: container.featureFlags.isOn(.oneCookbook) ? {
-                        vm.onSeeAllRecent()
-                        router.push(.recipes)
-                    } : nil,
                     makeAskAiVM: container.makeAskAiViewModel
                 )
             }
@@ -232,7 +228,7 @@ struct RootView: View {
                     oneCookbook: container.featureFlags.isOn(.oneCookbook),
                     saveVM: saveVM,
                     onOpenView: { push(.recipesView($0)) },
-                    onOpenList: { push(.listDetail(id: $0)) }
+                    onOpenLists: { push(.lists) }
                 )
             }
         case .recipesView(let view):

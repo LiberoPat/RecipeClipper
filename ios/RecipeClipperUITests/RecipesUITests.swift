@@ -125,10 +125,17 @@ final class RecipesUITests: RecipeUITestCase {
         require(text("Save to"), "the save-to-list sheet")
     }
 
-    /// #345: Home's Recently viewed gains See all, which opens Recipes.
-    func testHomeSeeAllOpensRecipes() {
+    /// #371: with one cookbook the strip starts with a Lists card (no strip of the lists themselves);
+    /// it opens the Lists screen and Back returns here.
+    func testTheListsCardOpensTheListsScreenAndBackReturns() {
         launch(flags: ["oneCookbook"])
-        require(app.buttons["home.seeAll"], "See all").tap()
+        openRecipes()
+
+        assertAbsent(app.scrollViews["recipes.listsStrip"])
+        require(app.buttons["recipes.lists"], "the Lists card").tap()
+        require(app.buttons["lists.newList"], "the Lists screen")
+
+        back()
         require(app.textFields["Search titles and ingredients"], "Recipes")
     }
 

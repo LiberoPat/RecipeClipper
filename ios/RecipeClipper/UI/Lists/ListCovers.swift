@@ -95,34 +95,3 @@ private struct CoverPhoto: View {
             .clipped()
     }
 }
-
-/// The last tile: a dashed square with a plus and "New list" under it. It opens the same
-/// inline field "+ New list" always has.
-struct NewListTile: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 0) {
-                RoundedRectangle(cornerRadius: coverRadius)
-                    .strokeBorder(Palette.outline, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                    .aspectRatio(1, contentMode: .fit)
-                    .overlay {
-                        Image(systemName: "plus")
-                            .font(.system(size: 28))
-                            .foregroundStyle(Palette.accentText)
-                    }
-                    .accessibilityHidden(true)
-                    .padding(.bottom, 8)
-                Text(Strings.newListTile)
-                    .textStyle(Typography.titleSmall)
-                    .foregroundStyle(Palette.accentText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("lists.newList")
-    }
-}

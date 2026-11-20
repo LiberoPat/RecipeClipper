@@ -80,7 +80,8 @@ fun RecipesScreen(
     onScan: (List<String>) -> Unit = {},
     /** A view's tile on the strip (#345): its own screen, Back to Recipes. */
     onOpenView: (RecipeFilter) -> Unit = {},
-    onOpenList: (Long) -> Unit = {},
+    /** The strip's Lists card (#371): the Lists screen, Back to here. */
+    onOpenLists: () -> Unit = {},
     viewModel: RecipesViewModel = hiltViewModel(),
     scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
     /** One cookbook (#345): the views strip in place of the filter pills, and a bookmark to save from a row. */
@@ -184,7 +185,7 @@ fun RecipesScreen(
                         when {
                             // One cookbook (#345): the views, then the lists, in place of the pills.
                             oneCookbook && state.showsViewsStrip ->
-                                RecipesViewsStrip(state.counts, state.lists, onOpenView, onOpenList)
+                                RecipesViewsStrip(state.counts, state.lists.size, onOpenView, onOpenLists)
                             !oneCookbook && state.showsFilter ->
                                 RecipeFilterPills(state.filter, state.counts, viewModel::onFilterChange)
                         }
