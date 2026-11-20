@@ -41,6 +41,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.AskAiPrompt
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.ui.edit.PasteTarget
@@ -118,10 +119,12 @@ fun AskAiSheet(
                 )
                 KindRow(
                     AskAiKind.PLAN_MY_WEEK, state, stringResource(R.string.ask_ai_kind_plan),
-                    stringResource(R.string.ask_ai_kind_plan_hint),
+                    stringResource(planHint(state)),
                     enabled = true, viewModel::onKind
                 )
             }
+            // The plan's own choices (#392, #367), under the flag, once it is the chosen prompt.
+            if (state.plan && state.kind == AskAiKind.PLAN_MY_WEEK) PlanOptions(state, viewModel)
             Spacer(Modifier.height(16.dp))
             PromptButtons(
                 enabled = state.canSend,
@@ -205,6 +208,14 @@ fun ChangeRecipeSheet(recipe: Recipe, onDismiss: () -> Unit, viewModel: AskAiVie
             )
         }
     }
+}
+
+/** The line under "Plan my week": what the week is made of, by the source chosen (#367); today's line without the flag. */
+private fun planHint(state: AskAiUiState): Int = when {
+    !state.plan -> R.string.ask_ai_kind_plan_hint
+    state.source == AskAiPrompt.PlanSource.MINE -> R.string.ask_ai_plan_hint_mine
+    state.source == AskAiPrompt.PlanSource.MIX -> R.string.ask_ai_plan_hint_mix
+    else -> R.string.ask_ai_plan_hint_new
 }
 
 /** One prompt to choose: a radio row, its [hint] saying what it will carry. */

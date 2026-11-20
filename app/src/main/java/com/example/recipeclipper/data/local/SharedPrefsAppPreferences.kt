@@ -21,7 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class SharedPrefsAppPreferences @Inject constructor(
     @ApplicationContext context: Context
-) : AppPreferences, TourPreferences, UseUpLog {
+) : AppPreferences, TourPreferences, UseUpLog, PlanChoices {
 
     // The file keeps its original name: renaming it would strand every existing user's
     // saved unit choice for no gain.
@@ -119,7 +119,16 @@ class SharedPrefsAppPreferences @Inject constructor(
             prefs.edit { if (value.isEmpty()) remove(KEY_USE_UP) else putString(KEY_USE_UP, UseUpLog.encode(value)) }
         }
 
+    override var planMealKeys: List<String>?
+        get() = PlanChoices.decode(prefs.getString(KEY_PLAN_MEALS, null))
+        set(value) {
+            prefs.edit {
+                if (value.isNullOrEmpty()) remove(KEY_PLAN_MEALS) else putString(KEY_PLAN_MEALS, PlanChoices.encode(value))
+            }
+        }
+
     private companion object {
+        const val KEY_PLAN_MEALS = "plan_my_week_meals"
         const val KEY_USE_UP = "pantry_use_up"
         const val KEY_SAMPLE_ADDED = "tour_sample_added"
         const val KEY_SYSTEM = "unit_system"

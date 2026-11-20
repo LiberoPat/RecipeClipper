@@ -21,6 +21,14 @@ import com.example.recipeclipper.data.model.Recipe
  * and image are never used (an AI may make either up), and the prose around the JSON is dropped,
  * as for a single recipe.
  *
+ * Plan my week with choices (#392, #367) adds two properties. A recipe's `"meal"` is kept as
+ * written ([Item.meal]); mapping it to a meal type is [com.example.recipeclipper.data.model.MealType.idForMeal]'s,
+ * done where the cook's types are known. And an object that names a saved recipe by its link
+ * (`isBasedOn`, or `url`) and has no ingredients or steps of its own is an [Item] with
+ * [Item.link]: the review matches it to the library by `sourceUrl`, and a link that matches
+ * nothing is left out and counted, never made into a recipe. A `meal` counts as a day does for
+ * telling a plan from a changed recipe.
+ *
  * Pure: text in, data out. The iOS port (`MealPlanImport.swift`) follows it line for line.
  */
 object MealPlanImport {
@@ -28,20 +36,29 @@ object MealPlanImport {
     /** Fewer than this is a single recipe, for the editor. */
     const val MIN_RECIPES = 2
 
-    /** A month's worth: more is cut off, so a runaway answer can't flood the review. */
-    const val MAX_RECIPES = 31
+    /**
+     * Ten meals a day for a week: more is cut off, so a runaway answer can't flood the review.
+     * (Was a month's worth, 31, when the prompt asked only for dinners; #392.)
+     */
+    const val MAX_RECIPES = 70
+
+    /** Longer text isn't read as a plan: room for [MAX_RECIPES] recipes written out. */
+    const val MAX_LENGTH = 100_000
 
     /**
      * How many places in the text that open a JSON value are tried before giving up: room for
      * [MAX_RECIPES] separate blocks, the prose braces between them, and the pieces of a cut-off one.
      */
-    private const val MAX_CANDIDATES = 100
+    private const val MAX_CANDIDATES = 200
 
     /**
      * One recipe of the plan. [day] is the epoch day ([PlanDays]) its `"day"` named, null when
      * it named none or something that isn't a real date ("Monday", "2026-02-30").
      */
-    data class Item(val recipe: Recipe, val day: Long?)
+    data class Item(val recipe: Recipe, val day: Long?, val meal: String? = null, val link: String? = null) {
+        /** It names a saved recipe by [link] and carries none of its own: [recipe] is only a name (#367). */
+        val namesSavedRecipe: Boolean get() = link != null
+    }
 
     /** [cutOff]: the text ended inside an unfinished JSON value, so recipes after the last whole one are missing. */
     data class Plan(val items: List<Item>, val cutOff: Boolean = false)
@@ -49,8 +66,8 @@ object MealPlanImport {
     /** The plan in [text], or null when it holds none. */
     fun read(text: String): Plan? {
         val normalized = SharedText.normalize(text)
-        if (normalized.length > SharedText.MAX_LENGTH || !normalized.contains("recipe", ignoreCase = true)) return null
-        val gathered = mutableListOf<Pair<Recipe, String?>>()
+        if (normalized.length > MAX_LENGTH || !normalized.contains("recipe", ignoreCase = true)) return null
+        val gathered = mutableListOf<JsonLdRecipeParser.Found>()
         var oneValue = false // a single whole value held at least MIN_RECIPES recipes
         var basedOn = false // a value names the recipe it changed (#354): a changed recipe, not a week
         var cutAt = -1 // where the first unfinished JSON-looking value began
@@ -79,10 +96,10 @@ object MealPlanImport {
             i = end
         }
         if (gathered.size < MIN_RECIPES) return null
-        // With no day anywhere, only one value holding the recipes (an array, a wrapper, or one
-        // that was cut off) is a plan, and never a changed recipe: separate blocks are not.
-        if (gathered.none { it.second != null } && (basedOn || !(oneValue || afterCut >= MIN_RECIPES))) return null
-        return Plan(gathered.take(MAX_RECIPES).map { (recipe, day) -> Item(recipe, parseDay(day)) }, cutAt >= 0)
+        // With no day or meal anywhere, only one value holding the recipes (an array, a wrapper, or
+        // one that was cut off) is a plan, and never a changed recipe: separate blocks are not.
+        if (gathered.none { it.day != null || it.meal != null } && (basedOn || !(oneValue || afterCut >= MIN_RECIPES))) return null
+        return Plan(gathered.take(MAX_RECIPES).map { Item(it.recipe, parseDay(it.day), it.meal, it.link) }, cutAt >= 0)
     }
 
     private val DAY = Regex("""^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$""")

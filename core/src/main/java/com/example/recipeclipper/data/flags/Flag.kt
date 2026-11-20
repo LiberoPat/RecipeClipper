@@ -48,7 +48,9 @@ enum class Flag(val key: String) {
     /** Recipe versions (#354): an AI's change to a recipe is saved linked to its original. */
     RECIPE_VERSIONS("recipeVersions"),
     /** Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients. */
-    SHOP_FOR_WEEK("shopForWeek");
+    SHOP_FOR_WEEK("shopForWeek"),
+    /** Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix. */
+    PLAN_MY_WEEK_PLUS("planMyWeekPlus");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

@@ -98,10 +98,12 @@ internal fun cutOffWords(): CutOffMessage.Words {
     // The sentence read with a marker where the days go (never `LocalContext.current.getString`, which
     // isn't configuration-aware), the days put in when the message is built.
     val withMarker = stringResource(R.string.cutoff_ask_plan, DAYS_MARKER)
+    val mealsWithMarker = stringResource(R.string.cutoff_ask_plan_meals, DAYS_MARKER)
     return CutOffMessage.Words(
         plan = { days -> withMarker.replace(DAYS_MARKER, days) },
         planRest = stringResource(R.string.cutoff_ask_plan_rest),
-        recipe = stringResource(R.string.cutoff_ask_recipe)
+        recipe = stringResource(R.string.cutoff_ask_recipe),
+        planMeals = { pairs -> mealsWithMarker.replace(DAYS_MARKER, pairs) }
     )
 }
 

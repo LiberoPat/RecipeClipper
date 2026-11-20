@@ -35,6 +35,11 @@ fun askAiWords(resources: Resources): AskAiPrompt.Words {
         temperatureCelsius = resources.getString(R.string.ai_prompt_temperature_c),
         temperatureFahrenheit = resources.getString(R.string.ai_prompt_temperature_f),
         writeIn = { resources.getString(R.string.ai_prompt_write_in, it) },
-        noteOutside = resources.getString(R.string.ai_prompt_note_outside)
+        noteOutside = resources.getString(R.string.ai_prompt_note_outside),
+        planMealsIntro = { resources.getString(R.string.ai_prompt_plan_meals_intro, it) },
+        savedRecipesIntro = resources.getString(R.string.ai_prompt_saved_recipes),
+        useSavedOnly = resources.getString(R.string.ai_prompt_use_saved_only),
+        useSavedMix = { resources.getString(R.string.ai_prompt_use_saved_mix, it) },
+        replyPlanMeals = resources.getString(R.string.ai_prompt_reply_plan_meals, AskAiPrompt.DAY_FIELD, AskAiPrompt.MEAL_FIELD)
     )
 }

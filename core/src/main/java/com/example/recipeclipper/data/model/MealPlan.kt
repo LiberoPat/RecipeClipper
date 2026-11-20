@@ -10,9 +10,17 @@ data class MealType(
     val id: Long,
     val name: String,
     val builtInKey: String?,
-    val sortOrder: Int
+    val sortOrder: Int,
+    /** The type's stable uid (#26); empty where a type was made without one (a test). */
+    val uid: String = ""
 ) {
     val isBuiltIn: Boolean get() = builtInKey != null
+
+    /**
+     * What a setting stores to name this type (#392): [builtInKey] for a seeded one, which
+     * survives a rename, else the [uid]. Never the name, which the cook can change.
+     */
+    val key: String get() = builtInKey ?: uid
 
     companion object {
         /** New plan entries default to Dinner, and a deleted type's entries move to it. */
@@ -21,6 +29,29 @@ data class MealType(
         /** The type a new plan entry defaults to: Dinner, else the first; null with no types. */
         fun defaultTypeId(types: List<MealType>): Long? =
             (types.firstOrNull { it.builtInKey == DINNER } ?: types.firstOrNull())?.id
+
+        /**
+         * The keys ([MealType.key]) of the types ticked in "Plan my week" (#392): [picked] (what the cook
+         * chose, or last time's choice) kept to the types that still exist; with none left, Dinner's
+         * (else the first type's). Empty only when there are no types.
+         */
+        fun chosenKeys(types: List<MealType>, picked: Collection<String>?): Set<String> {
+            val kept = types.map { it.key }.filter { it.isNotEmpty() && picked?.contains(it) == true }.toSet()
+            if (kept.isNotEmpty()) return kept
+            val default = types.firstOrNull { it.builtInKey == DINNER } ?: types.firstOrNull()
+            return setOfNotNull(default?.key?.takeIf { it.isNotEmpty() })
+        }
+
+        /**
+         * The type a plan's "meal" names (#392): the one with that name, ignoring case and
+         * surrounding spaces (the first in the cook's order when two share it); anything else,
+         * or no meal, is [defaultTypeId] (Dinner). Never guessed from the recipe.
+         */
+        fun idForMeal(meal: String?, types: List<MealType>): Long? {
+            val wanted = meal?.trim()?.lowercase(java.util.Locale.ROOT)?.takeIf { it.isNotEmpty() }
+            val named = wanted?.let { w -> types.firstOrNull { it.name.trim().lowercase(java.util.Locale.ROOT) == w } }
+            return named?.id ?: defaultTypeId(types)
+        }
     }
 }
 
