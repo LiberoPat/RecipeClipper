@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.TimePickerDialog
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -139,6 +140,14 @@ private fun ReminderTimeDialog(minute: Int, onConfirm: (Int) -> Unit, onDismiss:
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     ) {
-        TimePicker(state = picker)
+        // The period selector's default (tertiaryContainer) is Material's baseline pink: the app's
+        // tokens, as everywhere (no Material purple).
+        TimePicker(
+            state = picker,
+            colors = TimePickerDefaults.colors(
+                periodSelectorSelectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                periodSelectorSelectedContentColor = MaterialTheme.colorScheme.onSurface
+            )
+        )
     }
 }
