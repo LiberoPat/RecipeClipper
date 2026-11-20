@@ -16,6 +16,7 @@ import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryMatch
+import com.example.recipeclipper.ui.common.SelectAllState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +44,13 @@ data class PutAwayItem(val key: String, val name: String, val language: String, 
  * The "Done shopping" sheet (#146): the ticked items the pantry can hold, and which of them go
  * in. What the pantry already tracks starts ticked; the rest doesn't.
  */
-data class PutAwaySheet(val items: List<PutAwayItem>, val ticked: Set<String>)
+data class PutAwaySheet(val items: List<PutAwayItem>, val ticked: Set<String>) {
+    /** The "Select all" row's state (#406), over the rows listed. */
+    val selectAll: SelectAllState get() = SelectAllState.of(items.count { it.key in ticked }, items.size)
+
+    /** The row shows only with more than one thing to tick. */
+    val canSelectAll: Boolean get() = items.size >= SelectAllState.MIN_ROWS
+}
 
 /**
  * [sections] is null until the list has loaded. [draft] is the "Add an item" field. [moving]
@@ -227,6 +234,12 @@ class GroceriesViewModel @Inject constructor(
     fun onPutAwayToggle(key: String) = _uiState.update { state ->
         val sheet = state.putAway ?: return@update state
         state.copy(putAway = sheet.copy(ticked = if (key in sheet.ticked) sheet.ticked - key else sheet.ticked + key))
+    }
+
+    /** "Select all" / "Clear all" (#406): ticks every listed item, or unticks them all when all are ticked. Writes nothing. */
+    fun onPutAwaySelectAll() = _uiState.update { state ->
+        val sheet = state.putAway ?: return@update state
+        state.copy(putAway = sheet.copy(ticked = if (sheet.selectAll.ticksAll) sheet.items.map { it.key }.toSet() else emptySet()))
     }
 
     fun onPutAwayDismissed() = _uiState.update { it.copy(putAway = null) }

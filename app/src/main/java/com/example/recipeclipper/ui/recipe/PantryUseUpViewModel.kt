@@ -18,6 +18,7 @@ import com.example.recipeclipper.data.model.PantryUseUp
 import com.example.recipeclipper.data.model.UseUpChange
 import com.example.recipeclipper.data.model.UseUpChoice
 import com.example.recipeclipper.data.model.UseUpRow
+import com.example.recipeclipper.ui.common.SelectAllState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -42,6 +43,15 @@ data class UseUpSheet(
     val choices: Map<Long, UseUpChoice> = emptyMap()
 ) {
     fun choice(id: Long): UseUpChoice = choices[id] ?: UseUpChoice.KEEP
+
+    /** The rows with a checkbox (a worked-out change); asked rows have keep / low / out instead. */
+    val tickable: List<Long> get() = rows.filter { it.change is UseUpChange.Subtract }.map { it.item.id }
+
+    /** The "Select all" row's state (#406), over the rows with a checkbox. */
+    val selectAll: SelectAllState get() = SelectAllState.of(tickable.count { it in ticked }, tickable.size)
+
+    /** The row shows only with more than one checkbox to tick. */
+    val canSelectAll: Boolean get() = tickable.size >= SelectAllState.MIN_ROWS
 }
 
 /** [sheet] is open; [updated] is the Undo snackbar's id, after a confirm that changed something. */
@@ -125,6 +135,12 @@ class PantryUseUpViewModel @Inject constructor(
     fun onToggle(id: Long) = _uiState.update { state ->
         val sheet = state.sheet ?: return@update state
         state.copy(sheet = sheet.copy(ticked = if (id in sheet.ticked) sheet.ticked - id else sheet.ticked + id))
+    }
+
+    /** "Select all" / "Clear all" (#406): ticks every worked-out row, or unticks them all when all are ticked. Asked rows keep their choice. */
+    fun onSelectAll() = _uiState.update { state ->
+        val sheet = state.sheet ?: return@update state
+        state.copy(sheet = sheet.copy(ticked = if (sheet.selectAll.ticksAll) sheet.tickable.toSet() else emptySet()))
     }
 
     fun onChoice(id: Long, choice: UseUpChoice) = _uiState.update { state ->

@@ -11,12 +11,15 @@ import com.example.recipeclipper.data.model.UseUpChoice
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakeUseUpLog
+import com.example.recipeclipper.ui.common.SelectAllState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -258,6 +261,50 @@ class PantryUseUpViewModelTest {
         vm.onMadeThis(RECIPE, "en", listOf("1 lb chicken"), ticked = emptySet())
         advanceUntilIdle()
         assertNotNull(vm.uiState.value.sheet)
+    }
+
+    // #406: select all over the worked-out rows only; an asked row keeps its choice, and nothing
+    // is written before the sheet's button.
+    @Test
+    fun `select all ticks and unticks the worked-out rows and leaves the asked row alone`() = runTest(mainDispatcherRule.dispatcher) {
+        val (pantry, vm) = viewModel(chicken, eggs, flour)
+        vm.onCookFinished(RECIPE, "en", listOf("1 lb chicken", "2 large eggs", "2 cups flour"))
+        advanceUntilIdle()
+        vm.onChoice(3, UseUpChoice.OUT)
+        assertEquals(SelectAllState.ALL, vm.uiState.value.sheet!!.selectAll)
+        assertTrue(vm.uiState.value.sheet!!.canSelectAll)
+
+        vm.onSelectAll() // all ticked: clears
+        assertEquals(emptySet<Long>(), vm.uiState.value.sheet!!.ticked)
+        assertEquals(SelectAllState.NONE, vm.uiState.value.sheet!!.selectAll)
+
+        vm.onToggle(1)
+        assertEquals(SelectAllState.SOME, vm.uiState.value.sheet!!.selectAll)
+        vm.onSelectAll() // some: ticks the rest, never the asked row
+        assertEquals(setOf(1L, 2L), vm.uiState.value.sheet!!.ticked)
+        assertEquals(SelectAllState.ALL, vm.uiState.value.sheet!!.selectAll)
+        assertEquals(UseUpChoice.OUT, vm.uiState.value.sheet!!.choice(3))
+
+        vm.onSelectAll()
+        vm.onSelectAll() // none: ticks every row
+        assertEquals(setOf(1L, 2L), vm.uiState.value.sheet!!.ticked)
+
+        // Nothing written until the button.
+        assertEquals(listOf(chicken, eggs, flour), pantry.items.value)
+        vm.onSelectAll()
+        vm.onConfirm() // nothing worked-out ticked: only the asked row's Out lands
+        advanceUntilIdle()
+        assertEquals(listOf("2 lb", "6"), pantry.items.value.take(2).map { it.quantity })
+        assertEquals(PantryStock.RUN_OUT, pantry.items.value[2].stock)
+    }
+
+    @Test
+    fun `the use-up sheet's select all row needs two rows with a checkbox`() = runTest(mainDispatcherRule.dispatcher) {
+        // One worked-out row and one asked row: a single checkbox, so no select all.
+        val (_, vm) = viewModel(chicken, flour)
+        vm.onCookFinished(RECIPE, "en", listOf("1 lb chicken", "2 cups flour"))
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.sheet!!.canSelectAll)
     }
 
     private companion object {

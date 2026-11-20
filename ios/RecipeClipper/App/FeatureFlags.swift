@@ -42,6 +42,8 @@ enum Flag: String, CaseIterable {
     case recipeVersions
     /// Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients.
     case shopForWeek
+    /// Select all / Clear all at the top of the put-away and Update the pantry checklists (#406).
+    case pantrySelectAll
 }
 
 /// One flag as `shared/flags.json` declares it.

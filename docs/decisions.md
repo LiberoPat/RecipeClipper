@@ -4140,6 +4140,16 @@ offer for the first was replaced and gone. Owner's decisions:
   item went. Spoken, it's "On your grocery list", and its action "Remove from grocery list". At
   the largest text sizes (Android font scale 1.5 and up, iOS accessibility sizes) only the basket
   shows. The Pantry tooltip names it: "The basket tag means it's on your grocery list."
+- **Select all on both pantry checklists** (#406, `pantrySelectAll`; owner, 2026-11-19: the
+  put-away checklist needs one). The first row of Done shopping's sheet (here) and of "Update the
+  pantry" (#147, below) is a tri-state checkbox, "Select all" while anything is unticked and "Clear
+  all" once everything is ticked: tapping it ticks every row, or, when every row is ticked, unticks
+  every row. Checked is everything ticked, indeterminate (iOS: a dash, with the VoiceOver value
+  "Some selected") is some, unchecked none; some and none both read "Select all". It is a
+  convenience only: it moves the sheet's ticks, held in the ViewModel's sheet state (`PutAwaySheet`,
+  `UseUpSheet`), and writes nothing; what Put away or Update writes is unchanged. The row is left out
+  when there is a single row to tick. Android uses `TriStateCheckbox`; iOS a checkbox-style row
+  (`SelectAllRow`). Off, the sheets are as before. Both sheets read the flag in the view layer.
 
 ## Using up the pantry at the end of cooking (#147)
 
@@ -4213,6 +4223,10 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
   on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
   off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
   so a killed app loses it with nothing changed.
+- **Select all** (#406, `pantrySelectAll`): the same tri-state row as Done shopping's sheet (#146,
+  above) tops this one. It counts only the worked-out rows, the ones with a checkbox: an asked row
+  (keep, running low or out) is a choice, not a tick, so it is never moved by it, and the row is
+  left out unless two or more rows have a checkbox. It writes nothing; the one confirm still does.
 
 ## Reddit posts (#11)
 

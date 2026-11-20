@@ -7,6 +7,8 @@ import SwiftUI
 struct PantryUseUpSheet: View {
     let sheet: UseUpSheet
     let vm: PantryUseUpViewModel
+    /// The `pantrySelectAll` flag (#406).
+    var selectAllEnabled = false
 
     var body: some View {
         ScrollView {
@@ -16,6 +18,11 @@ struct PantryUseUpSheet: View {
                     .textStyle(Typography.bodyMedium)
                     .foregroundStyle(Palette.muted)
                     .padding(.bottom, 8)
+                // #406: ticks or unticks every worked-out row; the asked rows keep their choice.
+                if selectAllEnabled && sheet.canSelectAll {
+                    SelectAllRow(state: sheet.selectAll, action: vm.onSelectAll)
+                        .accessibilityIdentifier("useUpSelectAll")
+                }
                 ForEach(sheet.rows, id: \.item.id) { row in
                     switch row.change {
                     case .subtract(let before, let after):

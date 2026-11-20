@@ -170,6 +170,7 @@ struct RootView: View {
                 GroceriesScreen(
                     vm: vm, receiveVM: receiveVM, takePendingList: container.takePendingList,
                     onOpenPantry: { router.select(.pantry) },
+                    selectAll: container.featureFlags.isOn(.pantrySelectAll),
                     makeSendFileVM: container.makeSendFileViewModel
                 )
             }
@@ -362,6 +363,7 @@ struct RootView: View {
                 makePhotosVM: container.makeCookedPhotosViewModel,
                 makeSendFileVM: container.makeSendFileViewModel,
                 makeUseUpVM: container.makePantryUseUpViewModel,
+                pantrySelectAll: container.featureFlags.isOn(.pantrySelectAll),
                 makePrintVM: container.makePrintViewModel,
                 makeAskAiVM: container.makeAskAiViewModel
             )
