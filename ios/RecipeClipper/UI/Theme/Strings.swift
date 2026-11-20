@@ -475,6 +475,9 @@ enum Strings {
     static var newList: String { String(localized: "action_new_list") }
     /// The last tile on the Lists screen (#286); the plus is drawn above it.
     static var newListTile: String { String(localized: "lists_new_list_tile") }
+    /// VoiceOver's actions on a list's cover (#381): the accessible way to reorder.
+    static var moveListEarlier: String { String(localized: "lists_move_earlier") }
+    static var moveListLater: String { String(localized: "lists_move_later") }
     static var create: String { String(localized: "action_create") }
     static var rename: String { String(localized: "action_rename") }
     static var save: String { String(localized: "action_save") }

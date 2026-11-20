@@ -106,4 +106,132 @@ final class ListsViewModelTests: XCTestCase {
         XCTAssertEqual(Strings.listCount(1), "1 recipe")
         XCTAssertEqual(Strings.listCount(3), "3 recipes")
     }
+
+    // MARK: - Reordering (#381)
+
+    private func repositoryWithThree() -> FakeListRepository {
+        let repository = FakeListRepository()
+        repository.lists.send([list(1, "Favorites"), list(2, "Lunch"), list(3, "Dinner")])
+        return repository
+    }
+
+    func testDraggingShowsTheNewOrderAtOnceButStoresNothingUntilTheDrop() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onDragStart(3)
+        vm.onDragOver(1)
+        XCTAssertEqual(vm.uiState.draggingId, 3)
+        XCTAssertEqual(vm.uiState.lists.map(\.id), [3, 1, 2])
+        XCTAssertTrue(repository.reorderCalls.isEmpty)
+
+        vm.onDragEnd()
+        await settleMain()
+
+        XCTAssertEqual(repository.reorderCalls, [[3, 1, 2]])
+        XCTAssertNil(vm.uiState.draggingId)
+        XCTAssertEqual(vm.uiState.lists.map(\.id), [3, 1, 2])
+    }
+
+    func testACoverDraggedOverSeveralInTurnTakesEachPlace() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onDragStart(1)
+        vm.onDragOver(2)
+        vm.onDragOver(3)
+        vm.onDragEnd()
+        await settleMain()
+
+        XCTAssertEqual(repository.reorderCalls, [[2, 3, 1]])
+    }
+
+    func testCancellingADragPutsTheCoversBackAndStoresNothing() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onDragStart(2)
+        vm.onDragOver(3)
+        vm.onDragCancel()
+
+        XCTAssertEqual(vm.uiState.lists.map(\.id), [1, 2, 3])
+        XCTAssertNil(vm.uiState.draggingId)
+        XCTAssertTrue(repository.reorderCalls.isEmpty)
+    }
+
+    func testDroppingWhereItStartedStoresNothing() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onDragStart(2)
+        vm.onDragOver(3)
+        vm.onDragOver(3) // back over the cover it swapped with: where it started
+        vm.onDragEnd()
+        await settleMain()
+
+        XCTAssertTrue(repository.reorderCalls.isEmpty)
+        XCTAssertNil(vm.uiState.draggingId)
+    }
+
+    func testADragOfNothingOrOverNothingChangesNothing() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onDragOver(2)
+        vm.onDragStart(99)
+        vm.onDragEnd()
+        vm.onDragStart(1)
+        vm.onDragOver(99)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.lists.map(\.id), [1, 2, 3])
+        XCTAssertTrue(repository.reorderCalls.isEmpty)
+    }
+
+    func testMoveEarlierAndMoveLaterStoreTheMoveAtOnce() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onMoveLater(1)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.lists.map(\.id), [2, 1, 3])
+
+        vm.onMoveEarlier(3)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.lists.map(\.id), [2, 3, 1])
+        XCTAssertEqual(repository.reorderCalls, [[2, 1, 3], [2, 3, 1]])
+    }
+
+    func testTheFirstCannotMoveEarlierNorTheLastLater() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onMoveEarlier(1)
+        vm.onMoveLater(3)
+        vm.onMoveLater(99)
+        await settleMain()
+
+        XCTAssertTrue(repository.reorderCalls.isEmpty)
+    }
+
+    func testAListCreatedDuringADragGoesLastAndTheDragsOrderStillHolds() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onDragStart(3)
+        vm.onDragOver(1)
+        await repository.createList(name: "New", addRecipeId: nil)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.lists.map(\.id), [3, 1, 2, 100])
+    }
 }
+

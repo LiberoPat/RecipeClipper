@@ -1,5 +1,7 @@
 package com.example.recipeclipper.ui.lists
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -14,7 +16,12 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.center
+import androidx.compose.ui.test.down
+import androidx.compose.ui.test.moveTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.up
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.fake.FakeListRepository
@@ -47,10 +54,13 @@ class ListsScreenTest {
 
     private var opened: Long? = null
 
-    private fun show() {
+    private fun show(reorderEnabled: Boolean = false) {
         val viewModel = ListsViewModel(repository)
         compose.setContent {
-            ListsScreen(onBack = {}, onOpenList = { opened = it }, viewModel = viewModel)
+            ListsScreen(
+                onBack = {}, onOpenList = { opened = it }, viewModel = viewModel,
+                reorderEnabled = reorderEnabled
+            )
         }
     }
 
@@ -164,5 +174,77 @@ class ListsScreenTest {
         compose.onNodeWithText("List name").assertDoesNotExist()
         compose.onNodeWithText("Soups").assertDoesNotExist()
         assertTrue(repository.createCalls.isEmpty())
+    }
+
+    // --- Reordering (#381) ---
+
+    private fun actionLabels(listId: Long): List<String> =
+        compose.onNodeWithTag("lists.cover.$listId").fetchSemanticsNode().config.let { config ->
+            if (SemanticsActions.CustomActions in config) config[SemanticsActions.CustomActions].map { it.label } else emptyList()
+        }
+
+    private fun runAction(listId: Long, label: String) {
+        val action = compose.onNodeWithTag("lists.cover.$listId").fetchSemanticsNode()
+            .config[SemanticsActions.CustomActions].single { it.label == label }
+        compose.runOnUiThread { action.action() }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun coversOfferMoveActionsOnlyWhereTheMoveIsPossible() {
+        show(reorderEnabled = true)
+
+        assertEquals(listOf("Move later"), actionLabels(1))
+        assertEquals(listOf("Move earlier", "Move later"), actionLabels(2))
+        assertEquals(listOf("Move earlier"), actionLabels(3))
+    }
+
+    @Test
+    fun withReorderingOffThereAreNoMoveActions() {
+        show(reorderEnabled = false)
+
+        assertEquals(emptyList<String>(), actionLabels(2))
+    }
+
+    @Test
+    fun moveLaterStoresTheNewOrderAndTheScreenFollows() {
+        show(reorderEnabled = true)
+
+        runAction(1, "Move later")
+
+        assertEquals(listOf(listOf(2L, 1L, 3L)), repository.reorderCalls)
+        val first = compose.onNodeWithTag("lists.cover.2").getBoundsInRoot()
+        val second = compose.onNodeWithTag("lists.cover.1").getBoundsInRoot()
+        assertTrue(first.left < second.left && first.top == second.top)
+    }
+
+    @Test
+    fun pressingAndHoldingACoverThenDraggingItOverAnotherMovesIt() {
+        show(reorderEnabled = true)
+        val second = compose.onNodeWithTag("lists.cover.2").getBoundsInRoot()
+        val held = compose.onNodeWithTag("lists.cover.1").getBoundsInRoot()
+
+        compose.onNodeWithTag("lists.cover.1").performTouchInput {
+            down(center)
+            advanceEventTime(viewConfiguration.longPressTimeoutMillis + 200)
+            val over = (second.left - held.left).toPx()
+            moveTo(center + Offset(over / 2, 0f))
+            moveTo(center + Offset(over, 0f))
+            up()
+        }
+        compose.waitForIdle()
+
+        assertEquals(listOf(listOf(2L, 1L, 3L)), repository.reorderCalls)
+        assertEquals(null, opened) // dropping a drag does not open the list
+    }
+
+    @Test
+    fun aTapStillOpensTheListWithReorderingOn() {
+        show(reorderEnabled = true)
+
+        compose.onNodeWithText("Weeknights").performClick()
+
+        assertEquals(3L, opened)
+        assertTrue(repository.reorderCalls.isEmpty())
     }
 }

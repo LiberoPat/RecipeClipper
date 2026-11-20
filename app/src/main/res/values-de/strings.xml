@@ -200,6 +200,8 @@
     <string name="lists_title">Listen</string>
     <string name="action_new_list">+  Neue Liste</string>
     <string name="lists_new_list_tile">Neue Liste</string>
+    <string name="lists_move_earlier">Nach vorn verschieben</string>
+    <string name="lists_move_later">Nach hinten verschieben</string>
     <string name="action_create">Erstellen</string>
     <string name="action_rename">Umbenennen</string>
     <string name="action_save">Speichern</string>

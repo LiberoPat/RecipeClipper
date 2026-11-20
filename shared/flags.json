@@ -101,6 +101,12 @@
       "description": "Week's menu has one item, Shop for this week, which opens What I need for the week shown (To buy and In your pantry, Add to groceries adds To buy once). Off, the menu has the two items it had: What I need and Add this week's ingredients.",
       "defaults": { "debug": true, "release": true },
       "issue": 384
+    },
+    {
+      "key": "reorderLists",
+      "description": "Reorder lists: a long press on a list's cover on the Lists screen lifts it to be dragged into place (and, for TalkBack or VoiceOver, Move earlier / Move later actions); the order is stored and used wherever lists are shown (Lists, the save-to-list sheet, Recipes) and carried by export and import. Off, lists are in the seeded-first order of before and cannot be moved.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 381
     }
   ]
 }

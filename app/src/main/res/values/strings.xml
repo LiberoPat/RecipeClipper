@@ -297,6 +297,8 @@
     <string name="action_new_list">+  New list</string>
     <!-- The last tile on the Lists screen (#286): the plus is drawn above it. -->
     <string name="lists_new_list_tile">New list</string>
+    <string name="lists_move_earlier">Move earlier</string>
+    <string name="lists_move_later">Move later</string>
     <string name="action_create">Create</string>
     <string name="action_rename">Rename</string>
     <string name="action_save">Save</string>

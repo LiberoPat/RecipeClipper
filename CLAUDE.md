@@ -37,7 +37,7 @@ place rather than appending an update.
 
 Built on both platforms: share → parse → show; the Recipes library (#102);
 the free tier and its unlock (#107); one cookbook (#345: nothing removed
-automatically, the free limit at 50, a views strip on Recipes); lists; scaling and unit conversion;
+automatically, the free limit at 50, a views strip on Recipes); lists, dragged into the cook's own order (#381); scaling and unit conversion;
 Settings; cook mode with saved progress and background timer alerts; sharing
 out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
@@ -231,7 +231,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 17** (iOS `user_version` 16),
+- Room database `recipe_clipper.db`, **version 18** (iOS `user_version` 17),
   schema exported to `app/schemas/`: commit it. **Never use destructive
   migration**, and give every migration a `MigrationTest`. iOS mirrors the
   schema in SQLite, with `PRAGMA user_version` migrations, in the App Group

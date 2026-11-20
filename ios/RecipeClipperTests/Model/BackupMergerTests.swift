@@ -215,6 +215,19 @@ final class BackupMergerTests: XCTestCase {
         XCTAssertTrue(plan.newLists.isEmpty)
     }
 
+    /// An old file has no positions (read as 0); a new one has the sender's, which are theirs (#381).
+    func testNewListsGoAfterTheListsHereInTheFilesOrderWhateverPositionsItCarries() {
+        let backup = Backup(exportedAt: 0, recipes: [], lists: [
+            BackupList(id: "n-c", name: "Cakes", isFavorites: false, isBuiltIn: false, sortOrder: 0, createdAt: 0),
+            BackupList(id: "n-a", name: "Apps", isFavorites: false, isBuiltIn: false, sortOrder: 0, createdAt: 0),
+            BackupList(id: "n-b", name: "Brunch", isFavorites: false, isBuiltIn: false, sortOrder: 5, createdAt: 0),
+        ], memberships: [])
+        let plan = plan(backup, recipes: [], maxSortOrder: 9)
+
+        XCTAssertEqual(plan.newLists.map(\.name), ["Cakes", "Apps", "Brunch"])
+        XCTAssertEqual(plan.newLists.map(\.sortOrder), [10, 11, 12])
+    }
+
     func testNoListEverJoinsFavoritesByNameOrUid() {
         let backup = Backup(exportedAt: 0, recipes: [], lists: [list("l-fav", "favorites")], memberships: [])
         let plan = plan(backup, recipes: [])

@@ -40,6 +40,9 @@ class FakeListRepository : ListRepository {
     /** Every [rename] call, in order. */
     val renameCalls = mutableListOf<Pair<Long, String>>()
 
+    /** Every order [reorderLists] was given, in order. */
+    val reorderCalls = mutableListOf<List<Long>>()
+
     /** Every list id [deleteList] was called with, in order. */
     val deleteCalls = mutableListOf<Long>()
 
@@ -86,6 +89,14 @@ class FakeListRepository : ListRepository {
         )
         if (addRecipeId != null) membership.value = membership.value + (addRecipeId to id)
         return id
+    }
+
+    /** As the SQL does it: the named lists first, in that order, then the rest as they were. */
+    override suspend fun reorderLists(orderedIds: List<Long>) {
+        reorderCalls += orderedIds
+        val byId = lists.value.associateBy { it.id }
+        val named = orderedIds.filter { it in byId }.distinct()
+        lists.value = (named + lists.value.map { it.id }.filterNot { it in named }).map { byId.getValue(it) }
     }
 
     override suspend fun rename(listId: Long, name: String) {

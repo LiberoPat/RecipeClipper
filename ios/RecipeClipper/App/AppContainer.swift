@@ -213,7 +213,9 @@ final class AppContainer {
                 photos: photoStore,
                 versionsOn: { featureFlags?.isOn(.recipeVersions) ?? false }
             ),
-            listRepository: DefaultListRepository(db: database, clock: clock),
+            listRepository: DefaultListRepository(
+                db: database, clock: clock, reorderOn: { featureFlags?.isOn(.reorderLists) ?? true }
+            ),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),

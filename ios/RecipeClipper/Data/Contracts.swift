@@ -447,7 +447,7 @@ extension RecipeRepository {
 
 /// List membership. Separate from RecipeRepository on purpose (see docs/decisions.md, Lists).
 protocol ListRepository: AnyObject {
-    /// Every list with its recipe count, built-ins first then sortOrder then id.
+    /// Every list with its recipe count, in the cook's own order (#381): sortOrder, then id.
     func observeLists() -> AnyPublisher<[RecipeList], Never>
 
     /// Same, each also saying whether it contains `recipeId`.
@@ -470,6 +470,10 @@ protocol ListRepository: AnyObject {
     /// in one transaction. Returns the new list's id.
     @discardableResult
     func createList(name: String, addRecipeId: Int64?) async -> Int64
+
+    /// The cook's new order for the lists (#381): `orderedIds` first, in that order, then any
+    /// list not named in the order it had. Stored, so every place lists are shown follows it.
+    func reorderLists(_ orderedIds: [Int64]) async
 
     func rename(listId: Int64, name: String) async
 
