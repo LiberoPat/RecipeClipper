@@ -79,6 +79,10 @@ import java.io.File
  * as a site (or the tour's sample) writes it, as the app shows it, or nil (hidden); write only
  * the time (optionally `, lang: "de"`; a language with no tables reads ISO alone).
  *
+ * `Ahead([steps])` rows (#397) pin [AheadSteps.find]: a recipe's steps as the index of the step to
+ * start ahead of time and its quoted sentence (nil, nil: none); write only the steps (optionally
+ * `, lang: "de"`; a language with no tables finds nothing).
+ *
  * `Step("step", [lines])` rows (#101) pin [StepAmounts.annotate]: the step with each amount in
  * ⟦ ⟧, once against the lines as given and once against them doubled in Metric; write only the
  * step and the lines (optionally `, lang: "fr"`).
@@ -211,6 +215,8 @@ class DifferentialCorpusTest {
     private val parseRow = Regex("""^(\s*)Parse\("((?:[^"\\]|\\.)*)"""")
     // A duration row (#179): a prep, cook or total time, optionally its language.
     private val durationRow = Regex("""^(\s*)Dur\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // An ahead-of-time row (#397): a recipe's steps, optionally their language.
+    private val aheadRow = Regex("""^(\s*)Ahead\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
     // A Chef mode row (#100): a step, a short version of it, optionally the recipe's ingredient
     // lines (#129) and their language.
     private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lines: \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*])?(?:, lang: "([a-z]+)")?""")
@@ -404,6 +410,14 @@ class DifferentialCorpusTest {
             val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
             val shown = Durations.format(text, LanguageWords.forTag(language))?.let { q(it) } ?: "nil"
             return m.groupValues[1] + "Dur(${q(text)}$lang, $shown),"
+        }
+        aheadRow.find(line)?.let { m ->
+            val steps = literal.findAll(m.groupValues[2]).map { unescape(it.groupValues[1]) }.toList()
+            val language = m.groupValues[3].ifEmpty { "en" }
+            val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+            val found = AheadSteps.find(steps, LanguageWords.forTag(language))
+            val shown = found?.let { "${it.step}, ${q(it.quote)}" } ?: "nil, nil"
+            return m.groupValues[1] + "Ahead(${list(steps)}$lang, $shown),"
         }
         splitRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
