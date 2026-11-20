@@ -216,6 +216,9 @@ enum UITestSeeding {
             paprikaImportRepository: DefaultPaprikaImportRepository(
                 files: FilePaprikaFiles(photos: photoStore), db: database, clock: clock, library: libraryLimit, photos: photoStore
             ),
+            mealieImportRepository: DefaultMealieImportRepository(
+                files: FileMealieFiles(photos: photoStore), db: database, clock: clock, library: libraryLimit, photos: photoStore
+            ),
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             tourPreferences: preferences,
             photoTextReader: ProcessInfo.processInfo.environment[UITestPhotoTextReader.visionKey] == "1"

@@ -33,7 +33,7 @@ enum PaprikaZipReader {
         return !file.hasPrefix(".") && file.lowercased().hasSuffix(ext)
     }
 
-    /// One entry of the zip's central directory (shared with `RecipeKeeperZipReader`, #390).
+    /// One entry of the zip's central directory (shared with `RecipeKeeperZipReader`, #390, and `MealieZipReader`, #391).
     struct Entry {
         let name: String
         let method: UInt16

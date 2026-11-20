@@ -71,6 +71,10 @@ fun SettingsSectionScreen(
     val recipeKeeperPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.onRecipeKeeperPicked(it.toString()) }
     }
+    // Import from Mealie (#391): the same system picker; a Mealie zip or .json has no MIME type worth filtering on.
+    val mealiePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { viewModel.onMealiePicked(it.toString()) }
+    }
     // The automatic backup copy's folder (#150): the system's folder picker, kept by permission.
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         viewModel.onBackupFolderPicked(uri?.toString())
@@ -92,6 +96,7 @@ fun SettingsSectionScreen(
         onImport = { importPicker.launch(IMPORT_MIME_TYPES) },
         onImportPaprika = { paprikaPicker.launch(PAPRIKA_MIME_TYPES) },
         onImportRecipeKeeper = { recipeKeeperPicker.launch(RECIPE_KEEPER_MIME_TYPES) },
+        onImportMealie = { mealiePicker.launch(MEALIE_MIME_TYPES) },
         onChooseFolder = { folderPicker.launch(null) },
         onExpiryRemindersChange = { on ->
             // Asking is a platform effect, so it lives here: only when the cook turns reminders
@@ -142,6 +147,7 @@ private class SectionActions(
     val onImport: () -> Unit,
     val onImportPaprika: () -> Unit,
     val onImportRecipeKeeper: () -> Unit,
+    val onImportMealie: () -> Unit,
     val onChooseFolder: () -> Unit,
     val onExpiryRemindersChange: (Boolean) -> Unit
 )
@@ -272,8 +278,18 @@ private fun YourRecipesRows(state: SettingsUiState, viewModel: SettingsViewModel
             onClick = actions.onImportRecipeKeeper
         )
     }
-    if (state.showsPaprikaImport || state.showsRecipeKeeperImport) {
-        // What the imports do with the other app's categories (#387, #390); on unless the cook turns it off.
+    // Mealie's export (#391), beside them: behind the mealieImport flag.
+    if (state.showsMealieImport) {
+        ActionRow(
+            title = stringResource(R.string.mealie_import_title),
+            description = stringResource(R.string.mealie_import_description),
+            enabled = !state.backup.isBusy,
+            onClick = actions.onImportMealie
+        )
+    }
+    if (state.showsPaprikaImport || state.showsRecipeKeeperImport || state.showsMealieImport) {
+        // What the imports do with the other app's categories (#387, #390, #391): one switch for all
+        // of them; on unless the cook turns it off.
         SwitchRow(
             title = stringResource(R.string.paprika_filing_title),
             description = stringResource(R.string.paprika_filing_description),

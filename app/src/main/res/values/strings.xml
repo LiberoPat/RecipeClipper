@@ -335,6 +335,35 @@
         <item quantity="one">Imported %d recipe from Recipe Keeper.</item>
         <item quantity="other">Imported %d recipes from Recipe Keeper.</item>
     </plurals>
+    <!-- Settings → Your recipes: import from Mealie (#391) -->
+    <string name="mealie_import_title">Import from Mealie</string>
+    <string name="mealie_import_description">Add the recipes from a Mealie export: the whole export\'s .zip, a downloaded recipe\'s .zip, or a recipe\'s .json. Nothing here is replaced or deleted.</string>
+    <string name="mealie_importing">Reading the Mealie file…</string>
+    <string name="mealie_imported_nothing">Nothing new: every recipe in that file is already here.</string>
+    <string name="mealie_nothing_found">No recipes could be read from that file.</string>
+    <string name="mealie_error_not_mealie">That isn\'t a Mealie export. Choose the .zip Mealie exported, or a recipe\'s .json. To bring in a recipe from a Mealie page, share its link.</string>
+    <string name="mealie_error_damaged">That file is damaged or cut short. Nothing was imported.</string>
+    <string name="mealie_error_too_large">That file is far larger than a Mealie export should be. Nothing was imported.</string>
+    <plurals name="mealie_photos_left_out">
+        <item quantity="one">%d picture couldn\'t be read and was left out.</item>
+        <item quantity="other">%d pictures couldn\'t be read and were left out.</item>
+    </plurals>
+    <plurals name="mealie_lists_made">
+        <item quantity="one">%d new list was made from the categories and tags.</item>
+        <item quantity="other">%d new lists were made from the categories and tags.</item>
+    </plurals>
+    <plurals name="mealie_imported">
+        <item quantity="one">Imported %d recipe from Mealie.</item>
+        <item quantity="other">Imported %d recipes from Mealie.</item>
+    </plurals>
+    <plurals name="mealie_not_recipes">
+        <item quantity="one">%d entry that isn\'t a Mealie recipe, or has no name, ingredients or steps, was left out.</item>
+        <item quantity="other">%d entries that aren\'t Mealie recipes, or have no name, ingredients or steps, were left out.</item>
+    </plurals>
+    <plurals name="mealie_unreadable">
+        <item quantity="one">%d entry couldn\'t be read.</item>
+        <item quantity="other">%d entries couldn\'t be read.</item>
+    </plurals>
     <string name="temperature_as_written">As written</string>
     <string name="temperature_as_written_description">Exactly the temperature the recipe uses</string>
     <string name="temperature_celsius">Celsius (°C)</string>

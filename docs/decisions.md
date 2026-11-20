@@ -5490,6 +5490,116 @@ leaves nothing). What follows is only what differs.
   reads any element carrying the itemprop, `<meta>` or text), a recipe whose yield is a bare number, and the
   system picker choosing the `.zip` from Drive or iCloud on a phone.
 
+## Import from Mealie (#391, 2026-11-19)
+
+The owner asked for Mealie (self-hosted) next, on top of the Paprika import (#382) and its pictures
+(#386) and lists (#387). Settings, Your recipes gains **Import from Mealie** below Paprika's row, with
+the one shared switch ("Put recipes in lists by their categories", on by default, this visit's
+choice; the owner folded Mealie's own switch into it when the three importers landed together, so
+Paprika, Recipe Keeper and Mealie share it, and it shows when any of the three rows does) and the same status line, behind the `mealieImport` flag (on by default in debug and release),
+on both platforms. Everything that is not named here is the Paprika section's: the guarded archive, the
+one limit, `BackupDao.importBackup` and `BackupMerger`, "never re-fetched", the stored photo, the counts.
+
+- **The link import already works.** Verified in Mealie's source (`mealie/routes/spa/__init__.py`, at
+  `0e923e3`, version 3.31): a public recipe's page (`/g/<group>/r/<slug>`) and a shared one
+  (`/g/<group>/shared/r/<token>`) are served with an `application/ld+json` schema.org `Recipe` written
+  into the HTML's `<head>` by the server (name, description, `image`, ISO `prepTime` / `cookTime` /
+  `totalTime`, `recipeYield`, `recipeIngredient` as text lines, `recipeInstructions` as plain strings,
+  `recipeCategory`, `keywords`), so no JavaScript is needed. `shared/fixtures/pages/mealie-pasta-e-ceci.html`
+  is made to that shape and `MealiePageTest` / `MealiePageTests` read it through the ordinary link
+  import. A private recipe's page asks for a login and stays out of reach, as every login page does. A
+  server's recipe with no `description` or categories is the same page with those keys empty. **Not
+  verified against a running server.**
+- **Three kinds of file, one reader** (`MealieArchive` in `:core`, `MealieZipReader` on iOS, which reuses
+  `PaprikaZipReader`'s zip structure and inflating): the **bulk export** (Data Management > Recipes >
+  Export: a zip of `recipes/<slug>/<slug>.json`, no pictures; `mealie_export.py` copies only `.json`),
+  **one recipe's Download** (`<slug>.json` and `original.webp` at the zip's root, written by
+  `routes/recipe/shared_routes.py` from `recipe.model_dump_json()`, which is why its keys are
+  snake_case), and a **bare `.json`** (the recipe page's JSON editor and the API write camelCase). The
+  zip is told from a bare file by its first four bytes, not its name. Entries are found by what they are
+  (`*.json`, a picture ending `.webp`, `.jpg`, `.jpeg` or `.png`; not hidden, not under `__MACOSX/`), and a
+  name is only ever compared, never used as a path.
+- **A picture belongs to the recipe whose JSON is in its folder** (nearest up the path, so
+  `recipes/<slug>/images/original.webp` goes to `recipes/<slug>/<slug>.json`); a lone recipe's zip
+  gives it any picture wherever it sits; of several, one whose name starts "original" wins, else the
+  first; a picture that fits no recipe is ignored. It goes to the photo store as that recipe is read
+  and is a recipe's own photo (#386): a WebP is decoded by `BitmapFactory` on Android and ImageIO
+  on iOS and stored as the JPEG every photo is. A picture that is over 8 MiB, not an image or not stored is
+  left out and counted, the recipe stays.
+- **The same guards as #382** (`MealieLimits`: 10 000 entries, 32 MiB a JSON entry, 2 GiB in all and
+  for the file, 8 MiB a picture): a declared size over the cap is refused unpacked, the real size is
+  counted as it unpacks (the fixture `mealie-bomb.zip` says its entry is 100 bytes and unpacks to 40
+  MB), entries and totals over the caps refuse the whole file (`TOO_LARGE`), a broken directory is
+  `DAMAGED`. **Counts:** a JSON that is Mealie-shaped with no name, or neither ingredients nor steps, and
+  any JSON that is not Mealie's (another app's, schema.org) are **not recipes**, skipped and counted; a
+  file that isn't UTF-8 or JSON, is nested too deep or over a cap is **unreadable**, counted, the rest
+  import. A zip with no JSON, or none of them Mealie's, and a bare file that isn't a Mealie recipe, are
+  `NOT_A_MEALIE_FILE`; nothing is imported.
+- **Detection** (`MealieRecipeParser`; Mealie's own `parse_mealie_export` uses the same test to take
+  a pasted dump): a non-blank `slug`, `recipeIngredient` (or `recipe_ingredient`) a list of objects with
+  at least one `referenceId` / `reference_id`, and **no `@context` or `@type`**. An empty ingredient
+  list can't show a reference, so it needs a `recipeInstructions` list beside it. **A schema.org file
+  is not read here, by decision**: it is a recipe page's data, which the link import reads; a bare one
+  says "That isn't a Mealie export ... To bring in a recipe from a Mealie page, share its link", and
+  inside a zip it is counted as not a recipe. (Parsing it with the JSON-LD parser would have made this row
+  a second, different way to import a link.)
+- **Fields.** Both key styles are read (`recipeIngredient` / `recipe_ingredient`, `orgURL` /
+  `orgUrl` / `org_url`, ...). `name` is the title. **Ingredients are never rebuilt from `quantity` and
+  `unit`**: before Mealie 3.1 a line that was never parsed was stored with `quantity` 1 and its text in
+  `note`, and `display` (Mealie computes it from the quantity) reads "1 2 cups red lentils". A line is
+  its `originalText`, else, **for a line with a food or a unit**, Mealie's own `display`, else the
+  food's name and the note; **a line with neither food nor unit is its `note`** (or nothing, and is
+  dropped), never its `display`. A `title` puts a heading line ("For the sauce:", a colon added if there
+  is none) before the line. Lines are single lines (Mealie's line breaks become spaces); the text is as
+  Mealie holds it (its steps may carry Markdown, left as written, like every text from a file).
+  **Steps:** the app has no step headings (`IngredientHeading` is for ingredients), so *a step's `title` is
+  put in front of its text* ("Sauce: Whisk the cream."); a step that is only a title is put in front of
+  the next step that has text, and a trailing one is dropped. **Yield:** `recipeYield` text, else
+  `recipeServings` as a number (4.0 is "4", 2.5 is "2.5", 0 is none); `recipeYieldQuantity` is not read.
+  **Times:** `prepTime`, `performTime` (Mealie's cook time; `cookTime` is read as its legacy name) and
+  `totalTime` as text, through the time rules; with no text, a `prepTimeSeconds`-style number
+  (`prep_time_seconds`, `perform_time_seconds`, `total_time_seconds`) becomes `PT<n>S` and goes through
+  the same rules ("PT5400S" is "1h 30m"). **Notes:** each `{title, text}` is a paragraph of the
+  recipe's note (title, a line break, text; title alone or text alone also), the paragraphs apart by a
+  blank line. **Source:** `orgURL`, a web link cleaned by `UrlCleaner`, else none (the picture's link,
+  `image`, is a token for Mealie's server and is not kept). **Not kept, listed:** `description` (the
+  app has no place for it; a later place would be its own decision), rating, nutrition, tools, assets,
+  comments, `extras`, dates, and the household and user ids.
+- **Identity** (`MealieImport.identity`): the cleaned `orgURL`, else `manual:mealie-<slug>` (a plain
+  slug, `[A-Za-z0-9_-]{1,100}`, lower-cased), else `manual:mealie-<id>` (a plain id), else
+  `manual:mealie-h<hash>`, the FNV-1a of the name, ingredients and steps (the Paprika hash's text, the same on
+  both platforms). A recipe with a link is `EDITED`, one without is `MANUAL` and appears under Typed by
+  you, exactly as Paprika's.
+- **Lists:** each category and each tag is a list of that name (the merger finds one here by the
+  trimmed, case-insensitive name, else makes it; categories and tags that differ only in case are one
+  list, the first spelling kept). **Mealie's favourites belong to a user and are not in a recipe's file,
+  so nothing is filed into Favorites.** The rest is #387: a repeat in the file adds its lists to the
+  first, a recipe the free limit leaves out is filed nowhere, no empty list is made.
+- **Strings.** 15 in six languages on both platforms (`mealie_*`; drafts for a native speaker,
+  `docs/translations.md`), the already-here and free-limit sentences the backup's. The not-a-recipe line
+  says "isn't a Mealie recipe, or has no name, ingredients or steps".
+- **Code shared with Paprika's, and not.** Mealie's types (`MealieError`, `MealieLimits`,
+  `MealieSummary`, ...) and the lists loop in `MealieImport` are written beside Paprika's, not
+  generalised, to leave the Paprika layer alone while other importers were being added; merging them
+  into one importer layer is a clean-up for when more than two exist. iOS widened `PaprikaZipReader`'s
+  `Entry`, `centralDirectory`, `contents(of:)`, `inflate`, `u16` and `u32` from `private` to internal so
+  the Mealie reader uses the one zip implementation.
+- **Tests.** `MealieRecipeParserTest` / `MealieRecipeParserTests` (each field, both key styles, the pre-3.1
+  lines, detection, schema.org), `MealieArchiveTest` / `MealieZipReaderTests` (the fixtures in
+  `shared/fixtures/mealie/`, made by `tools/mealie-fixtures/make_fixtures.py`: the bulk export, a recipe's
+  download with its WebP, the same with the picture in the bulk layout, bare camelCase and pre-3.1 JSON,
+  a schema.org file, and the hostile ones: truncated, bad entries, a declared 4 GB entry, a 40 MB bomb that
+  declares 100 bytes, pictures that are good, not images, too big and stray; the WebP is encoded by the
+  script, and the iOS test decodes it through the real photo store), `MealieImportTest` /
+  `MealieImportTests` (identity, times, lists), `DefaultMealieImportRepositoryTest` over an in-memory DAO
+  and `MealieImportRepositoryTests` over in-memory SQLite (second import, already here, the limit,
+  failures, pictures), `SettingsMealieImportViewModelTest`, `SettingsMealieImportScreenTest` and
+  `SettingsMealieImportTests` (state and words), and `MealiePageTest` / `MealiePageTests` (the link).
+- **Not verified.** A real Mealie export (the fixtures follow the schema in Mealie's source, they are
+  not files a server wrote; a real server's `recipes/<slug>/` may hold more files than `<slug>.json`, which
+  are ignored, or counted as not recipes if they are JSON), a real Mealie page's HTML (above), the system file picker choosing a
+  `.zip` or `.json` from Drive or iCloud, and a very large export on a low-memory phone.
+
 ## A recipe's own photo (#386, 2026-11-19)
 
 The owner's decision, from the Paprika import: a recipe can have a picture of its own, stored on the

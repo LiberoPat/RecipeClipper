@@ -66,7 +66,9 @@ enum class Flag(val key: String) {
     /** Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library. */
     PAPRIKA_IMPORT("paprikaImport"),
     /** Import from Recipe Keeper (#390): Settings' Your recipes reads a Recipe Keeper export zip into the library. */
-    RECIPE_KEEPER_IMPORT("recipeKeeperImport");
+    RECIPE_KEEPER_IMPORT("recipeKeeperImport"),
+    /** Import from Mealie (#391): Settings' Your recipes reads a Mealie export (a zip, or one recipe's .json) into the library. */
+    MEALIE_IMPORT("mealieImport");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

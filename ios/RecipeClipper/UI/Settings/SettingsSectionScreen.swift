@@ -16,6 +16,7 @@ struct SettingsSectionScreen: View {
     @State private var importing = false
     @State private var importingPaprika = false
     @State private var importingRecipeKeeper = false
+    @State private var importingMealie = false
 
     var body: some View {
         let page = ScrollView {
@@ -48,6 +49,13 @@ struct SettingsSectionScreen: View {
         .fileImporter(isPresented: $importingRecipeKeeper, allowedContentTypes: [.item]) { result in
             switch result {
             case .success(let url): vm.onRecipeKeeperPicked(url)
+            case .failure: vm.onImportPickFailed()
+            }
+        }
+        // Import from Mealie (#391): a zip or a .json that may be labelled any way, so any file may be picked.
+        .fileImporter(isPresented: $importingMealie, allowedContentTypes: [.item]) { result in
+            switch result {
+            case .success(let url): vm.onMealiePicked(url)
             case .failure: vm.onImportPickFailed()
             }
         }
@@ -197,8 +205,18 @@ private extension SettingsSectionScreen {
             ) { importingRecipeKeeper = true }
             .accessibilityIdentifier("settings.importRecipeKeeper")
         }
-        if vm.showsPaprikaImport || vm.showsRecipeKeeperImport {
-            // What the imports do with the other app's categories (#387, #390); on unless the cook turns it off.
+        // Mealie's export (#391), beside them: behind the mealieImport flag.
+        if vm.showsMealieImport {
+            ActionRow(
+                title: Strings.mealieImportTitle,
+                description: Strings.mealieImportDescription,
+                enabled: !state.backup.isBusy
+            ) { importingMealie = true }
+            .accessibilityIdentifier("settings.importMealie")
+        }
+        if vm.showsPaprikaImport || vm.showsRecipeKeeperImport || vm.showsMealieImport {
+            // What the imports do with the other app's categories (#387, #390, #391): one switch for
+            // all of them; on unless the cook turns it off.
             SwitchRow(
                 title: Strings.paprikaFilingTitle,
                 description: Strings.paprikaFilingDescription,

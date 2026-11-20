@@ -155,6 +155,12 @@
       "description": "Import from Recipe Keeper: Settings, Your recipes gains a row that reads a Recipe Keeper export (the .zip with recipes.html and its images folder) into the library, the same way as the Paprika import: each recipe is the cook's own version with its first picture stored on the phone, nothing is replaced or deleted, the free limit says how many were left out, and the switch files recipes in lists by their courses, categories and collections. Off, the row is not shown.",
       "defaults": { "debug": true, "release": true },
       "issue": 390
+    },
+    {
+      "key": "mealieImport",
+      "description": "Import from Mealie: Settings, Your recipes gains a row that reads a Mealie export (the bulk export's zip of recipes/<slug>/<slug>.json, one recipe's Download zip with its .webp, or a bare .json) into the library. Each recipe is kept as the cook's own version (never refreshed from its link) with its picture stored on the phone, nothing here is replaced or deleted, the free limit says how many were left out, and a switch (on) files recipes in lists by their Mealie categories and tags. Off, the row is not shown.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 391
     }
   ]
 }

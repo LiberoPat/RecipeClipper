@@ -32,7 +32,9 @@ import com.example.recipeclipper.data.HISTORY_LIMIT
 import com.example.recipeclipper.data.backup.BackupDestination
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.ImportSummary
+import com.example.recipeclipper.data.backup.MealieSummary
 import com.example.recipeclipper.data.backup.PaprikaSummary
+import com.example.recipeclipper.data.remote.MealieError
 import com.example.recipeclipper.data.remote.PaprikaError
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
@@ -109,6 +111,15 @@ internal fun BackupStatusText(status: BackupStatus) {
         BackupStatus.ImportingRecipeKeeper -> stringResource(R.string.recipekeeper_importing)
         is BackupStatus.ImportedRecipeKeeper -> paprikaSummaryText(resources, status.summary, R.plurals.recipekeeper_imported)
         is BackupStatus.RecipeKeeperFailed -> importErrorText(status.error, recipeKeeper = true)
+        BackupStatus.ImportingMealie -> stringResource(R.string.mealie_importing)
+        is BackupStatus.ImportedMealie -> mealieSummaryText(resources, status.summary)
+        is BackupStatus.MealieFailed -> when (status.error) {
+            MealieError.NOT_A_MEALIE_FILE -> stringResource(R.string.mealie_error_not_mealie)
+            MealieError.DAMAGED -> stringResource(R.string.mealie_error_damaged)
+            MealieError.TOO_LARGE -> stringResource(R.string.mealie_error_too_large)
+            MealieError.READ_FAILED -> stringResource(R.string.backup_error_read_failed)
+            MealieError.SAVE_FAILED -> stringResource(R.string.backup_error_save_failed)
+        }
         is BackupStatus.Failed -> when (val error = status.error) {
             BackupError.NotABackup -> stringResource(R.string.backup_error_not_a_backup)
             is BackupError.NewerVersion -> stringResource(R.string.backup_error_newer_version, error.found)
@@ -121,7 +132,7 @@ internal fun BackupStatusText(status: BackupStatus) {
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
-        color = if (status is BackupStatus.Failed || status is BackupStatus.PaprikaFailed || status is BackupStatus.RecipeKeeperFailed) {
+        color = if (status is BackupStatus.Failed || status is BackupStatus.PaprikaFailed || status is BackupStatus.RecipeKeeperFailed || status is BackupStatus.MealieFailed) {
             MaterialTheme.colorScheme.error
         } else {
             MaterialTheme.colorScheme.onBackground
@@ -173,6 +184,29 @@ private fun paprikaSummaryText(
     if (s.unreadable > 0) parts += resources.getQuantityString(R.plurals.paprika_unreadable, s.unreadable, s.unreadable)
     if (s.photosLeftOut > 0) parts += resources.getQuantityString(R.plurals.paprika_photos_left_out, s.photosLeftOut, s.photosLeftOut)
     if (s.listsMade > 0) parts += resources.getQuantityString(R.plurals.paprika_lists_made, s.listsMade, s.listsMade)
+    return parts.joinToString(" ")
+}
+
+/** What an import from Mealie did (#391): [paprikaSummaryText]'s sentences, with Mealie's own words. */
+private fun mealieSummaryText(resources: android.content.res.Resources, s: MealieSummary): String {
+    val parts = mutableListOf<String>()
+    when {
+        s.imported > 0 -> parts += resources.getQuantityString(R.plurals.mealie_imported, s.imported, s.imported)
+        s.skippedForLimit == 0 && s.alreadyHere > 0 -> parts += resources.getString(R.string.mealie_imported_nothing)
+        s.skippedForLimit == 0 -> parts += resources.getString(R.string.mealie_nothing_found)
+    }
+    if (s.alreadyHere > 0 && (s.imported > 0 || s.skippedForLimit > 0)) {
+        parts += resources.getQuantityString(R.plurals.backup_already_here, s.alreadyHere, s.alreadyHere)
+    }
+    if (s.skippedForLimit > 0) {
+        parts += s.freeLimit?.let {
+            resources.getQuantityString(R.plurals.backup_skipped_free, s.skippedForLimit, s.skippedForLimit, it)
+        } ?: resources.getQuantityString(R.plurals.backup_skipped, s.skippedForLimit, s.skippedForLimit, HISTORY_LIMIT)
+    }
+    if (s.notRecipes > 0) parts += resources.getQuantityString(R.plurals.mealie_not_recipes, s.notRecipes, s.notRecipes)
+    if (s.unreadable > 0) parts += resources.getQuantityString(R.plurals.mealie_unreadable, s.unreadable, s.unreadable)
+    if (s.photosLeftOut > 0) parts += resources.getQuantityString(R.plurals.mealie_photos_left_out, s.photosLeftOut, s.photosLeftOut)
+    if (s.listsMade > 0) parts += resources.getQuantityString(R.plurals.mealie_lists_made, s.listsMade, s.listsMade)
     return parts.joinToString(" ")
 }
 
@@ -278,6 +312,9 @@ internal val PAPRIKA_MIME_TYPES = arrayOf("*/*")
 
 /** A Recipe Keeper export (#390) is a plain .zip, but file managers label it variously: any file may be picked. */
 internal val RECIPE_KEEPER_MIME_TYPES = arrayOf("*/*")
+
+/** A Mealie export (#391) is a zip or a .json that file managers label in many ways: any file may be picked, and a wrong one is told so. */
+internal val MEALIE_MIME_TYPES = arrayOf("*/*")
 
 /** An independent toggle: a title, a one-line description, and a [Switch] — never a
  *  checkmark, which would read as an exclusive choice among its siblings. */

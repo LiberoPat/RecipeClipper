@@ -240,6 +240,35 @@
         <item quantity="one">%d Rezept aus Recipe Keeper importiert.</item>
         <item quantity="other">%d Rezepte aus Recipe Keeper importiert.</item>
     </plurals>
+    <!-- Settings → Your recipes: import from Mealie (#391) -->
+    <string name="mealie_import_title">Aus Mealie importieren</string>
+    <string name="mealie_import_description">Rezepte aus einem Mealie-Export hinzufügen: die .zip-Datei des gesamten Exports, die .zip-Datei eines heruntergeladenen Rezepts oder die .json-Datei eines Rezepts. Dabei wird nichts ersetzt oder gelöscht.</string>
+    <string name="mealie_importing">Mealie-Datei wird gelesen…</string>
+    <string name="mealie_imported_nothing">Nichts Neues: Alle Rezepte in dieser Datei sind schon vorhanden.</string>
+    <string name="mealie_nothing_found">Aus dieser Datei konnte kein Rezept gelesen werden.</string>
+    <string name="mealie_error_not_mealie">Das ist kein Mealie-Export. Wähle die .zip-Datei aus Mealie oder die .json-Datei eines Rezepts. Um ein Rezept von einer Mealie-Seite zu übernehmen, teile ihren Link.</string>
+    <string name="mealie_error_damaged">Diese Datei ist beschädigt oder unvollständig. Es wurde nichts importiert.</string>
+    <string name="mealie_error_too_large">Diese Datei ist viel größer, als ein Mealie-Export sein sollte. Es wurde nichts importiert.</string>
+    <plurals name="mealie_photos_left_out">
+        <item quantity="one">%d Bild konnte nicht gelesen werden und wurde ausgelassen.</item>
+        <item quantity="other">%d Bilder konnten nicht gelesen werden und wurden ausgelassen.</item>
+    </plurals>
+    <plurals name="mealie_lists_made">
+        <item quantity="one">%d neue Liste wurde aus den Kategorien und Tags erstellt.</item>
+        <item quantity="other">%d neue Listen wurden aus den Kategorien und Tags erstellt.</item>
+    </plurals>
+    <plurals name="mealie_imported">
+        <item quantity="one">%d Rezept aus Mealie importiert.</item>
+        <item quantity="other">%d Rezepte aus Mealie importiert.</item>
+    </plurals>
+    <plurals name="mealie_not_recipes">
+        <item quantity="one">%d Eintrag, der kein Mealie-Rezept ist oder weder Namen noch Zutaten und Schritte hat, wurde ausgelassen.</item>
+        <item quantity="other">%d Einträge, die keine Mealie-Rezepte sind oder weder Namen noch Zutaten und Schritte haben, wurden ausgelassen.</item>
+    </plurals>
+    <plurals name="mealie_unreadable">
+        <item quantity="one">%d Eintrag konnte nicht gelesen werden.</item>
+        <item quantity="other">%d Einträge konnten nicht gelesen werden.</item>
+    </plurals>
     <string name="temperature_as_written">Wie im Rezept</string>
     <string name="temperature_as_written_description">Genau die Temperatur aus dem Rezept</string>
     <string name="temperature_celsius">Celsius (°C)</string>
