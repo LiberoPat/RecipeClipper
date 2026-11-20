@@ -40,6 +40,11 @@ import XCTest
 // "dayOffset typeId t|n text" (a recipe's title or a note; today is offset 0), then what
 // WidgetContent.tonight shows: each meal's type name, then its title. Write only
 // `Tonight(["3 2 Dinner"], ["0 3 t Focaccia"]),`.
+// Skip tonight rows (#398): the choice (push, next, remove), the skipped meal's id, today and the
+// last day shown, then the plan in plan order ("id day typeId", then `n` for a note), then what
+// PlanShift.plan does: moves `m id from to`, removals `r id`, meals left past the last day `e id`,
+// or `-` for no plan (a past or unknown meal). Write only
+// `Skip("push 1 100 1000", ["1 100 3", "2 101 3"]),`.
 // Grocery widget rows (#309): the list's unticked lines and its ticked ones, then the lines
 // WidgetContent.groceries leaves to buy. Write only `ToBuy(["2 onions"], ["1 cup milk"]),`.
 // Widget-fit rows (#329): how many items and how many rows there is room for, then
@@ -177,6 +182,13 @@ final class DifferentialCorpusTests: XCTestCase {
         let types: [String]; let meals: [String]; let shown: [String]
         init(_ types: [String], _ meals: [String], _ shown: [String] = []) {
             self.types = types; self.meals = meals; self.shown = shown
+        }
+    }
+
+    private struct Skip {
+        let header: String; let meals: [String]; let result: [String]
+        init(_ header: String, _ meals: [String], _ result: [String] = []) {
+            self.header = header; self.meals = meals; self.result = result
         }
     }
 
@@ -1690,6 +1702,27 @@ final class DifferentialCorpusTests: XCTestCase {
         Tonight(["3 2 Dinner"], [], []),
     ]
 
+    private static let skips: [Skip] = [
+        Skip("push 1 100 1000", ["1 100 3", "2 101 3", "3 103 3"], ["m 1 100 101", "m 2 101 102", "m 3 103 104"]),
+        Skip("push 3 100 1000", ["1 99 3", "2 100 3", "3 101 3", "4 102 3"], ["m 3 101 102", "m 4 102 103"]),
+        Skip("push 2 100 1000", ["1 100 1", "2 100 2", "3 100 3", "4 101 3"], ["m 2 100 101", "m 3 100 101", "m 4 101 102"]),
+        Skip("push 1 100 1000", ["1 100 3", "2 101 2", "3 101 3", "4 101 3"], ["m 1 100 101", "m 2 101 102", "m 3 101 102", "m 4 101 102"]),
+        Skip("push 1 100 1000", ["1 100 3", "2 101 3 n", "3 104 3 n"], ["m 1 100 101", "m 2 101 102", "m 3 104 105"]),
+        Skip("push 2 100 1000", ["1 100 3", "2 105 3"], ["m 2 105 106"]),
+        Skip("push 1 100 151", ["1 100 3", "2 150 3", "3 151 3"], ["m 1 100 101", "m 2 150 151", "m 3 151 152", "e 3"]),
+        Skip("push 7 100 1000", ["7 100 3"], ["m 7 100 101"]),
+        Skip("next 1 100 1000", ["1 100 3", "2 101 2"], ["m 1 100 101"]),
+        Skip("next 1 100 1000", ["1 100 3", "2 101 3", "3 102 3 n", "4 104 3"], ["m 1 100 103"]),
+        Skip("next 1 100 1000", ["1 100 3", "2 101 2", "3 102 2"], ["m 1 100 101"]),
+        Skip("next 3 100 1000", ["1 99 3", "2 100 2", "3 100 3", "4 100 3"], ["m 3 100 101"]),
+        Skip("next 1 100 101", ["1 100 3", "2 101 3"], ["m 1 100 102", "e 1"]),
+        Skip("remove 1 100 1000", ["1 100 3", "2 101 3"], ["r 1"]),
+        Skip("push 1 100 1000", ["1 99 3", "2 100 3"], ["-"]),
+        Skip("next 1 100 1000", ["1 99 3", "2 100 3"], ["-"]),
+        Skip("remove 1 100 1000", ["1 99 3", "2 100 3"], ["-"]),
+        Skip("push 9 100 1000", ["1 100 3"], ["-"]),
+    ]
+
     private static let toBuys: [ToBuy] = [
         ToBuy(["200 g flour", "100 g flour", "2 onions", "1 egg", "1 egg", "paper towels"], ["1 cup milk"], ["2 onions", "2 eggs", "300 g flour", "paper towels"]),
         ToBuy(["200 g flour", "2 onions"], ["100 g flour"], ["2 onions", "200 g flour"]),
@@ -2807,6 +2840,29 @@ final class DifferentialCorpusTests: XCTestCase {
             }
             let shown = WidgetContent.tonight(meals, types: types, today: 100).flatMap { [$0.mealType, $0.title] }
             XCTAssertEqual(shown, row.shown, "\(row.types) / \(row.meals)")
+        }
+    }
+
+    func testPlanShiftMatchesKotlin() {
+        for row in Self.skips {
+            let header = row.header.split(separator: " ").map(String.init)
+            let meals = row.meals.map { text -> PlannedMeal in
+                let part = text.split(separator: " ").map(String.init)
+                let note = part.count > 3
+                return PlannedMeal(
+                    id: Int64(part[0])!, day: Int64(part[1])!, mealTypeId: Int64(part[2])!,
+                    recipeId: note ? nil : Int64(part[0])!, title: note ? nil : "t\(part[0])",
+                    imageUrl: nil, servings: nil, note: note ? "note" : nil
+                )
+            }
+            let choice: PlanShift.Choice = header[0] == "push" ? .pushWeek : header[0] == "next" ? .nextFreeDay : .remove
+            let result = PlanShift.plan(meals, skippedId: Int64(header[1])!, choice: choice,
+                                        today: Int64(header[2])!, lastDay: Int64(header[3])!)
+            let shown = result.map { r in
+                r.moved.map { "m \($0.mealId) \($0.fromDay) \($0.toDay)" }
+                    + r.removed.map { "r \($0)" } + r.pastEnd.map { "e \($0)" }
+            } ?? ["-"]
+            XCTAssertEqual(shown, row.result, "\(row.header) / \(row.meals)")
         }
     }
 

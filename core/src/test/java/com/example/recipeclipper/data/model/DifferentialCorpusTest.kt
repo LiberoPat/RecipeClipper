@@ -190,6 +190,8 @@ class DifferentialCorpusTest {
     // A Tonight widget row (#309): the meal types, then the planned meals.
     private val tonightRow =
         Regex("""^(\s*)Tonight\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A skip-tonight row (#398): the choice, the skipped meal, today and the last day, then the plan.
+    private val skipRow = Regex("""^(\s*)Skip\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     // A grocery widget row (#309): the list's unticked lines, its ticked ones, optionally their language.
     private val toBuyRow = Regex(
         """^(\s*)ToBuy\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
@@ -311,6 +313,7 @@ class DifferentialCorpusTest {
         needRow.find(line)?.let { m -> return needRow(m) }
         useItRow.find(line)?.let { m -> return useItRow(m) }
         tonightRow.find(line)?.let { m -> return tonightRow(m) }
+        skipRow.find(line)?.let { m -> return skipRow(m) }
         toBuyRow.find(line)?.let { m -> return toBuyRow(m) }
         fittedRow.find(line)?.let { m -> return fittedRow(m) }
         pagedRow.find(line)?.let { m -> return pagedRow(m) }
@@ -623,6 +626,38 @@ class DifferentialCorpusTest {
         }
         val shown = WidgetContent.tonight(planned, mealTypes, 100).flatMap { listOf(it.mealType, it.title) }
         return m.groupValues[1] + "Tonight(${list(types)}, ${list(meals)}, ${list(shown)}),"
+    }
+
+    /**
+     * `Skip("choice id today lastDay", ["id day typeId [n]"], [result])` (#398): [PlanShift.plan]
+     * for a plan written "id day typeId" (then `n` for a note), in plan order, as each move
+     * `m id from to`, each removal `r id`, each meal past the last day `e id`, or `-` for no plan.
+     */
+    private fun skipRow(m: MatchResult): String {
+        val header = unescape(m.groupValues[2]).split(" ")
+        val meals = literals(m.groupValues[3])
+        val planned = meals.map { text ->
+            val part = text.split(" ")
+            PlannedMeal(
+                id = part[0].toLong(), day = part[1].toLong(), mealTypeId = part[2].toLong(),
+                recipeId = if (part.size > 3) null else part[0].toLong(),
+                title = if (part.size > 3) null else "t${part[0]}",
+                imageUrl = null, servings = null, note = if (part.size > 3) "note" else null
+            )
+        }
+        val choice = when (header[0]) {
+            "push" -> PlanShift.Choice.PUSH_WEEK
+            "next" -> PlanShift.Choice.NEXT_FREE_DAY
+            else -> PlanShift.Choice.REMOVE
+        }
+        val result = PlanShift.plan(planned, header[1].toLong(), choice, header[2].toLong(), header[3].toLong())
+        val shown = if (result == null) {
+            listOf("-")
+        } else {
+            result.moved.map { "m ${it.mealId} ${it.fromDay} ${it.toDay}" } +
+                result.removed.map { "r $it" } + result.pastEnd.map { "e $it" }
+        }
+        return m.groupValues[1] + "Skip(${q(unescape(m.groupValues[2]))}, ${list(meals)}, ${list(shown)}),"
     }
 
     /**
