@@ -314,6 +314,24 @@ class RecipeDaoTest {
         assertEquals(listOf(b, c), recipes.observeRecent(2).first().map { it.id })
     }
 
+    /**
+     * What a no-photo image is drawn from (#403): every summary has the recipe's uid and language,
+     * but only the recent ones (Home's card) carry the ingredient lines.
+     */
+    @Test
+    fun summariesCarryTheUidAndOnlyTheRecentOnesTheIngredients() = runBlocking {
+        val id = recipes.upsert(recipe("https://a.com/a", viewedAt = 100), HISTORY_LIMIT)
+        val uid = recipes.get(id)!!.uid
+
+        val history = recipes.observeHistory().first().single()
+        assertEquals(uid, history.uid)
+        assertEquals(null, history.ingredients)
+
+        val recent = recipes.observeRecent(1).first().single()
+        assertEquals(uid, recent.uid)
+        assertEquals(recipes.get(id)!!.ingredients, recent.ingredients)
+    }
+
     @Test
     fun deletingARecipeRemovesItsListMembership() = runBlocking {
         val id = recipes.upsert(recipe("https://a.com/1", viewedAt = 100), HISTORY_LIMIT)

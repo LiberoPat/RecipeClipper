@@ -95,9 +95,16 @@ struct Recipe: Equatable {
     /// The recipe's own picture, stored on the phone (#386): a file name in the photo store, or nil.
     /// Not part of `image` (a web link, which the editor shows and saves).
     var photoFile: String? = nil
+    /// The stored row's stable uid (#403: its tint), or empty for a recipe not stored yet.
+    var uid: String = ""
 
     /// What the screens show as the recipe's picture (#386): its stored photo (with its link behind it, for a missing file), else its link.
     var displayImage: String? { photoFile.map { StoredPhoto.model($0, fallback: image) } ?? image }
+
+    /// What its no-photo image is drawn from (#403); a recipe not stored yet is tinted by its link.
+    var noPhoto: NoPhotoSource {
+        NoPhotoSource(uid: uid.isEmpty ? sourceUrl : uid, title: name, language: language, ingredients: ingredients)
+    }
 
     /// "Update from source" applies: the user's version of a recipe that has a real link.
     var canUpdateFromSource: Bool {
@@ -126,6 +133,15 @@ struct RecipeSummary: Equatable, Identifiable {
     var prepTime: String? = nil
     var cookTime: String? = nil
     var language: String? = nil
+    /// Its stable uid, for its image when it has no photo (#403).
+    var uid: String = ""
+    /// Its ingredient lines, only where an image shows them (Home's card, #403); else empty.
+    var ingredients: [String] = []
+
+    /// What its no-photo image is drawn from (#403).
+    var noPhoto: NoPhotoSource {
+        NoPhotoSource(uid: uid.isEmpty ? "recipe-\(id)" : uid, title: title, language: language, ingredients: ingredients)
+    }
 
     /// The site, as the reading view credits it; nil for a typed or scanned recipe.
     var sourceDomain: String? { ManualRecipe.isManual(sourceUrl) ? nil : SourceDomain.of(sourceUrl) }

@@ -207,6 +207,10 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   sort (#378: 30 min or less, Not cooked yet, Uses what's in my pantry: half the nameable lines Have,
   by name, each row saying "You have 6 of 8"), and a rows / photo-grid toggle beside the sort
   (`recipes_layout`, #380).
+- **A recipe with no photo, or whose photo fails, gets a designed image** (#403, `noPhotoImage`):
+  its first ingredient names in italic on one of five warm tints chosen by its uid (the title's
+  first letter at 64 dp and below), never a stock image. One component per platform; the
+  Lists cover of an empty list keeps the outlined bookmark tile.
 - **Home** (#286, #402): one card at the top. Mid-cook (cook mode left on, or a
   timer running on an unfinished run; never a finished run): "Continue cooking" with
   Resume cooking. Otherwise (`homeTonight`) "Today": the earliest of today's planned

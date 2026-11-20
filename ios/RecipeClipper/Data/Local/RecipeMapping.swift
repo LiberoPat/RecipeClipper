@@ -52,7 +52,8 @@ extension RecipeRecord {
             servingsTarget: servingsTarget,
             origin: ContentOrigin.from(name: contentOrigin),
             editedAt: editedAt,
-            photoFile: photoFile
+            photoFile: photoFile,
+            uid: uid
         )
     }
 }
@@ -85,7 +86,9 @@ extension RecipeSummaryRecord {
             isFromChat: isFromChat,
             prepTime: prepTime,
             cookTime: cookTime,
-            language: language
+            language: language,
+            uid: uid,
+            ingredients: ingredients
         )
     }
 }

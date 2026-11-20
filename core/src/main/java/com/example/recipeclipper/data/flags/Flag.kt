@@ -68,7 +68,9 @@ enum class Flag(val key: String) {
     /** Import from Recipe Keeper (#390): Settings' Your recipes reads a Recipe Keeper export zip into the library. */
     RECIPE_KEEPER_IMPORT("recipeKeeperImport"),
     /** Import from Mealie (#391): Settings' Your recipes reads a Mealie export (a zip, or one recipe's .json) into the library. */
-    MEALIE_IMPORT("mealieImport");
+    MEALIE_IMPORT("mealieImport"),
+    /** A designed image for a recipe with no photo, or whose photo fails to load (#403): a monogram, an ingredient label, one of five tints. */
+    NO_PHOTO_IMAGE("noPhotoImage");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

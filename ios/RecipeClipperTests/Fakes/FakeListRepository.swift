@@ -19,7 +19,10 @@ final class FakeListRepository: ListRepository {
     /// What `observeRecipesIn` emits, regardless of the list asked for.
     let recipesIn = CurrentValueSubject<[RecipeSummary], Never>([])
     /// What `observeCoverPhotos` emits: list id to its cover photos, as the SQL groups them.
-    let coverPhotos = CurrentValueSubject<[Int64: [String]], Never>([:])
+    let coverPhotos = CurrentValueSubject<[Int64: [CoverPhoto]], Never>([:])
+
+    /// What `observeCoverPlaceholders` emits: list id to its no-photo recipes' image sources (#403).
+    let coverPlaceholders = CurrentValueSubject<[Int64: [NoPhotoSource]], Never>([:])
 
     private(set) var createCalls: [(name: String, recipeId: Int64?)] = []
     /// Every `createList(name:, addRecipeIds:)` (#377), in order.
@@ -55,8 +58,12 @@ final class FakeListRepository: ListRepository {
         return recipesIn.eraseToAnyPublisher()
     }
 
-    func observeCoverPhotos() -> AnyPublisher<[Int64: [String]], Never> {
+    func observeCoverPhotos() -> AnyPublisher<[Int64: [CoverPhoto]], Never> {
         coverPhotos.eraseToAnyPublisher()
+    }
+
+    func observeCoverPlaceholders() -> AnyPublisher<[Int64: [NoPhotoSource]], Never> {
+        coverPlaceholders.eraseToAnyPublisher()
     }
 
     /// What `observeSavedRecipes` emits (#305).

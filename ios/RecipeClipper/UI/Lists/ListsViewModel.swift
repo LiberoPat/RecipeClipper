@@ -13,7 +13,9 @@ import Observation
 struct ListsUiState: Equatable {
     var loaded = false
     var lists: [RecipeList] = []
-    var coverPhotos: [Int64: [String]] = [:]
+    var coverPhotos: [Int64: [CoverPhoto]] = [:]
+    /// A list with no photo shows its recipes' designed images (#403); an empty one the bookmark tile.
+    var coverPlaceholders: [Int64: [NoPhotoSource]] = [:]
     var creatingList = false
     var newListName = ""
     var draggingId: Int64?
@@ -47,6 +49,12 @@ final class ListsViewModel {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] photos in
                 self?.uiState.coverPhotos = photos.mapValues { Array($0.prefix(ListDao.coverPhotoLimit)) }
+            }
+            .store(in: &cancellables)
+        repository.observeCoverPlaceholders()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] placeholders in
+                self?.uiState.coverPlaceholders = placeholders.mapValues { Array($0.prefix(ListDao.coverPhotoLimit)) }
             }
             .store(in: &cancellables)
     }

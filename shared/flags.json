@@ -161,6 +161,12 @@
       "description": "Import from Mealie: Settings, Your recipes gains a row that reads a Mealie export (the bulk export's zip of recipes/<slug>/<slug>.json, one recipe's Download zip with its .webp, or a bare .json) into the library. Each recipe is kept as the cook's own version (never refreshed from its link) with its picture stored on the phone, nothing here is replaced or deleted, the free limit says how many were left out, and a switch (on) files recipes in lists by their Mealie categories and tags. Off, the row is not shown.",
       "defaults": { "debug": true, "release": true },
       "issue": 391
+    },
+    {
+      "key": "noPhotoImage",
+      "description": "A designed image for a recipe with no photo, or whose photo fails to load: the title's first letter on a small thumbnail, the recipe's first ingredient names in italic on a cover, Home's card and the reading view's banner, on one of five warm tints chosen by the recipe's uid. Lists covers show those recipes' images in the mosaic when no recipe in the list has a photo. Off, the blank tile and band as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 403
     }
   ]
 }

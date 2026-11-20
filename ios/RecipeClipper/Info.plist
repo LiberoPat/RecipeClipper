@@ -78,6 +78,7 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>fraunces.ttf</string>
+		<string>fraunces-italic.ttf</string>
 		<string>karla.ttf</string>
 	</array>
 	<key>UIBackgroundModes</key>

@@ -56,7 +56,8 @@ internal fun RecipeEntity.toDomain() = Recipe(
     servingsTarget = servingsTarget,
     origin = ContentOrigin.fromName(contentOrigin),
     editedAt = editedAt,
-    photoFile = photoFile
+    photoFile = photoFile,
+    uid = uid
 )
 
 internal fun ListRow.toDomain() = RecipeList(
@@ -81,5 +82,7 @@ internal fun RecipeSummaryRow.toDomain() = RecipeSummary(
     isFromChat = isFromChat,
     prepTime = prepTime,
     cookTime = cookTime,
-    language = language
+    language = language,
+    uid = uid.orEmpty(),
+    ingredients = ingredients.orEmpty()
 )

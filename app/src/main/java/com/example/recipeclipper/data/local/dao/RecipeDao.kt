@@ -30,10 +30,14 @@ data class RecipeSummaryRow(
     val sourceUrl: String = "",
     /** Read from a chat's JSON (#355, origin CHAT). */
     val isFromChat: Boolean = false,
-    /** The times as stored and the language they're in, for "30 min or less" (#378); only the Recipes query reads them. */
+    /** The times as stored, for "30 min or less" (#378); only the Recipes query reads them. */
     val prepTime: String? = null,
     val cookTime: String? = null,
-    val language: String? = null
+    /** The recipe's stable uid and language, for its no-photo image (#403): its tint and its monogram; and the times' language (#378). */
+    val uid: String? = null,
+    val language: String? = null,
+    /** Its ingredient lines, selected only where an image shows them (Home's card, #403). */
+    val ingredients: List<String>? = null
 )
 
 /** [RecipeDao.observeLibraryCounts]: every recipe, those in at least one list, cooked, typed in and from a chat (#345, #355). */
@@ -288,7 +292,7 @@ abstract class RecipeDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-               sourceUrl,
+               sourceUrl, uid, language,
                contentOrigin = 'CHAT' AS isFromChat
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
@@ -325,9 +329,9 @@ abstract class RecipeDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-               sourceUrl,
+               sourceUrl, uid, language,
                contentOrigin = 'CHAT' AS isFromChat,
-               prepTime, cookTime, language
+               prepTime, cookTime
         FROM recipes
         WHERE (:query = ''
            OR instr(lower(title), lower(:query)) > 0
@@ -372,7 +376,7 @@ abstract class RecipeDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-               sourceUrl,
+               sourceUrl, uid, language, ingredients,
                contentOrigin = 'CHAT' AS isFromChat
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC

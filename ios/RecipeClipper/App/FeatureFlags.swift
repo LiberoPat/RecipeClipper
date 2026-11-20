@@ -62,6 +62,8 @@ enum Flag: String, CaseIterable {
     case recipeKeeperImport
     /// Import from Mealie (#391): Settings' Your recipes reads a Mealie export (a zip, or one recipe's .json) into the library.
     case mealieImport
+    /// A designed image for a recipe with no photo, or whose photo fails to load (#403): a monogram, an ingredient label, one of five tints.
+    case noPhotoImage
 }
 
 /// One flag as `shared/flags.json` declares it.

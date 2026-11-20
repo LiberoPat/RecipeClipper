@@ -475,7 +475,12 @@ protocol ListRepository: AnyObject {
 
     /// The Lists screen's covers (#286): list id to up to four photo URLs from the recipes in
     /// it, most recently added first. A list with no photo is absent.
-    func observeCoverPhotos() -> AnyPublisher<[Int64: [String]], Never>
+    func observeCoverPhotos() -> AnyPublisher<[Int64: [CoverPhoto]], Never>
+
+    /// The covers of lists whose recipes have no photo (#403): list id to up to four of those
+    /// recipes' image sources, most recently added first. Used only for a list `observeCoverPhotos`
+    /// has none for; a list with a photo is shown with photos alone.
+    func observeCoverPlaceholders() -> AnyPublisher<[Int64: [NoPhotoSource]], Never>
 
     /// Every saved recipe (in at least one list) with its ingredient lines, for "Use it up" (#305).
     func observeSavedRecipes() -> AnyPublisher<[SavedRecipe], Never>
