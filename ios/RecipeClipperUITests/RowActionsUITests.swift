@@ -42,6 +42,40 @@ final class RowActionsUITests: RecipeUITestCase {
         snap("ios-long-press-menu")
     }
 
+    /// The grid (#380) and the menu and selection (#376, #377) landed together: a cell does what a row does.
+    func testInTheGridALongPressOpensTheMenuAndSelectTicksCellsThenDeleteHasOneUndo() {
+        launch(flags: both + ["recipesGrid"])
+        openRecipes()
+        require(app.buttons["recipes.layout"], "the layout toggle").tap()
+        require(app.otherElements["recipes.grid"], "the grid")
+
+        longPress("Banana Bread")
+        require(menuButton("Add to list"), "Add to list")
+        require(menuButton("Share"), "Share")
+        require(menuButton("Delete"), "Delete")
+        menuButton("Select").tap()
+
+        require(text("1 selected"), "the count")
+        requireState(row("Banana Bread"), "isSelected == true", "the cell ticked")
+        row("Miso Soup").tap()
+        require(text("2 selected"))
+        requireState(row("Miso Soup"), "isSelected == true", "the second cell ticked")
+        // Selecting never leaves the grid.
+        require(app.otherElements["recipes.grid"], "still the grid")
+
+        app.buttons["recipes.selection.delete"].tap()
+        let alert = require(app.alerts.firstMatch, "one confirmation for both")
+        XCTAssertTrue(alert.label.contains("2"), alert.label)
+        alert.buttons["Delete"].tap()
+
+        require(text("2 recipes deleted"))
+        requireGone(row("Banana Bread"))
+        requireGone(row("Miso Soup"))
+        app.buttons["Undo"].tap()
+        require(row("Banana Bread"), "restored")
+        require(row("Miso Soup"), "restored")
+    }
+
     func testAddToListFromTheMenuOpensTheSaveToListSheet() {
         launch(flags: both)
         openRecipes()
