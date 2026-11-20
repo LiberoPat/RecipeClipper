@@ -204,6 +204,10 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   lists, in place of V1's All / In a list / Not in a list pills (those stay
   with `oneCookbook` off). Views are questions about stored data, never
   filing. Recently viewed is a sort, not a place.
+- **A recipe with no photo, or whose photo fails, gets a designed image** (#403, `noPhotoImage`):
+  its first ingredient names in italic on one of five warm tints chosen by its uid (the title's
+  first letter at 64 dp and below), never a stock image. One component per platform; the
+  Lists cover of an empty list keeps the outlined bookmark tile.
 - **Home** (#286): "Continue cooking" (the most recent) as a resume card;
   Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles, then a full-width Ask an AI tile (#351); "Recently
   viewed" (the five before it) as photos, with "See all" (opens Recipes

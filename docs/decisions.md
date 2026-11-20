@@ -372,8 +372,10 @@ things, and the three list ViewModels need nothing from the recipe side, so
   A cover is a mosaic of up to four photos from the list's recipes, most
   recently added first: four make a 2×2, one fills the square, two sit side by
   side, three put the newest on the left half and the next two stacked on the
-  right, so no cover has empty cells. A list with no photo (or no recipe) gets
-  a plain hairline tile with an outlined bookmark, not a stock image. The photos
+  right, so no cover has empty cells. A list with recipes but no photo shows
+  those recipes' designed images in the same mosaic, and an empty list a plain
+  hairline tile with an outlined bookmark (#403, below; with `noPhotoImage` off,
+  any list with no photo gets the tile), never a stock image. The photos
   come from a new query (`ListDao.observeCoverPhotos`, iOS
   `ListDao.coverPhotos`), not a column: no migration. It caps each list with a
   correlated `LIMIT` because API 26's SQLite predates window functions; a
@@ -2852,7 +2854,8 @@ bends the settled link field: an always-visible field became a tile that opens i
   every 250 ms as cook mode does, never written; "Resume cooking" opens
   `recipe/{id}?cook=true` (which resumes, never restarts: #333). Otherwise it shows only the name and **"Open recipe"** (decided
   here: the plain wording). The photo and name also open the recipe, as the Continue cooking
-  row did. A recipe with no photo gets a short band in the paprika wash, never a stock image.
+  row did. A recipe with no photo gets its designed image, 112 dp tall (#403, below; a short band in
+  the paprika wash with `noPhotoImage` off), never a stock image.
   A newer recipe never shows the last one's place, even for a moment.
 - **Add a recipe:** Paste a link opens the Recipes screen's dialog (Android `PasteLinkDialog`,
   iOS the same alert), whose Go is enabled only for what `UrlInput` reads as a link, so
@@ -5503,6 +5506,61 @@ existing test passes unchanged.
   on screen then (none while a retry is loading); and a cook finished with nothing ticked clears
   an unhandled `cookFinished` on Android but leaves it on iOS (the screen hands it on at once,
   so it is never there). Neither is visible to a cook.
+
+## A designed image for a recipe with no photo (#403, 2026-11-19)
+
+The owner picked design 4 ("Ingredient label") from the no-photo mockups, with lettering on
+small thumbnails. Both platforms, behind the `noPhotoImage` flag (on by default; off, every slot
+is the blank tile or band it was).
+
+- **The logic is `NoPhoto`** (`core` `data/model/NoPhoto.kt`, iOS `Data/Model/NoPhoto.swift`,
+  pinned by `NoPh` rows in the differential corpus, regenerated from the Kotlin):
+  - `initial(title, language)`: the first letter of the title, uppercased, after a leading
+    article from `shared/tables/<language>/articles.json` (an entry ending in an apostrophe,
+    "l'", needs no space after it). An article that would leave no letter stays ("The" is T).
+    "5-Ingredient Pasta" is I. A title with no letter has none.
+  - `labels(ingredients, language, max)`: up to `max` ingredient names in order, read by
+    `IngredientName` (so the amount, unit and preparation are gone) and shown as the line
+    writes them (`written`: its own capitals, hyphen and apostrophe: "Zucker", "d'olives",
+    "all-purpose flour"; else the lowercase name as read). Skipped: a heading
+    (`IngredientHeading`), a line `IngredientName` cannot name ("salt and pepper", "juice of 1
+    lemon": never guessed), a staple from `staples.json` (matched whole after the same
+    normalising, never at the end of a longer name: "bell pepper" stays) and a name already
+    taken. Nothing is translated or invented. A language with no tables gives none.
+  - `tintIndex(uid)`: FNV-1a over the uid's UTF-8 bytes, modulo five, so a recipe has one
+    colour on both platforms, everywhere, after a rename. A recipe not stored yet is tinted by
+    its link. A recipe's own `uid` reaches the screens through `RecipeSummary`, `Recipe`,
+    `PlannedMeal` and the covers' rows.
+- **The drawing is one component per platform:** Android `RecipeImagePlaceholder` / `RecipeImage`
+  (`ui/common/RecipeImagePlaceholder.kt`), iOS `RecipeImagePlaceholder` / `RecipeImage`
+  (`UI/Common/RecipeImagePlaceholder.swift`). The style is picked by the size it is given, not
+  the screen: the shorter side 64 dp/pt or less is the monogram (Fraunces, 56% of the side);
+  larger is the label, in Fraunces italic at 18% of the side (never under 10), centred, the
+  first name only; a surface at least 1.5 times wider than tall (Home's band at 112, the
+  reading view's banner at 150) sets up to three names low and left at 21 (25 from 140 tall),
+  joined by a half-faded dot. No ingredient lines gives the monogram; no letter either, a plain
+  tint tile. The five tints (paprika, saffron, sage, cocoa, rose) are theme tokens, light and
+  on ink (`NoPhotoTint`, `LocalNoPhotoTints`; iOS `Tokens.noPhotoLight/OnInk`,
+  `Palette.noPhotoTint`), the mockup's values. Fraunces is bundled upright only, so the italic is
+  the platform's slant (Android synthesizes it; iOS slants the upright 12 degrees): swap in
+  Fraunces Italic if the owner wants the true cut.
+- **Where it shows:** Recipes and list rows, Home's Recently viewed (84), Week rows (44), the
+  Lists covers, Home's Continue cooking band (112 with no photo, 136 with one) and the reading
+  view's banner (150 with no photo, 200 with one). A photo that fails to load shows the same
+  (`RecipeImage`: Coil's `onError`, iOS `CachedAsyncImage.onFailure`, which also fires when the
+  bytes do not decode). Not changed: the Reddit post's pictures, the clip view and the scan
+  and photo reviews (they are the page's, not a recipe's image), print (the PDF keeps its
+  photo or none), and the widgets, which draw no recipe images. A Lists cover's own photo that
+  fails to load stays the hairline tile: the cover rows carry only the address.
+- **Lists covers (changes #286's rule, the owner's OK):** a list with any photo shows photos
+  alone, as before; a list whose recipes all lack one shows up to four of their images in the
+  usual 2×2/1/2/3 layout, newest added first (`ListDao.observeCoverPlaceholders`, iOS
+  `coverPlaceholders`, a second query like the photos', no migration); an empty list keeps the
+  outlined-bookmark tile ("nothing saved here yet").
+- **Decorative:** no semantics of its own (Android `clearAndSetSemantics`, iOS hidden from
+  VoiceOver), so what is announced is what was announced before; no new strings.
+- Android reads the flag through `LocalFlagValues` (`noPhotoImageOn()`), iOS through an
+  environment value `noPhotoImage` set once in `RootView`.
 
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 
