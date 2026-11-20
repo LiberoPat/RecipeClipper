@@ -25,6 +25,12 @@ data class ListRow(
     val containsRecipe: Boolean
 )
 
+/** How many of a set of recipes one list holds (#377): the sheet's tri-state per list. */
+data class ListMemberCountRow(
+    val listId: Long,
+    val memberCount: Int
+)
+
 /** One photo on a list's cover (#286): a recipe in [listId] that has an [imageUrl]. */
 data class ListCoverPhotoRow(
     val listId: Long,
@@ -135,6 +141,34 @@ abstract class ListDao {
     @Query("DELETE FROM recipe_list_cross_ref WHERE recipeId = :recipeId AND listId = :listId")
     abstract suspend fun removeFromList(recipeId: Long, listId: Long)
 
+    /**
+     * Ticking or unticking a list for several recipes at once (#377): all of them or none, in one
+     * transaction. Adding is IGNORE like [addToList] (a recipe already in keeps its `addedAt`).
+     */
+    @Transaction
+    open suspend fun setMembers(recipeIds: List<Long>, listId: Long, inList: Boolean, now: Long) {
+        if (inList) {
+            recipeIds.forEach { addToList(RecipeListCrossRef(it, listId, now)) }
+        } else {
+            recipeIds.forEach { removeFromList(it, listId) }
+        }
+    }
+
+    /**
+     * For each list holding at least one of [recipeIds], how many it holds (#377): the save-to-list
+     * sheet for several recipes shows a list as ticked when it holds all of them, unticked when
+     * none, and indeterminate between.
+     */
+    @Query(
+        """
+        SELECT listId, COUNT(DISTINCT recipeId) AS memberCount
+        FROM recipe_list_cross_ref
+        WHERE recipeId IN (:recipeIds)
+        GROUP BY listId
+        """
+    )
+    abstract fun observeMemberCounts(recipeIds: List<Long>): Flow<List<ListMemberCountRow>>
+
     @Insert
     protected abstract suspend fun insert(list: ListEntity): Long
 
@@ -183,6 +217,14 @@ abstract class ListDao {
         (named + current.filterNot { it in namedSet }).forEachIndexed { position, id ->
             setPosition(id, position)
         }
+    }
+
+    /** [create] with several recipes (#377): the list and every one of them go in together, or nothing does. */
+    @Transaction
+    open suspend fun createWith(name: String, recipeIds: List<Long>, now: Long): Long {
+        val id = create(name, NO_RECIPE, now)
+        recipeIds.forEach { addToList(RecipeListCrossRef(it, id, now)) }
+        return id
     }
 
     /** Built-ins are renameable — the restriction is on deleting them, not naming them. */

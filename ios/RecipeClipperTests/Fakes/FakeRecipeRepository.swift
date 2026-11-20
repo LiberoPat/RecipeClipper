@@ -29,6 +29,8 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var setCookProgressCalls: [(id: Int64, progress: CookProgress)] = []
     private(set) var setServingsTargetCalls: [(id: Int64, target: Int?)] = []
     private(set) var deleteCalls: [Int64] = []
+    /// Every `deleteAll` (#377), whole: the real repository runs each in one transaction.
+    private(set) var deleteAllCalls: [[Int64]] = []
     private(set) var restoreCalls: [DeletedRecipe] = []
 
     @MainActor func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult { importResult }
@@ -115,6 +117,12 @@ final class FakeRecipeRepository: RecipeRepository {
 
     @MainActor func setServingsTarget(id: Int64, target: Int?) async {
         setServingsTargetCalls.append((id, target))
+    }
+
+    @MainActor func deleteAll(ids: [Int64]) async -> [DeletedRecipe] {
+        deleteAllCalls.append(ids)
+        deleteCalls.append(contentsOf: ids)
+        return ids.compactMap { deleteResults[$0] }
     }
 
     @MainActor func delete(id: Int64) async -> DeletedRecipe? {

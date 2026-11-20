@@ -58,7 +58,11 @@ enum class Flag(val key: String) {
     /** Recipes' quick filter chips under search (#378): 30 min or less, Not cooked yet, Uses what's in my pantry. */
     RECIPE_FILTERS("recipeFilters"),
     /** A toggle on Recipes between the rows and a photo grid (#380). */
-    RECIPES_GRID("recipesGrid");
+    RECIPES_GRID("recipesGrid"),
+    /** A long-press menu on a recipe row (#376): Add to list, Add to plan, Share, Delete, Remove from this list. */
+    ROW_ACTIONS("rowActions"),
+    /** Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo. */
+    MULTI_SELECT("multiSelect");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

@@ -184,6 +184,14 @@ class FakeRecipeRepository : RecipeRepository {
         return deleteResults[id]
     }
 
+    /** Every id list [deleteAll] was called with: one entry per transaction (#377). */
+    val deleteAllCalls = mutableListOf<List<Long>>()
+
+    override suspend fun deleteAll(ids: List<Long>): List<RecipeRepository.DeletedRecipe> {
+        deleteAllCalls += ids
+        return ids.mapNotNull { delete(it) }
+    }
+
     /** The outcome [restoreAll] answers, to stage a full free library (#345); a refusal restores none. */
     var restoreOutcome = RecipeRepository.RestoreOutcome.RESTORED
 

@@ -10,13 +10,23 @@ struct LibraryRow: View {
     var onSaveToList: (() -> Void)? = nil
     /// With the pantry chip on (#378): how many of its ingredients the pantry has, "You have 6 of 8".
     var pantry: PantryCoverage? = nil
+    /// Selecting several (#377): the row leads with a checkbox and a tap (the caller's `onClick`)
+    /// toggles it. The checkbox is always in the row, zero wide when not selecting, so the row's
+    /// structure never changes with the mode (#203, #216).
+    var selecting = false
+    var selected = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(spacing: 0) {
+            CheckboxGlyph(checked: selected)
+                .frame(width: selecting ? 36 : 0, alignment: .leading)
+                .opacity(selecting ? 1 : 0)
+                .clipped()
+                .accessibilityIdentifier("recipes.check.\(recipe.id)")
             rowButton
-            if !recipe.isSaved, let onSaveToList {
+            if !recipe.isSaved, let onSaveToList, !selecting {
                 Button(action: onSaveToList) {
                     Image(systemName: "bookmark")
                         .foregroundStyle(Palette.muted)
@@ -66,6 +76,7 @@ struct LibraryRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(selecting && selected ? [.isSelected] : [])
     }
 
     /// "site · 1h 15m" on one line: a long site is cut short, never the time after it. At the

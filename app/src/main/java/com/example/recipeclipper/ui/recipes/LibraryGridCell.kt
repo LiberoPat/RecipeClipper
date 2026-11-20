@@ -1,7 +1,6 @@
 package com.example.recipeclipper.ui.recipes
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +22,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,6 +29,7 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.PantryCoverage
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.ui.common.recipeRowClicks
 import com.example.recipeclipper.ui.recipe.sourceCreditText
 
 /**
@@ -37,7 +37,9 @@ import com.example.recipeclipper.ui.recipe.sourceCreditText
  * (the same save control as a row's: filled for a recipe in a list, outlined to open the
  * save-to-list sheet), the title under it, then the site and total time as a row has them. With
  * the pantry chip on (#378), "You have 6 of 8" under that. No swipe to delete here: a grid has no
- * row to swipe, so a recipe is deleted from its own screen, as on Home.
+ * row to swipe, so Delete is in the long-press menu (#376, through [onLongClick]) and a selection
+ * (#377). While [selecting] the cell leads with a checkbox on its photo, a tap toggles [selected]
+ * through [onClick], and the bookmark button is left out, as in a row.
  */
 @Composable
 internal fun LibraryGridCell(
@@ -46,13 +48,16 @@ internal fun LibraryGridCell(
     modifier: Modifier = Modifier,
     pantry: PantryCoverage? = null,
     /** One cookbook (#345): an outlined bookmark on a recipe in no list, opening the save-to-list sheet. */
-    onSaveToList: (() -> Unit)? = null
+    onSaveToList: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    selecting: Boolean = false,
+    selected: Boolean = false
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .clickable(role = Role.Button, onClick = onClick)
+            .recipeRowClicks(selecting, selected, onClick, onLongClick)
     ) {
         Box {
             val shape = RoundedCornerShape(10.dp)
@@ -66,6 +71,12 @@ internal fun LibraryGridCell(
             } else {
                 Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(shape).background(MaterialTheme.colorScheme.outlineVariant))
             }
+            if (selecting) {
+                // Drawn only: the cell itself is the toggle, so it reads as one checkbox.
+                Badge(Modifier.align(Alignment.TopStart).padding(6.dp)) {
+                    Checkbox(checked = selected, onCheckedChange = null)
+                }
+            }
             if (recipe.isSaved) {
                 Badge(Modifier.align(Alignment.TopEnd).padding(6.dp)) {
                     Icon(
@@ -75,7 +86,7 @@ internal fun LibraryGridCell(
                         modifier = Modifier.size(18.dp)
                     )
                 }
-            } else if (onSaveToList != null) {
+            } else if (onSaveToList != null && !selecting) {
                 Box(Modifier.align(Alignment.TopEnd)) {
                     // The 48dp target is the button; the round badge inside it is what shows.
                     IconButton(onClick = onSaveToList, modifier = Modifier.testTag("saveToList-${recipe.id}")) {

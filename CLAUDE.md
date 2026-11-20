@@ -227,12 +227,14 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   pantry" after cooking ends, never on a tick. Snackbars are only for undo.
 - **Save-to-list sheet:** checkboxes, each tick writes at once (no
   Save/Cancel), "+ New list" expands inline and ticks the recipe into it.
-  Opened from the bookmark icon (filled = in a list); membership is edited
-  only here. A list is renamed and deleted on its own screen.
+  Opened from the bookmark icon (filled = in a list) or a row's long-press
+  menu; membership is edited only here, plus "Remove from this list" on a
+  list's own screen (#376, #377). A list is renamed and deleted on its own screen.
 - **Deleting a recipe** is a hard delete: a Recipes swipe with an undo
-  snackbar (a burst of swipes shares one all-or-nothing undo), or the recipe
-  screen's overflow menu with a confirmation dialog (no undo). The user's
-  photos go with it. On the free tier an Undo that would take the library
+  snackbar (a burst of swipes shares one all-or-nothing undo), a row's
+  long-press menu or a selection (#376, #377: one confirmation, then that
+  same one undo for all), or the recipe screen's overflow menu with a
+  confirmation dialog (no undo). The user's photos go with it. On the free tier an Undo that would take the library
   past its limit restores none and says so (#345).
 - **Sharing a recipe out** sends plain text (no Markdown), as shown on
   screen, scaled and converted, without the source link. The share icon sits

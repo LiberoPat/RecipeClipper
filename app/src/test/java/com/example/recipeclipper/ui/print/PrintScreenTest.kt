@@ -83,7 +83,9 @@ class PrintScreenTest {
             lists.value = listOf(RecipeList(3, "Weeknights", isBuiltIn = false, isFavorites = false, recipeCount = summaries.size))
             recipesIn.value = summaries
         }
-        val viewModel = ListDetailViewModel(lists, SavedStateHandle(mapOf(ListDetailViewModel.LIST_ID_ARG to 3L)))
+        val viewModel = ListDetailViewModel(
+            lists, SavedStateHandle(mapOf(ListDetailViewModel.LIST_ID_ARG to 3L)), FakeRecipeRepository(), FakeAppPreferences()
+        )
         val print = printViewModel()
         compose.setContent {
             CompositionLocalProvider(LocalPrinter provides printer) {

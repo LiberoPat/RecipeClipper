@@ -881,4 +881,25 @@
     <string name="ai_prompt_temperature_f">Give oven temperatures in °F.</string>
     <string name="ai_prompt_write_in">Write it in %1$s.</string>
     <string name="ai_prompt_note_outside">Put anything else you want to say outside the code block.</string>
+    <!-- Long-press menu on a recipe row (#376) and selecting several recipes (#377). -->
+    <string name="action_select">Select</string>
+    <string name="row_action_add_to_list">Add to list</string>
+    <string name="action_share">Share</string>
+    <string name="row_action_remove_from_list">Remove from this list</string>
+    <string name="cd_recipe_actions">Recipe actions</string>
+    <string name="save_to_list_partial">Some of them</string>
+    <plurals name="recipes_selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <plurals name="delete_recipes_title">
+        <item quantity="one">Delete this recipe?</item>
+        <item quantity="other">Delete %1$d recipes?</item>
+    </plurals>
+    <string name="delete_row_body">This removes it from your recipes and any lists it\'s in, with any photos you added of it. You can undo this for a few seconds.</string>
+    <string name="delete_rows_body">This removes them from your recipes and any lists they\'re in, with any photos you added of them. You can undo this for a few seconds.</string>
+    <plurals name="save_to_list_new_list_note_many">
+        <item quantity="one">%1$d recipe goes into the new list.</item>
+        <item quantity="other">%1$d recipes go into the new list.</item>
+    </plurals>
 </resources>

@@ -820,4 +820,25 @@
     <string name="ai_prompt_temperature_f">Gib Ofentemperaturen in °F an.</string>
     <string name="ai_prompt_write_in">Schreibe es auf %1$s.</string>
     <string name="ai_prompt_note_outside">Schreibe alles andere, was du sagen möchtest, außerhalb des Codeblocks.</string>
+    <!-- Long-press menu on a recipe row (#376) and selecting several recipes (#377). -->
+    <string name="action_select">Auswählen</string>
+    <string name="row_action_add_to_list">Zu einer Liste hinzufügen</string>
+    <string name="action_share">Teilen</string>
+    <string name="row_action_remove_from_list">Aus dieser Liste entfernen</string>
+    <string name="cd_recipe_actions">Rezeptaktionen</string>
+    <string name="save_to_list_partial">Einige</string>
+    <plurals name="recipes_selected_count">
+        <item quantity="one">%1$d ausgewählt</item>
+        <item quantity="other">%1$d ausgewählt</item>
+    </plurals>
+    <plurals name="delete_recipes_title">
+        <item quantity="one">Dieses Rezept löschen?</item>
+        <item quantity="other">%1$d Rezepte löschen?</item>
+    </plurals>
+    <string name="delete_row_body">Das Rezept wird aus deinen Rezepten und allen Listen entfernt, mitsamt deinen Fotos dazu. Einige Sekunden lang kannst du das rückgängig machen.</string>
+    <string name="delete_rows_body">Die Rezepte werden aus deinen Rezepten und allen Listen entfernt, mitsamt deinen Fotos dazu. Einige Sekunden lang kannst du das rückgängig machen.</string>
+    <plurals name="save_to_list_new_list_note_many">
+        <item quantity="one">%1$d Rezept kommt in die neue Liste.</item>
+        <item quantity="other">%1$d Rezepte kommen in die neue Liste.</item>
+    </plurals>
 </resources>

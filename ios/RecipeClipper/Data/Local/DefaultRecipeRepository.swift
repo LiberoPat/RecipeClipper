@@ -479,25 +479,32 @@ final class DefaultRecipeRepository: RecipeRepository {
     }
 
     func delete(id: Int64) async -> DeletedRecipe? {
+        await deleteAll(ids: [id]).first
+    }
+
+    /// One transaction for the lot (#377): if any read or delete throws, none is deleted.
+    func deleteAll(ids: [Int64]) async -> [DeletedRecipe] {
         do {
-            return try await db.write { conn -> DeletedRecipe? in
+            return try await db.write { conn -> [DeletedRecipe] in
                 let dao = RecipeDao(db: conn)
-                guard let row = try dao.get(id) else { return nil }
-                // Read before deleting: the cascade takes them with the row.
-                let memberships = try dao.crossRefsFor(id)
-                let planEntries = try dao.planEntriesFor(id)
-                let menuEntries = try dao.menuEntriesFor(id)
-                let cookedPhotos = try CookedPhotoDao(db: conn).photosFor(id)
-                let versionIds = try dao.versionIdsOf(row.uid)
-                try dao.deleteWithLinks(id)
-                return DeletedRecipe(
-                    recipe: row.toDomain(), memberships: memberships, uid: row.uid, planEntries: planEntries,
-                    menuEntries: menuEntries, cookedPhotos: cookedPhotos, versionIds: versionIds
-                )
+                return try ids.compactMap { id -> DeletedRecipe? in
+                    guard let row = try dao.get(id) else { return nil }
+                    // Read before deleting: the cascade takes them with the row.
+                    let memberships = try dao.crossRefsFor(id)
+                    let planEntries = try dao.planEntriesFor(id)
+                    let menuEntries = try dao.menuEntriesFor(id)
+                    let cookedPhotos = try CookedPhotoDao(db: conn).photosFor(id)
+                    let versionIds = try dao.versionIdsOf(row.uid)
+                    try dao.deleteWithLinks(id)
+                    return DeletedRecipe(
+                        recipe: row.toDomain(), memberships: memberships, uid: row.uid, planEntries: planEntries,
+                        menuEntries: menuEntries, cookedPhotos: cookedPhotos, versionIds: versionIds
+                    )
+                }
             }
         } catch {
             dataLog.error("delete failed: \(String(describing: error), privacy: .public)")
-            return nil
+            return []
         }
     }
 

@@ -511,6 +511,21 @@ enum Strings {
     /// Under the open "+ New list" field (#286): the recipe goes into the list it creates.
     static func newListNote(_ recipe: String) -> String { String(localized: "save_to_list_new_list_note \(recipe)") }
 
+    /// Under the open "+ New list" field when several recipes are selected (#377).
+    static func newListNoteMany(_ n: Int) -> String { String(localized: "save_to_list_new_list_note_many \(n)") }
+    /// A list that holds some, not all, of the selected recipes (#377): its checkbox's spoken value.
+    static var saveToListPartial: String { String(localized: "save_to_list_partial") }
+
+    // A recipe row's menu and selecting several recipes (#376, #377)
+    static var select: String { String(localized: "action_select") }
+    static var addToListAction: String { String(localized: "row_action_add_to_list") }
+    static var share: String { String(localized: "action_share") }
+    static var removeFromList: String { String(localized: "row_action_remove_from_list") }
+    static func recipesSelectedCount(_ n: Int) -> String { String(localized: "recipes_selected_count \(n)") }
+    static func deleteRecipesTitle(_ n: Int) -> String { String(localized: "delete_recipes_title \(n)") }
+    static var deleteRowBody: String { String(localized: "delete_row_body") }
+    static var deleteRowsBody: String { String(localized: "delete_rows_body") }
+
     // List detail
     static var renameListTitle: String { String(localized: "rename_list_title") }
     static func deleteListTitle(_ name: String) -> String { String(localized: "delete_list_title \(name)") }

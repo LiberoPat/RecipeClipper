@@ -52,6 +52,10 @@ enum Flag: String, CaseIterable {
     case recipeFilters
     /// A toggle on Recipes between the rows and a photo grid (#380).
     case recipesGrid
+    /// A long-press menu on a recipe row (#376): Add to list, Add to plan, Share, Delete, Remove from this list.
+    case rowActions
+    /// Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo.
+    case multiSelect
 }
 
 /// One flag as `shared/flags.json` declares it.

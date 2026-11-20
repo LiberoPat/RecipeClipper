@@ -131,6 +131,18 @@
       "description": "Recipes: a toggle beside the sort between the tidy rows and a photo grid (title under each photo, the bookmark kept); the choice is remembered. Off, Recipes is the rows.",
       "defaults": { "debug": true, "release": true },
       "issue": 380
+    },
+    {
+      "key": "rowActions",
+      "description": "A long press on a recipe row (Recipes, a view, a list) opens a menu: Add to list, Add to plan, Share, Delete, and in a list Remove from this list. Off, a row only opens its recipe (swipe to delete stays).",
+      "defaults": { "debug": true, "release": true },
+      "issue": 376
+    },
+    {
+      "key": "multiSelect",
+      "description": "Select several recipes in Recipes, a view or a list (a Select action, or Select in the long-press menu): add them to a list, take them off this list, or delete them with one confirmation and one Undo. Off, no Select action or menu entry.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 377
     }
   ]
 }

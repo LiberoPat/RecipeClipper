@@ -4,13 +4,20 @@ import SwiftUI
 /// (the same save control as a row's: filled for a recipe in a list, outlined to open the
 /// save-to-list sheet), the title under it, then the site and total time as a row has them. With
 /// the pantry chip on (#378), "You have 6 of 8" under that. No swipe to delete here: a grid has no
-/// row to swipe, so a recipe is deleted from its own screen. Android's `LibraryGridCell`.
+/// row to swipe, so Delete is in the long-press menu (#376, put on the cell by the screen) and a
+/// selection's (#377). While `selecting` a checkbox rides the photo's corner and a tap (the
+/// caller's `onClick`) toggles it, the bookmark button is left out, as in a row. Android's
+/// `LibraryGridCell`.
 struct LibraryGridCell: View {
     let recipe: RecipeSummary
     let onClick: () -> Void
     /// One cookbook (#345): an outlined bookmark on a recipe in no list, opening the save-to-list sheet.
     var onSaveToList: (() -> Void)? = nil
     var pantry: PantryCoverage? = nil
+    /// Selecting several (#377). The checkbox is always in the cell, clear when not selecting, so
+    /// the cell's structure never changes with the mode (#203, #216).
+    var selecting = false
+    var selected = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -40,12 +47,22 @@ struct LibraryGridCell: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityAddTraits(selecting && selected ? [.isSelected] : [])
             .accessibilityIdentifier("recipes.cell.\(recipe.id)")
+
+            CheckboxGlyph(checked: selected)
+                .padding(8)
+                .background(Circle().fill(Palette.background.opacity(0.9)).padding(2))
+                .padding(6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .opacity(selecting ? 1 : 0)
+                .allowsHitTesting(false)
+                .accessibilityIdentifier("recipes.check.\(recipe.id)")
 
             if recipe.isSaved {
                 badge(Image(systemName: "bookmark.fill").foregroundStyle(Palette.accentText))
                     .accessibilityLabel(Strings.inAList)
-            } else if let onSaveToList {
+            } else if let onSaveToList, !selecting {
                 Button(action: onSaveToList) {
                     badge(Image(systemName: "bookmark").foregroundStyle(Palette.muted))
                         .frame(minWidth: 44, minHeight: 44)

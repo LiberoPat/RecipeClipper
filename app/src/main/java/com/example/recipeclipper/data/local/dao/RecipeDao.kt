@@ -117,6 +117,22 @@ abstract class RecipeDao {
         clearOrphanedLinks()
     }
 
+    /**
+     * Deletes several recipes the cook picked (#377), reading each one's rows first so an undo can
+     * bring them back, all in one transaction: either every one goes or none does. An id already
+     * gone is skipped.
+     */
+    @Transaction
+    open suspend fun deleteAll(ids: List<Long>): List<DeletedRows> = ids.mapNotNull { id ->
+        val entity = get(id) ?: return@mapNotNull null
+        val rows = DeletedRows(
+            entity, crossRefsFor(id), planEntriesFor(id), menuEntriesFor(id), cookedPhotosFor(id),
+            versionIdsOf(entity.uid)
+        )
+        deleteWithLinks(id)
+        rows
+    }
+
     /** Clears every version link whose original is no longer here (#354): after any delete. */
     @Query(
         """

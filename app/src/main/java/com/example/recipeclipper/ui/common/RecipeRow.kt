@@ -1,7 +1,6 @@
 package com.example.recipeclipper.ui.common
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -26,16 +25,32 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeSummary
 
-/** A recipe in a list: thumbnail, title, and when it was last viewed. */
+/**
+ * A recipe in a list: thumbnail, title, and when it was last viewed. A long press opens the row's
+ * menu through [onLongClick] (#376); while [selecting] (#377) it leads with a checkbox and a tap
+ * toggles [selected] through [onClick].
+ */
 @Composable
-fun RecipeRow(recipe: RecipeSummary, now: Long, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun RecipeRow(
+    recipe: RecipeSummary,
+    now: Long,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    selecting: Boolean = false,
+    selected: Boolean = false
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
+            .recipeRowClicks(selecting, selected, onClick, onLongClick)
             .padding(vertical = 10.dp)
     ) {
+        if (selecting) {
+            // Drawn only: the row itself is the toggle, so it reads as one checkbox.
+            Checkbox(checked = selected, onCheckedChange = null, modifier = Modifier.padding(end = 10.dp))
+        }
         RecipeThumbnail(recipe.imageUrl)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(

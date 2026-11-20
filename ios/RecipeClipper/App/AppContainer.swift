@@ -311,7 +311,8 @@ final class AppContainer {
         RecipesViewModel(
             repository: recipeRepository, preferences: preferences, library: libraryPolicy,
             cookedSort: cookedPhotoRepository != nil, countdowns: timerCountdowns,
-            view: view, lists: listRepository, pasted: pastedTextRouter, pantry: pantryRepository
+            view: view, lists: listRepository, pasted: pastedTextRouter, pantry: pantryRepository,
+            decisions: decisionRepository
         )
     }
 
@@ -527,6 +528,9 @@ final class AppContainer {
     }
 
     func makeListDetailViewModel(listId: Int64) -> ListDetailViewModel {
-        ListDetailViewModel(listId: listId, repository: listRepository)
+        ListDetailViewModel(
+            listId: listId, repository: listRepository, recipes: recipeRepository, preferences: preferences,
+            decisions: decisionRepository, countdowns: timerCountdowns
+        )
     }
 }

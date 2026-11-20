@@ -43,6 +43,8 @@ struct CheckboxGlyph: View {
     let checked: Bool
     /// A dash in place of the check: some of the rows it stands for are ticked (#406).
     var mixed = false
+    /// Some, not all (#377: a list holding some of the selected recipes): a dash in the box.
+    var partial = false
     /// Grows with the text beside it, up to half again: a checkbox the size of an AX5 cap
     /// height would only crowd the text it marks.
     @ScaledMetric(relativeTo: .body) private var scaledSize: CGFloat = 20
@@ -50,12 +52,16 @@ struct CheckboxGlyph: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(checked ? Palette.primary : Palette.muted, lineWidth: 2)
+                .strokeBorder(checked || partial ? Palette.primary : Palette.muted, lineWidth: 2)
                 .background(RoundedRectangle(cornerRadius: 4).fill(checked ? Palette.primary : .clear))
             if checked {
                 Image(systemName: mixed ? "minus" : "checkmark")
                     .font(.system(size: size * 0.6, weight: .bold))
                     .foregroundStyle(Palette.onPrimary)
+            } else if partial {
+                Image(systemName: "minus")
+                    .font(.system(size: size * 0.6, weight: .bold))
+                    .foregroundStyle(Palette.primary)
             }
         }
         .frame(width: size, height: size)

@@ -105,6 +105,28 @@ struct ListDao {
         try db.run("DELETE FROM recipe_list_cross_ref WHERE recipeId = ? AND listId = ?", recipeId, listId)
     }
 
+    /// Ticking a list for several recipes (#377): insert-or-ignore each, so one already in keeps
+    /// its `addedAt`. Call inside a write: all or none.
+    func addAllToList(recipeIds: [Int64], listId: Int64, addedAt: Int64) throws {
+        for id in recipeIds { try addToList(ListMembership(recipeId: id, listId: listId, addedAt: addedAt)) }
+    }
+
+    /// Unticking a list for several recipes (#377).
+    func removeAllFromList(recipeIds: [Int64], listId: Int64) throws {
+        for id in recipeIds { try removeFromList(recipeId: id, listId: listId) }
+    }
+
+    /// For each list, how many of `recipeIds` it holds (#377); a list with none has no row.
+    func membershipCounts(recipeIds: [Int64]) throws -> [Int64: Int] {
+        guard !recipeIds.isEmpty else { return [:] }
+        let marks = Array(repeating: "?", count: recipeIds.count).joined(separator: ", ")
+        let rows: [(Int64, Int)] = try db.query(
+            "SELECT listId, COUNT(*) FROM recipe_list_cross_ref WHERE recipeId IN (\(marks)) GROUP BY listId",
+            arguments: recipeIds.map { $0 as SQLiteBindable? }, map: { ($0.int64(0), Int($0.int64(1))) }
+        )
+        return Dictionary(uniqueKeysWithValues: rows)
+    }
+
     /// Creates a user list and, unless `recipeId` is `noRecipe`, puts that recipe straight in.
     /// Call inside a write, so a list never exists without the recipe that prompted it.
     func create(name: String, recipeId: Int64, now: Int64) throws -> Int64 {

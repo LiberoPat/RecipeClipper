@@ -362,8 +362,10 @@ things, and the three list ViewModels need nothing from the recipe side, so
 - `ui/lists/` and `ui/listdetail/`. Renaming and deleting a list are on the
   list's own screen (overflow menu → dialog), not on the Lists screen, so a
   list is managed from one place — the same shape as deleting a recipe from
-  the recipe screen. Removing a recipe *from* a list is deliberately not
-  offered on the detail screen: membership is edited in the sheet only.
+  the recipe screen. Removing a recipe *from* a list was deliberately not
+  offered on the detail screen (membership edited in the sheet only); since #376 and #377 a row's
+  long-press menu and a selection there offer "Remove from this list" (see "Row actions and
+  selecting several recipes").
 - **Covers (#286, the owner's pick V2; both platforms).** Lists is a two-column
   grid of square covers, in the same order as before (Favorites and the seeded
   lists first), each with the name and count ("Empty" at zero) under it, and
@@ -3243,9 +3245,13 @@ placeholder swapped for it (one place per platform: `LibraryGridCell`).
   disc (so it reads on any picture): filled for a recipe in a list (the accessibility label "Saved
   to a list"), outlined and tappable for one in none (opens the save-to-list sheet, `oneCookbook`),
   with the 48dp / 44pt target of a row's.
-- **No swipe to delete in the grid**: a grid has no row to swipe. Deleting stays one tap away (the
-  recipe's own screen, its overflow menu) and the rows' swipe is untouched; the multi-select and
-  long-press menu (#376, #377) is where the grid will get it.
+- **No swipe to delete in the grid**: a grid has no row to swipe, and the rows' swipe is untouched.
+  The grid has the rows' other ways instead (#376, #377, wired when the two landed together): a
+  long press on a cell opens the same menu (Add to list, Add to plan, Share, Select, Delete), and
+  while selecting each cell carries a checkbox on its photo and a tap ticks it, through the same
+  `RecipeSelection`, so a selection, its bar and its one Undo behave as they do in the rows. The
+  selection acts on what the chips and the search leave in sight, in either layout (`listed` is
+  the filtered list). Switching layout while selecting keeps the ticks.
 - **Stored as a setting**: key **`recipes_layout`** in `unit_preferences` / `UserDefaults`, the enum
   by name (`ROWS`, `GRID`), **an unknown or absent name reads as `ROWS`**. A view preference like
   `recipe_sort`: not in the export file, not in Settings. It applies at once (the ViewModel writes
@@ -5413,6 +5419,93 @@ release), on both platforms.
   start with every flag off): it passed three times in a row. The ViewModel owns every rule; the
   test only proves the system drag reaches it. Android's gesture is checked by `ListsScreenTest`'s
   touch-input drag.
+
+## Row actions and selecting several recipes (#376, #377, 2026-11-19)
+
+Owner's ask (the "common UX flows" list): act on a recipe from its row, without opening it first,
+and on several at once. Two flags, `rowActions` and `multiSelect` (both on by default; either off
+removes just its entries: the menu, or every Select), on both platforms.
+
+- **A long press on a row opens a menu** (Android: a `DropdownMenu` on the row, from
+  `combinedClickable`'s long click, labelled "Recipe actions" for TalkBack; iOS: `.contextMenu`).
+  On Recipes, an automatic view and a list's own screen (Home has no rows since #371). In this
+  order: **Add to list**, **Add to plan**, **Share**, **Select**, **Remove from this list** (a
+  list's own screen only), then **Delete**, last. Each entry is the existing act, not a new one:
+  - *Add to list* opens the save-to-list sheet for that recipe, which writes at once as ever.
+  - *Add to plan* is the recipe screen's sheet, starting on the recipe's own yield (the servings
+    the recipe screen passes). The label is the existing "Add to plan" (the owner's note said "Add
+    to Week"); the sheet it opens carries that title, and the Week is where it lands.
+  - *Share* sends the text the reading view would: `RecipeRowSupport` (Android; iOS has the same
+    name) reads the recipe **by id with `byIds`, never `open`** (opening counts as a view and moves
+    the row to the top), renders it with `RecipeRenderer` under the user's settings (units, liquids,
+    temperature, amounts in steps and the typed decisions) at the recipe's saved servings, and
+    formats it with `RecipeShareText`: plain text, no source link. The words come from the screen's
+    `shareLabels`, as the recipe screen's do.
+  - *Delete* asks first ("Delete "Chicken Adobo"?"; "Delete 3 recipes?" for a selection), then
+    deletes for good and shows the usual **Undo snackbar**, so unlike the recipe screen's own delete
+    (no undo: its screen is gone) the dialog says "You can undo this for a few seconds"
+    (`delete_row_body`, `delete_rows_body`). A swipe still deletes at once, as before.
+  - *Remove from this list* **is not a deletion** and asks nothing: the recipe stays in Recipes,
+    under Not in a list, and no snackbar says so (snackbars are only for undo). **This changes the
+    older "removing a recipe from a list is deliberately not offered on the detail screen"**: the
+    owner asked for it, only there and only through a row's menu or a selection; membership is still
+    edited in the sheet everywhere else.
+- **Select** is in the long-press menu (that row ticked) and in the header on Recipes and a view
+  (beside the +; a view has no +), and in a list's overflow menu. Selecting is **ViewModel state**
+  (`RecipeSelection`, shared by `RecipesViewModel` and `ListDetailViewModel`), so it survives
+  rotation; it is not in `remember`. While selecting: every row leads with a checkbox and a tap
+  ticks (the whole row is one checkbox for TalkBack); swipes, the long-press menu and the row's
+  bookmark button are off; a bar replaces the header (Android: the Scaffold's top bar, the list's own
+  screen a column above the rows): "N selected" (announced as it changes), **Done**, then **Add to
+  list**, **Remove from this list** (a list's own screen) and **Delete**, each needing one ticked.
+  Back leaves selecting first (Android `BackHandler`); iOS has Done.
+- **What an action acts on is the ticked rows still listed** (`RecipeSelection.effective`): a
+  search that hides a ticked recipe takes it out of the count and out of every action, and it is
+  ticked again when the search clears. Nothing out of sight is deleted or moved (the Pantry's rule,
+  #258). The selection starts empty from the header's Select, has no Select all (not asked for; a
+  follow-up) and ends with Done, Back, or any action that completes (a delete, a Remove).
+- **Add to list for several** reuses the one sheet (`SaveToListViewModel.setRecipes(ids)`): a list
+  holding all of them is ticked, one holding some is **indeterminate** (spoken "Some of them",
+  `save_to_list_partial`), none unticked; a tap on a ticked one removes all of them from it, a tap on
+  any other adds all (so an indeterminate list fills). Each tap is one write, as ever (no Save). "+
+  New list" creates the list with all of them in it, in one transaction, and the note under the field
+  counts them ("3 recipes go into the new list.") instead of naming one.
+- **One confirmation, one transaction, one Undo.** A selection's Delete is one dialog, then
+  `RecipeRepository.deleteAll(ids)`: every recipe in one Room transaction (`RecipeDao.deleteAll`;
+  `delete(id)` is now the one-id case, so there is one code path), reading what each took first. All
+  of it joins the burst's one snackbar ("3 recipes deleted"), a swipe made meanwhile included, and
+  **Undo restores all of it through `restoreAll`**, so **#345's free-tier rule holds unchanged**: if the
+  restore would take a free library past its limit, none comes back, the deletes stand and the screen
+  says "Couldn't restore: your library is full". The burst bookkeeping (captured rows, batch, pending
+  titles, refusal) moved out of `RecipesViewModel` into `RecipeDeletions`, which a list's detail uses
+  too. Deleting an original and its versions together leaves no dangling link (the same
+  `clearOrphanedLinks` as a single delete; an undo links them again).
+- **Membership in bulk** is `ListRepository.setMembershipAll` (one transaction: add is the same
+  INSERT-or-IGNORE as `addToList`, so a recipe already in keeps its `addedAt`; remove deletes the
+  rows), `createListWith` (the list and all its members together, or neither) and
+  `observeMemberCounts` (list id to how many of the recipes it holds, for the tri-state). A recipe
+  that is gone makes the whole write fail, leaving nothing half done (`ListDaoBulkTest`).
+- **Code (Android).** `ui/common/RowActions.kt` (`RowActionSet`, `RowWithMenu`, `RecipeRowMenu`,
+  `recipeRowClicks`, `ConfirmDeleteRecipesDialog`), `ui/recipes/` (`RecipeSelection`,
+  `RecipeDeletions`, `RecipeRowSupport`, `SelectionBar`), the row composables `LibraryRow` and
+  `RecipeRow` (a long click and `selecting`/`selected`), `SaveToListViewModel.setRecipes`,
+  `ListDetailViewModel` (now also given `RecipeRepository` and `AppPreferences`).
+- **iOS differences.** The menu is a `.contextMenu` (`UI/Recipes/RecipeRowMenu.swift`, with the
+  delete alert, the sheets and the selection bar); `RecipeDeletions`, `RecipeSelection` and
+  `RecipeRowSupport` are the same collaborators beside `RecipesViewModel`. The row's checkbox is
+  always in it, zero wide when not selecting (#203, #216: a row's structure never changes with its
+  state). While selecting the navigation bar shows "N selected" and Done (the back button is hidden,
+  so Done is the way out), the tab bar is hidden and the actions sit in a bar at the foot of the
+  screen. With `rowActions` off a held press on a row opens the recipe, as a tap does. Repository
+  writes are one SQLite transaction each (`ListDao.setMembers`, `createWith`, `deleteAll`), the
+  rollback of a failed write is a unit test.
+- **Tests.** Android: `RecipesRowActionsViewModelTest`, `ListDetailRowActionsViewModelTest`,
+  `SaveToListSeveralViewModelTest`, `DefaultRecipeRepositoryBulkDeleteTest`, `ListDaoBulkTest` (real
+  SQLite: all or none), `RecipesRowActionsScreenTest` and `ListDetailRowActionsScreenTest` (the menu,
+  Select, Back, rotation, the one confirmation and the one Undo, the free-tier refusal, the
+  indeterminate row), over the hand-written fakes.
+  iOS: `RecipeRowActionsTests`, `SaveToListSeveralTests`, `RowActionsDataTests` (all or none, the
+  free-tier undo refusal for several) and `RowActionsUITests` (long press, select, delete, Undo).
 
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 

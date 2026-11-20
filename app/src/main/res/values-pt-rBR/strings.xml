@@ -855,4 +855,28 @@
     <string name="ai_prompt_temperature_f">Dê as temperaturas do forno em °F.</string>
     <string name="ai_prompt_write_in">Escreva em %1$s.</string>
     <string name="ai_prompt_note_outside">Coloque qualquer outra coisa que queira dizer fora do bloco de código.</string>
+    <!-- Long-press menu on a recipe row (#376) and selecting several recipes (#377). -->
+    <string name="action_select">Selecionar</string>
+    <string name="row_action_add_to_list">Adicionar a uma lista</string>
+    <string name="action_share">Compartilhar</string>
+    <string name="row_action_remove_from_list">Remover desta lista</string>
+    <string name="cd_recipe_actions">Ações da receita</string>
+    <string name="save_to_list_partial">Algumas</string>
+    <plurals name="recipes_selected_count">
+        <item quantity="one">%1$d selecionada</item>
+        <item quantity="many">%1$d selecionadas</item>
+        <item quantity="other">%1$d selecionadas</item>
+    </plurals>
+    <plurals name="delete_recipes_title">
+        <item quantity="one">Excluir %1$d receita?</item>
+        <item quantity="many">Excluir %1$d de receitas?</item>
+        <item quantity="other">Excluir %1$d receitas?</item>
+    </plurals>
+    <string name="delete_row_body">A receita será removida das suas receitas e de todas as listas em que estiver, com as fotos que você adicionou. Você pode desfazer por alguns segundos.</string>
+    <string name="delete_rows_body">As receitas serão removidas das suas receitas e de todas as listas em que estiverem, com as fotos que você adicionou. Você pode desfazer por alguns segundos.</string>
+    <plurals name="save_to_list_new_list_note_many">
+        <item quantity="one">%1$d receita vai para a nova lista.</item>
+        <item quantity="many">%1$d de receitas vão para a nova lista.</item>
+        <item quantity="other">%1$d receitas vão para a nova lista.</item>
+    </plurals>
 </resources>

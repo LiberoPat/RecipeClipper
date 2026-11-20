@@ -13,12 +13,14 @@ struct SaveToListSheet: View {
             VStack(alignment: .leading, spacing: 0) {
                 SectionHeading(Strings.saveToListTitle).padding(.bottom, 8)
                 ForEach(state.lists) { list in
-                    ListCheckRow(list: list) { vm.onListToggled(listId: list.id, inList: $0) }
+                    ListCheckRow(list: list, partial: state.isPartial(list)) { vm.onListTapped(list) }
                 }
                 NewListControl(
                     creating: state.creatingList,
                     name: state.newListName,
-                    note: state.recipeTitle.isEmpty ? nil : Strings.newListNote(state.recipeTitle),
+                    note: state.selectionCount > 1
+                        ? Strings.newListNoteMany(state.selectionCount)
+                        : (state.recipeTitle.isEmpty ? nil : Strings.newListNote(state.recipeTitle)),
                     onStart: vm.onStartCreating,
                     onNameChange: vm.onNewListNameChange,
                     onCancel: vm.onCancelCreating,
@@ -39,12 +41,14 @@ struct SaveToListSheet: View {
 /// The whole row toggles; the checkbox only draws the state.
 private struct ListCheckRow: View {
     let list: RecipeList
-    let onToggle: (Bool) -> Void
+    /// Holds some, not all, of the selected recipes (#377): an indeterminate box.
+    var partial = false
+    let onTap: () -> Void
 
     var body: some View {
-        Button { onToggle(!list.containsRecipe) } label: {
+        Button(action: onTap) {
             HStack(spacing: 12) {
-                CheckboxGlyph(checked: list.containsRecipe)
+                CheckboxGlyph(checked: list.containsRecipe, partial: partial)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(list.name).textStyle(Typography.bodyLarge).foregroundStyle(Palette.onBackground)
                     Text(Strings.listCount(list.recipeCount))
@@ -58,5 +62,6 @@ private struct ListCheckRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(list.containsRecipe ? [.isSelected] : [])
+        .accessibilityValue(partial ? Strings.saveToListPartial : "")
     }
 }
