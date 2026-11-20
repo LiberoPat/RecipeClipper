@@ -173,6 +173,123 @@ final class AskAiPromptTests: XCTestCase {
         XCTAssertTrue(prompt.contains("metric units"))
     }
 
+    // MARK: - Plan my week with choices (#392, #367). The Kotlin twin holds the same strings.
+
+    private func choice(
+        meals: [String] = ["Breakfast", "Dinner"], source: AskAiPrompt.PlanSource = .new,
+        candidates: [AskAiPrompt.PlanCandidate] = [], mix: Int = 0, days: Int = 2
+    ) -> AskAiPrompt.PlanChoice {
+        AskAiPrompt.PlanChoice(days: (0..<days).map { today + Int64($0) }, meals: meals, source: source, candidates: candidates, mix: mix)
+    }
+
+    private let savedRecipes = [
+        AskAiPrompt.PlanCandidate(name: "Chicken Adobo", link: "https://example.com/adobo"),
+        AskAiPrompt.PlanCandidate(name: " Pancakes ", link: "manual:abc-123"),
+    ]
+
+    func testNewRecipesAskForEachChosenMealOnEachDayWithDayAndMealOnEachObject() {
+        let prompt = AskAiPrompt.planMyWeekPlus(choice(), favourites: ["Lasagne"], cooked: ["Chili"], request: "no fish", setup: setup())
+        XCTAssertTrue(prompt.hasPrefix(
+            "Plan one recipe for each of these meals (Breakfast, Dinner) on each of these days:\n\n"
+                + "- 2026-11-24 (Tuesday)\n- 2026-11-25 (Wednesday)\n\n"
+                + "Recipes I like, for ideas: Lasagne.\n\n"
+                + "I cooked these lately, so please don't repeat them: Chili.\n\n"
+                + "Also: no fish\n\n"
+                + "Reply with a JSON array in one ```json code block: one schema.org Recipe object for each of these "
+                + "meals on each day listed, day by day in the order listed. Give each object two extra properties: "
+                + "\"day\", holding that day's date exactly as listed (YYYY-MM-DD), and \"meal\", holding the meal's "
+                + "name exactly as listed. Use @context"
+        ))
+        XCTAssertFalse(prompt.contains("saved recipes"))
+        XCTAssertFalse(prompt.contains("isBasedOn"))
+    }
+
+    func testFromMyRecipesListsThemByNameAndLinkAndAsksForNoRecipeToBeWrittenOut() {
+        let prompt = AskAiPrompt.planMyWeekPlus(
+            choice(source: .mine, candidates: savedRecipes), favourites: ["Ignored"], cooked: ["Ignored"], request: "", setup: setup()
+        )
+        XCTAssertTrue(prompt.contains(
+            "My saved recipes, one per line as name | link:\n"
+                + "- Chicken Adobo | https://example.com/adobo\n- Pancakes | manual:abc-123\n\n"
+                + "Use only my saved recipes listed above. Don't write them out: for each one give just @type \"Recipe\", "
+                + "its \"name\", its link exactly as listed in \"isBasedOn\", and its day and meal."
+        ))
+        // Nothing is written out, so no fields, units or temperatures are asked for.
+        XCTAssertFalse(prompt.contains("Use @context"))
+        XCTAssertFalse(prompt.contains("Give amounts"))
+        XCTAssertTrue(prompt.hasSuffix("Write it in English. Put anything else you want to say outside the code block."))
+    }
+
+    func testAMixSaysHowManyOfMineAtMostAndTheNewOnesAreWrittenOut() {
+        let prompt = AskAiPrompt.planMyWeekPlus(
+            choice(source: .mix, candidates: savedRecipes, mix: 3), favourites: ["Lasagne"], cooked: [], request: "",
+            setup: setup(.metric, .celsius)
+        )
+        XCTAssertTrue(prompt.contains("Use up to 3 of my saved recipes listed above and suggest new recipes for the rest."))
+        XCTAssertTrue(prompt.contains("Write every new recipe out in full."))
+        XCTAssertTrue(prompt.contains("Recipes I like, for ideas: Lasagne."))
+        XCTAssertTrue(prompt.contains("Use @context"))
+        XCTAssertTrue(prompt.contains("metric units"))
+        // The count is a number of the week's meals at most (4 here), and at least one.
+        XCTAssertTrue(AskAiPrompt.planMyWeekPlus(choice(source: .mix, candidates: savedRecipes, mix: 99), favourites: [], cooked: [], request: "", setup: setup())
+            .contains("Use up to 4 of my saved recipes"))
+        XCTAssertTrue(AskAiPrompt.planMyWeekPlus(choice(source: .mix, candidates: savedRecipes, mix: 0), favourites: [], cooked: [], request: "", setup: setup())
+            .contains("Use up to 1 of my saved recipes"))
+    }
+
+    func testTheSavedRecipesAreCappedBlanksAreLeftOut() {
+        let many = (1...60).map { AskAiPrompt.PlanCandidate(name: String(format: "Dish%02d", $0), link: String(format: "https://example.com/%02d", $0)) }
+            + [AskAiPrompt.PlanCandidate(name: " ", link: "https://example.com/blank")]
+        let prompt = AskAiPrompt.planMyWeekPlus(choice(source: .mine, candidates: many), favourites: [], cooked: [], request: "", setup: setup())
+        XCTAssertTrue(prompt.contains("- Dish40 | https://example.com/40"))
+        XCTAssertFalse(prompt.contains("Dish41"))
+        XCTAssertEqual(AskAiPrompt.maxCandidates, 40)
+        // Without any usable recipe, a "from my recipes" prompt is no different from new recipes.
+        let none = AskAiPrompt.planMyWeekPlus(choice(source: .mine), favourites: [], cooked: [], request: "", setup: setup())
+        XCTAssertFalse(none.contains("saved recipes"))
+    }
+
+    func testTheMealsAreAsChosenTrimmedBlanksAndRepeatsOutAndNoneFallsBackToDinners() {
+        let prompt = AskAiPrompt.planMyWeekPlus(choice(meals: [" Lunch ", "", "lunch", "Snack"]), favourites: [], cooked: [], request: "", setup: setup())
+        XCTAssertTrue(prompt.hasPrefix("Plan one recipe for each of these meals (Lunch, Snack) on each of these days:"))
+        let none = AskAiPrompt.planMyWeekPlus(choice(meals: []), favourites: [], cooked: [], request: "", setup: setup())
+        XCTAssertEqual(none, AskAiPrompt.planMyWeek(days: [today, today + 1], favourites: [], cooked: [], request: "", setup: setup()))
+    }
+
+    func testALongAnswerIsOneWithManyRecipesToWriteOut() {
+        let seven = (0..<7).map { today + Int64($0) }
+        func c(_ meals: Int, _ source: AskAiPrompt.PlanSource = .new, _ mix: Int = 0) -> AskAiPrompt.PlanChoice {
+            AskAiPrompt.PlanChoice(days: seven, meals: (0..<meals).map { "M\($0)" }, source: source, candidates: savedRecipes, mix: mix)
+        }
+        XCTAssertFalse(c(2).isLongAnswer) // 14
+        XCTAssertTrue(c(3).isLongAnswer) // 21
+        XCTAssertEqual(c(3).slots, 21)
+        XCTAssertFalse(c(4, .mine).isLongAnswer)
+        XCTAssertEqual(c(3, .mix, 2).writtenOut, 19)
+        XCTAssertFalse(c(3, .mix, 10).isLongAnswer)
+    }
+
+    func testTheStartDayIsTheFirstListed() {
+        let prompt = AskAiPrompt.planMyWeekPlus(
+            AskAiPrompt.PlanChoice(days: (0..<7).map { today + 3 + Int64($0) }, meals: ["Dinner"]),
+            favourites: [], cooked: [], request: "", setup: setup()
+        )
+        XCTAssertTrue(prompt.contains("- 2026-11-27 (Friday)\n- 2026-11-28 (Saturday)"))
+        XCTAssertTrue(prompt.contains("- 2026-12-03 (Thursday)"))
+        XCTAssertFalse(prompt.contains("2026-11-24"))
+    }
+
+    func testCandidatesAreMostRecentlyViewedFirstWithoutTheSampleOrBlanks() {
+        func s(_ id: Int64, _ title: String, _ url: String, viewed: Int64) -> RecipeSummary {
+            RecipeSummary(id: id, title: title, imageUrl: nil, totalTime: nil, lastViewedAt: viewed, isSaved: true, sourceUrl: url)
+        }
+        let found = AskAiPrompt.candidates([
+            s(1, "Old", "https://a/1", viewed: 10), s(2, "New", "https://a/2", viewed: 30), s(3, "Same", "https://a/3", viewed: 30),
+            s(4, "Sample", SampleRecipe.sourceUrl, viewed: 99), s(5, " ", "https://a/5", viewed: 50), s(6, "NoLink", "", viewed: 60),
+        ])
+        XCTAssertEqual(found.map(\.name), ["Same", "New", "Old"])
+    }
+
     func testIsoDatesArePadded() {
         XCTAssertEqual(AskAiPrompt.isoDate(PlanDays.epochDay(year: 2026, month: 1, dayOfMonth: 5)), "2026-01-05")
         XCTAssertEqual(AskAiPrompt.isoDate(0), "1970-01-01")

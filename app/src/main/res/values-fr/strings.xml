@@ -915,7 +915,7 @@
     <string name="ask_ai_kind_make_hint">Avec votre garde-manger, ce qui périme bientôt en premier</string>
     <string name="ask_ai_kind_make_empty">Le garde-manger est vide</string>
     <string name="ask_ai_kind_plan">Planifier ma semaine</string>
-    <string name="ask_ai_kind_plan_hint">Une semaine de dîners avec vos favoris, sans répéter ce que vous avez cuisiné récemment</string>
+    <string name="ask_ai_kind_plan_hint">Une semaine de nouveaux dîners, selon vos goûts</string>
     <string name="ask_ai_copy">Copier le prompt</string>
     <string name="ask_ai_copied">Copié</string>
     <string name="ask_ai_share">Partager</string>
@@ -977,6 +977,37 @@
         <item quantity="many">%1$d de recettes iront dans la nouvelle liste.</item>
         <item quantity="other">%1$d recettes iront dans la nouvelle liste.</item>
     </plurals>
+    <string name="ask_ai_plan_hint_new">De nouvelles recettes pour les repas et les jours choisis, selon vos goûts</string>
+    <string name="ask_ai_plan_hint_mine">Des repas planifiés avec vos recettes enregistrées</string>
+    <string name="ask_ai_plan_hint_mix">Un peu de vos recettes, un peu de nouvelles</string>
+    <string name="ask_ai_plan_meals">Repas</string>
+    <string name="ask_ai_plan_meals_none">Choisissez au moins un repas.</string>
+    <string name="ask_ai_plan_start">Commencer le</string>
+    <string name="ask_ai_plan_source">Recettes</string>
+    <string name="ask_ai_plan_source_new">Nouvelles recettes</string>
+    <string name="ask_ai_plan_source_mine">Parmi mes recettes</string>
+    <string name="ask_ai_plan_source_mix">Un mélange</string>
+    <string name="ask_ai_plan_mix_count">Jusqu\'à %1$d des miennes, le reste en nouveautés</string>
+    <string name="ask_ai_plan_mix_less">Moins des miennes</string>
+    <string name="ask_ai_plan_mix_more">Plus des miennes</string>
+    <string name="ask_ai_plan_from">Choisir parmi</string>
+    <string name="ask_ai_plan_all_recipes">Toutes mes recettes</string>
+    <string name="ask_ai_plan_sent">Envoi de %1$d de vos %2$d recettes, les plus récemment consultées d\'abord.</string>
+    <string name="ask_ai_plan_no_recipes">Vous n\'avez pas encore de recettes à planifier.</string>
+    <string name="ask_ai_plan_long">Beaucoup de repas donnent une longue réponse que les applis de chat peuvent couper. Dans ce cas, partagez ou collez ce qui est arrivé, et l\'appli demandera la suite.</string>
+    <string name="ask_ai_plan_use_favourites">Utiliser mes favoris comme idées</string>
+    <string name="ask_ai_plan_skip_cooked">Ne pas répéter ce que j\'ai cuisiné récemment</string>
+    <string name="mealplan_intro_meals">Choisissez les recettes à garder et vérifiez le jour et le repas de chacune. Les nouvelles sont enregistrées comme venant d\'un chat ; celles déjà dans vos recettes sont seulement planifiées. Rien n\'est enregistré avant d\'appuyer sur Enregistrer.</string>
+    <string name="mealplan_already">Déjà dans vos recettes</string>
+    <string name="mealplan_meal_for">Repas pour %1$s</string>
+    <string name="mealplan_not_found">Écartées, introuvables dans vos recettes : %1$d</string>
+    <string name="mealplan_pick_day">Choisissez un jour pour la planifier</string>
+    <string name="cutoff_ask_plan_meals">Votre réponse a été coupée. Envoyez la suite du plan, s\'il vous plaît : une recette pour chacun de ces jours et repas : %1$s. Utilisez le même format JSON qu\'avant, avec \"day\" et \"meal\", dans un seul bloc de code ```json.</string>
+    <string name="ai_prompt_plan_meals_intro">Prévois une recette pour chacun de ces repas (%1$s) et pour chacun de ces jours :</string>
+    <string name="ai_prompt_saved_recipes">Mes recettes enregistrées, une par ligne sous la forme nom | lien :</string>
+    <string name="ai_prompt_use_saved_only">Utilise uniquement mes recettes enregistrées ci-dessus. Ne les écris pas en entier : pour chacune, donne seulement @type \"Recipe\", son \"name\", son lien exactement comme indiqué dans \"isBasedOn\", ainsi que son jour et son repas. Ne reprends une recette que s\'il y a moins de recettes que de repas.</string>
+    <string name="ai_prompt_use_saved_mix">Utilise jusqu\'à %1$d de mes recettes enregistrées ci-dessus et propose de nouvelles recettes pour le reste. Une recette enregistrée ne s\'écrit pas en entier : donne seulement @type \"Recipe\", son \"name\", son lien exactement comme indiqué dans \"isBasedOn\", ainsi que son jour et son repas. Écris chaque nouvelle recette en entier.</string>
+    <string name="ai_prompt_reply_plan_meals">Réponds avec un tableau JSON dans un seul bloc de code ```json : un objet schema.org Recipe pour chacun de ces repas de chaque jour indiqué, jour après jour dans l\'ordre indiqué. Ajoute à chaque objet deux propriétés supplémentaires : \"%1$s\", contenant la date de ce jour exactement comme indiquée (AAAA-MM-JJ), et \"%2$s\", contenant le nom du repas exactement comme indiqué.</string>
     <!-- Evening and Tonight reminders (#397) -->
     <string name="meal_reminders_channel_name">Rappels de repas</string>
     <string name="meal_reminders_channel_description">Les repas prévus pour demain et ce soir</string>

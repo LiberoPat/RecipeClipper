@@ -76,7 +76,9 @@ enum class Flag(val key: String) {
     /** The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397). */
     EVENING_REMINDERS("eveningReminders"),
     /** Fresh food (#396): Shop for this week in two trips (Buy now, Buy later in the week), and the plan's "cook it earlier?" note. */
-    FRESH_FOOD("freshFood");
+    FRESH_FOOD("freshFood"),
+    /** Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix. */
+    PLAN_MY_WEEK_PLUS("planMyWeekPlus");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

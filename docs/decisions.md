@@ -6109,6 +6109,85 @@ removes just its entries: the menu, or every Select), on both platforms.
   iOS: `RecipeRowActionsTests`, `SaveToListSeveralTests`, `RowActionsDataTests` (all or none, the
   free-tier undo refusal for several) and `RowActionsUITests` (long press, select, delete, Undo).
 
+## Plan my week: meals, a start day, and your own recipes (#392, #367, 2026-11-20)
+
+Ask an AI's **Plan my week** (#353) asked only for seven dinners of new recipes. With the
+`planMyWeekPlus` flag (on by default; off, the sheet, the prompt and the review are exactly as
+before) the cook chooses the meals, the first day, and where the recipes come from, on both
+platforms. These Week planning extras are meant to become Pro (#413): nothing is gated here, but
+the flag is the one thing a gate would wrap.
+
+- **The sheet** (chosen *Plan my week*, `PlanOptions`; iOS the same): **Meals**, the cook's meal
+  types as multi-select chips (`meal_types`, their order, current names; **Dinner ticked** at
+  first; at least one, at most `MAX_RECIPES / PLAN_DAYS` = 10); **Start on**, the Add to plan day
+  strip (today and the next 13); **Recipes**: *New recipes* (today's), *From my recipes* (all of
+  them, or one list, chosen from chips of the lists that hold a recipe) or *A mix* ("Up to N of
+  mine, the rest new", a stepper, 1 to the week's meals, 3 at first); then switches for *Use my
+  favourites as ideas* and *Don't repeat what I cooked lately* (both on, as the prompt always did;
+  neither shown for From my recipes, where they make no sense). The **hint** under the row follows
+  the source ("New recipes for the meals and days you choose, shaped by what you like" and so on;
+  flag off, the reworded `ask_ai_kind_plan_hint`, "A week of new dinners, shaped by what you
+  like": the old line read as favourites only). Copy and Share are off with no meal ticked, and
+  with From my recipes or a mix when the library (or the list) has no recipe.
+- **Remembered:** only the ticked meals, by `MealType.key` (a seeded type's `builtInKey`, else its
+  `uid`; never the name, which changes on rename), in `unit_preferences` / `UserDefaults` under
+  `plan_my_week_meals`, comma-joined (`PlanChoices`, its own interface like `UseUpLog`). A key
+  whose type is gone is dropped; with nothing left, Dinner. **Not remembered:** the start day
+  (it never silently starts in the past; closing the sheet puts it back on today), the source,
+  the list, the count, the switches.
+- **The prompt** (`AskAiPrompt.planMyWeekPlus`, `PlanChoice`): "Plan one recipe for each of these
+  meals (Breakfast, Dinner) on each of these days:", the `PLAN_DAYS` days from the start day as
+  `YYYY-MM-DD (Weekday)`, then (for the cook's own recipes) "My saved recipes, one per line as
+  name | link:" with each recipe's name and **`sourceUrl`**, most recently viewed first, **capped
+  at 40** (the sheet says "Sending 40 of your 112 recipes, the most recently viewed first"; the
+  tour's sample is never named), and the instruction: *From my recipes* "Use only my saved
+  recipes… don't write them out: give just @type "Recipe", its "name", its link exactly as listed
+  in "isBasedOn", and its day and meal" (so no fields, units or oven temperature are asked for);
+  *A mix* "Use up to N of my saved recipes… suggest new recipes for the rest… write every new
+  recipe out in full". The reply format asks for one object per meal per day, day by day, each
+  with **`"day"` and `"meal"`** (the meal's name exactly as listed: the cook's current name).
+  Words are `ai_prompt_*` strings in six languages, `AskAiWordsTest` pins the English ones.
+- **A long answer:** more than 14 recipes to write out (`LONG_ANSWER`; saved ones are named, not
+  written, so From my recipes never warns) makes the sheet say chat apps may cut the answer off;
+  the cut-off road (#385) already copes.
+- **Reading** (`MealPlanImport`, `JsonLdRecipeParser.parseEach` with `deep`): each recipe keeps its
+  `meal` text (`Item.meal`; a wrapper's `meal` is carried down as its `day` is). **An object that
+  names a saved recipe by its link and carries no ingredients or steps is `Item.link`** (the
+  link is `isBasedOn`, a thing's `@id`/`url`, else for a Recipe-typed one `url`; it needs a name;
+  `Item.recipe` is then only a name): never a recipe. An object with a body is a new recipe
+  whatever it links. A `meal` counts like a `day` to tell a plan from a changed recipe (#354).
+  `MAX_RECIPES` is **70** (ten meals a week; was 31), at most 100 000 characters read
+  (`MAX_LENGTH`; `SharedText`'s 50 000 still holds for everything else), 200 JSON values tried.
+- **The review:** every row shows its **day and meal**, both changeable before Save (a meal
+  button over the cook's types). The meal is `MealType.idForMeal`: the type whose *current name*
+  matches the answer's `meal`, case and spaces ignored (the first in the cook's order when two
+  share a name), else **Dinner**; never guessed from the recipe. A link-only object is matched
+  to the library by `SavedLink.find` (the link as written, else cleaned by `UrlCleaner`, as a
+  version's original is found, #354): found, the row says **"Already in your recipes"** under the
+  library's own title, takes **no room under the free limit**, and **Save plans that recipe on its
+  day and meal, never saving it again**; with no day it asks for one and Save skips it. Not found:
+  **left out, never invented**, and the review says "Left out, not found in your recipes: N".
+  A new recipe is saved as from a chat as before (the one `addManual`, so the free limit holds).
+  With the flag off a link-only object is left out silently and every recipe is planned under
+  Dinner.
+- **The cut-off follow-up** (#385's `CutOffMessage`) names **day and meal pairs** when the answer
+  carried meals: the block of seven days from the earliest day read, the meals *the answer
+  named*, the pairs no whole recipe is on ("2026-11-21 (Breakfast), 2026-11-21 (Dinner)…"). A meal
+  the answer never reached is unknown to the review, so it cannot be named; with no meal read, no
+  readable day, or nothing missing it is the days (or "the remaining days") as before.
+- **Code.** Core: `AskAiPrompt` (`PlanSource`, `PlanCandidate`, `PlanChoice`, `candidates`,
+  `recipesToWrite`), `MealType` (`uid`, `key`, `chosenKeys`, `idForMeal`), `SavedLink`,
+  `CutOffMessage.forPlanMeals`. Android `AskAiViewModel` (takes `MealPlanRepository`,
+  `PlanChoices`, `FeatureFlags`), `PlanOptions`, `MealPlanReviewViewModel` (takes the flags);
+  iOS the same names. Strings: 31 new keys in six languages on both platforms.
+- **Tests.** `AskAiPromptTest(s)`, `MealPlanMealsTest(s)` (reader, meal mapping, cut-off pairs,
+  keys), the corpus's `PlanText(...)` rows (generated from the Kotlin; `Meal(...)` gains the
+  meal and link when it has them), `PlanMyWeekViewModelTest` and `AskAiViewModelTests`,
+  `MealPlanReviewMealsTest` and `MealPlanReviewTests`, `PlanMyWeekSheetTest` and
+  `MealPlanReviewScreenTest`.
+- **Not here:** the pantry (#363) and food profile (#364) toggles (neither exists to read yet),
+  and any Pro gate (#413).
+
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
 The owner's report: a card's fraction symbol came out as "%". Measured first, on two cards drawn
@@ -6708,6 +6787,9 @@ the same on both): `unit_system`, `convert_liquids`, `temperature_unit`,
 `tonight_reminder`, `tonight_reminder_minute` (#397), `chef_mode`, `amounts_in_steps`,
 `recipe_sort` (the Recipes screen's sort), `recipes_layout` (its rows or photo grid, #380: `ROWS` or
 `GRID`, an unknown name reads as `ROWS`), the tour's `tour_sample_added` (#151) and
+
+`recipe_sort` (the Recipes screen's sort), `plan_my_week_meals` (#392: the meal types ticked in
+Plan my week, `MealType.key`s comma-joined), the tour's `tour_sample_added` (#151) and
 `tooltip_<id>` (#190; #151's `tour_welcome` and `tour_tip_*` are ignored), and `pantry_use_up` (#147: recipe id to when
 its sheet was settled, pruned to 12 h on each write), each enum stored by name, an
 unknown one read as the default. `AppPreferences.settings` (a Flow over the change

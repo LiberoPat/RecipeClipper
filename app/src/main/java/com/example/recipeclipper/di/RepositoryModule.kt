@@ -19,6 +19,7 @@ import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.local.SharedPrefsAppPreferences
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.TourPreferences
+import com.example.recipeclipper.data.local.PlanChoices
 import com.example.recipeclipper.data.local.UseUpLog
 import dagger.Binds
 import dagger.Module
@@ -107,4 +108,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun useUpLog(impl: SharedPrefsAppPreferences): UseUpLog
+
+    /** The meal types "Plan my week" last had ticked (#392), in the same file. */
+    @Binds
+    @Singleton
+    abstract fun planChoices(impl: SharedPrefsAppPreferences): PlanChoices
 }

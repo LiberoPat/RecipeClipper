@@ -128,6 +128,20 @@ extension UserDefaultsAppPreferences: UseUpLog {
     }
 }
 
+/// The meal types "Plan my week" last had ticked (#392), in the same suite as the settings.
+extension UserDefaultsAppPreferences: PlanChoices {
+    var planMealKeys: [String]? {
+        get { PlanChoicesFormat.decode(defaults.string(forKey: PlanChoicesFormat.key)) }
+        set {
+            if let newValue, !newValue.isEmpty {
+                defaults.set(PlanChoicesFormat.encode(newValue), forKey: PlanChoicesFormat.key)
+            } else {
+                defaults.removeObject(forKey: PlanChoicesFormat.key)
+            }
+        }
+    }
+}
+
 /// The first-run tour's bookkeeping (#151, #190), in the same suite as the settings.
 extension UserDefaultsAppPreferences: TourPreferences {
     var sampleAdded: Bool {

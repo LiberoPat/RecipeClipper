@@ -1559,6 +1559,1031 @@
         }
       }
     },
+    "ai_prompt_plan_meals_intro %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plane für jede dieser Mahlzeiten (%@) an jedem dieser Tage ein Rezept:"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan one recipe for each of these meals (%@) on each of these days:"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Planifica una receta para cada una de estas comidas (%@) en cada uno de estos días:"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prévois une recette pour chacun de ces repas (%@) et pour chacun de ces jours :"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pianifica una ricetta per ciascuno di questi pasti (%@) in ciascuno di questi giorni:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Planeje uma receita para cada uma destas refeições (%@) em cada um destes dias:"
+          }
+        }
+      }
+    },
+    "ai_prompt_reply_plan_meals %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antworte mit einem JSON-Array in einem einzigen ```json-Codeblock: ein schema.org-Recipe-Objekt für jede dieser Mahlzeiten an jedem genannten Tag, Tag für Tag in der genannten Reihenfolge. Gib jedem Objekt zwei zusätzliche Eigenschaften: \"%1$@\" mit dem Datum dieses Tages genau so, wie es genannt wurde (JJJJ-MM-TT), und \"%2$@\" mit dem Namen der Mahlzeit genau so, wie er genannt wurde."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reply with a JSON array in one ```json code block: one schema.org Recipe object for each of these meals on each day listed, day by day in the order listed. Give each object two extra properties: \"%1$@\", holding that day's date exactly as listed (YYYY-MM-DD), and \"%2$@\", holding the meal's name exactly as listed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Responde con un array JSON en un único bloque de código ```json: un objeto schema.org Recipe por cada una de estas comidas de cada día indicado, día por día en el orden indicado. Añade a cada objeto dos propiedades extra: \"%1$@\", con la fecha de ese día tal como está indicada (AAAA-MM-DD), y \"%2$@\", con el nombre de la comida tal como está indicado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réponds avec un tableau JSON dans un seul bloc de code ```json : un objet schema.org Recipe pour chacun de ces repas de chaque jour indiqué, jour après jour dans l'ordre indiqué. Ajoute à chaque objet deux propriétés supplémentaires : \"%1$@\", contenant la date de ce jour exactement comme indiquée (AAAA-MM-JJ), et \"%2$@\", contenant le nom du repas exactement comme indiqué."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rispondi con un array JSON in un unico blocco di codice ```json: un oggetto schema.org Recipe per ciascuno di questi pasti in ogni giorno indicato, giorno per giorno nell'ordine indicato. Aggiungi a ogni oggetto due proprietà in più: \"%1$@\", con la data di quel giorno esattamente come indicata (AAAA-MM-GG), e \"%2$@\", con il nome del pasto esattamente come indicato."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Responda com um array JSON em um único bloco de código ```json: um objeto schema.org Recipe para cada uma destas refeições em cada dia indicado, dia a dia na ordem indicada. Dê a cada objeto duas propriedades extras: \"%1$@\", com a data desse dia exatamente como indicada (AAAA-MM-DD), e \"%2$@\", com o nome da refeição exatamente como indicado."
+          }
+        }
+      }
+    },
+    "ai_prompt_saved_recipes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine gespeicherten Rezepte, eines pro Zeile als Name | Link:"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My saved recipes, one per line as name | link:"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mis recetas guardadas, una por línea como nombre | enlace:"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mes recettes enregistrées, une par ligne sous la forme nom | lien :"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le mie ricette salvate, una per riga come nome | link:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minhas receitas salvas, uma por linha como nome | link:"
+          }
+        }
+      }
+    },
+    "ai_prompt_use_saved_mix %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwende bis zu %lld meiner oben aufgeführten gespeicherten Rezepte und schlage für den Rest neue Rezepte vor. Ein gespeichertes Rezept schreibst du nicht aus: gib nur @type \"Recipe\", seinen \"name\", seinen Link genau wie aufgeführt in \"isBasedOn\" sowie seinen Tag und seine Mahlzeit an. Schreibe jedes neue Rezept vollständig aus."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use up to %lld of my saved recipes listed above and suggest new recipes for the rest. For a saved recipe don't write it out: give just @type \"Recipe\", its \"name\", its link exactly as listed in \"isBasedOn\", and its day and meal. Write every new recipe out in full."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa hasta %lld de mis recetas guardadas de arriba y sugiere recetas nuevas para el resto. Una receta guardada no la escribas completa: da solo @type \"Recipe\", su \"name\", su enlace exactamente como aparece en \"isBasedOn\", y su día y comida. Escribe completa cada receta nueva."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilise jusqu'à %lld de mes recettes enregistrées ci-dessus et propose de nouvelles recettes pour le reste. Une recette enregistrée ne s'écrit pas en entier : donne seulement @type \"Recipe\", son \"name\", son lien exactement comme indiqué dans \"isBasedOn\", ainsi que son jour et son repas. Écris chaque nouvelle recette en entier."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa fino a %lld delle mie ricette salvate qui sopra e suggerisci ricette nuove per il resto. Una ricetta salvata non scriverla per intero: dai solo @type \"Recipe\", il suo \"name\", il suo link esattamente come indicato in \"isBasedOn\", e il suo giorno e pasto. Scrivi per intero ogni ricetta nuova."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use até %lld das minhas receitas salvas acima e sugira receitas novas para o resto. Uma receita salva não deve ser escrita por extenso: dê só @type \"Recipe\", seu \"name\", seu link exatamente como listado em \"isBasedOn\", e seu dia e refeição. Escreva cada receita nova por extenso."
+          }
+        }
+      }
+    },
+    "ai_prompt_use_saved_only" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwende nur meine oben aufgeführten gespeicherten Rezepte. Schreibe sie nicht aus: gib für jedes nur @type \"Recipe\", seinen \"name\", seinen Link genau wie aufgeführt in \"isBasedOn\" sowie seinen Tag und seine Mahlzeit an. Verwende ein Rezept nur dann mehrmals, wenn es weniger Rezepte als Mahlzeiten gibt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use only my saved recipes listed above. Don't write them out: for each one give just @type \"Recipe\", its \"name\", its link exactly as listed in \"isBasedOn\", and its day and meal. Use a recipe more than once only if there are fewer recipes than meals."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa solo mis recetas guardadas de arriba. No las escribas completas: de cada una da solo @type \"Recipe\", su \"name\", su enlace exactamente como aparece en \"isBasedOn\", y su día y comida. Repite una receta solo si hay menos recetas que comidas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilise uniquement mes recettes enregistrées ci-dessus. Ne les écris pas en entier : pour chacune, donne seulement @type \"Recipe\", son \"name\", son lien exactement comme indiqué dans \"isBasedOn\", ainsi que son jour et son repas. Ne reprends une recette que s'il y a moins de recettes que de repas."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa solo le mie ricette salvate qui sopra. Non scriverle per intero: per ognuna dai solo @type \"Recipe\", il suo \"name\", il suo link esattamente come indicato in \"isBasedOn\", e il suo giorno e pasto. Usa una ricetta più volte solo se le ricette sono meno dei pasti."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use apenas minhas receitas salvas acima. Não as escreva por extenso: de cada uma, dê só @type \"Recipe\", seu \"name\", seu link exatamente como listado em \"isBasedOn\", e seu dia e refeição. Repita uma receita só se houver menos receitas do que refeições."
+          }
+        }
+      }
+    },
+    "ask_ai_plan_all_recipes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle meine Rezepte"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All my recipes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas mis recetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toutes mes recettes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tutte le mie ricette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas as minhas receitas"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_from" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auswählen aus"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose from"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir entre"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir parmi"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli tra"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher entre"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_hint_mine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mahlzeiten aus deinen gespeicherten Rezepten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meals planned from the recipes you have saved"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comidas planificadas con las recetas que tienes guardadas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Des repas planifiés avec vos recettes enregistrées"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasti pianificati con le ricette che hai salvato"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refeições planejadas com as receitas que você salvou"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_hint_mix" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teils deine Rezepte, teils neue"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some of your own recipes, some new ones"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algunas de tus recetas y otras nuevas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un peu de vos recettes, un peu de nouvelles"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un po' delle tue ricette, un po' nuove"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um pouco das suas receitas, um pouco de novas"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_hint_new" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Rezepte für die Mahlzeiten und Tage, die du wählst, passend zu dem, was du magst"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New recipes for the meals and days you choose, shaped by what you like"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recetas nuevas para las comidas y los días que elijas, a tu gusto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De nouvelles recettes pour les repas et les jours choisis, selon vos goûts"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricette nuove per i pasti e i giorni che scegli, in base ai tuoi gusti"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receitas novas para as refeições e os dias que você escolher, ao seu gosto"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_long" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viele Mahlzeiten ergeben eine lange Antwort, die Chat-Apps abschneiden können. Dann teile oder füge ein, was ankam, und die App fragt nach dem Rest."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Many meals make a long answer, and chat apps may cut it off. If that happens, share or paste what came back and the app can ask for the rest."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muchas comidas dan una respuesta larga, y las apps de chat pueden cortarla. Si pasa, comparte o pega lo que llegó y la app pedirá el resto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beaucoup de repas donnent une longue réponse que les applis de chat peuvent couper. Dans ce cas, partagez ou collez ce qui est arrivé, et l'appli demandera la suite."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanti pasti danno una risposta lunga che le app di chat possono tagliare. In quel caso condividi o incolla ciò che è arrivato e l'app chiederà il resto."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muitas refeições geram uma resposta longa, que os apps de chat podem cortar. Se isso acontecer, compartilhe ou cole o que chegou e o app pedirá o resto."
+          }
+        }
+      }
+    },
+    "ask_ai_plan_meals" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mahlzeiten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meals"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comidas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repas"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasti"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refeições"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_meals_none" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle mindestens eine Mahlzeit."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose at least one meal."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige al menos una comida."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez au moins un repas."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli almeno un pasto."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha pelo menos uma refeição."
+          }
+        }
+      }
+    },
+    "ask_ai_plan_mix_count %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu %lld von mir, der Rest neu"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to %lld of mine, the rest new"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta %lld mías, el resto nuevas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jusqu'à %lld des miennes, le reste en nouveautés"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fino a %lld delle mie, il resto nuove"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Até %lld minhas, o resto novas"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_mix_less" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weniger von mir"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fewer of mine"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menos mías"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moins des miennes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meno delle mie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menos minhas"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_mix_more" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr von mir"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More of mine"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más mías"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus des miennes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Più delle mie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mais minhas"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_no_recipes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast noch keine Rezepte zum Planen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You have no recipes to plan from yet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no tienes recetas para planificar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous n'avez pas encore de recettes à planifier."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non hai ancora ricette da pianificare."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você ainda não tem receitas para planejar."
+          }
+        }
+      }
+    },
+    "ask_ai_plan_sent %lld %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es werden %1$lld deiner %2$lld Rezepte gesendet, die zuletzt angesehenen zuerst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sending %1$lld of your %2$lld recipes, the most recently viewed first."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se envían %1$lld de tus %2$lld recetas, las vistas más recientemente primero."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoi de %1$lld de vos %2$lld recettes, les plus récemment consultées d'abord."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invio di %1$lld delle tue %2$lld ricette, le viste più di recente per prime."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviando %1$lld das suas %2$lld receitas, as vistas mais recentemente primeiro."
+          }
+        }
+      }
+    },
+    "ask_ai_plan_skip_cooked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht wiederholen, was ich kürzlich gekocht habe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don't repeat what I cooked lately"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No repetir lo que cociné hace poco"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne pas répéter ce que j'ai cuisiné récemment"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non ripetere ciò che ho cucinato di recente"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não repetir o que cozinhei recentemente"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_source" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rezepte"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recettes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receitas"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_source_mine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus meinen Rezepten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From my recipes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De mis recetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parmi mes recettes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dalle mie ricette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das minhas receitas"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_source_mix" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Mischung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A mix"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una mezcla"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un mélange"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un mix"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma mistura"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_source_new" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Rezepte"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New recipes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recetas nuevas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouvelles recettes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricette nuove"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receitas novas"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_start" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beginnen am"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start on"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empezar el"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commencer le"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inizia il"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Começar em"
+          }
+        }
+      }
+    },
+    "ask_ai_plan_use_favourites" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine Favoriten als Ideen verwenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use my favourites as ideas"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar mis favoritas como ideas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser mes favoris comme idées"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa i miei preferiti come idee"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar meus favoritos como ideias"
+          }
+        }
+      }
+    },
     "backup_already_here %lld" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7878,6 +8903,47 @@
         }
       }
     },
+    "cutoff_ask_plan_meals %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Antwort wurde abgeschnitten. Bitte sende den Rest des Plans: ein Rezept für jeden dieser Tage und Mahlzeiten: %@. Verwende dasselbe JSON-Format wie zuvor, mit \"day\" und \"meal\", in einem einzigen ```json-Codeblock."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your answer was cut off. Please send the rest of the plan: one recipe for each of these days and meals: %@. Use the same JSON format as before, with \"day\" and \"meal\", in one ```json code block."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu respuesta se cortó. Envía el resto del plan, por favor: una receta para cada uno de estos días y comidas: %@. Usa el mismo formato JSON de antes, con \"day\" y \"meal\", en un solo bloque de código ```json."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre réponse a été coupée. Envoyez la suite du plan, s'il vous plaît : une recette pour chacun de ces jours et repas : %@. Utilisez le même format JSON qu'avant, avec \"day\" et \"meal\", dans un seul bloc de code ```json."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tua risposta è stata interrotta. Invia il resto del piano, per favore: una ricetta per ciascuno di questi giorni e pasti: %@. Usa lo stesso formato JSON di prima, con \"day\" e \"meal\", in un unico blocco di codice ```json."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua resposta foi cortada. Envie o resto do plano, por favor: uma receita para cada um destes dias e refeições: %@. Use o mesmo formato JSON de antes, com \"day\" e \"meal\", em um único bloco de código ```json."
+          }
+        }
+      }
+    },
     "cutoff_ask_plan_rest" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10613,6 +11679,47 @@
         }
       }
     },
+    "mealplan_already" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schon in deinen Rezepten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already in your recipes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya está en tus recetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déjà dans vos recettes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Già nelle tue ricette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Já está nas suas receitas"
+          }
+        }
+      }
+    },
     "mealplan_cut_off" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10650,6 +11757,170 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A resposta foi cortada, então só estas receitas chegaram. Peça à IA para continuar com o resto."
+          }
+        }
+      }
+    },
+    "mealplan_intro_meals" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle die Rezepte, die du behalten willst, und prüfe Tag und Mahlzeit jedes Rezepts. Neue werden wie aus einem Chat gespeichert; Rezepte, die schon bei dir sind, werden nur geplant. Erst mit Speichern wird etwas gespeichert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the recipes to keep, and check each day and meal. New recipes are saved as from a chat; ones already in your recipes are only planned. Nothing is saved until you tap Save."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige las recetas que quieres conservar y revisa el día y la comida de cada una. Las nuevas se guardan como de un chat; las que ya están en tus recetas solo se planifican. No se guarda nada hasta que toques Guardar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez les recettes à garder et vérifiez le jour et le repas de chacune. Les nouvelles sont enregistrées comme venant d'un chat ; celles déjà dans vos recettes sont seulement planifiées. Rien n'est enregistré avant d'appuyer sur Enregistrer."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli le ricette da tenere e controlla il giorno e il pasto di ciascuna. Le nuove vengono salvate come da una chat; quelle già nelle tue ricette vengono solo pianificate. Non si salva nulla finché non tocchi Salva."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha as receitas que quer manter e confira o dia e a refeição de cada uma. As novas são salvas como de um chat; as que já estão nas suas receitas só são planejadas. Nada é salvo até você tocar em Salvar."
+          }
+        }
+      }
+    },
+    "mealplan_meal_for %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mahlzeit für %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meal for %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comida para %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repas pour %@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasto per %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refeição para %@"
+          }
+        }
+      }
+    },
+    "mealplan_not_found %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weggelassen, nicht in deinen Rezepten gefunden: %lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Left out, not found in your recipes: %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omitidas, no están en tus recetas: %lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écartées, introuvables dans vos recettes : %lld"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escluse, non trovate nelle tue ricette: %lld"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deixadas de fora, não encontradas nas suas receitas: %lld"
+          }
+        }
+      }
+    },
+    "mealplan_pick_day" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle einen Tag, um es zu planen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick a day to plan it"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un día para planificarla"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez un jour pour la planifier"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli un giorno per pianificarla"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha um dia para planejá-la"
           }
         }
       }
@@ -31225,37 +32496,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Woche Abendessen aus deinen Favoriten, ohne zu wiederholen, was du kürzlich gekocht hast"
+            "value" : "Eine Woche neue Abendessen, passend zu dem, was du magst"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A week of dinners from your favourites, not what you cooked lately"
+            "value" : "A week of new dinners, shaped by what you like"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una semana de cenas con tus favoritas, sin repetir lo que cocinaste hace poco"
+            "value" : "Una semana de cenas nuevas, a tu gusto"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une semaine de dîners avec vos favoris, sans répéter ce que vous avez cuisiné récemment"
+            "value" : "Une semaine de nouveaux dîners, selon vos goûts"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una settimana di cene dai tuoi preferiti, senza ripetere ciò che hai cucinato di recente"
+            "value" : "Una settimana di nuove cene, in base ai tuoi gusti"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uma semana de jantares com seus favoritos, sem repetir o que você cozinhou recentemente"
+            "value" : "Uma semana de jantares novos, ao seu gosto"
           }
         }
       }

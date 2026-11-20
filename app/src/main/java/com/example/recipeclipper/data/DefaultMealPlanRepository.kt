@@ -124,7 +124,7 @@ class DefaultMealPlanRepository @Inject constructor(
     override suspend fun deleteMenu(id: Long) = log.guard("deleteMenu", Unit) { menuDao.delete(id) }
 }
 
-private fun MealTypeEntity.toDomain() = MealType(id = id, name = name, builtInKey = builtInKey, sortOrder = sortOrder)
+private fun MealTypeEntity.toDomain() = MealType(id = id, name = name, builtInKey = builtInKey, sortOrder = sortOrder, uid = uid)
 
 private fun PlannedMealRow.toDomain() = PlannedMeal(
     id = id,

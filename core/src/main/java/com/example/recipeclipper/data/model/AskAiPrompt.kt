@@ -18,6 +18,13 @@ import java.util.Locale
  * day's date as `YYYY-MM-DD`, exactly as the prompt listed it. A reader that finds the Recipes in
  * the array with `JsonLdRecipeParser` takes each one's day from that property.
  *
+ * Plan my week with choices (#392, #367, [planMyWeekPlus], behind the `planMyWeekPlus` flag) asks for
+ * one recipe for each chosen meal on each day, each object carrying `"day"` and `"meal"` (the
+ * meal's name exactly as listed). From the cook's own recipes it lists up to [MAX_CANDIDATES]
+ * of them, most recently viewed first, as `name | link` ([PlanCandidate]: the link is the
+ * recipe's `sourceUrl`, as `isBasedOn` in "Change this recipe") and asks the AI to name a saved
+ * recipe by that link instead of writing it out; the reader (`MealPlanImport`) finds it again.
+ *
  * "Change this recipe" sends the recipe as schema.org JSON with `isBasedOn` set to the recipe's
  * `sourceUrl`: the one id every recipe has, unique and never changing (the cleaned link of a
  * clipped page, `manual:<uuid>` for a typed-in one), and a URL, which is what schema.org's
@@ -34,8 +41,77 @@ object AskAiPrompt {
     /** At most this many favourites, and this many recently cooked recipes, go into "Plan my week". */
     const val MAX_TITLES = 15
 
-    /** The days "Plan my week" asks for: a week from today. */
+    /** The days "Plan my week" asks for: a week from the start day. */
     const val PLAN_DAYS = PlanDays.BLOCK_DAYS
+
+    /** The meal plan's second extra property (#392): the meal's name, as the prompt listed it. */
+    const val MEAL_FIELD = "meal"
+
+    /** At most this many of the cook's recipes are named in a plan prompt (#367), most recently viewed first. */
+    const val MAX_CANDIDATES = 40
+
+    /** More than this many recipes to write out make an answer chat apps may cut off (#392): the sheet warns. */
+    const val LONG_ANSWER = 14
+
+    /** Where a week's recipes come from (#367). */
+    enum class PlanSource { NEW, MINE, MIX }
+
+    /** A saved recipe offered to the AI: its [name] and its [link] (the recipe's `sourceUrl`). */
+    data class PlanCandidate(val name: String, val link: String)
+
+    /**
+     * The recipes of [summaries] as candidates to name (#367), most recently viewed first (the
+     * newest id first among equals): the tour's sample and any without a name or link are left out.
+     * The prompt names the first [MAX_CANDIDATES]; the sheet counts them all.
+     */
+    fun candidates(summaries: List<RecipeSummary>): List<PlanCandidate> =
+        summaries
+            .filter { it.title.isNotBlank() && it.sourceUrl.isNotBlank() && !SampleRecipe.isSample(it.sourceUrl) }
+            .sortedWith(compareByDescending<RecipeSummary> { it.lastViewedAt }.thenByDescending { it.id })
+            .map { PlanCandidate(it.title, it.sourceUrl) }
+
+    /**
+     * What the plan sheet chose (#392, #367): the [days] (epoch days, from the start day), the
+     * [meals] (the meal types' names, in the cook's order, as listed in the prompt), where the
+     * recipes come from, the [candidates] to name (most recently viewed first) and, for a mix, how
+     * many of the cook's recipes at most ([mix]).
+     */
+    data class PlanChoice(
+        val days: List<Long>,
+        val meals: List<String>,
+        val source: PlanSource = PlanSource.NEW,
+        val candidates: List<PlanCandidate> = emptyList(),
+        val mix: Int = 0
+    ) {
+        /** The meals asked for, trimmed, blanks and repeats left out. */
+        val mealNames: List<String>
+            get() = meals.map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase(Locale.ROOT) }
+
+        /** The recipes asked for: every meal on every day. */
+        val slots: Int get() = days.size * mealNames.size
+
+        /** The candidates actually named: usable ones, at most [MAX_CANDIDATES]. */
+        val named: List<PlanCandidate>
+            get() = candidates.map { PlanCandidate(it.name.trim(), it.link.trim()) }
+                .filter { it.name.isNotEmpty() && it.link.isNotEmpty() }
+                .take(MAX_CANDIDATES)
+
+        /** The recipes the AI has to write out, which is what makes an answer long. */
+        val writtenOut: Int get() = recipesToWrite(source, slots, mix)
+
+        /** The answer may be long enough for a chat app to cut it off. */
+        val longAnswer: Boolean get() = writtenOut > LONG_ANSWER
+    }
+
+    /**
+     * How many of a week's [slots] meals the AI writes out in full: all of them for new recipes,
+     * none from the cook's own (named by link), and for a [mix] the rest beyond the cook's.
+     */
+    fun recipesToWrite(source: PlanSource, slots: Int, mix: Int): Int = when (source) {
+        PlanSource.NEW -> slots
+        PlanSource.MINE -> 0
+        PlanSource.MIX -> (slots - mix.coerceIn(1, slots.coerceAtLeast(1))).coerceAtLeast(0)
+    }
 
     /**
      * The words every prompt is made of, in the UI language. [language] is that language's own
@@ -65,7 +141,17 @@ object AskAiPrompt {
         val temperatureCelsius: String,
         val temperatureFahrenheit: String,
         val writeIn: (language: String) -> String,
-        val noteOutside: String
+        val noteOutside: String,
+        /** "Plan one recipe for each of these meals (Breakfast, Dinner) on each of these days:" (#392). */
+        val planMealsIntro: (meals: String) -> String,
+        /** Heads the saved recipes, one `name | link` per line (#367). */
+        val savedRecipesIntro: String,
+        /** From my recipes only: name them by link, don't write them out. */
+        val useSavedOnly: String,
+        /** A mix: up to this many saved ones by link, new ones written out. */
+        val useSavedMix: (count: Int) -> String,
+        /** The reply format with a `"day"` and a `"meal"` on each object (#392). */
+        val replyPlanMeals: String
     ) {
         companion object {
             val ENGLISH = Words(
@@ -97,7 +183,21 @@ object AskAiPrompt {
                 temperatureCelsius = "Give oven temperatures in °C.",
                 temperatureFahrenheit = "Give oven temperatures in °F.",
                 writeIn = { "Write it in $it." },
-                noteOutside = "Put anything else you want to say outside the code block."
+                noteOutside = "Put anything else you want to say outside the code block.",
+                planMealsIntro = { "Plan one recipe for each of these meals ($it) on each of these days:" },
+                savedRecipesIntro = "My saved recipes, one per line as name | link:",
+                useSavedOnly = "Use only my saved recipes listed above. Don't write them out: for each one give just " +
+                    "@type \"Recipe\", its \"name\", its link exactly as listed in \"isBasedOn\", and its day and meal. " +
+                    "Use a recipe more than once only if there are fewer recipes than meals.",
+                useSavedMix = {
+                    "Use up to $it of my saved recipes listed above and suggest new recipes for the rest. For a saved " +
+                        "recipe don't write it out: give just @type \"Recipe\", its \"name\", its link exactly as listed in " +
+                        "\"isBasedOn\", and its day and meal. Write every new recipe out in full."
+                },
+                replyPlanMeals = "Reply with a JSON array in one ```json code block: one schema.org Recipe object for each " +
+                    "of these meals on each day listed, day by day in the order listed. Give each object two extra " +
+                    "properties: \"$DAY_FIELD\", holding that day's date exactly as listed (YYYY-MM-DD), and " +
+                    "\"$MEAL_FIELD\", holding the meal's name exactly as listed."
             )
         }
     }
@@ -151,6 +251,37 @@ object AskAiPrompt {
             titles(cooked).takeIf { it.isNotEmpty() }?.let { words.cookedLately(it) },
             wish(request, words),
             reply(words.replyPlan, setup)
+        )
+    }
+
+    /**
+     * "Plan my week" with choices (#392, #367): one recipe for each of [choice]'s meals on each of
+     * its days, from new recipes, the cook's own (named by link) or a mix; [favourites] as ideas
+     * and [cooked] to avoid (titles; the caller leaves a list out by passing none). The reply is the
+     * meal-plan format in this object's doc, with `"meal"` too. With no meal, the plain [planMyWeek].
+     */
+    fun planMyWeekPlus(choice: PlanChoice, favourites: List<String>, cooked: List<String>, request: String, setup: Setup): String {
+        val meals = choice.mealNames
+        if (meals.isEmpty()) return planMyWeek(choice.days, favourites, cooked, request, setup)
+        val words = setup.words
+        val listed = choice.days.map { day -> "- ${isoDate(day)} (${words.weekday(PlanDays.dayOfWeek(day))})" }
+        val named = choice.named.takeIf { choice.source != PlanSource.NEW }.orEmpty()
+        val saved = named.takeIf { it.isNotEmpty() }
+            ?.let { words.savedRecipesIntro + "\n" + it.joinToString("\n") { c -> "- ${c.name} | ${c.link}" } }
+        val source = when {
+            named.isEmpty() -> null
+            choice.source == PlanSource.MINE -> words.useSavedOnly
+            else -> words.useSavedMix(choice.mix.coerceIn(1, choice.slots.coerceAtLeast(1)))
+        }
+        return lines(
+            words.planMealsIntro(meals.joinToString(", ")),
+            listed.joinToString("\n"),
+            saved,
+            source,
+            titles(favourites).takeIf { it.isNotEmpty() }?.let { words.favourites(it) },
+            titles(cooked).takeIf { it.isNotEmpty() }?.let { words.cookedLately(it) },
+            wish(request, words),
+            reply(words.replyPlanMeals, setup, writeOut = !(choice.source == PlanSource.MINE && named.isNotEmpty()))
         )
     }
 
@@ -230,8 +361,12 @@ object AskAiPrompt {
     private fun wish(request: String, words: Words): String? =
         request.trim().takeIf { it.isNotEmpty() }?.let { words.alsoWish(it) }
 
-    /** The sentence asking for the JSON, then the fields, the units, the temperature, the language. */
-    private fun reply(ask: String, setup: Setup): String {
+    /**
+     * The sentence asking for the JSON, then the fields, the units, the temperature, the language.
+     * With [writeOut] false (only saved recipes, named by link) the fields, units and temperature
+     * are left out: nothing is written out.
+     */
+    private fun reply(ask: String, setup: Setup, writeOut: Boolean = true): String {
         val words = setup.words
         val units = when (setup.unitSystem) {
             UnitSystem.AS_WRITTEN -> words.unitsAsWritten
@@ -243,8 +378,11 @@ object AskAiPrompt {
             TemperatureUnit.CELSIUS -> words.temperatureCelsius
             TemperatureUnit.FAHRENHEIT -> words.temperatureFahrenheit
         }
-        return listOfNotNull(ask, words.recipeFields, units, temperature, words.writeIn(words.language), words.noteOutside)
-            .joinToString(" ")
+        return if (writeOut) {
+            listOfNotNull(ask, words.recipeFields, units, temperature, words.writeIn(words.language), words.noteOutside)
+        } else {
+            listOf(ask, words.writeIn(words.language), words.noteOutside)
+        }.joinToString(" ")
     }
 
     private fun lines(vararg parts: String?): String = parts.filterNotNull().joinToString("\n\n")
