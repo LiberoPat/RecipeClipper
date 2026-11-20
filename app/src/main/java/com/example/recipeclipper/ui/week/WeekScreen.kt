@@ -84,10 +84,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.FreshNudge
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.TooltipScreen
+import com.example.recipeclipper.ui.common.FreshNudgeNote
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
@@ -118,7 +121,7 @@ import kotlinx.coroutines.flow.filterNotNull
  * names the block at the top, the arrows snap to the block before or after, and "Today", away
  * from this week, scrolls back. Under the label, a strip of the block's seven days (#286) marks
  * the planned ones and scrolls to the one tapped. Tapping a recipe opens it at the planned
- * servings; long-pressing a meal offers Move and Remove (Remove can be undone). The menu's "Add
+ * servings; long-pressing a meal offers Move, Skip (#398) and Remove (Skip and Remove can be undone). The menu's "Add
  * this week's ingredients" (#50) opens the grocery sheet over every recipe planned in the week
  * shown; [groceriesViewModel] null leaves it out. "What I need" (#51) opens the week against the
  * pantry; [onOpenWhatINeed] null leaves it out. With [shopForWeek] (#384) the menu has just one
@@ -141,6 +144,12 @@ fun WeekScreen(
     val removedMessage = removed?.let { stringResource(R.string.snackbar_removed_from_plan, it.label) }
     val undoLabel = stringResource(R.string.action_undo)
     UndoSnackbarEffect(removed, removedMessage, undoLabel, snackbarHostState, viewModel::onUndoRemove, viewModel::onSnackbarDismissed)
+
+    // What a skip did (#398): its own snackbar with one Undo. The ViewModel clears the removal's
+    // when it sets this one, and the other way round, so only one is ever up.
+    val skipped = state.skipped
+    val skippedMessage = skipped?.let { skipMessage(it) }
+    UndoSnackbarEffect(skipped, skippedMessage, undoLabel, snackbarHostState, viewModel::onUndoSkip, viewModel::onSkipSnackbarDismissed)
 
     // What a menu action did (#52), once.
     val resources = LocalResources.current
@@ -255,6 +264,13 @@ fun WeekScreen(
             AddToGroceriesSheet(groceriesViewModel, onDismiss = { groceriesSheetOpen = false })
         }
         WeekMenus(state.menus, viewModel)
+        state.skipping?.let { skipping ->
+            SkipSheet(
+                meal = skipping.meal,
+                onChoose = viewModel::onSkip,
+                onDismiss = viewModel::onSkipDismissed
+            )
+        }
         state.moving?.let { moving ->
             MoveSheet(
                 moving = moving,
@@ -606,7 +622,11 @@ private fun DayList(
                 onOpenRecipe = onOpenRecipe,
                 onAdd = { viewModel.onAddToDay(day) },
                 onMove = viewModel::onMoveStart,
-                onRemove = viewModel::onRemove
+                onRemove = viewModel::onRemove,
+                canSkip = state::canSkip,
+                onSkip = viewModel::onSkipStart,
+                freshNudges = state.freshNudges,
+                onFreshSwap = viewModel::onFreshSwap
             )
         }
     }
@@ -623,7 +643,11 @@ private fun DaySection(
     onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit,
     onAdd: () -> Unit,
     onMove: (PlannedMeal) -> Unit,
-    onRemove: (PlannedMeal) -> Unit
+    onRemove: (PlannedMeal) -> Unit,
+    canSkip: (PlannedMeal) -> Boolean,
+    onSkip: (PlannedMeal) -> Unit,
+    freshNudges: Map<Long, FreshNudge>,
+    onFreshSwap: (Long) -> Unit
 ) {
     Column(Modifier.fillMaxWidth()) {
         DayHeader(day = day, isToday = isToday)
@@ -634,8 +658,16 @@ private fun DaySection(
                     mealTypeName = typeNames[meal.mealTypeId].orEmpty(),
                     onOpen = { meal.recipeId?.let { onOpenRecipe(it, meal.servings) } },
                     onMove = { onMove(meal) },
-                    onRemove = { onRemove(meal) }
+                    onRemove = { onRemove(meal) },
+                    // Skip is in the long-press menu of any meal that isn't in the past, and
+                    // visible on today's (#398).
+                    onSkip = if (canSkip(meal)) ({ onSkip(meal) }) else null,
+                    skipVisible = isToday
                 )
+                // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
+                freshNudges[meal.id]?.let { nudge ->
+                    FreshNudgeNote(nudge, { onFreshSwap(meal.id) }, Modifier.padding(start = 56.dp).testTag("fresh-${meal.id}"))
+                }
             }
         }
         if (nothingPlanned) {
@@ -682,7 +714,9 @@ private fun MealRow(
     mealTypeName: String,
     onOpen: () -> Unit,
     onMove: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onSkip: (() -> Unit)? = null,
+    skipVisible: Boolean = false
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Box {
@@ -739,6 +773,11 @@ private fun MealRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            if (onSkip != null && skipVisible) {
+                TextButton(onClick = onSkip, modifier = Modifier.testTag("skip-${meal.id}")) {
+                    Text(stringResource(R.string.action_skip_today))
+                }
+            }
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
@@ -748,6 +787,16 @@ private fun MealRow(
                     onMove()
                 }
             )
+            if (onSkip != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_skip)) },
+                    modifier = Modifier.testTag("skipMenu-${meal.id}"),
+                    onClick = {
+                        menuOpen = false
+                        onSkip()
+                    }
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_remove_from_plan)) },
                 onClick = {
@@ -829,6 +878,50 @@ private fun AddToDaySheet(
             }
         }
     }
+}
+
+/** The undo snackbar's words for what a skip did (#398). */
+@Composable
+private fun skipMessage(notice: SkipNotice): String = when (notice.choice) {
+    PlanShift.Choice.PUSH_WEEK ->
+        stringResource(if (notice.pastEnd) R.string.snackbar_skip_pushed_past_end else R.string.snackbar_skip_pushed)
+    PlanShift.Choice.NEXT_FREE_DAY ->
+        stringResource(R.string.snackbar_skip_moved, notice.label, notice.toDay?.let { dayTitle(it) }.orEmpty())
+    PlanShift.Choice.REMOVE -> stringResource(R.string.snackbar_removed_from_plan, notice.label)
+}
+
+/**
+ * Skip (#398): a small sheet with the three things to do with a meal that isn't happening, each
+ * one tap that does it at once: push the rest of the week back a day, move this meal to the next
+ * free day, or remove it. One undo follows.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SkipSheet(meal: PlannedMeal, onChoose: (PlanShift.Choice) -> Unit, onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
+            SectionHeading(stringResource(R.string.skip_meal_title, meal.title ?: meal.note.orEmpty()))
+            Spacer(Modifier.height(8.dp))
+            SkipChoice(R.string.skip_push_week, "skipPush") { onChoose(PlanShift.Choice.PUSH_WEEK) }
+            SkipChoice(R.string.skip_next_free_day, "skipNextFreeDay") { onChoose(PlanShift.Choice.NEXT_FREE_DAY) }
+            SkipChoice(R.string.skip_remove, "skipRemove") { onChoose(PlanShift.Choice.REMOVE) }
+        }
+    }
+}
+
+@Composable
+private fun SkipChoice(label: Int, tag: String, onClick: () -> Unit) {
+    Text(
+        stringResource(label),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(vertical = 14.dp)
+            .testTag(tag)
+    )
+    Hairline()
 }
 
 /** Long-press → Move: the same day strip and meal types as "Add to plan", then "Move". */

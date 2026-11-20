@@ -41,6 +41,10 @@ import java.io.File
  * one in-stock pantry item with that quantity and name, as not listed, asked, used up or the new
  * quantity; write only those (optionally `, lang: "de"`).
  *
+ * `Fresh("line")` rows (#396) pin [Perishables.find]: an ingredient line as the perishables table reads
+ * it (the recipe's language's, optionally `, lang: "de"`), as the ingredient's name, its group's key and its
+ * keeps hint ("1-2"), each nil when the line isn't a perishable; write only the line.
+ *
  * `Entry("text")` rows (#302) pin [PantryEntry.split]: what was typed into "Add to the pantry",
  * as the item's name and its quantity (nil: kept whole); write only the text (optionally
  * `, lang: "de"`).
@@ -78,6 +82,10 @@ import java.io.File
  * `Dur("time")` rows (#179) pin [Durations.format]: a prep, cook or total time
  * as a site (or the tour's sample) writes it, as the app shows it, or nil (hidden); write only
  * the time (optionally `, lang: "de"`; a language with no tables reads ISO alone).
+ *
+ * `Ahead([steps])` rows (#397) pin [AheadSteps.find]: a recipe's steps as the index of the step to
+ * start ahead of time and its quoted sentence (nil, nil: none); write only the steps (optionally
+ * `, lang: "de"`; a language with no tables finds nothing).
  *
  * `Step("step", [lines])` rows (#101) pin [StepAmounts.annotate]: the step with each amount in
  * ⟦ ⟧, once against the lines as given and once against them doubled in Metric; write only the
@@ -182,6 +190,8 @@ class DifferentialCorpusTest {
     )
     // A pantry-entry row (#302): the text typed into "Add to the pantry", optionally its language.
     private val entryRow = Regex("""^(\s*)Entry\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A perishables row (#396): an ingredient line, optionally its language.
+    private val freshRow = Regex("""^(\s*)Fresh\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A What I need amounts row (#302): a pantry item's quantity and name, the week's lines, optionally their language.
     private val needRow = Regex(
         """^(\s*)Need\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
@@ -193,6 +203,8 @@ class DifferentialCorpusTest {
     // A Tonight widget row (#309): the meal types, then the planned meals.
     private val tonightRow =
         Regex("""^(\s*)Tonight\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
+    // A skip-tonight row (#398): the choice, the skipped meal, today and the last day, then the plan.
+    private val skipRow = Regex("""^(\s*)Skip\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
     // A grocery widget row (#309): the list's unticked lines, its ticked ones, optionally their language.
     private val toBuyRow = Regex(
         """^(\s*)ToBuy\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
@@ -214,6 +226,8 @@ class DifferentialCorpusTest {
     private val parseRow = Regex("""^(\s*)Parse\("((?:[^"\\]|\\.)*)"""")
     // A duration row (#179): a prep, cook or total time, optionally its language.
     private val durationRow = Regex("""^(\s*)Dur\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // An ahead-of-time row (#397): a recipe's steps, optionally their language.
+    private val aheadRow = Regex("""^(\s*)Ahead\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?""")
     // A Chef mode row (#100): a step, a short version of it, optionally the recipe's ingredient
     // lines (#129) and their language.
     private val shortRow = Regex("""^(\s*)Short\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"(?:, lines: \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*])?(?:, lang: "([a-z]+)")?""")
@@ -312,9 +326,11 @@ class DifferentialCorpusTest {
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         useUpRow.find(line)?.let { m -> return useUpRow(m) }
         entryRow.find(line)?.let { m -> return entryRow(m) }
+        freshRow.find(line)?.let { m -> return freshRow(m) }
         needRow.find(line)?.let { m -> return needRow(m) }
         useItRow.find(line)?.let { m -> return useItRow(m) }
         tonightRow.find(line)?.let { m -> return tonightRow(m) }
+        skipRow.find(line)?.let { m -> return skipRow(m) }
         toBuyRow.find(line)?.let { m -> return toBuyRow(m) }
         fittedRow.find(line)?.let { m -> return fittedRow(m) }
         pagedRow.find(line)?.let { m -> return pagedRow(m) }
@@ -408,6 +424,14 @@ class DifferentialCorpusTest {
             val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
             val shown = Durations.format(text, LanguageWords.forTag(language))?.let { q(it) } ?: "nil"
             return m.groupValues[1] + "Dur(${q(text)}$lang, $shown),"
+        }
+        aheadRow.find(line)?.let { m ->
+            val steps = literal.findAll(m.groupValues[2]).map { unescape(it.groupValues[1]) }.toList()
+            val language = m.groupValues[3].ifEmpty { "en" }
+            val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+            val found = AheadSteps.find(steps, LanguageWords.forTag(language))
+            val shown = found?.let { "${it.step}, ${q(it.quote)}" } ?: "nil, nil"
+            return m.groupValues[1] + "Ahead(${list(steps)}$lang, $shown),"
         }
         splitRow.find(line)?.let { m ->
             val text = unescape(m.groupValues[2])
@@ -570,6 +594,16 @@ class DifferentialCorpusTest {
         return m.groupValues[1] + "UseUp(${q(quantity)}, ${q(name)}, ${list(lines)}$lang, $result),"
     }
 
+    /** `Fresh(line, lang:, name, group, keeps)` (#396): [Perishables.find] of the line, each nil for none. */
+    private fun freshRow(m: MatchResult): String {
+        val text = unescape(m.groupValues[2])
+        val language = m.groupValues[3].ifEmpty { "en" }
+        val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+        val found = Perishables.find(text, LanguageWords.forTag(language))
+        fun opt(value: String?) = value?.let(::q) ?: "nil"
+        return m.groupValues[1] + "Fresh(${q(text)}$lang, ${opt(found?.name)}, ${opt(found?.group?.key)}, ${opt(found?.group?.keeps)}),"
+    }
+
     /** `Entry(text, lang:, name, quantity)`: [PantryEntry.split] of what was typed, nil for no quantity. */
     private fun entryRow(m: MatchResult): String {
         val text = unescape(m.groupValues[2])
@@ -634,6 +668,38 @@ class DifferentialCorpusTest {
         }
         val shown = WidgetContent.tonight(planned, mealTypes, 100).flatMap { listOf(it.mealType, it.title) }
         return m.groupValues[1] + "Tonight(${list(types)}, ${list(meals)}, ${list(shown)}),"
+    }
+
+    /**
+     * `Skip("choice id today lastDay", ["id day typeId [n]"], [result])` (#398): [PlanShift.plan]
+     * for a plan written "id day typeId" (then `n` for a note), in plan order, as each move
+     * `m id from to`, each removal `r id`, each meal past the last day `e id`, or `-` for no plan.
+     */
+    private fun skipRow(m: MatchResult): String {
+        val header = unescape(m.groupValues[2]).split(" ")
+        val meals = literals(m.groupValues[3])
+        val planned = meals.map { text ->
+            val part = text.split(" ")
+            PlannedMeal(
+                id = part[0].toLong(), day = part[1].toLong(), mealTypeId = part[2].toLong(),
+                recipeId = if (part.size > 3) null else part[0].toLong(),
+                title = if (part.size > 3) null else "t${part[0]}",
+                imageUrl = null, servings = null, note = if (part.size > 3) "note" else null
+            )
+        }
+        val choice = when (header[0]) {
+            "push" -> PlanShift.Choice.PUSH_WEEK
+            "next" -> PlanShift.Choice.NEXT_FREE_DAY
+            else -> PlanShift.Choice.REMOVE
+        }
+        val result = PlanShift.plan(planned, header[1].toLong(), choice, header[2].toLong(), header[3].toLong())
+        val shown = if (result == null) {
+            listOf("-")
+        } else {
+            result.moved.map { "m ${it.mealId} ${it.fromDay} ${it.toDay}" } +
+                result.removed.map { "r $it" } + result.pastEnd.map { "e $it" }
+        }
+        return m.groupValues[1] + "Skip(${q(unescape(m.groupValues[2]))}, ${list(meals)}, ${list(shown)}),"
     }
 
     /**

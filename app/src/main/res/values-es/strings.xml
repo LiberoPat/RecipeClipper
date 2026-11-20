@@ -348,6 +348,15 @@
     <string name="action_add_meal">+ Añadir</string>
     <string name="action_move">Mover…</string>
     <string name="action_remove_from_plan">Quitar del plan</string>
+    <string name="action_skip">Saltar…</string>
+    <string name="action_skip_today">Saltar</string>
+    <string name="skip_meal_title">Saltar %1$s</string>
+    <string name="skip_push_week">Retrasar el resto de la semana un día</string>
+    <string name="skip_next_free_day">Mover al siguiente día libre</string>
+    <string name="skip_remove">Quitar del plan</string>
+    <string name="snackbar_skip_pushed">El resto de la semana se retrasó un día</string>
+    <string name="snackbar_skip_pushed_past_end">El resto de la semana se retrasó un día. Algunas comidas quedan más allá del final del plan.</string>
+    <string name="snackbar_skip_moved">%1$s movido al %2$s</string>
     <string name="add_to_day_title">Añadir al %1$s</string>
     <string name="label_search_or_note">Busca tus recetas o escribe una nota</string>
     <string name="action_add_as_note">Añadir «%1$s» como nota</string>
@@ -552,6 +561,15 @@
     <string name="what_i_need_nothing_to_buy">Nada que comprar: todos los ingredientes están en tu despensa.</string>
     <string name="what_i_need_you_have">Tienes %1$s</string>
     <string name="what_i_need_added">Añadido a la compra</string>
+    <string name="what_i_need_buy_now">Comprar ahora</string>
+    <string name="what_i_need_buy_later">Comprar más tarde en la semana</string>
+    <string name="what_i_need_buy_later_note">Para comidas dentro de 3 días o más. Añádelos cuando vuelvas a comprar, o ahora.</string>
+    <string name="what_i_need_nothing_to_buy_now">Nada que comprar ahora</string>
+    <string name="what_i_need_add_later">Añadir estos a la compra</string>
+    <string name="what_i_need_later_for">Para %1$s</string>
+    <string name="fresh_keeps">Se conserva unos %1$s días tras la compra</string>
+    <string name="fresh_nudge">%1$s: se conserva unos %2$s días tras la compra. ¿Cocinarlo antes?</string>
+    <string name="fresh_nudge_swap">Cambiar con %1$s</string>
     <!-- What I need (#302): the pantry's amount beside the week's, never compared -->
     <string name="what_i_need_pantry_amount">Tienes %1$s</string>
     <string name="what_i_need_pantry_and_week">Tienes %1$s · las recetas de esta semana usan %2$s</string>
@@ -873,4 +891,18 @@
     <string name="ai_prompt_use_saved_only">Usa solo mis recetas guardadas de arriba. No las escribas completas: de cada una da solo @type \"Recipe\", su \"name\", su enlace exactamente como aparece en \"isBasedOn\", y su día y comida. Repite una receta solo si hay menos recetas que comidas.</string>
     <string name="ai_prompt_use_saved_mix">Usa hasta %1$d de mis recetas guardadas de arriba y sugiere recetas nuevas para el resto. Una receta guardada no la escribas completa: da solo @type \"Recipe\", su \"name\", su enlace exactamente como aparece en \"isBasedOn\", y su día y comida. Escribe completa cada receta nueva.</string>
     <string name="ai_prompt_reply_plan_meals">Responde con un array JSON en un único bloque de código ```json: un objeto schema.org Recipe por cada una de estas comidas de cada día indicado, día por día en el orden indicado. Añade a cada objeto dos propiedades extra: \"%1$s\", con la fecha de ese día tal como está indicada (AAAA-MM-DD), y \"%2$s\", con el nombre de la comida tal como está indicado.</string>
+    <!-- Evening and Tonight reminders (#397) -->
+    <string name="meal_reminders_channel_name">Avisos de comidas</string>
+    <string name="meal_reminders_channel_description">Las comidas planificadas para mañana y esta noche</string>
+    <string name="meal_reminder_tomorrow">Mañana: %1$s</string>
+    <string name="meal_reminder_tonight">Esta noche: %1$s</string>
+    <string name="meal_reminder_ahead_one">Para preparar antes: «%1$s»</string>
+    <string name="meal_reminder_ahead_header">Para preparar antes:</string>
+    <string name="meal_reminder_ahead_item">%1$s: «%2$s»</string>
+    <string name="evening_reminder_title">Aviso de la noche</string>
+    <string name="evening_reminder_description">La noche anterior: las comidas planificadas para mañana y lo que haya que preparar con antelación</string>
+    <string name="tonight_reminder_title">Aviso de esta noche</string>
+    <string name="tonight_reminder_description">Por la tarde: las comidas planificadas para esta noche</string>
+    <string name="reminder_time_title">Hora</string>
+    <string name="reminder_time_dialog_title">Hora del aviso</string>
 </resources>

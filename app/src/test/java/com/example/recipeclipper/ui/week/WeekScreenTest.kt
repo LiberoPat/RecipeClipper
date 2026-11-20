@@ -16,9 +16,13 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.PlannedIngredients
 import com.example.recipeclipper.fake.FakeAppPreferences
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakePantryRepository
@@ -55,8 +59,8 @@ class WeekScreenTest {
 
     private var openedWhatINeed: Long? = null
 
-    private fun show(shopForWeek: Boolean = false) {
-        val viewModel = WeekViewModel(plan, recipes, FakePlanCalendar())
+    private fun show(shopForWeek: Boolean = false, flags: FeatureFlags? = null) {
+        val viewModel = WeekViewModel(plan, recipes, FakePlanCalendar(), flags = flags)
         val groceriesViewModel = AddToGroceriesViewModel(groceries, FakeAppPreferences(), FakePantryRepository())
         compose.setContent {
             WeekScreen(
@@ -147,6 +151,118 @@ class WeekScreenTest {
         compose.onNode(hasText("Move to", substring = true)).performClick()
 
         compose.runOnIdle { assertEquals(today + 2, plan.meals.value.single().day) }
+    }
+
+    // --- Skip tonight (#398)
+
+    private fun planThree() {
+        plan.titles[7] = "Chicken Adobo"
+        plan.titles[8] = "Miso Soup"
+        plan.titles[9] = "Dal"
+        runBlocking {
+            plan.addRecipe(7, today, DINNER, servings = null)
+            plan.addRecipe(8, today + 1, DINNER, servings = null)
+            plan.addRecipe(9, today + 2, DINNER, servings = null)
+        }
+    }
+
+    private fun dayOf(recipeId: Long) = plan.meals.value.single { it.recipeId == recipeId }.day
+
+    @Test
+    fun skipInTheLongPressMenuOffersThreeChoicesAndPushingTheWeekCanBeUndone() {
+        planThree()
+        show()
+        val tomorrows = plan.meals.value.first { it.recipeId == 8L }
+
+        scrollTo("meal-${tomorrows.id}")
+        compose.onNodeWithTag("meal-${tomorrows.id}").performTouchInput { longClick() }
+        compose.onNodeWithTag("skipMenu-${tomorrows.id}").performClick()
+        compose.onNodeWithText("Skip Miso Soup").assertIsDisplayed()
+        compose.onNodeWithText("Push the rest of the week back a day").assertIsDisplayed()
+        compose.onNodeWithText("Move to the next free day").assertIsDisplayed()
+        compose.onNodeWithText("Remove from the plan").assertIsDisplayed()
+        compose.onNodeWithText("Push the rest of the week back a day").performClick()
+
+        compose.runOnIdle {
+            assertEquals(today, dayOf(7)) // before it: never moves
+            assertEquals(today + 2, dayOf(8))
+            assertEquals(today + 3, dayOf(9))
+        }
+        compose.onNodeWithText("Pushed the rest of the week back a day").assertIsDisplayed()
+
+        compose.onNodeWithText("Undo").performClick()
+        compose.runOnIdle {
+            assertEquals(listOf(today, today + 1, today + 2), listOf(7L, 8L, 9L).map(::dayOf))
+        }
+    }
+
+    @Test
+    fun movingToTheNextFreeDayAndRemovingBothGoThroughTheSameSheet() {
+        planThree()
+        runBlocking { plan.addNote("Eat out", today + 1, DINNER) } // tomorrow's dinner is taken twice over
+        show()
+        val tonight = plan.meals.value.first { it.recipeId == 7L }
+
+        scrollTo("meal-${tonight.id}")
+        compose.onNodeWithTag("meal-${tonight.id}").performTouchInput { longClick() }
+        compose.onNodeWithTag("skipMenu-${tonight.id}").performClick()
+        compose.onNodeWithText("Move to the next free day").performClick()
+        compose.runOnIdle { assertEquals(today + 3, dayOf(7)) }
+        compose.onNode(hasText("Moved Chicken Adobo to", substring = true)).assertIsDisplayed()
+
+        val soup = plan.meals.value.first { it.recipeId == 8L }
+        scrollTo("meal-${soup.id}")
+        compose.onNodeWithTag("meal-${soup.id}").performTouchInput { longClick() }
+        compose.onNodeWithTag("skipMenu-${soup.id}").performClick()
+        compose.onNodeWithText("Remove from the plan").performClick()
+        compose.runOnIdle { assertTrue(plan.meals.value.none { it.recipeId == 8L }) }
+        compose.onNodeWithText("Removed Miso Soup from the plan").assertIsDisplayed()
+        compose.onNodeWithText("Undo").performClick()
+        compose.runOnIdle { assertEquals(today + 1, dayOf(8)) }
+    }
+
+    @Test
+    fun todaysMealsHaveAVisibleSkipButtonAndOtherDaysDoNot() {
+        planThree()
+        show()
+        val tonight = plan.meals.value.first { it.recipeId == 7L }
+        val tomorrows = plan.meals.value.first { it.recipeId == 8L }
+
+        scrollTo("meal-${tonight.id}")
+        compose.onNodeWithTag("skip-${tonight.id}").assertIsDisplayed()
+        scrollTo("meal-${tomorrows.id}")
+        compose.onNodeWithTag("skip-${tomorrows.id}").assertDoesNotExist()
+
+        scrollTo("meal-${tonight.id}")
+        compose.onNodeWithTag("skip-${tonight.id}").performClick()
+        compose.onNodeWithText("Skip Chicken Adobo").assertIsDisplayed()
+    }
+
+    @Test
+    fun aMealInThePastHasNoSkip() {
+        plan.titles[7] = "Chicken Adobo"
+        runBlocking { plan.addRecipe(7, today - 2, DINNER, servings = null) }
+        show()
+        val meal = plan.meals.value.single()
+
+        scrollTo("meal-${meal.id}")
+        compose.onNodeWithTag("meal-${meal.id}").performTouchInput { longClick() }
+        compose.onNodeWithText("Move…").assertIsDisplayed()
+        compose.onNodeWithTag("skipMenu-${meal.id}").assertDoesNotExist()
+        compose.onNodeWithTag("skip-${meal.id}").assertDoesNotExist()
+    }
+
+    @Test
+    fun withTheFlagOffThereIsNoSkipAnywhere() {
+        planThree()
+        show(flags = FeatureFlags(FakeFeatureFlagStore(mapOf(Flag.SKIP_TONIGHT.key to false)), FlagRegistry.definitions, true))
+        val tonight = plan.meals.value.first { it.recipeId == 7L }
+
+        scrollTo("meal-${tonight.id}")
+        compose.onNodeWithTag("skip-${tonight.id}").assertDoesNotExist()
+        compose.onNodeWithTag("meal-${tonight.id}").performTouchInput { longClick() }
+        compose.onNodeWithText("Move…").assertIsDisplayed()
+        compose.onNodeWithTag("skipMenu-${tonight.id}").assertDoesNotExist()
     }
 
     @Test

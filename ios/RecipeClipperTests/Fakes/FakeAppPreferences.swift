@@ -15,7 +15,11 @@ final class FakeAppPreferences: AppPreferences {
         expiryReminders: Bool = false,
         chefMode: Bool = false,
         amountsInSteps: Bool = false,
-        recipeSort: RecipeSort = .recentlyViewed
+        recipeSort: RecipeSort = .recentlyViewed,
+        eveningReminder: Bool = true,
+        eveningReminderMinute: Int = MealReminders.eveningMinute,
+        tonightReminder: Bool = false,
+        tonightReminderMinute: Int = MealReminders.tonightMinute
     ) {
         subject = CurrentValueSubject(AppSettings(
             unitSystem: unitSystem,
@@ -25,7 +29,11 @@ final class FakeAppPreferences: AppPreferences {
             expiryReminders: expiryReminders,
             chefMode: chefMode,
             amountsInSteps: amountsInSteps,
-            recipeSort: recipeSort
+            recipeSort: recipeSort,
+            eveningReminder: eveningReminder,
+            eveningReminderMinute: eveningReminderMinute,
+            tonightReminder: tonightReminder,
+            tonightReminderMinute: tonightReminderMinute
         ))
     }
 
@@ -66,6 +74,26 @@ final class FakeAppPreferences: AppPreferences {
     var expiryReminders: Bool {
         get { subject.value.expiryReminders }
         set { subject.value.expiryReminders = newValue }
+    }
+
+    var eveningReminder: Bool {
+        get { subject.value.eveningReminder }
+        set { subject.value.eveningReminder = newValue }
+    }
+
+    var eveningReminderMinute: Int {
+        get { subject.value.eveningReminderMinute }
+        set { subject.value.eveningReminderMinute = newValue }
+    }
+
+    var tonightReminder: Bool {
+        get { subject.value.tonightReminder }
+        set { subject.value.tonightReminder = newValue }
+    }
+
+    var tonightReminderMinute: Int {
+        get { subject.value.tonightReminderMinute }
+        set { subject.value.tonightReminderMinute = newValue }
     }
 
     var chefMode: Bool {

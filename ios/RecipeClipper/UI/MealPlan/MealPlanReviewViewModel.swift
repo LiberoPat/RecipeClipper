@@ -38,6 +38,8 @@ struct MealPlanReviewUiState: Equatable {
     var finished = false
     /// A purchase from the review's Unlock that is pending or failed; shown until the next change.
     var unlockNotice: PurchaseOutcome?
+    /// Fresh food (#396): the quiet notes, by `ReviewItem.index`; none with the flag off.
+    var nudges: [Int: FreshNudge] = [:]
 
     var tickedCount: Int { items.filter(\.ticked).count }
     /// The kept recipes that will be saved: the ticked ones that fit.
@@ -71,20 +73,32 @@ final class MealPlanReviewViewModel {
     @ObservationIgnored private var mealTypes: [MealType] = []
     @ObservationIgnored private var count = 0
     @ObservationIgnored private var cancellables = Set<AnyCancellable>()
+    @ObservationIgnored private let today: Int64
+    /// Each recipe's most delicate perishable (#396), by `ReviewItem.index`; empty with the flag off.
+    @ObservationIgnored private var perishables: [Int: Perishable] = [:]
 
     init(
         text: String, recipes: RecipeRepository, plan: MealPlanRepository, calendar: PlanCalendar,
-        limit: @escaping () -> LibraryLimit = { .unlimited }, entitlements: Entitlements = UnavailableEntitlements()
+        limit: @escaping () -> LibraryLimit = { .unlimited }, entitlements: Entitlements = UnavailableEntitlements(),
+        freshFood: Bool = false
     ) {
         self.recipes = recipes
         self.plan = plan
         self.limit = limit
         self.entitlements = entitlements
         let today = calendar.today()
+        self.today = today
         uiState.days = (0..<PlanDays.sheetDays).map { today + Int64($0) }
         let found = MealPlanImport.read(text)
         read = found?.items ?? []
         uiState.cutOff = found?.cutOff ?? false
+        if freshFood {
+            for (i, item) in read.enumerated() {
+                if let found = Perishables.mostDelicate(item.recipe.ingredients, words: LanguageWords.forRecipe(item.recipe)) {
+                    perishables[i] = found
+                }
+            }
+        }
         uiState.items = read.enumerated().map { Self.row($0.offset, $0.element, today: today) }
         uiState.loading = false
         plan.observeMealTypes()
@@ -124,7 +138,8 @@ final class MealPlanReviewViewModel {
         fit()
     }
 
-    /// Each ticked row marked as fitting or not: the first `room` do.
+    /// Each ticked row marked as fitting or not (the first `room` do), and the plan's quiet notes
+    /// (#396) worked out again from the days the rows now hold.
     private func fit() {
         var left = uiState.room
         for i in uiState.items.indices {
@@ -134,6 +149,27 @@ final class MealPlanReviewViewModel {
             if row.ticked, let remaining, remaining > 0 { left = remaining - 1 }
             uiState.items[i].fits = fits
         }
+        uiState.nudges = nudgesOf(uiState.items)
+    }
+
+    private func nudgesOf(_ items: [ReviewItem]) -> [Int: FreshNudge] {
+        if perishables.isEmpty { return [:] }
+        let meals = items.compactMap { item in
+            item.ticked ? item.day.map { FreshMeal(key: Int64(item.index), day: $0, perishable: perishables[item.index]) } : nil
+        }
+        return Dictionary(uniqueKeysWithValues: FreshPlan.nudges(meals, today: today).map { (Int($0.key), $0) })
+    }
+
+    /// The cook tapped "Swap with ..." under a note (#396): this row and the one it names trade
+    /// days. Only on the tap; nothing is saved before Save either.
+    func onSwap(_ index: Int) {
+        guard let nudge = uiState.nudges[index],
+              let a = uiState.items.firstIndex(where: { $0.index == index }),
+              let b = uiState.items.firstIndex(where: { $0.index == Int(nudge.swapKey) })
+        else { return }
+        uiState.items[a].day = nudge.swapDay
+        uiState.items[b].day = nudge.day
+        changed()
     }
 
     func onTick(_ index: Int) {

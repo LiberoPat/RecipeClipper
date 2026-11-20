@@ -4,9 +4,12 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MealTypeEntity
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.PlanShift
+import com.example.recipeclipper.data.model.PlannedMeal
 import kotlinx.coroutines.flow.Flow
 
 /** One planned meal as the Week screen shows it: the entry, with its recipe's title and photo. */
@@ -21,6 +24,12 @@ data class PlannedMealRow(
     val imageUrl: String?,
     val uid: String
 )
+
+/**
+ * What [MealPlanDao.skip] did: the [result] of [PlanShift.plan], and every entry it moved or
+ * removed as it was before ([before]), for [MealPlanDao.undoSkip].
+ */
+data class SkipRecord(val result: PlanShift.Result, val before: List<MealPlanEntryEntity>)
 
 /** The meal plan (#49): meal types and plan entries. */
 @Dao
@@ -76,6 +85,55 @@ abstract class MealPlanDao {
 
     @Query("DELETE FROM meal_plan_entries WHERE id = :id")
     abstract suspend fun deleteEntry(id: Long)
+
+    // --- Skip tonight (#398)
+
+    /** Every entry from [from] on, in plan order: [observeDays]'s order, without its end. */
+    @Query(
+        """
+        SELECT e.* FROM meal_plan_entries e
+        JOIN meal_types t ON t.id = e.mealTypeId
+        WHERE e.day >= :from
+        ORDER BY e.day ASC, t.sortOrder ASC, t.id ASC, e.sortOrder ASC, e.id ASC
+        """
+    )
+    abstract suspend fun entriesFrom(from: Long): List<MealPlanEntryEntity>
+
+    /** Changes only the day: the meal type and the place in its slot stay. */
+    @Query("UPDATE meal_plan_entries SET day = :day, updatedAt = :now WHERE id = :id")
+    protected abstract suspend fun setDay(id: Long, day: Long, now: Long)
+
+    /** Puts a row back as it was. */
+    @Update
+    protected abstract suspend fun updateEntry(entry: MealPlanEntryEntity)
+
+    /**
+     * Skips the meal [id] (see [PlanShift]) in one transaction: every move and removal lands or
+     * none. Null when the meal is gone or is in the past.
+     */
+    @Transaction
+    open suspend fun skip(id: Long, choice: PlanShift.Choice, today: Long, lastDay: Long, now: Long): SkipRecord? {
+        val skipped = entry(id) ?: return null
+        val entries = entriesFrom(skipped.day)
+        val planned = entries.map {
+            PlannedMeal(
+                id = it.id, day = it.day, mealTypeId = it.mealTypeId, recipeId = it.recipeId, title = null,
+                imageUrl = null, servings = it.servings, note = it.note, uid = it.uid
+            )
+        }
+        val result = PlanShift.plan(planned, id, choice, today, lastDay) ?: return null
+        val byId = entries.associateBy { it.id }
+        val before = (result.moved.map { it.mealId } + result.removed).mapNotNull { byId[it] }
+        result.moved.forEach { setDay(it.mealId, it.toDay, now) }
+        result.removed.forEach { deleteEntry(it) }
+        return SkipRecord(result, before)
+    }
+
+    /** Undoes [skip]: each row as it was, a removed one inserted again. */
+    @Transaction
+    open suspend fun undoSkip(before: List<MealPlanEntryEntity>) {
+        before.forEach { if (entry(it.id) != null) updateEntry(it) else restore(it) }
+    }
 
     // --- Meal types
 

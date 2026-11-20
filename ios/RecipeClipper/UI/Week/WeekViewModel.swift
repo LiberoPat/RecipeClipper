@@ -26,6 +26,22 @@ struct MoveState: Equatable {
     var mealTypeId: Int64
 }
 
+/// Skipping `meal` (#398): the sheet offering to push the week, move it or remove it.
+struct SkipState: Equatable {
+    var meal: PlannedMeal
+}
+
+/// What a skip did, for the undo snackbar (#398): `label` is the meal's title or note, `toDay`
+/// where it went for `.nextFreeDay`, and `pastEnd` whether a push left a meal beyond the last day
+/// the plan shows. `serial` tells two identical skips apart.
+struct SkipNotice: Equatable {
+    let serial: Int
+    let choice: PlanShift.Choice
+    let label: String
+    let toDay: Int64?
+    let pastEnd: Bool
+}
+
 /// A meal just removed: its id keeps two removals of the same title apart.
 struct RemovedMeal: Equatable {
     let id: Int64
@@ -112,6 +128,12 @@ struct WeekUiState: Equatable {
     var adding: AddToDayState?
     var moving: MoveState?
     var removed: RemovedMeal?
+    /// The Skip sheet (#398), or nil.
+    var skipping: SkipState?
+    /// What the last skip did, until its undo snackbar is settled (#398).
+    var skipped: SkipNotice?
+    /// The `skipTonight` flag (#398): off, no Skip is offered anywhere.
+    var skipEnabled = true
     /// The month view, or nil while the days are shown.
     var month: MonthUiState?
     /// A day the list is to bring to the top, once.
@@ -120,6 +142,8 @@ struct WeekUiState: Equatable {
     var calendarFile: CalendarFile?
     /// Saved weekly menus and their prompts (#52).
     var menus = MenusUiState()
+    /// Fresh food (#396): the quiet note under a planned meal, by `PlannedMeal.id`; empty with the flag off.
+    var freshNudges: [Int64: FreshNudge] = [:]
 
     /// The first day of the block at the top.
     var weekStart: Int64 { PlanDays.blockStart(topDay, today: today) }
@@ -129,6 +153,9 @@ struct WeekUiState: Equatable {
 
     /// Every day the list holds, in order.
     var allDays: ClosedRange<Int64> { firstDay...max(firstDay, lastDay) }
+
+    /// Whether Skip is offered for `meal` (#398): the flag is on and it isn't planned in the past.
+    func canSkip(_ meal: PlannedMeal) -> Bool { skipEnabled && PlanShift.canSkip(meal, today: today) }
 
     func isLoaded(_ day: Int64) -> Bool { day >= loadedFrom && day <= loadedTo }
 
@@ -169,6 +196,9 @@ final class WeekViewModel {
     static let windowBefore: Int64 = 28
     static let windowDays: Int64 = 63
 
+    /// The days from today the fresh-food notes cover (#396): the first two weeks.
+    static let freshDays: Int64 = 14
+
     private(set) var uiState: WeekUiState
 
     @ObservationIgnored private let plan: MealPlanRepository
@@ -182,18 +212,34 @@ final class WeekViewModel {
     @ObservationIgnored private var searchSubscription: AnyCancellable?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
     @ObservationIgnored private var removedMeal: DeletedMeal?
+    @ObservationIgnored private var skippedMeals: SkippedMeals?
+    @ObservationIgnored private var skipSerial = 0
     /// The first day of the window of meals held (see `WeekUiState.meals`).
     @ObservationIgnored private var window: Int64 = 0
     @ObservationIgnored private var scrollRequests = 0
+    /// Fresh food (#396): the planned recipes' ingredients, and whether the notes are on. Without both, no notes.
+    @ObservationIgnored private let groceries: GroceryRepository?
+    @ObservationIgnored private let freshFood: Bool
+    @ObservationIgnored private var freshSubscription: AnyCancellable?
+    @ObservationIgnored private var freshTask: Task<Void, Never>?
+    /// The meals the notes were worked out from, for a swap's meal types.
+    @ObservationIgnored private var freshMeals: [PlannedMeal] = []
 
-    init(plan: MealPlanRepository, recipes: RecipeRepository, calendar: PlanCalendar, sleep: @escaping Sleep = Sleeps.real) {
+    init(
+        plan: MealPlanRepository, recipes: RecipeRepository, calendar: PlanCalendar,
+        skipOn: () -> Bool = { true }, sleep: @escaping Sleep = Sleeps.real,
+        groceries: GroceryRepository? = nil, freshFood: Bool = false
+    ) {
         self.plan = plan
         self.recipes = recipes
         self.calendar = calendar
         self.sleep = sleep
+        self.groceries = groceries
+        self.freshFood = freshFood
         let today = calendar.today()
         uiState = WeekUiState(
-            today: today, firstDay: today - Self.daysBefore, lastDay: today + Self.daysAfter, topDay: today
+            today: today, firstDay: today - Self.daysBefore, lastDay: today + Self.daysAfter, topDay: today,
+            skipEnabled: skipOn()
         )
         typesSubscription = plan.observeMealTypes()
             .receive(on: DispatchQueue.main)
@@ -202,6 +248,53 @@ final class WeekViewModel {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] menus in self?.uiState.menus.menus = menus }
         load(from: today - Self.windowBefore)
+        watchFresh(from: today)
+    }
+
+    // MARK: Fresh food (#396)
+
+    /// The quiet notes for today and the next `freshDays` - 1 days: each planned recipe's most
+    /// delicate perishable ingredient, against the plan's first day (`FreshPlan`). Worked out again
+    /// whenever the plan changes; nothing is moved here.
+    private func watchFresh(from: Int64) {
+        guard freshFood, let groceries else { return }
+        freshSubscription = plan.observeDays(start: from, end: from + Self.freshDays - 1)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] meals in
+                self?.freshTask?.cancel()
+                self?.freshTask = Task { [weak self] in
+                    let planned = await groceries.plannedIngredients(start: from, end: from + Self.freshDays - 1)
+                    guard let self, !Task.isCancelled else { return }
+                    let byEntry = Dictionary(planned.map { ($0.entryId, $0) }, uniquingKeysWith: { first, _ in first })
+                    let fresh = meals.map { meal in
+                        FreshMeal(
+                            key: meal.id, day: meal.day,
+                            perishable: byEntry[meal.id].flatMap {
+                                Perishables.mostDelicate(
+                                    $0.ingredients, words: LanguageWords.forRecipe(language: $0.language, title: $0.title, lines: $0.ingredients)
+                                )
+                            }
+                        )
+                    }
+                    self.freshMeals = meals
+                    self.uiState.freshNudges = Dictionary(
+                        uniqueKeysWithValues: FreshPlan.nudges(fresh, today: from).map { ($0.key, $0) }
+                    )
+                }
+            }
+    }
+
+    /// The cook tapped "Swap with ..." under a note: the two meals trade days, each keeping its meal
+    /// type. Only on the tap.
+    func onFreshSwap(_ mealId: Int64) {
+        guard let nudge = uiState.freshNudges[mealId],
+              let meal = freshMeals.first(where: { $0.id == nudge.key }),
+              let partner = freshMeals.first(where: { $0.id == nudge.swapKey })
+        else { return }
+        Task {
+            await plan.move(entryId: meal.id, day: nudge.swapDay, mealTypeId: meal.mealTypeId)
+            await plan.move(entryId: partner.id, day: nudge.day, mealTypeId: partner.mealTypeId)
+        }
     }
 
     // MARK: Scrolling and weeks (#232)
@@ -233,7 +326,9 @@ final class WeekViewModel {
 
     /// "Today": back to today at the top, which may have changed since the screen opened.
     func onToday() {
-        uiState.today = calendar.today()
+        let today = calendar.today()
+        if today != uiState.today { watchFresh(from: today) }
+        uiState.today = today
         jumpTo(uiState.today, animate: true)
     }
 
@@ -243,6 +338,7 @@ final class WeekViewModel {
         let today = calendar.today()
         guard today != uiState.today else { return }
         uiState.today = today
+        watchFresh(from: today)
         jumpTo(today, animate: false)
     }
 
@@ -443,7 +539,9 @@ final class WeekViewModel {
         Task {
             guard let deleted = await plan.delete(entryId: meal.id) else { return }
             removedMeal = deleted
+            skippedMeals = nil // the earlier skip stands: one undo at a time
             uiState.removed = RemovedMeal(id: meal.id, label: meal.title ?? meal.note ?? "")
+            uiState.skipped = nil
         }
     }
 
@@ -461,6 +559,51 @@ final class WeekViewModel {
     }
 
     private func defaultType(_ types: [MealType]) -> Int64? { MealType.defaultTypeId(types) }
+
+    // MARK: Skip tonight (#398)
+
+    /// Opens the Skip sheet for `meal`, if Skip is offered for it (flag on, not in the past).
+    func onSkipStart(_ meal: PlannedMeal) {
+        guard uiState.canSkip(meal) else { return }
+        uiState.skipping = SkipState(meal: meal)
+    }
+
+    func onSkipDismissed() { uiState.skipping = nil }
+
+    /// Skips the meal in the sheet as `choice` says, in one write, and offers one undo for all of
+    /// it. A second skip (or a removal) settles the first: its changes stand.
+    func onSkip(_ choice: PlanShift.Choice) {
+        guard let meal = uiState.skipping?.meal else { return }
+        let today = uiState.today, lastDay = uiState.lastDay
+        uiState.skipping = nil
+        Task {
+            guard let done = await plan.skip(mealId: meal.id, choice: choice, today: today, lastDay: lastDay) else { return }
+            skippedMeals = done
+            removedMeal = nil // the earlier removal stands: one undo at a time
+            skipSerial += 1
+            uiState.skipped = SkipNotice(
+                serial: skipSerial,
+                choice: choice,
+                label: meal.title ?? meal.note ?? "",
+                toDay: choice == .nextFreeDay ? done.result.moved.first { $0.mealId == meal.id }?.toDay : nil,
+                pastEnd: !done.result.pastEnd.isEmpty
+            )
+            uiState.removed = nil
+        }
+    }
+
+    func onUndoSkip() {
+        guard let done = skippedMeals else { return }
+        skippedMeals = nil
+        uiState.skipped = nil
+        Task { await plan.undoSkip(done) }
+    }
+
+    /// The snackbar timed out or was dismissed: the skip stands.
+    func onSkipSnackbarDismissed() {
+        skippedMeals = nil
+        uiState.skipped = nil
+    }
 }
 
 // MARK: - Menus (#52)

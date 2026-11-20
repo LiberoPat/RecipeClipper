@@ -4,6 +4,7 @@ import android.app.Application
 import com.example.recipeclipper.data.AutoBackup
 import com.example.recipeclipper.data.CookedPhotoRepository
 import com.example.recipeclipper.data.ExpiryReminderCoordinator
+import com.example.recipeclipper.data.MealReminderCoordinator
 import com.example.recipeclipper.data.PlayBillingEntitlements
 import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.widgets.HomeWidgets
@@ -19,6 +20,9 @@ class RecipeApp : Application() {
 
     @Inject
     lateinit var expiryReminders: ExpiryReminderCoordinator
+
+    @Inject
+    lateinit var mealReminders: MealReminderCoordinator
 
     @Inject
     lateinit var billing: PlayBillingEntitlements
@@ -43,6 +47,9 @@ class RecipeApp : Application() {
         // The pantry's expiry reminder (#52) follows the pantry and the setting for as
         // long as the process lives, and is planned afresh on every start.
         expiryReminders.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+        // The evening-before and Tonight reminders (#397): their alarms follow the settings and
+        // the flag, and are armed afresh on every start.
+        mealReminders.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))
         // The unlock (#107): asks Play on every start, and tracks the Activity for its sheet.
         billing.start(this)
         // "I made this" (#116): files no photo names any more (a delete whose Undo never came,

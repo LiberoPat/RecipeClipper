@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.local
 
+import com.example.recipeclipper.data.model.MealReminders
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
@@ -37,6 +38,22 @@ interface AppPreferences {
     var expiryReminders: Boolean
 
     /**
+     * The evening-before reminder of tomorrow's planned meals (#397), at [eveningReminderMinute].
+     * On by default, once notifications are allowed (the owner's call on #397): nothing is sent
+     * without the permission, and Settings asks for it when the switch is turned on.
+     */
+    var eveningReminder: Boolean
+
+    /** When the evening reminder fires, in minutes since local midnight (default 19:00). */
+    var eveningReminderMinute: Int
+
+    /** The optional afternoon "Tonight" reminder (#397), at [tonightReminderMinute]. Off by default. */
+    var tonightReminder: Boolean
+
+    /** When the Tonight reminder fires, in minutes since local midnight (default 16:00). */
+    var tonightReminderMinute: Int
+
+    /**
      * Chef mode (#100): short steps written on the device, in the reading view and cook mode.
      * Off by default, and only offered behind the `chefMode` flag on a phone that can do it.
      */
@@ -61,7 +78,9 @@ interface AppPreferences {
     val current: AppSettings
         get() = AppSettings(
             unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps,
-            recipeSort
+            recipeSort,
+            eveningReminder = eveningReminder, eveningReminderMinute = eveningReminderMinute,
+            tonightReminder = tonightReminder, tonightReminderMinute = tonightReminderMinute
         )
 }
 
@@ -74,5 +93,9 @@ data class AppSettings(
     val expiryReminders: Boolean = false,
     val chefMode: Boolean = false,
     val amountsInSteps: Boolean = false,
-    val recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED
+    val recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED,
+    val eveningReminder: Boolean = true,
+    val eveningReminderMinute: Int = MealReminders.EVENING_MINUTE,
+    val tonightReminder: Boolean = false,
+    val tonightReminderMinute: Int = MealReminders.TONIGHT_MINUTE
 )

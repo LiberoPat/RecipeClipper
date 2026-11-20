@@ -2,12 +2,14 @@ import Foundation
 
 /// Settings' sections (#286; Android's `SettingsSection`), in the index's order: each is a row
 /// there, with its current value, and a page of its own (`Route.settingsSection`). `unlimited`
-/// shows only with the `freeTier` flag.
+/// shows only with the `freeTier` flag, `week` (the evening and Tonight reminders, #397) only with
+/// `eveningReminders`.
 enum SettingsSection: String, CaseIterable, Hashable {
     case units
     case ovenTemperature = "oven-temperature"
     case appearance
     case steps
+    case week
     case pantry
     case yourRecipes = "your-recipes"
     case help
@@ -19,6 +21,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .ovenTemperature: Strings.settingsSectionOvenTemperature
         case .appearance: Strings.settingsSectionAppearance
         case .steps: Strings.settingsSectionSteps
+        case .week: Strings.tabWeek
         case .pantry: Strings.settingsSectionPantry
         case .yourRecipes: Strings.settingsSectionYourRecipes
         case .help: Strings.settingsSectionHelp
@@ -33,6 +36,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .ovenTemperature: "thermometer.medium"
         case .appearance: "moon"
         case .steps: "checklist"
+        case .week: "calendar"
         case .pantry: "bell"
         case .yourRecipes: "icloud"
         case .help: "info.circle"

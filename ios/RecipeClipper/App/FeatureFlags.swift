@@ -42,6 +42,12 @@ enum Flag: String, CaseIterable {
     case recipeVersions
     /// Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients.
     case shopForWeek
+    /// Skip tonight (#398): Week's long-press menu and today's meals gain Skip: push the week, move to the next free day, or remove.
+    case skipTonight
+    /// The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397).
+    case eveningReminders
+    /// Fresh food (#396): Shop for this week in two trips (Buy now, Buy later in the week), and the plan's "cook it earlier?" note.
+    case freshFood
     /// Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix.
     case planMyWeekPlus
 }

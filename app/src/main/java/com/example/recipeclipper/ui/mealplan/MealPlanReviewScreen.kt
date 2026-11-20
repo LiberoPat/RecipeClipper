@@ -43,6 +43,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.FreshNudge
+import com.example.recipeclipper.ui.common.FreshNudgeNote
 import com.example.recipeclipper.ui.common.noticeMessage
 import com.example.recipeclipper.ui.plan.dayTitle
 import com.example.recipeclipper.ui.recipe.BackButton
@@ -140,7 +142,10 @@ fun MealPlanReviewScreen(
                     state.loading -> CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     else -> {
                         state.items.forEach { item ->
-                            ReviewRow(item, state.days, state.meals, state.mealTypes, viewModel::onTick, viewModel::onDay, viewModel::onMeal)
+                            ReviewRow(
+                                item, state.days, state.meals, state.mealTypes, viewModel::onTick, viewModel::onDay,
+                                viewModel::onMeal, state.nudges[item.index], viewModel::onSwap
+                            )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
                         Spacer(Modifier.height(12.dp))
@@ -181,7 +186,9 @@ private fun ReviewRow(
     mealTypes: List<MealType>,
     onTick: (Int) -> Unit,
     onDay: (Int, Long?) -> Unit,
-    onMeal: (Int, Long) -> Unit
+    onMeal: (Int, Long) -> Unit,
+    nudge: FreshNudge?,
+    onSwap: (Int) -> Unit
 ) {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("mealplan_row_${item.index}")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -242,6 +249,9 @@ private fun ReviewRow(
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(start = 40.dp).testTag("mealplan_wont_fit_${item.index}")
             )
+        }
+        if (nudge != null) {
+            FreshNudgeNote(nudge, { onSwap(item.index) }, Modifier.padding(start = 40.dp).testTag("mealplan_fresh_${item.index}"))
         }
     }
 }
