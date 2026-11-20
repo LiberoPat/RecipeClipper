@@ -97,6 +97,12 @@ fun NavHostController.openRoute(route: String) {
         selectTab(tab)
         return
     }
+    // A planned recipe opened from a reminder (#397) lands in the Week, on its own stack.
+    if (route.startsWith(WEEK_RECIPE_PREFIX)) {
+        if (currentDestination.tab() != Tab.WEEK) selectTab(Tab.WEEK)
+        navigate(route)
+        return
+    }
     if (currentDestination.tab() != Tab.RECIPES) selectTab(Tab.RECIPES)
     // A countdown tapped while its recipe is on top (#333) mustn't stack a second copy, whose
     // older twin would keep stale timer state and could save it over the newer progress. By
@@ -104,6 +110,8 @@ fun NavHostController.openRoute(route: String) {
     if (showsRecipe(route)) return
     navigate(route)
 }
+
+private const val WEEK_RECIPE_PREFIX = "week/recipe/"
 
 /** The recipe a `recipe/{id}` route opens (with or without `?cook=`); null for any other route. */
 internal fun recipeIdIn(route: String): Long? =

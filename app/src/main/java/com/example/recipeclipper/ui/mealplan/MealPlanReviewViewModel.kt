@@ -9,8 +9,16 @@ import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.FreshMeal
+import com.example.recipeclipper.data.model.FreshNudge
+import com.example.recipeclipper.data.model.FreshPlan
+import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.Perishable
+import com.example.recipeclipper.data.model.Perishables
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.needsNotice
@@ -68,7 +76,9 @@ data class MealPlanReviewUiState(
     /** Everything left was saved: the screen opens Week (when [planned]) or goes back. */
     val finished: Boolean = false,
     /** A purchase from the review's Unlock that is pending or failed; shown until the next change. */
-    val unlockNotice: PurchaseOutcome? = null
+    val unlockNotice: PurchaseOutcome? = null,
+    /** Fresh food (#396): the quiet notes, by [ReviewItem.index]; none with the flag off. */
+    val nudges: Map<Int, FreshNudge> = emptyMap()
 ) {
     val tickedCount: Int get() = items.count { it.ticked }
 
@@ -102,7 +112,8 @@ class MealPlanReviewViewModel @Inject constructor(
     private val policy: LibraryPolicy = LibraryPolicy.HistoryOnly,
     private val entitlements: Entitlements = Entitlements.Unavailable,
     private val sharedTexts: SharedTextInbox = SharedTextInbox(),
-    @DefaultDispatcher private val reading: CoroutineDispatcher = Dispatchers.Default
+    @DefaultDispatcher private val reading: CoroutineDispatcher = Dispatchers.Default,
+    private val flags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val entry: SharedTextInbox.PlanEntry? = savedStateHandle.get<String>(PLAN_ARG)
@@ -120,10 +131,18 @@ class MealPlanReviewViewModel @Inject constructor(
     /** What was read, by [ReviewItem.index]; the rows are these with the cook's choices. */
     private var read: List<MealPlanImport.Item> = emptyList()
 
+    /** Each recipe's most delicate perishable (#396), by [ReviewItem.index]; empty with the flag off. */
+    private var perishables: Map<Int, Perishable> = emptyMap()
+
     init {
         viewModelScope.launch {
             val found = entry?.plan ?: text?.let { withContext(reading) { MealPlanImport.read(it) } }
             read = found?.items.orEmpty()
+            if (flags?.isOn(Flag.FRESH_FOOD) == true) {
+                perishables = read.withIndex().mapNotNull { (i, item) ->
+                    Perishables.mostDelicate(item.recipe.ingredients, LanguageWords.forRecipe(item.recipe))?.let { i to it }
+                }.toMap()
+            }
             _uiState.update { state ->
                 fitted(
                     state.copy(
@@ -159,15 +178,43 @@ class MealPlanReviewViewModel @Inject constructor(
         is LibraryLimit.History, LibraryLimit.Unlimited -> null
     }
 
-    /** [state] with each ticked row marked as fitting or not: the first [MealPlanReviewUiState.room] do. */
+    /**
+     * [state] with each ticked row marked as fitting or not (the first [MealPlanReviewUiState.room]
+     * do), and the plan's quiet notes (#396) worked out again from the days the rows now hold.
+     */
     private fun fitted(state: MealPlanReviewUiState): MealPlanReviewUiState {
         var left = state.room
-        return state.copy(items = state.items.map { row ->
+        val items = state.items.map { row ->
             val remaining = left
             val fits = !row.ticked || remaining == null || remaining > 0
             if (row.ticked && remaining != null && remaining > 0) left = remaining - 1
             row.copy(fits = fits)
-        })
+        }
+        return state.copy(items = items, nudges = nudgesOf(items))
+    }
+
+    private fun nudgesOf(items: List<ReviewItem>): Map<Int, FreshNudge> {
+        if (perishables.isEmpty()) return emptyMap()
+        val meals = items.filter { it.ticked && it.day != null }.map { FreshMeal(it.index.toLong(), it.day!!, perishables[it.index]) }
+        return FreshPlan.nudges(meals, today).associateBy { it.key.toInt() }
+    }
+
+    /**
+     * The cook tapped "Swap with ..." under a note (#396): this row and the one it names trade days.
+     * Only on the tap; nothing is saved before Save either.
+     */
+    fun onSwap(index: Int) {
+        val nudge = _uiState.value.nudges[index] ?: return
+        val partner = nudge.swapKey.toInt()
+        change { items ->
+            items.map {
+                when (it.index) {
+                    index -> it.copy(day = nudge.swapDay)
+                    partner -> it.copy(day = nudge.day)
+                    else -> it
+                }
+            }
+        }
     }
 
     fun onTick(index: Int) = change { items ->

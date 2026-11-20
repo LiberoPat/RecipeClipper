@@ -270,6 +270,9 @@ enum UITestSeeding {
                     case "useItUp":
                         try seedStandard(conn, now: now)
                         try seedUseItUp(conn, now: now)
+                    case "weekPlan": // Skip tonight (#398): three dinners, today and the next two days
+                        try seedStandard(conn, now: now)
+                        try seedWeekPlan(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
                 }
@@ -358,6 +361,23 @@ enum UITestSeeding {
         let weeknights = try lists.create(name: "Weeknights", recipeId: ListDao.noRecipe, now: now - 60 * minute)
         try lists.addToList(ListMembership(recipeId: adobo, listId: weeknights, addedAt: now - 20 * minute))
         try lists.addToList(ListMembership(recipeId: carbonara, listId: weeknights, addedAt: now - 10 * minute))
+    }
+
+    /// Skip tonight (#398): Miso Soup tonight, Banana Bread tomorrow, Spaghetti Carbonara the day
+    /// after, all Dinner.
+    private static func seedWeekPlan(_ conn: SQLiteConnection, now: Int64) throws {
+        let today = PlanDays.today(millis: now)
+        let plan = MealPlanDao(db: conn)
+        guard let dinner = try plan.mealTypes().first(where: { $0.builtInKey == MealType.dinner }) else {
+            fatalError("UI test seed: Dinner missing")
+        }
+        let ids = Dictionary(uniqueKeysWithValues: try conn.query("SELECT id, title FROM recipes") { ($0.string(1), $0.int64(0)) })
+        for (offset, title) in [(0, "Miso Soup"), (1, "Banana Bread"), (2, "Spaghetti Carbonara")] {
+            try plan.add(MealPlanEntryRecord(
+                day: today + Int64(offset), mealTypeId: dinner.id, recipeId: ids[title], servings: nil, note: nil,
+                sortOrder: 0, updatedAt: now
+            ))
+        }
     }
 
     /// Use it up (#305): "chicken thighs" (in the saved Chicken Adobo) expiring tomorrow, and

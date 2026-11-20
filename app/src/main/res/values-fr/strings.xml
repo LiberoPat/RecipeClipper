@@ -348,6 +348,15 @@
     <string name="action_add_meal">+ Ajouter</string>
     <string name="action_move">Déplacer…</string>
     <string name="action_remove_from_plan">Retirer du planning</string>
+    <string name="action_skip">Passer…</string>
+    <string name="action_skip_today">Passer</string>
+    <string name="skip_meal_title">Passer %1$s</string>
+    <string name="skip_push_week">Reporter le reste de la semaine d\'un jour</string>
+    <string name="skip_next_free_day">Déplacer au prochain jour libre</string>
+    <string name="skip_remove">Retirer du planning</string>
+    <string name="snackbar_skip_pushed">Reste de la semaine reporté d\'un jour</string>
+    <string name="snackbar_skip_pushed_past_end">Reste de la semaine reporté d\'un jour. Certains repas dépassent la fin du planning.</string>
+    <string name="snackbar_skip_moved">%1$s déplacé au %2$s</string>
     <string name="add_to_day_title">Ajouter au %1$s</string>
     <string name="label_search_or_note">Cherchez vos recettes ou écrivez une note</string>
     <string name="action_add_as_note">Ajouter « %1$s » comme note</string>
@@ -552,6 +561,15 @@
     <string name="what_i_need_nothing_to_buy">Rien à acheter : tous les ingrédients sont dans votre garde-manger.</string>
     <string name="what_i_need_you_have">Vous avez : %1$s</string>
     <string name="what_i_need_added">Ajouté aux courses</string>
+    <string name="what_i_need_buy_now">Acheter maintenant</string>
+    <string name="what_i_need_buy_later">Acheter plus tard dans la semaine</string>
+    <string name="what_i_need_buy_later_note">Pour des repas dans 3 jours ou plus. Ajoutez-les à votre prochain passage, ou maintenant.</string>
+    <string name="what_i_need_nothing_to_buy_now">Rien à acheter maintenant</string>
+    <string name="what_i_need_add_later">Ajouter ceux-ci aux courses</string>
+    <string name="what_i_need_later_for">Pour %1$s</string>
+    <string name="fresh_keeps">Se garde environ %1$s jours après l\'achat</string>
+    <string name="fresh_nudge">%1$s : se garde environ %2$s jours après l\'achat. Le cuisiner plus tôt ?</string>
+    <string name="fresh_nudge_swap">Échanger avec %1$s</string>
     <!-- What I need (#302): the pantry's amount beside the week's, never compared -->
     <string name="what_i_need_pantry_amount">Vous avez %1$s</string>
     <string name="what_i_need_pantry_and_week">Vous avez %1$s · les recettes de cette semaine en utilisent %2$s</string>
@@ -842,4 +860,18 @@
     <string name="ai_prompt_temperature_f">Donne les températures du four en °F.</string>
     <string name="ai_prompt_write_in">Écris-la en %1$s.</string>
     <string name="ai_prompt_note_outside">Mets tout ce que tu veux dire d\'autre en dehors du bloc de code.</string>
+    <!-- Evening and Tonight reminders (#397) -->
+    <string name="meal_reminders_channel_name">Rappels de repas</string>
+    <string name="meal_reminders_channel_description">Les repas prévus pour demain et ce soir</string>
+    <string name="meal_reminder_tomorrow">Demain : %1$s</string>
+    <string name="meal_reminder_tonight">Ce soir : %1$s</string>
+    <string name="meal_reminder_ahead_one">À faire à l\'avance : « %1$s »</string>
+    <string name="meal_reminder_ahead_header">À faire à l\'avance :</string>
+    <string name="meal_reminder_ahead_item">%1$s : « %2$s »</string>
+    <string name="evening_reminder_title">Rappel du soir</string>
+    <string name="evening_reminder_description">La veille au soir : les repas prévus pour demain et ce qu\'il faut préparer à l\'avance</string>
+    <string name="tonight_reminder_title">Rappel de ce soir</string>
+    <string name="tonight_reminder_description">L\'après-midi : les repas prévus pour ce soir</string>
+    <string name="reminder_time_title">Heure</string>
+    <string name="reminder_time_dialog_title">Heure du rappel</string>
 </resources>

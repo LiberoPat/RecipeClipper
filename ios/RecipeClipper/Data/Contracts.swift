@@ -420,6 +420,21 @@ protocol TimerAlarmScheduler: AnyObject {
     func reconcile(running: [StepAlarm])
 }
 
+/// Schedules the evening and Tonight reminders (#397; Android arms alarms, `MealReminderScheduler`).
+/// The real one is `NotificationMealReminderScheduler`; tests pass a fake.
+@MainActor
+protocol MealReminderScheduler: AnyObject {
+    /// Replaces whatever was scheduled with `reminders` (soonest first), each firing at its kind's
+    /// time of day; empty cancels all.
+    func replaceAll(_ reminders: [ScheduledMealReminder])
+}
+
+/// A reminder and the minute of its day it fires at, for `MealReminderScheduler`.
+struct ScheduledMealReminder: Equatable {
+    let reminder: MealReminder
+    let minute: Int
+}
+
 /// Schedules the pantry's expiry reminders (#52; Android's `ExpiryReminderScheduler`). The real
 /// one is `NotificationExpiryReminderScheduler`; tests pass a fake.
 @MainActor
@@ -435,6 +450,10 @@ protocol NotificationPermission: AnyObject {
     /// True when notifications are allowed, asking first if the user hasn't answered yet. The
     /// system asks once; after a refusal this answers false at once.
     func request() async -> Bool
+
+    /// Whether notifications are allowed right now, without asking (#397: the Week page says when a
+    /// reminder is on and they are not).
+    func allowed() async -> Bool
 }
 
 extension RecipeRepository {
@@ -572,6 +591,14 @@ protocol MealPlanRepository: AnyObject {
     /// Undoes `delete`: the same meal, in the same place.
     func restore(_ deleted: DeletedMeal) async
 
+    /// Skip tonight (#398): skips the planned meal `mealId` with `choice`, every move in one
+    /// transaction (see `PlanShift`); `today` and `lastDay` (the last day the plan shows) are the
+    /// caller's. Nil when nothing was skipped: the meal is gone, is in the past, or the write failed.
+    func skip(mealId: Int64, choice: PlanShift.Choice, today: Int64, lastDay: Int64) async -> SkippedMeals?
+
+    /// Undoes `skip`: every meal it moved or removed back as it was.
+    func undoSkip(_ skipped: SkippedMeals) async
+
     /// A user's own meal type, last in the order. A blank name is ignored.
     func addMealType(name: String) async
 
@@ -603,6 +630,13 @@ protocol MealPlanRepository: AnyObject {
 
     /// Deletes a menu; the plan and the recipes are untouched.
     func deleteMenu(id: Int64) async
+}
+
+/// What `skip` did: its `result` (which meals moved, where from and to: the seam for #396), and
+/// what `undoSkip` needs. Opaque to callers beyond `result`.
+struct SkippedMeals: Equatable {
+    let result: PlanShift.Result
+    let before: [MealPlanEntryRecord]
 }
 
 /// What a meal-plan delete removed, for `restore`. Opaque to callers.
@@ -729,6 +763,16 @@ protocol AppPreferences: AnyObject {
     /// A morning notification when something in the pantry is about to expire (#52). Off by
     /// default; Settings turns it on only once notifications are allowed.
     var expiryReminders: Bool { get set }
+    /// The evening-before reminder of tomorrow's planned meals (#397), at `eveningReminderMinute`. On
+    /// by default, once notifications are allowed (the owner's call on #397): nothing is sent
+    /// without the permission, and Settings asks for it when the switch is turned on.
+    var eveningReminder: Bool { get set }
+    /// When the evening reminder fires, in minutes since local midnight (default 19:00).
+    var eveningReminderMinute: Int { get set }
+    /// The optional afternoon "Tonight" reminder (#397), at `tonightReminderMinute`. Off by default.
+    var tonightReminder: Bool { get set }
+    /// When the Tonight reminder fires, in minutes since local midnight (default 16:00).
+    var tonightReminderMinute: Int { get set }
     /// Chef mode (#100): short steps written on the device, in the reading view and cook mode.
     /// Off by default, and only offered behind the `chefMode` flag on a phone that can do it.
     var chefMode: Bool { get set }
@@ -754,7 +798,11 @@ extension AppPreferences {
             expiryReminders: expiryReminders,
             chefMode: chefMode,
             amountsInSteps: amountsInSteps,
-            recipeSort: recipeSort
+            recipeSort: recipeSort,
+            eveningReminder: eveningReminder,
+            eveningReminderMinute: eveningReminderMinute,
+            tonightReminder: tonightReminder,
+            tonightReminderMinute: tonightReminderMinute
         )
     }
 }
@@ -854,4 +902,8 @@ struct AppSettings: Equatable {
     var chefMode = false
     var amountsInSteps = false
     var recipeSort: RecipeSort = .recentlyViewed
+    var eveningReminder = true
+    var eveningReminderMinute = MealReminders.eveningMinute
+    var tonightReminder = false
+    var tonightReminderMinute = MealReminders.tonightMinute
 }

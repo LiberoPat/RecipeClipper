@@ -30,6 +30,9 @@ import XCTest
 // `UseUp("2 lb", "chicken", ["1 lb chicken"]),`.
 // Pantry-entry rows (#302): what was typed into "Add to the pantry", then PantryEntry.split's name
 // and quantity (nil: kept whole). Write only `Entry("3 onions"),` (optionally `, lang: "de"`).
+// Perishable rows (#396): an ingredient line, then Perishables.find: the ingredient's name, its group's
+// key and its keeps hint (nil each: not a perishable). Write only `Fresh("2 salmon fillets"),`
+// (optionally `, lang: "de"`).
 // What I need amount rows (#302): a pantry item's quantity and name, the week's lines (each its own
 // recipe), then PantryMatch.weekNeeds' Have row: the pantry's amount and the week's total (nil:
 // none). Write only `Need("2 lb", "chicken", ["1 lb chicken", "8 oz chicken"]),`.
@@ -40,6 +43,11 @@ import XCTest
 // "dayOffset typeId t|n text" (a recipe's title or a note; today is offset 0), then what
 // WidgetContent.tonight shows: each meal's type name, then its title. Write only
 // `Tonight(["3 2 Dinner"], ["0 3 t Focaccia"]),`.
+// Skip tonight rows (#398): the choice (push, next, remove), the skipped meal's id, today and the
+// last day shown, then the plan in plan order ("id day typeId", then `n` for a note), then what
+// PlanShift.plan does: moves `m id from to`, removals `r id`, meals left past the last day `e id`,
+// or `-` for no plan (a past or unknown meal). Write only
+// `Skip("push 1 100 1000", ["1 100 3", "2 101 3"]),`.
 // Grocery widget rows (#309): the list's unticked lines and its ticked ones, then the lines
 // WidgetContent.groceries leaves to buy. Write only `ToBuy(["2 onions"], ["1 cup milk"]),`.
 // Widget-fit rows (#329): how many items and how many rows there is room for, then
@@ -66,6 +74,9 @@ import XCTest
 // recipe), ingredients, steps and yield. Write only `Parse("{\"@type\":\"Recipe\", …}"),`.
 // Duration rows (#179): a prep, cook or total time, then Durations.format of it
 // (nil: hidden). Write only `Dur("PT1H30M"),` or `Dur("1 Std. 30 Min.", lang: "de"),`.
+// Ahead-of-time rows (#397): a recipe's steps, then AheadSteps.find: the index of the step to
+// start ahead of time and its quoted sentence (nil, nil: none). Write only `Ahead(["Marinate overnight."], nil, nil),`
+// or `Ahead(["Über Nacht marinieren."], lang: "de", nil, nil),`.
 // Chef mode rows (#100): a step, a short version of it, optionally the recipe's ingredient lines
 // (#129), then ShortStepCheck.accept (nil: the step shows as written). Write only
 // `Short("Bake for 20 minutes.", "Bake 20 min."),` or `Short("…", "…", lines: ["2 eggs"]),`.
@@ -159,6 +170,13 @@ final class DifferentialCorpusTests: XCTestCase {
         }
     }
 
+    private struct Fresh {
+        let line: String; let language: String; let name: String?; let group: String?; let keeps: String?
+        init(_ line: String, lang: String = "en", _ name: String?, _ group: String?, _ keeps: String?) {
+            self.line = line; self.language = lang; self.name = name; self.group = group; self.keeps = keeps
+        }
+    }
+
     private struct Need {
         let quantity: String; let name: String; let lines: [String]; let language: String
         let have: String?; let total: String?
@@ -179,6 +197,13 @@ final class DifferentialCorpusTests: XCTestCase {
         let types: [String]; let meals: [String]; let shown: [String]
         init(_ types: [String], _ meals: [String], _ shown: [String] = []) {
             self.types = types; self.meals = meals; self.shown = shown
+        }
+    }
+
+    private struct Skip {
+        let header: String; let meals: [String]; let result: [String]
+        init(_ header: String, _ meals: [String], _ result: [String] = []) {
+            self.header = header; self.meals = meals; self.result = result
         }
     }
 
@@ -298,6 +323,13 @@ final class DifferentialCorpusTests: XCTestCase {
         let time: String; let words: LanguageWords?; let shown: String?
         init(_ time: String, lang: String = "en", _ shown: String?) {
             self.time = time; self.words = LanguageWords.forTag(lang); self.shown = shown
+        }
+    }
+
+    private struct Ahead {
+        let steps: [String]; let words: LanguageWords?; let step: Int?; let quote: String?
+        init(_ steps: [String], lang: String = "en", _ step: Int?, _ quote: String?) {
+            self.steps = steps; self.words = LanguageWords.forTag(lang); self.step = step; self.quote = quote
         }
     }
 
@@ -1646,6 +1678,88 @@ final class DifferentialCorpusTests: XCTestCase {
         Entry("3 玉ねぎ", lang: "ja", "3 玉ねぎ", nil),
     ]
 
+    private static let fresh: [Fresh] = [
+        Fresh("2 salmon fillets (about 6 oz each), skin on", "salmon fillets", "fish", "1-2"),
+        Fresh("1 lb large shrimp, peeled and deveined", "shrimp", "fish", "1-2"),
+        Fresh("4 cod fillets", "cod fillets", "fish", "1-2"),
+        Fresh("1 lb ground beef", "ground beef", "mince", "1-2"),
+        Fresh("500 g pork mince", "pork mince", "mince", "1-2"),
+        Fresh("1 lb Italian sausage", "italian sausage", "mince", "1-2"),
+        Fresh("2 boneless skinless chicken breasts", "chicken breasts", "poultry", "1-2"),
+        Fresh("6 chicken thighs", "chicken thighs", "poultry", "1-2"),
+        Fresh("2 ribeye steaks", "ribeye steaks", "meatCuts", "3-5"),
+        Fresh("8 oz button mushrooms, sliced", "button mushrooms", "mushrooms", "3-5"),
+        Fresh("2 ripe avocados", "ripe avocados", "avocado", "3-4"),
+        Fresh("1/2 cup fresh basil leaves", nil, nil, nil),
+        Fresh("1 bunch cilantro, chopped", nil, nil, nil),
+        Fresh("2 tbsp chopped fresh parsley", "chopped fresh parsley", "parsley", "2-3"),
+        Fresh("2 tbsp chopped fresh mint", nil, nil, nil),
+        Fresh("1 tbsp fresh herbs", nil, nil, nil),
+        Fresh("5 oz baby spinach", "baby spinach", "salad", "3-5"),
+        Fresh("1 head romaine lettuce", "romaine lettuce", "salad", "3-5"),
+        Fresh("1 pint strawberries, hulled", "strawberries", "berries", "2-3"),
+        Fresh("1 cup raspberries", "raspberries", "berries", "2-3"),
+        Fresh("2 cups mixed berries", "mixed berries", "berries", "2-3"),
+        Fresh("1 cup blueberries", nil, nil, nil),
+        Fresh("1 cup blackberries", "blackberries", "blackberries", "3-5"),
+        Fresh("2 tuna steaks", "tuna steaks", "fish", "1-2"),
+        Fresh("4 oz smoked salmon", nil, nil, nil),
+        Fresh("1 can (6 oz) canned salmon", nil, nil, nil),
+        Fresh("2 tsp dried basil", nil, nil, nil),
+        Fresh("1 cup frozen strawberries", nil, nil, nil),
+        Fresh("1 oz dried porcini mushrooms", nil, nil, nil),
+        Fresh("10 oz frozen chopped spinach", nil, nil, nil),
+        Fresh("1 lb frozen shrimp", nil, nil, nil),
+        Fresh("2 cups shredded chicken", nil, nil, nil),
+        Fresh("1 cup cauliflower steak", nil, nil, nil),
+        Fresh("1/4 cup goji berries", nil, nil, nil),
+        Fresh("2 tbsp fish sauce", nil, nil, nil),
+        Fresh("1 cup mushroom stock", nil, nil, nil),
+        Fresh("1/2 cup strawberry jam", nil, nil, nil),
+        Fresh("2 tsp dried herbs", nil, nil, nil),
+        Fresh("1 can cream of mushroom soup", nil, nil, nil),
+        Fresh("1/2 cup avocado oil", nil, nil, nil),
+        Fresh("1 can tuna", nil, nil, nil),
+        Fresh("salt and pepper", nil, nil, nil),
+        Fresh("Salmon and potatoes:", nil, nil, nil),
+        Fresh("2 cups flour", nil, nil, nil),
+        Fresh("2 Lachsfilets", lang: "de", "lachsfilets", "fish", "1-2"),
+        Fresh("100 g geräucherter Lachs", lang: "de", nil, nil, nil),
+        Fresh("500 g Hackfleisch", lang: "de", "hackfleisch", "mince", "1-2"),
+        Fresh("1 Bund Petersilie", lang: "de", "petersilie", "parsley", "2-3"),
+        Fresh("1 Bund Basilikum", lang: "de", nil, nil, nil),
+        Fresh("200 g Heidelbeeren", lang: "de", nil, nil, nil),
+        Fresh("1 TL getrocknetes Basilikum", lang: "de", nil, nil, nil),
+        Fresh("200 g tiefgekühlte Erdbeeren", lang: "de", nil, nil, nil),
+        Fresh("200 g Champignons", lang: "de", "champignons", "mushrooms", "3-5"),
+        Fresh("2 filets de saumon", lang: "fr", "filets de saumon", "fish", "1-2"),
+        Fresh("2 tranches de saumon fumé", lang: "fr", nil, nil, nil),
+        Fresh("1 l de bouillon de poulet", lang: "fr", nil, nil, nil),
+        Fresh("1 pot de confiture de fraises", lang: "fr", nil, nil, nil),
+        Fresh("200 g de myrtilles", lang: "fr", nil, nil, nil),
+        Fresh("200 g de mûres", lang: "fr", "mûres", "blackberries", "3-5"),
+        Fresh("250 g de fraises", lang: "fr", "fraises", "berries", "2-3"),
+        Fresh("1 bouquet de persil plat", lang: "fr", "persil plat", "parsley", "2-3"),
+        Fresh("2 pechugas de pollo", lang: "es", "pechugas de pollo", "poultry", "1-2"),
+        Fresh("1 l de caldo de pollo", lang: "es", nil, nil, nil),
+        Fresh("200 g de champiñones", lang: "es", "champiñones", "mushrooms", "3-5"),
+        Fresh("1 lata de crema de champiñones", lang: "es", nil, nil, nil),
+        Fresh("2 aguacates", lang: "es", "aguacates", "avocado", "3-4"),
+        Fresh("1 mazzetto di prezzemolo", lang: "it", "prezzemolo", "parsley", "2-3"),
+        Fresh("200 g di more", lang: "it", "more", "blackberries", "3-5"),
+        Fresh("1 mazzetto di basilico", lang: "it", nil, nil, nil),
+        Fresh("2 cucchiai di pesto di basilico", lang: "it", nil, nil, nil),
+        Fresh("300 g di gamberi", lang: "it", "gamberi", "fish", "1-2"),
+        Fresh("2 filés de salmão", lang: "pt", "filés de salmão", "fish", "1-2"),
+        Fresh("1 xícara de caldo de frango", lang: "pt", nil, nil, nil),
+        Fresh("200 g de carne moída", lang: "pt", "carne moída", "mince", "1-2"),
+        Fresh("鮭 2切れ", lang: "ja", "鮭", "fish", "1-2"),
+        Fresh("塩鮭 2切れ", lang: "ja", nil, nil, nil),
+        Fresh("豚ひき肉 200g", lang: "ja", "豚ひき肉", "mince", "1-2"),
+        Fresh("しいたけ 4枚", lang: "ja", "しいたけ", "mushrooms", "3-5"),
+        Fresh("干ししいたけ 3枚", lang: "ja", nil, nil, nil),
+    ]
+
     private static let needs: [Need] = [
         Need("2 lb", "chicken thighs", ["1 lb chicken thighs", "24 oz chicken thighs"], "2 lb", "2 1/2 lb"),
         Need("3 lb", "chicken", ["2 lb chicken"], "3 lb", "2 lb"),
@@ -1690,6 +1804,27 @@ final class DifferentialCorpusTests: XCTestCase {
         Tonight(["3 2 Abendessen", "1 0 Frühstück"], ["0 3 t Käsespätzle", "0 1 n Müsli"], ["Frühstück", "Müsli", "Abendessen", "Käsespätzle"]),
         Tonight([], ["0 3 t Focaccia"], ["", "Focaccia"]),
         Tonight(["3 2 Dinner"], [], []),
+    ]
+
+    private static let skips: [Skip] = [
+        Skip("push 1 100 1000", ["1 100 3", "2 101 3", "3 103 3"], ["m 1 100 101", "m 2 101 102", "m 3 103 104"]),
+        Skip("push 3 100 1000", ["1 99 3", "2 100 3", "3 101 3", "4 102 3"], ["m 3 101 102", "m 4 102 103"]),
+        Skip("push 2 100 1000", ["1 100 1", "2 100 2", "3 100 3", "4 101 3"], ["m 2 100 101", "m 3 100 101", "m 4 101 102"]),
+        Skip("push 1 100 1000", ["1 100 3", "2 101 2", "3 101 3", "4 101 3"], ["m 1 100 101", "m 2 101 102", "m 3 101 102", "m 4 101 102"]),
+        Skip("push 1 100 1000", ["1 100 3", "2 101 3 n", "3 104 3 n"], ["m 1 100 101", "m 2 101 102", "m 3 104 105"]),
+        Skip("push 2 100 1000", ["1 100 3", "2 105 3"], ["m 2 105 106"]),
+        Skip("push 1 100 151", ["1 100 3", "2 150 3", "3 151 3"], ["m 1 100 101", "m 2 150 151", "m 3 151 152", "e 3"]),
+        Skip("push 7 100 1000", ["7 100 3"], ["m 7 100 101"]),
+        Skip("next 1 100 1000", ["1 100 3", "2 101 2"], ["m 1 100 101"]),
+        Skip("next 1 100 1000", ["1 100 3", "2 101 3", "3 102 3 n", "4 104 3"], ["m 1 100 103"]),
+        Skip("next 1 100 1000", ["1 100 3", "2 101 2", "3 102 2"], ["m 1 100 101"]),
+        Skip("next 3 100 1000", ["1 99 3", "2 100 2", "3 100 3", "4 100 3"], ["m 3 100 101"]),
+        Skip("next 1 100 101", ["1 100 3", "2 101 3"], ["m 1 100 102", "e 1"]),
+        Skip("remove 1 100 1000", ["1 100 3", "2 101 3"], ["r 1"]),
+        Skip("push 1 100 1000", ["1 99 3", "2 100 3"], ["-"]),
+        Skip("next 1 100 1000", ["1 99 3", "2 100 3"], ["-"]),
+        Skip("remove 1 100 1000", ["1 99 3", "2 100 3"], ["-"]),
+        Skip("push 9 100 1000", ["1 100 3"], ["-"]),
     ]
 
     private static let toBuys: [ToBuy] = [
@@ -2001,6 +2136,48 @@ final class DifferentialCorpusTests: XCTestCase {
         Dur("PT20M", lang: "xx", "20m"),
         Dur("20 minutes", lang: "xx", "20 minutes"),
         Dur("  ", nil),
+    ]
+
+    private static let aheads: [Ahead] = [
+        Ahead(["Mix the marinade.", "Marinate the chicken at least 8 hours or overnight. Then grill it for 10 minutes."], 1, "Marinate the chicken at least 8 hours or overnight."),
+        Ahead(["Marinate for 4 hours in the fridge, turning once."], 0, "Marinate for 4 hours in the fridge, turning once."),
+        Ahead(["Marinate for 30 minutes."], nil, nil),
+        Ahead(["Let the dough rise for 1 to 2 hours."], nil, nil),
+        Ahead(["Let the dough rise for 8 to 12 hours."], 0, "Let the dough rise for 8 to 12 hours."),
+        Ahead(["Chill for at least 2 hours before serving."], 0, "Chill for at least 2 hours before serving."),
+        Ahead(["Chill for 1.5 hours."], nil, nil),
+        Ahead(["Refrigerate for up to 2 hours."], nil, nil),
+        Ahead(["Soak the beans in water for 8 hours."], 0, "Soak the beans in water for 8 hours."),
+        Ahead(["Serve with bread to soak up the sauce."], nil, nil),
+        Ahead(["Let the steak rest for 5 minutes."], nil, nil),
+        Ahead(["Rest for 5 minutes, then marinate for 6 hours."], 0, "Rest for 5 minutes, then marinate for 6 hours."),
+        Ahead(["Thaw the fish in the refrigerator the night before."], 0, "Thaw the fish in the refrigerator the night before."),
+        Ahead(["The sauce can be made ahead."], 0, "The sauce can be made ahead."),
+        Ahead(["There is no need to marinate overnight."], nil, nil),
+        Ahead(["Stir. Chill for 2.5 hours. Serve."], 0, "Chill for 2.5 hours."),
+        Ahead(["Marinate the chicken overnight in a large bowl with the garlic, the ginger, the soy sauce, the honey, the lime juice and plenty of black pepper, turning it once."], 0, "Marinate the chicken overnight in a large bowl with the garlic, the ginger, the soy sauce, the…"),
+        Ahead(["Marinate\n  overnight,\ncovered."], 0, "Marinate overnight, covered."),
+        Ahead(["Marinate overnight."], lang: "de", nil, nil),
+        Ahead(["Marinate overnight."], lang: "xx", nil, nil),
+        Ahead(["Das Fleisch über Nacht marinieren."], lang: "de", 0, "Das Fleisch über Nacht marinieren."),
+        Ahead(["Den Teig 8 Std. im Kühlschrank ruhen lassen."], lang: "de", 0, "Den Teig 8 Std. im Kühlschrank ruhen lassen."),
+        Ahead(["Mit Brot die Soße aufsaugen."], lang: "de", nil, nil),
+        Ahead(["Dejar marinar la carne durante la noche."], lang: "es", 0, "Dejar marinar la carne durante la noche."),
+        Ahead(["Remojar los garbanzos 12 horas."], lang: "es", 0, "Remojar los garbanzos 12 horas."),
+        Ahead(["Reposar 10 minutos."], lang: "es", nil, nil),
+        Ahead(["Laisser mariner le poulet toute la nuit."], lang: "fr", 0, "Laisser mariner le poulet toute la nuit."),
+        Ahead(["Mettre au frais 4 heures."], lang: "fr", 0, "Mettre au frais 4 heures."),
+        Ahead(["Laisser reposer 10 minutes."], lang: "fr", nil, nil),
+        Ahead(["Lasciare marinare la carne per una notte."], lang: "it", 0, "Lasciare marinare la carne per una notte."),
+        Ahead(["Lasciare lievitare per 2 ore."], lang: "it", 0, "Lasciare lievitare per 2 ore."),
+        Ahead(["Far riposare 5 minuti."], lang: "it", nil, nil),
+        Ahead(["Deixe marinar de um dia para o outro."], lang: "pt", 0, "Deixe marinar de um dia para o outro."),
+        Ahead(["Deixe de molho por 8 horas."], lang: "pt", 0, "Deixe de molho por 8 horas."),
+        Ahead(["Deixe descansar por 10 minutos."], lang: "pt", nil, nil),
+        Ahead(["鶏肉を切る。鶏肉を一晩漬け込む。焼く。"], lang: "ja", 0, "鶏肉を一晩漬け込む。"),
+        Ahead(["冷蔵庫で３時間寝かせる。"], lang: "ja", 0, "冷蔵庫で３時間寝かせる。"),
+        Ahead(["10分寝かせる。"], lang: "ja", nil, nil),
+        Ahead(["最大2時間冷やす。"], lang: "ja", nil, nil),
     ]
 
     private static let shortSteps: [Short] = [
@@ -2777,6 +2954,14 @@ final class DifferentialCorpusTests: XCTestCase {
         }
     }
 
+    func testAheadStepsMatchKotlin() {
+        for row in Self.aheads {
+            let found = AheadSteps.find(row.steps, words: row.words)
+            XCTAssertEqual(found?.step, row.step, row.steps.joined(separator: " | "))
+            XCTAssertEqual(found?.quote, row.quote, row.steps.joined(separator: " | "))
+        }
+    }
+
     func testPantryMatchesKotlin() {
         for row in Self.pantry {
             let item = PantryItem(
@@ -2801,6 +2986,15 @@ final class DifferentialCorpusTests: XCTestCase {
             case .subtract(_, nil): result = .usedUp
             }
             XCTAssertEqual(result, row.result, "\(row.quantity) \(row.name) / \(row.lines)")
+        }
+    }
+
+    func testPerishablesMatchKotlin() {
+        for row in Self.fresh {
+            let found = Perishables.find(row.line, words: LanguageWords.forTag(row.language))
+            XCTAssertEqual(found?.name, row.name, row.line)
+            XCTAssertEqual(found?.group.key, row.group, row.line)
+            XCTAssertEqual(found?.group.keeps, row.keeps, row.line)
         }
     }
 
@@ -2856,6 +3050,29 @@ final class DifferentialCorpusTests: XCTestCase {
             }
             let shown = WidgetContent.tonight(meals, types: types, today: 100).flatMap { [$0.mealType, $0.title] }
             XCTAssertEqual(shown, row.shown, "\(row.types) / \(row.meals)")
+        }
+    }
+
+    func testPlanShiftMatchesKotlin() {
+        for row in Self.skips {
+            let header = row.header.split(separator: " ").map(String.init)
+            let meals = row.meals.map { text -> PlannedMeal in
+                let part = text.split(separator: " ").map(String.init)
+                let note = part.count > 3
+                return PlannedMeal(
+                    id: Int64(part[0])!, day: Int64(part[1])!, mealTypeId: Int64(part[2])!,
+                    recipeId: note ? nil : Int64(part[0])!, title: note ? nil : "t\(part[0])",
+                    imageUrl: nil, servings: nil, note: note ? "note" : nil
+                )
+            }
+            let choice: PlanShift.Choice = header[0] == "push" ? .pushWeek : header[0] == "next" ? .nextFreeDay : .remove
+            let result = PlanShift.plan(meals, skippedId: Int64(header[1])!, choice: choice,
+                                        today: Int64(header[2])!, lastDay: Int64(header[3])!)
+            let shown = result.map { r in
+                r.moved.map { "m \($0.mealId) \($0.fromDay) \($0.toDay)" }
+                    + r.removed.map { "r \($0)" } + r.pastEnd.map { "e \($0)" }
+            } ?? ["-"]
+            XCTAssertEqual(shown, row.result, "\(row.header) / \(row.meals)")
         }
     }
 

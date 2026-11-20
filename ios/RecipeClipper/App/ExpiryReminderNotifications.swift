@@ -130,6 +130,11 @@ final class SystemNotificationPermission: NotificationPermission {
     func request() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) == true
     }
+
+    func allowed() async -> Bool {
+        let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        return status == .authorized || status == .provisional
+    }
 }
 
 /// Answers without asking: UI tests, which must never meet the system prompt.
@@ -137,4 +142,5 @@ final class FixedNotificationPermission: NotificationPermission {
     private let granted: Bool
     nonisolated init(granted: Bool) { self.granted = granted }
     func request() async -> Bool { granted }
+    func allowed() async -> Bool { granted }
 }
