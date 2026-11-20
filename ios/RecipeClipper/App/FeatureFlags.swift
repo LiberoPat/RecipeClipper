@@ -44,6 +44,8 @@ enum Flag: String, CaseIterable {
     case shopForWeek
     /// Reorder lists (#381): drag the covers on the Lists screen into your own order, used wherever lists are shown.
     case reorderLists
+    /// Home's Today card (#402): today's next uncooked planned meal, when nothing is being cooked.
+    case homeTonight
 }
 
 /// One flag as `shared/flags.json` declares it.

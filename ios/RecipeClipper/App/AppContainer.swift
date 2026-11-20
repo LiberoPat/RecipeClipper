@@ -285,7 +285,8 @@ final class AppContainer {
     func makeHomeViewModel() -> HomeViewModel {
         HomeViewModel(
             repository: recipeRepository, backups: backupRepository, files: backupFiles,
-            lists: listRepository, clock: clock, pasted: pastedTextRouter
+            lists: listRepository, clock: clock, pasted: pastedTextRouter,
+            mealPlan: mealPlanRepository, cooked: cookedPhotoRepository
         )
     }
 
@@ -315,14 +316,16 @@ final class AppContainer {
     }
 
     func makeRecipeViewModel(
-        recipeId: Int64?, url: String?, openInCookMode: Bool = false, plannedServings: Int? = nil
+        recipeId: Int64?, url: String?, openInCookMode: Bool = false, plannedServings: Int? = nil,
+        startInCookMode: Bool = false
     ) -> RecipeViewModel {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
             openInCookMode: openInCookMode, plannedServings: plannedServings,
             shortSteps: shortStepRepository, flags: featureFlags, entitlements: entitlements,
-            decisions: decisionRepository, countdowns: timerCountdowns
+            decisions: decisionRepository, countdowns: timerCountdowns,
+            cooked: cookedPhotoRepository, startInCookMode: startInCookMode
         )
     }
 

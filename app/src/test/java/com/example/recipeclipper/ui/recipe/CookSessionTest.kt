@@ -194,6 +194,32 @@ class CookSessionTest {
         )
     }
 
+    // #402: a finished run is over, timers and all.
+    @Test fun `finishing the run stops its timers, those counting and those saved as running`() {
+        val counting = session.startTimer(CookState(active = true, currentStep = 2, doneSteps = setOf(0, 1)), 2, 600).cook
+        // A timer saved running whose deadline this session isn't counting (never restored).
+        val withSaved = counting.copy(timers = counting.timers + (0 to StepTimer(60, 30, running = true)))
+
+        val done = session.done(withSaved, 3)
+
+        assertTrue(done.finished)
+        assertEquals(listOf(0, 2), done.stopped)
+        assertTrue(done.cook.timers.values.none { it.running })
+        assertEquals("the time left is kept", 600, done.cook.timers.getValue(2).remainingSeconds)
+        assertFalse(session.hasRunningTimers)
+        assertEquals(emptyMap<Int, Any>(), session.progress(done.cook).timers.filterValues { it.endsAt != null })
+    }
+
+    @Test fun `a step done before the last stops no timer`() {
+        val running = session.startTimer(CookState(active = true), 1, 600).cook
+
+        val done = session.done(running, 3)
+
+        assertFalse(done.finished)
+        assertEquals(emptyList<Int>(), done.stopped)
+        assertTrue(session.hasRunningTimers)
+    }
+
     @Test fun `seconds left round up and never go below zero`() {
         assertEquals(1, CookSession.secondsUntil(1_001, 1_000))
         assertEquals(1, CookSession.secondsUntil(2_000, 1_000))

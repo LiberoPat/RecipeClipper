@@ -97,6 +97,11 @@ struct RootView: View {
                     onOpenPasted: { openPasted($0, push: router.push) },
                     onOpenRecipe: { router.push(.recipe(id: $0)) },
                     onResumeCooking: { router.push(.cookRecipe(id: $0)) },
+                    onOpenPlanned: { id, servings, cook in
+                        // Today's meal (#402): on the Week's stack, as the Week opens a planned recipe.
+                        router.openInWeek(cook ? .startWeekRecipe(id: id, servings: servings) : .weekRecipe(id: id, servings: servings))
+                    },
+                    homeTonight: container.featureFlags.isOn(.homeTonight),
                     onOpenRecipes: { router.push(.recipes) },
                     onOpenLists: { router.push(.lists) },
                     onOpenSettings: { router.push(.settings) },
@@ -211,6 +216,10 @@ struct RootView: View {
             }
         case .weekRecipe(let id, let servings):
             recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil, plannedServings: servings) }
+        case .startWeekRecipe(let id, let servings):
+            recipe(push: push) {
+                container.makeRecipeViewModel(recipeId: id, url: nil, plannedServings: servings, startInCookMode: true)
+            }
         case .mealTypes:
             ScreenHost(container.makeMealTypesViewModel) { vm in MealTypesScreen(vm: vm) }
         case .whatINeed(let weekStart):

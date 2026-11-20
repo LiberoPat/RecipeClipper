@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.AppInfo
 import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.CookedPhotoRepository
 import com.example.recipeclipper.data.Connectivity
 import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.Entitlements
@@ -68,7 +69,10 @@ class RecipeViewModel @Inject constructor(
     decisionRepository: DecisionRepository? = null,
     // The countdowns outside the app (#309), squared with the database after a delete, a
     // re-share or an update (#333); none without it (tests that aren't about them).
-    private val countdowns: TimerCountdownSync? = null
+    private val countdowns: TimerCountdownSync? = null,
+    // Finishing a run records today's cooking (#402), so Home's Today card counts it as cooked;
+    // none without it (tests that aren't about it).
+    private val cooked: CookedPhotoRepository? = null
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -80,6 +84,10 @@ class RecipeViewModel @Inject constructor(
 
     // Opened from the Week (#49): show the planned servings rather than the saved choice. For
     // this visit only; it isn't saved unless the cook changes the servings here.
+    // Home's Today card (#402): "Start cooking" opens the recipe in cook mode, from the start
+    // when its last run was finished (CookController.start), where it was left otherwise.
+    private var startInCookMode: Boolean = savedStateHandle.get<Boolean>(START_COOK_ARG) == true
+
     private var plannedServings: Int? = savedStateHandle.get<Int>(SERVINGS_ARG)?.takeIf { it > 0 }
 
     // Seeded synchronously so the first render already uses the user's units; kept current
@@ -209,7 +217,11 @@ class RecipeViewModel @Inject constructor(
                 chef.start()
                 if (result.kept) observeVersions(result.recipe.id)
                 askModel()
-                if (openInCookMode) {
+                if (startInCookMode) {
+                    startInCookMode = false
+                    openInCookMode = false
+                    cookMode.start()
+                } else if (openInCookMode) {
                     openInCookMode = false
                     cookMode.resume()
                 }
@@ -479,10 +491,13 @@ class RecipeViewModel @Inject constructor(
     fun onStepSelected(index: Int) = cookMode.select(index)
 
     fun onStepDone() {
+        var finishedId: Long? = null
         _uiState.update { state ->
+            finishedId = null
             val content = state.content as? RecipeContent.Success ?: return@update state
             val done = cookMode.done(state.cook, content, state.checkedIngredients)
             if (done.finished) {
+                if (!state.notKept) finishedId = content.recipe.id
                 // The end of cooking (#147): what was ticked goes to the pantry's use-up sheet.
                 state.copy(cook = done.cook, cookFinished = done.finishedCook)
             } else {
@@ -490,6 +505,8 @@ class RecipeViewModel @Inject constructor(
             }
         }
         cookMode.save()
+        // A finished run is a cooking (#402): recorded once a day, behind the progress write.
+        finishedId?.let { id -> writes.enqueue { cooked?.markCookedToday(id) } }
     }
 
     /** The screen has handed [RecipeUiState.cookFinished] on. */
@@ -532,6 +549,9 @@ class RecipeViewModel @Inject constructor(
 
         /** True when opened from a timer notification: the recipe opens in cook mode. */
         const val COOK_ARG = "cook"
+
+        /** True when opened by Home's Today card (#402): cook mode, started afresh if the last run finished. */
+        const val START_COOK_ARG = "startCook"
 
         /** Opened from the Week (#49): the planned servings, 0 for none. */
         const val SERVINGS_ARG = "servings"

@@ -50,7 +50,9 @@ enum class Flag(val key: String) {
     /** Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients. */
     SHOP_FOR_WEEK("shopForWeek"),
     /** Reorder lists (#381): drag the covers on the Lists screen into your own order, used wherever lists are shown. */
-    REORDER_LISTS("reorderLists");
+    REORDER_LISTS("reorderLists"),
+    /** Home's Today card (#402): today's next uncooked planned meal, when nothing is being cooked. */
+    HOME_TONIGHT("homeTonight");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

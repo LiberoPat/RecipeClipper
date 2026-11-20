@@ -96,3 +96,79 @@ struct SmallCapsLabel: View {
             .accessibilityAddTraits(.isHeader)
     }
 }
+
+/// Today's meal (#402), in the Continue cooking card's place while nothing is being cooked: the
+/// lead meal's photo (a plain band without one) and name under "Today", then "Start cooking" into
+/// cook mode at the planned servings. A planned note shows its text and no button. The other
+/// meals still to cook today follow, one line each, and open their recipe. The photo and name
+/// open the recipe without cooking it.
+struct TodayCardView: View {
+    let card: TodayCard
+    let onStartCooking: (TodayMeal) -> Void
+    let onOpen: (TodayMeal) -> Void
+
+    var body: some View {
+        let lead = card.lead
+        VStack(alignment: .leading, spacing: 8) {
+            Button { onOpen(lead) } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    photo(lead)
+                    VStack(alignment: .leading, spacing: 2) {
+                        SmallCapsLabel(Strings.homeToday)
+                        Text(lead.title)
+                            .textStyle(Typography.titleLarge)
+                            .foregroundStyle(Palette.onBackground)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .padding([.horizontal, .top], 16)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(lead.recipeId == nil)
+            .accessibilityIdentifier("home.today.lead")
+            VStack(alignment: .leading, spacing: 8) {
+                if lead.recipeId != nil {
+                    Button(Strings.startCooking) { onStartCooking(lead) }
+                        .buttonStyle(PrimaryButtonStyle(fillWidth: true))
+                        .accessibilityIdentifier("home.today.start")
+                }
+                ForEach(card.others, id: \.entryId) { meal in
+                    Button { onOpen(meal) } label: {
+                        Text(Strings.homeTodayOther(meal.mealType, meal.title))
+                            .textStyle(Typography.bodyMedium)
+                            .foregroundStyle(Palette.muted)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(meal.recipeId == nil)
+                    .accessibilityIdentifier("home.today.other")
+                }
+            }
+            .padding([.horizontal, .bottom], 16)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.surfaceContainer)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    /// The meal's photo, or a plain themed band: never a stock image.
+    @ViewBuilder private func photo(_ meal: TodayMeal) -> some View {
+        if let image = meal.imageUrl, let url = URL(string: image) {
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 136)
+                .overlay {
+                    CachedAsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Palette.hairline }
+                }
+                .clipped()
+                .accessibilityHidden(true)
+        } else {
+            Palette.accentText.opacity(0.12).frame(height: 56).accessibilityHidden(true)
+        }
+    }
+}

@@ -113,8 +113,12 @@ class CookSession(private val clock: Clock) {
     /** Tapping a step makes it current. Only [done] ever advances or marks progress. */
     fun select(cook: CookState, step: Int): CookState = cook.copy(currentStep = step)
 
-    /** "Done — next step": the cook after it, and whether that was the last step left. */
-    data class Done(val cook: CookState, val finished: Boolean)
+    /**
+     * "Done — next step": the cook after it, and whether that was the last step left. Finishing
+     * the run stops its timers (#402), as starting a finished run afresh does: [stopped] are
+     * their steps, whose alarms and countdowns must go too.
+     */
+    data class Done(val cook: CookState, val finished: Boolean, val stopped: List<Int> = emptyList())
 
     fun done(cook: CookState, stepCount: Int): Done {
         val done = cook.doneSteps + cook.currentStep
@@ -124,7 +128,11 @@ class CookSession(private val clock: Clock) {
         return if (next != null) {
             Done(cook.copy(doneSteps = done, currentStep = next), finished = false)
         } else {
-            Done(cook.copy(doneSteps = done, active = false), finished = true)
+            // The timers saved on the cook go with the run, as well as the ones counting here.
+            val running = cook.timers.filterValues { it.running }.keys
+            val stopped = (stopTimers() + running).distinct().sorted()
+            val timers = cook.timers.mapValues { (_, timer) -> if (timer.running) timer.copy(running = false) else timer }
+            Done(cook.copy(doneSteps = done, active = false, timers = timers), finished = true, stopped = stopped)
         }
     }
 

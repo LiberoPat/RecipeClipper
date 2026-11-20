@@ -118,13 +118,16 @@ struct CookSession {
         return cook
     }
 
-    /// "Done — next step": the cook after it, and whether that was the last step left.
+    /// "Done — next step": the cook after it, and whether that was the last step left. Finishing
+    /// the run stops its timers (#402), as starting a finished run afresh does: `stopped` are
+    /// their steps, whose alerts and countdowns must go too.
     struct Done {
         let cook: CookState
         let finished: Bool
+        var stopped: [Int] = []
     }
 
-    func done(_ cook: CookState, stepCount count: Int) -> Done {
+    mutating func done(_ cook: CookState, stepCount count: Int) -> Done {
         var cook = cook
         cook.doneSteps.insert(cook.currentStep)
         // Next unfinished step after this one, else the earliest one skipped, else finished.
@@ -133,7 +136,11 @@ struct CookSession {
             ?? (0 ..< count).first { !done.contains($0) }
         guard let next else {
             cook.active = false
-            return Done(cook: cook, finished: true)
+            // The timers saved on the cook go with the run, as well as the ones counting here.
+            let running = cook.timers.filter(\.value.running).keys
+            let stopped = Set(stopTimers()).union(running).sorted()
+            for step in running { cook.timers[step]?.running = false }
+            return Done(cook: cook, finished: true, stopped: stopped)
         }
         cook.currentStep = next
         return Done(cook: cook, finished: false)

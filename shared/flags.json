@@ -107,6 +107,12 @@
       "description": "Reorder lists: a long press on a list's cover on the Lists screen lifts it to be dragged into place (and, for TalkBack or VoiceOver, Move earlier / Move later actions); the order is stored and used wherever lists are shown (Lists, the save-to-list sheet, Recipes) and carried by export and import. Off, lists are in the seeded-first order of before and cannot be moved.",
       "defaults": { "debug": true, "release": true },
       "issue": 381
+    },
+    {
+      "key": "homeTonight",
+      "description": "Home's Today card: when nothing is being cooked, today's earliest planned meal not yet cooked (in the meal types' order) with Start cooking, the rest of today's meals on a line under it; a recipe cooked today (a cooking entry dated today, or a finished run) drops off, and so does a meal whose window has passed (breakfast 11:00, lunch 15:00), and with nothing left there is no card. Off, Home always shows the most recent recipe under Continue cooking, as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 402
     }
   ]
 }
