@@ -14,6 +14,7 @@ import com.example.recipeclipper.data.model.RecipeLink
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.SavedRecipe
 import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
 
@@ -189,6 +190,9 @@ interface RecipeRepository {
 
     /** Titles and ingredients matching [query]; everything when [query] is blank. */
     fun observeHistory(query: String, filter: RecipeFilter = RecipeFilter.ALL): Flow<List<RecipeSummary>>
+
+    /** Every recipe's ingredient lines as stored, as they change (#378: "Uses what's in my pantry"). */
+    fun observeRecipeLines(): Flow<List<SavedRecipe>>
 
     /** How many recipes there are, and how many are in a list: the Recipes filter's counts (#345). */
     fun observeRecipeCounts(): Flow<RecipeCounts>

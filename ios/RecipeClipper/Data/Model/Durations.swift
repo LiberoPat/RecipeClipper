@@ -79,6 +79,53 @@ enum Durations {
         return text
     }
 
+    /// A part past ten million is no real time (and keeps the sums from overflowing). Android's `MAX_PART`.
+    private static let maxPart = 10_000_000
+
+    /// What `format` writes for a language with no tables: English's symbols, "1h 30m", "1h", "20m".
+    private static let englishShape = JRegex(#"^(?:(\d+)h(?: (\d+)m)?|(\d+)m)$"#)
+
+    /// How many minutes `raw` says, read the way `format` reads it (#378: "Under 30 min"), or nil
+    /// when it isn't a time the app can read: blank, a zero total ("PT0S", which `format` hides), a
+    /// range ("20 to 25 minutes"), a word ("Overnight") or a figure too large. Never a guess. Reads
+    /// ISO, a phrase in the recipe's words and what `format` writes back ("1h 30m", "1h 30min"). With
+    /// `words` nil (a language with no tables) only ISO and English's "1h 30m" are read. Android's
+    /// `Durations.minutes`, pinned by the corpus's `Mins` rows.
+    static func minutes(_ raw: String, words: LanguageWords? = .english) -> Int? {
+        let text = raw.kTrimmed
+        if text.kIsBlank { return nil }
+        // A part that is absent counts nothing; one past `maxPart` is no time at all.
+        func part(_ digits: String) -> Int? {
+            if digits.isEmpty { return 0 }
+            guard let n = Int(digits), n <= maxPart else { return nil }
+            return n
+        }
+        let total: Int?
+        if let match = isoDuration.find(text), (1...4).contains(where: { !match[$0].kIsBlank }) {
+            let seconds = Double(match[4]) ?? 0.0
+            if let days = part(match[1]), let hours = part(match[2]), let minutes = part(match[3]) {
+                total = days * 24 * 60 + hours * 60 + minutes + Int(kotlinRoundToInt(seconds / 60.0))
+            } else {
+                total = nil
+            }
+        } else if let words {
+            let d = words.compiled(Patterns.self, Patterns.init)
+            if let match = d.phrase.matchEntire(text), let hours = part(match[1]),
+               let minutes = part(match[2].isEmpty ? match[3] : match[2]) {
+                total = hours * 60 + minutes
+            } else {
+                total = nil
+            }
+        } else if let match = englishShape.matchEntire(text), let hours = part(match[1]),
+                  let minutes = part(match[2].isEmpty ? match[3] : match[2]) {
+            total = hours * 60 + minutes
+        } else {
+            total = nil
+        }
+        guard let total, total >= 1, total <= Int(Int32.max) else { return nil }
+        return total
+    }
+
     /// "1h 30m", "1h" or "20m"; nil for a zero total; `asWritten` for a total that
     /// overflowed to a negative number.
     private static func renderMinutes(_ totalMinutes: Int32, asWritten: String, _ d: Patterns) -> String? {

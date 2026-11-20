@@ -166,6 +166,16 @@ final class FakeRecipeRepository: RecipeRepository {
         }.eraseToAnyPublisher()
     }
 
+    /// What `observeRecipeLines` emits (#378): every recipe's ingredient lines, pushed by the test.
+    let recipeLines = CurrentValueSubject<[SavedRecipe], Never>([])
+    /// How many times `observeRecipeLines` was subscribed to, to show it is read only while the pantry chip is on.
+    private(set) var recipeLinesSubscriptions = 0
+
+    func observeRecipeLines() -> AnyPublisher<[SavedRecipe], Never> {
+        recipeLines.handleEvents(receiveSubscription: { [weak self] _ in self?.recipeLinesSubscriptions += 1 })
+            .eraseToAnyPublisher()
+    }
+
     /// Counted from what `history` holds (#345).
     func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never> {
         history.map {

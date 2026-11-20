@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.PantryCoverage
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.common.RecipeThumbnail
 import com.example.recipeclipper.ui.recipe.sourceCreditText
@@ -36,7 +37,9 @@ internal fun LibraryRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     /** One cookbook (#345): an outlined bookmark on a recipe in no list, opening the save-to-list sheet. */
-    onSaveToList: (() -> Unit)? = null
+    onSaveToList: (() -> Unit)? = null,
+    /** With the pantry chip on (#378): how many of its ingredients the pantry has, "You have 6 of 8". */
+    pantry: PantryCoverage? = null
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -58,6 +61,7 @@ internal fun LibraryRow(
                     ?: if (recipe.isFromChat) stringResource(R.string.recipes_view_chat) else null,
                 recipe.totalTime
             )
+            if (pantry != null) PantryLine(pantry, Modifier.testTag("pantryHave-${recipe.id}"))
         }
         if (recipe.isSaved) {
             Icon(

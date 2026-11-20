@@ -80,7 +80,10 @@ extension RecipeSummaryRecord {
             isClipped: isClipped,
             lastCookedDay: lastCookedDay,
             sourceUrl: sourceUrl,
-            isFromChat: isFromChat
+            isFromChat: isFromChat,
+            prepTime: prepTime,
+            cookTime: cookTime,
+            language: language
         )
     }
 }

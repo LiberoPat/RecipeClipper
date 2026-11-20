@@ -79,6 +79,7 @@ class DatabaseErrorTest {
         override fun observeHistory(): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int, chat: Int): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override fun observeLibraryCounts(): Flow<LibraryCountsRow> = flow { throw throwable() }
+        override fun observeRecipeLines(): Flow<List<SavedRecipeRow>> = flow { throw throwable() }
         override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override suspend fun cullHistory(keep: Int, today: Long) = throw throwable()
         override suspend fun oldestCullable(today: Long): Long? = throw throwable()
@@ -178,6 +179,14 @@ class DatabaseErrorTest {
         assertEquals(listOf(emptyList<Any>()), repository.observeHistory("").toList())
         assertEquals(listOf(emptyList<Any>()), repository.observeRecent(5).toList())
         assertEquals(listOf("observeHistory failed", "observeRecent failed"), log.messages)
+    }
+
+    @Test fun `failing lines for the pantry chip emit an empty list and complete (#378)`() = runTest {
+        val log = RecordingLog()
+        val repository = recipes(ParseResult.Error(ParseError.NoRecipeFound), log)
+
+        assertEquals(listOf(emptyList<Any>()), repository.observeRecipeLines().toList())
+        assertEquals(listOf("observeRecipeLines failed"), log.messages)
     }
 
     @Test fun `a failing recipe query emits null and completes`() = runTest {

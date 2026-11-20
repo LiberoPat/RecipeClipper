@@ -308,7 +308,7 @@ final class AppContainer {
         RecipesViewModel(
             repository: recipeRepository, preferences: preferences, library: libraryPolicy,
             cookedSort: cookedPhotoRepository != nil, countdowns: timerCountdowns,
-            view: view, lists: listRepository, pasted: pastedTextRouter
+            view: view, lists: listRepository, pasted: pastedTextRouter, pantry: pantryRepository
         )
     }
 

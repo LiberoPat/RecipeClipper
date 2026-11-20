@@ -119,7 +119,11 @@ data class RecipeSummary(
     /** Its link, for the site credited under the title (#286); `manual:` for a typed one. */
     val sourceUrl: String = "",
     /** Read from a chat's JSON (#355, origin CHAT): the row says "From a chat". */
-    val isFromChat: Boolean = false
+    val isFromChat: Boolean = false,
+    /** The prep and cook times as stored, and the language they were written in: what "Under 30 min" reads (#378). */
+    val prepTime: String? = null,
+    val cookTime: String? = null,
+    val language: String? = null
 ) {
     /** The site, as the reading view credits it; null for a typed or scanned recipe. */
     val sourceDomain: String?
@@ -138,6 +142,18 @@ enum class RecipeSort {
 
     companion object {
         fun fromStoredName(name: String?): RecipeSort = entries.firstOrNull { it.name == name } ?: RECENTLY_VIEWED
+    }
+}
+
+/**
+ * How the Recipes screen lays its recipes out (#380): [ROWS] (the tidy list) or a photo [GRID].
+ * Remembered in `AppPreferences` as `recipes_layout`, by name; an unknown stored name reads as [ROWS].
+ */
+enum class RecipesLayout {
+    ROWS, GRID;
+
+    companion object {
+        fun fromStoredName(name: String?): RecipesLayout = entries.firstOrNull { it.name == name } ?: ROWS
     }
 }
 

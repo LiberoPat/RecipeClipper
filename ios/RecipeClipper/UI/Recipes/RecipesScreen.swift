@@ -19,6 +19,10 @@ struct RecipesScreen: View {
     var onOpenView: (RecipeFilter) -> Void = { _ in }
     /// The strip's Lists card (#371): the Lists screen, Back to here.
     var onOpenLists: () -> Void = {}
+    /// Quick filter chips under search (#378).
+    var quickFilters = false
+    /// The rows / photo grid toggle (#380); off, Recipes is the rows whatever was stored.
+    var gridEnabled = false
 
     @State private var scanSource: ScanSource?
     @State private var saveSheetOpen = false
@@ -32,80 +36,7 @@ struct RecipesScreen: View {
 
     var body: some View {
         let state = vm.uiState
-        List {
-            Group {
-                VStack(alignment: .leading, spacing: 12) {
-                    ScreenTitle(state.view.map(RecipeFilterPills.name) ?? Strings.recipesTitle, style: Typography.headlineSmall)
-                    if let view = state.view { ViewNote(view: view) }
-                    SearchField(query: state.query, onQueryChange: vm.onQueryChange)
-                }
-                .padding(.bottom, vm.showsSortLine || state.showsFilter || (oneCookbook && state.showsViewsStrip) ? 0 : 12)
-                .listRowSeparator(.hidden)
-
-                if oneCookbook {
-                    // One cookbook (#345): the views, then the lists, in place of the pills.
-                    if state.showsViewsStrip {
-                        RecipesViewsStrip(
-                            counts: state.counts, listCount: state.lists.count, onOpenView: onOpenView,
-                            onOpenLists: onOpenLists
-                        )
-                        .listRowSeparator(.hidden)
-                    }
-                } else if state.showsFilter {
-                    RecipeFilterPills(selected: state.filter, counts: state.counts, onSelect: vm.onFilterChange)
-                        .listRowSeparator(.hidden)
-                }
-
-                if vm.showsSortLine {
-                    sortLine(state)
-                        .listRowSeparator(.hidden)
-                }
-
-                if vm.showsCullNote, let keep = vm.cullKeep {
-                    CullNote(keep: keep)
-                        .padding(.vertical, 8)
-                        .listRowSeparator(.hidden)
-                }
-
-                if let recipes = state.recipes, recipes.isEmpty {
-                    Text(emptyMessage(state))
-                        .textStyle(Typography.bodyLarge)
-                        .foregroundStyle(Palette.muted)
-                        .listRowSeparator(.hidden)
-                }
-
-                ForEach(state.recipes ?? []) { recipe in
-                    // The hairline above each row is drawn, not a list separator: adjacent
-                    // rows share one separator, so hiding a row's bottom edge also hid the
-                    // next row's top and no line showed at all.
-                    VStack(spacing: 0) {
-                        Hairline()
-                        LibraryRow(
-                            recipe: recipe, onClick: { onOpenRecipe(recipe.id) },
-                            onSaveToList: oneCookbook && saveVM != nil ? {
-                                saveVM?.setRecipe(recipe.id, title: recipe.title)
-                                saveSheetOpen = true
-                            } : nil
-                        )
-                    }
-                        .listRowSeparator(.hidden)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) { vm.onDelete(recipe) } label: {
-                                Label(Strings.delete, systemImage: "trash")
-                            }
-                            .tint(Palette.error)
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                            Button(role: .destructive) { vm.onDelete(recipe) } label: {
-                                Label(Strings.delete, systemImage: "trash")
-                            }
-                            .tint(Palette.error)
-                        }
-                }
-            }
-            .listRowInsets(EdgeInsets(top: 0, leading: sideInset, bottom: 0, trailing: sideInset))
-            .listRowBackground(Palette.background)
-        }
+        container(state)
         .listStyle(.plain)
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
             sideInset = ReadableWidth.inset(in: width)
@@ -184,9 +115,134 @@ struct RecipesScreen: View {
         }
     }
 
+    /// The recipes: the tidy rows, or (#380) a photo grid, under the same header.
+    @ViewBuilder
+    private func container(_ state: RecipesUiState) -> some View {
+        let pantryChip = state.quick.contains(.usesPantry)
+        if gridEnabled && state.layout == .grid {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    headerItems(state)
+                    // Two columns on a phone, more as the width allows.
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 150), spacing: 14, alignment: .top)],
+                        alignment: .leading, spacing: 16
+                    ) {
+                        ForEach(state.recipes ?? []) { recipe in
+                            LibraryGridCell(
+                                recipe: recipe, onClick: { onOpenRecipe(recipe.id) },
+                                onSaveToList: saveAction(for: recipe),
+                                pantry: pantryChip ? state.coverage[recipe.id] : nil
+                            )
+                        }
+                    }
+                    .padding(.bottom, 32)
+                    .accessibilityIdentifier("recipes.grid")
+                }
+                .padding(.horizontal, sideInset)
+            }
+        } else {
+            List {
+                Group {
+                    headerItems(state)
+
+                    ForEach(state.recipes ?? []) { recipe in
+                        // The hairline above each row is drawn, not a list separator: adjacent
+                        // rows share one separator, so hiding a row's bottom edge also hid the
+                        // next row's top and no line showed at all.
+                        VStack(spacing: 0) {
+                            Hairline()
+                            LibraryRow(
+                                recipe: recipe, onClick: { onOpenRecipe(recipe.id) },
+                                onSaveToList: saveAction(for: recipe),
+                                pantry: pantryChip ? state.coverage[recipe.id] : nil
+                            )
+                        }
+                            .listRowSeparator(.hidden)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) { vm.onDelete(recipe) } label: {
+                                    Label(Strings.delete, systemImage: "trash")
+                                }
+                                .tint(Palette.error)
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button(role: .destructive) { vm.onDelete(recipe) } label: {
+                                    Label(Strings.delete, systemImage: "trash")
+                                }
+                                .tint(Palette.error)
+                            }
+                    }
+                }
+                .listRowInsets(EdgeInsets(top: 0, leading: sideInset, bottom: 0, trailing: sideInset))
+                .listRowBackground(Palette.background)
+            }
+        }
+    }
+
+    /// Everything above the recipes: the title, search, the quick filter chips (#378), the views
+    /// strip or the old pills, the line with the count, the layout toggle (#380) and the sort, and
+    /// what an empty list says. A few rows of the list, or the head of the grid's page.
+    @ViewBuilder
+    private func headerItems(_ state: RecipesUiState) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ScreenTitle(state.view.map(RecipeFilterPills.name) ?? Strings.recipesTitle, style: Typography.headlineSmall)
+            if let view = state.view { ViewNote(view: view) }
+            SearchField(query: state.query, onQueryChange: vm.onQueryChange)
+        }
+        .padding(.bottom, vm.showsSortLine || state.showsFilter || (oneCookbook && state.showsViewsStrip) ? 0 : 12)
+        .listRowSeparator(.hidden)
+
+        if oneCookbook {
+            // One cookbook (#345): the views, then the lists, in place of the pills.
+            if state.showsViewsStrip {
+                RecipesViewsStrip(
+                    counts: state.counts, listCount: state.lists.count, onOpenView: onOpenView,
+                    onOpenLists: onOpenLists
+                )
+                .listRowSeparator(.hidden)
+            }
+        } else if state.showsFilter {
+            RecipeFilterPills(selected: state.filter, counts: state.counts, onSelect: vm.onFilterChange)
+                .listRowSeparator(.hidden)
+        }
+
+        if quickFilters && state.showsFilter {
+            QuickFilterChips(offered: state.quickFilters, on: state.quick, onToggle: vm.onQuickFilterToggle)
+                .listRowSeparator(.hidden)
+        }
+
+        if vm.showsSortLine {
+            sortLine(state)
+                .listRowSeparator(.hidden)
+        }
+
+        if vm.showsCullNote, let keep = vm.cullKeep {
+            CullNote(keep: keep)
+                .padding(.vertical, 8)
+                .listRowSeparator(.hidden)
+        }
+
+        if let recipes = state.recipes, recipes.isEmpty {
+            Text(emptyMessage(state))
+                .textStyle(Typography.bodyLarge)
+                .foregroundStyle(Palette.muted)
+                .listRowSeparator(.hidden)
+        }
+    }
+
+    /// The bookmark's action: the save-to-list sheet for `recipe` (#345), when there is one.
+    private func saveAction(for recipe: RecipeSummary) -> (() -> Void)? {
+        guard oneCookbook, let saveVM else { return nil }
+        return {
+            saveVM.setRecipe(recipe.id, title: recipe.title)
+            saveSheetOpen = true
+        }
+    }
+
     /// What an empty list says: the search's, else the filter's (while there is a library to
     /// filter), else the empty library's.
     private func emptyMessage(_ state: RecipesUiState) -> String {
+        if !state.quick.isEmpty { return Strings.recipesNoResultsFilters }
         if !state.query.trimmingCharacters(in: .whitespaces).isEmpty { return Strings.recipesNoResults(state.query) }
         guard state.showsFilter || state.view != nil else { return Strings.recipesEmpty }
         return switch state.filter {
@@ -216,6 +272,7 @@ struct RecipesScreen: View {
             .textStyle(Typography.bodySmall)
             .foregroundStyle(Palette.muted)
             .frame(maxWidth: .infinity, alignment: .leading)
+            if gridEnabled { layoutToggle(state.layout) }
             // An exclusive choice, so radio glyphs rather than a bare checkmark.
             Menu {
                 sortButton(.recentlyViewed, Strings.sortRecentlyViewed, current: state.sort)
@@ -241,6 +298,22 @@ struct RecipesScreen: View {
             .accessibilityValue(sortName(state.sort))
             .accessibilityIdentifier("recipes.sort")
         }
+    }
+
+    /// The rows / photo grid toggle beside the sort (#380): one button showing the layout it switches to.
+    private func layoutToggle(_ layout: RecipesLayout) -> some View {
+        let toGrid = layout == .rows
+        return Button { vm.onLayoutChange(toGrid ? .grid : .rows) } label: {
+            Image(systemName: toGrid ? "square.grid.2x2" : "list.bullet")
+                .foregroundStyle(Palette.muted)
+                .imageScale(.small)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(toGrid ? Strings.layoutToGrid : Strings.layoutToRows)
+        .accessibilityIdentifier("recipes.layout")
     }
 
     private func sortName(_ sort: RecipeSort) -> String {

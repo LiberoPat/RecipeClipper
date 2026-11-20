@@ -116,6 +116,10 @@ struct RecipeSummary: Equatable, Identifiable {
     var sourceUrl: String = ""
     /// Read from a chat's JSON (#355, origin CHAT): the row says "From a chat".
     var isFromChat: Bool = false
+    /// The prep and cook times as stored, and the language they were written in: what "Under 30 min" reads (#378).
+    var prepTime: String? = nil
+    var cookTime: String? = nil
+    var language: String? = nil
 
     /// The site, as the reading view credits it; nil for a typed or scanned recipe.
     var sourceDomain: String? { ManualRecipe.isManual(sourceUrl) ? nil : SourceDomain.of(sourceUrl) }
@@ -135,6 +139,17 @@ enum RecipeSort: String, CaseIterable {
 
     init(storedName: String?) {
         self = storedName.flatMap(RecipeSort.init(rawValue:)) ?? .recentlyViewed
+    }
+}
+
+/// How the Recipes screen lays its recipes out (#380): `.rows` (the tidy list) or a photo `.grid`.
+/// Remembered in `AppPreferences` as `recipes_layout` by its Android name; an unknown stored name
+/// reads as `.rows`. Android's `RecipesLayout`.
+enum RecipesLayout: String, CaseIterable {
+    case rows = "ROWS", grid = "GRID"
+
+    init(storedName: String?) {
+        self = storedName.flatMap(RecipesLayout.init(rawValue:)) ?? .rows
     }
 }
 

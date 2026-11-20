@@ -42,6 +42,10 @@ enum Flag: String, CaseIterable {
     case recipeVersions
     /// Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients.
     case shopForWeek
+    /// Recipes' quick filter chips under search (#378): Under 30 min, Not cooked yet, Uses what's in my pantry.
+    case recipeFilters
+    /// A toggle on Recipes between the rows and a photo grid (#380).
+    case recipesGrid
 }
 
 /// One flag as `shared/flags.json` declares it.

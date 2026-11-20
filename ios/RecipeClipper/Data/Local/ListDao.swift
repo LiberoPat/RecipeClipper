@@ -33,7 +33,8 @@ struct ListDao {
             """
             SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
                    r.contentOrigin = 'CLIPPED' AS isClipped, NULL AS lastCookedDay, r.sourceUrl,
-                   r.contentOrigin = 'CHAT' AS isFromChat
+                   r.contentOrigin = 'CHAT' AS isFromChat,
+                   NULL AS prepTime, NULL AS cookTime, NULL AS language
             FROM recipes r
             JOIN recipe_list_cross_ref c ON c.recipeId = r.id
             WHERE c.listId = ?

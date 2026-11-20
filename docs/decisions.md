@@ -3118,6 +3118,114 @@ off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, 
 - Unchanged and still true: the migration count (none: counts, views and the cap are queries), the
   `freeTier` flag's default (off until the store products exist), the unlock's seams and cached state.
 
+## Recipes: search filters and a photo grid (#378, #380, 2026-11-19)
+
+The owner asked for both on 2026-11-19 ("Do 1-8" of the common UX flows list). Two flags, on by
+default in debug and release, on both platforms: `recipeFilters` (#378) and `recipesGrid` (#380).
+Off, Recipes is exactly the screen of "One cookbook" above.
+
+**Quick filter chips (#378).** Under the search field, three plain text pills (the old filter
+pills' look, ink-filled when on): **Under 30 min**, **Not cooked yet**, **Uses what's in my
+pantry**. They sit between search and the views strip, on Recipes and on each view's screen (a
+view is the same screen; **Not cooked yet is not offered inside the Cooked view**, where it could
+only empty the list). They are on/off switches, not a radio group (a checkbox for TalkBack, the selected
+trait for VoiceOver when on), and they **combine with each other (AND), with the search text and
+with the sort**: the search is still the one SQL query (`instr(lower(...))`, never `LIKE`, the
+`%` rule untouched), the chips narrow what it answers, then the sort orders what is left. Like the
+views they are questions about stored data, never filing; they are **not remembered** (Recipes
+opens with none on, as the old pills opened on All) and live in the ViewModel, so they survive
+rotation. The count line says what is shown ("2 recipes"); the line, the chips and the toggle stay
+when a chip leaves nothing, and the empty line says "No recipes match these filters." (it wins over
+the search's own).
+
+- **Done in the ViewModel over the observed list, not in the SQL** (owner's "SQL where cheap"):
+  the three rules read stored text (times) or another table's names (the pantry), which SQL can't
+  do; the one that could be SQL, Not cooked yet, reads `lastCookedDay == null`, the column the row
+  already carries: `NOT EXISTS` over `cooked_photos` is exactly `MAX(day) IS NULL`, the Cooked
+  view's `EXISTS` turned round (`RecipeQuickFiltersDaoTest` proves the two partition the library).
+  So no `observeHistory` signature, query parameter or migration changed. The summary rows gained
+  `prepTime`, `cookTime` and `language` (a query change only).
+- **Under 30 min** (`RecipeQuickFilters.minutes`, `:core`; Swift port; corpus rows `Mins` and
+  `Quick`): the recipe's **total time if it has one, else prep plus cook, and only when both are
+  present and readable**. Readable is `Durations.minutes`: ISO, a phrase in the recipe's own words
+  and what the app stores back ("1h 30m", "1h 30min", "1時間 30分"), read with the **recipe's**
+  language's tables (a recipe with no stored language, from before #14, as English; a language with
+  no tables, ISO and English's "1h 30m" alone). Anything else is **never matched, never guessed**:
+  "Overnight", "20 to 25 minutes", "1-2 hours", a zero ("PT0S" is absent anyway), a figure past ten
+  million, a time in another language's words. A total that is present but unreadable does **not**
+  fall back to prep plus cook (the site said a total; if we can't read it we don't pretend we can).
+  **Strictly under**: 30 min is not "under 30 min" (owner may prefer "30 or less": change
+  `QUICK_MINUTES`' comparison in one place, `underThirty`, and the label). Prep plus cook is a
+  floor (resting time isn't in it), which is why a stated total always wins.
+- **Not cooked yet**: no cooking entry, a photo of it (#116) or "Mark as cooked" (#173): the
+  Cooked view's definition, reused (`RecipeSummary.lastCookedDay`, itself `MAX(cooked_photos.day)`).
+- **Uses what's in my pantry** (`RecipeQuickFilters.coverage`; corpus rows `Cover`): the chosen
+  rule is **at least half of the recipe's nameable ingredient lines are Have**. Nameable lines are
+  what Use it up and What I need already read: blank lines and headings ("For the sauce:") dropped
+  (`GrocerySources.buyable`), then each line's `IngredientName.of` in the **recipe's language**
+  (stored, else detected, as What I need's); a line the app can't name ("salt and pepper to
+  taste") is not counted either way. Have is `PantryMatch` and nothing else: the name matched
+  against a pantry item **in the same language**, **in stock or a staple (`alwaysHave`) counts as
+  had**, an item out of stock is Buy, "rice flour" is never "flour", "butter beans" never "butter",
+  and the **quantity is never compared** (a pinch of flour covers a kilo): the chip answers "do you
+  have these things", never "enough". `PantryCoverage.matches` is `total > 0 && have * 2 >= total`
+  (half rounds in the cook's favour: 1 of 2, 2 of 3, 2 of 4), so a recipe with nothing nameable
+  never matches, nor one in a language with no tables.
+  - **Why half and not all.** "All of it" would match almost nothing (nobody has every line); "any
+    one" would match nearly everything (everyone has salt or eggs). Half is the plainest middle the
+    cook can check by eye. The rule is **not a hidden verdict**: with the chip on, **each row it
+    keeps says "You have 6 of 8"** (`recipes_pantry_have`, under the site and time; a paprika line,
+    like Use it up's) and one muted line under the chips says "Shows recipes where at least half of
+    the ingredients are in your pantry, by name, not by amount." Both count the nameable lines, so
+    a recipe of ten lines with two unnameable says "of 8". No model decisions (#104): a name match
+    or nothing, so nothing here can be a confident wrong answer the cook can't see.
+  - **Cost.** Every recipe's lines are read (`observeRecipeLines`: id, title, language and
+    ingredients, one query) **only while the chip is on**, matched with the pantry **off the main
+    thread** (an injected dispatcher on Android, `Task.detached` on iOS) **once per change of the
+    pantry or of a recipe's lines**: a tick or a cook step rewrites a recipe without changing a
+    line and matches nothing again (the same rule as Use it up, #332). While the answer is on its
+    way the list is "loading" (null), never a wrong "no recipes". The chip follows the pantry live.
+  - Ingredient lines are read **as stored** (not scaled or converted): only names matter.
+
+**Grid or rows (#380).** A button **beside the sort** on the line under search (the count stays on
+the left), showing the layout it switches to (the grid's glyph over the rows, the rows' over the
+grid; named "Show as a grid" / "Show as a list" for the screen reader). The grid is the same screen:
+the same header (back, title, search, chips, strip, count, sort), then **square photo tiles**, a
+**title (two lines) under each, then the site and total time as a row has them**, and with the
+pantry chip on, "You have 6 of 8". **Two columns on a phone, more as the width allows** (Android
+`GridCells.Adaptive(140.dp)`, iOS `GridItem(.adaptive(minimum: 150))`: two at 320dp of content, three
+and four on a tablet or in landscape). A recipe with no photo has the blank tile rows have (the same
+hairline-coloured square); PR #404's designed image for it had not landed, and will want the grid's
+placeholder swapped for it (one place per platform: `LibraryGridCell`).
+- **The bookmark is kept as the save control**, on the photo's corner on a round ground-coloured
+  disc (so it reads on any picture): filled for a recipe in a list (the accessibility label "Saved
+  to a list"), outlined and tappable for one in none (opens the save-to-list sheet, `oneCookbook`),
+  with the 48dp / 44pt target of a row's.
+- **No swipe to delete in the grid**: a grid has no row to swipe. Deleting stays one tap away (the
+  recipe's own screen, its overflow menu) and the rows' swipe is untouched; the multi-select and
+  long-press menu (#376, #377) is where the grid will get it.
+- **Stored as a setting**: key **`recipes_layout`** in `unit_preferences` / `UserDefaults`, the enum
+  by name (`ROWS`, `GRID`), **an unknown or absent name reads as `ROWS`**. A view preference like
+  `recipe_sort`: not in the export file, not in Settings. It applies at once (the ViewModel writes
+  it and updates its state without waiting for the preference's echo) and `settings` keeps every
+  open Recipes screen in step. **With `recipesGrid` off the rows show whatever is stored**, and
+  nothing is lost: turning it back on restores the choice.
+- **Keys and scroll**: grid items are keyed `recipe-<id>` (Android; the header, note and empty line
+  have their own keys, unique across the whole grid, as the LazyColumn rule says); iOS's
+  `ForEach` ids are the recipe ids inside one `LazyVGrid`. Rows keep their keys.
+
+**Tests.** `:core` `RecipeQuickFiltersTest` (minutes, under 30, coverage, combining); the corpus's
+`Mins`, `Quick` and `Cover` rows (Swift generated from the Kotlin); Android `RecipeQuickFiltersDaoTest`
+(real SQLite: times and language in the rows, Not cooked as the Cooked view's complement, the
+`%` search under a chip, the lines query), `RecipesQuickFiltersViewModelTest` (combining with the
+sort, search and each other; the pantry read only while on, matched once per change, nothing shown
+while pending; the layout), `RecipesFiltersGridScreenTest` (the chips, the "You have" lines, the
+note, the empty line, the grid, the toggle, the bookmark), `SharedPrefsAppPreferencesTest`,
+`DatabaseErrorTest`; iOS `RecipesQuickFiltersViewModelTests`, `PreferencesAndSourceTests`,
+`DifferentialCorpusTests`, and `RecipesFiltersGridUITests`. Strings `recipes_quick_*`,
+`recipes_pantry_have`, `recipes_no_results_filters`, `cd_layout_to_*` in all six languages, drafts
+(`docs/translations.md`).
+
 ## A recipe picked from the page's text (#103)
 
 Part of #99. When a page loads but JSON-LD and microdata find no recipe (`NoRecipeFound`,
@@ -5648,7 +5756,8 @@ is hosted by Help's page, so its visit is that page's; the index hosts none.
 **Keys** (the SharedPreferences file `unit_preferences`, and `UserDefaults` on iOS,
 the same on both): `unit_system`, `convert_liquids`, `temperature_unit`,
 `dark_while_cooking`, `expiry_reminders`, `chef_mode`, `amounts_in_steps`,
-`recipe_sort` (the Recipes screen's sort), the tour's `tour_sample_added` (#151) and
+`recipe_sort` (the Recipes screen's sort), `recipes_layout` (its rows or photo grid, #380: `ROWS` or
+`GRID`, an unknown name reads as `ROWS`), the tour's `tour_sample_added` (#151) and
 `tooltip_<id>` (#190; #151's `tour_welcome` and `tour_tip_*` are ignored), and `pantry_use_up` (#147: recipe id to when
 its sheet was settled, pruned to 12 h on each write), each enum stored by name, an
 unknown one read as the default. `AppPreferences.settings` (a Flow over the change

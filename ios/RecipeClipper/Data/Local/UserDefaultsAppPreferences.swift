@@ -14,6 +14,7 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let chefMode = "chef_mode"
         static let amountsInSteps = "amounts_in_steps"
         static let recipeSort = "recipe_sort"
+        static let recipesLayout = "recipes_layout"
     }
 
     private let defaults: UserDefaults
@@ -61,6 +62,11 @@ final class UserDefaultsAppPreferences: AppPreferences {
     var recipeSort: RecipeSort {
         get { RecipeSort(storedName: defaults.string(forKey: Key.recipeSort)) }
         set { defaults.set(newValue.rawValue, forKey: Key.recipeSort) }
+    }
+
+    var recipesLayout: RecipesLayout {
+        get { RecipesLayout(storedName: defaults.string(forKey: Key.recipesLayout)) }
+        set { defaults.set(newValue.rawValue, forKey: Key.recipesLayout) }
     }
 
     /// Over `UserDefaults.didChangeNotification` (Android: the SharedPreferences change

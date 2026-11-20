@@ -203,7 +203,10 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   Lists screen, Back to Recipes), then the automatic views (Not in a list, Cooked, Typed by
   you, From a chat; each its own screen), in place of V1's All / In a list / Not in a list pills
   (those stay with `oneCookbook` off). Views are questions about stored data, never filing.
-  Recently viewed is a sort, not a place.
+  Recently viewed is a sort, not a place. Under search, chips that combine with the search and the
+  sort (#378: Under 30 min, Not cooked yet, Uses what's in my pantry: half the nameable lines Have,
+  by name, each row saying "You have 6 of 8"), and a rows / photo-grid toggle beside the sort
+  (`recipes_layout`, #380).
 - **Home** (#286): "Continue cooking" (the most recent) as a resume card;
   Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles, then a full-width Ask an AI tile (#351); one Recipes
   row with its count (a Lists row too only with `oneCookbook` off); the

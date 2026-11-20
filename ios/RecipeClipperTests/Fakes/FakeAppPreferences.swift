@@ -15,7 +15,8 @@ final class FakeAppPreferences: AppPreferences {
         expiryReminders: Bool = false,
         chefMode: Bool = false,
         amountsInSteps: Bool = false,
-        recipeSort: RecipeSort = .recentlyViewed
+        recipeSort: RecipeSort = .recentlyViewed,
+        recipesLayout: RecipesLayout = .rows
     ) {
         subject = CurrentValueSubject(AppSettings(
             unitSystem: unitSystem,
@@ -25,7 +26,8 @@ final class FakeAppPreferences: AppPreferences {
             expiryReminders: expiryReminders,
             chefMode: chefMode,
             amountsInSteps: amountsInSteps,
-            recipeSort: recipeSort
+            recipeSort: recipeSort,
+            recipesLayout: recipesLayout
         ))
     }
 
@@ -37,6 +39,11 @@ final class FakeAppPreferences: AppPreferences {
     var recipeSort: RecipeSort {
         get { subject.value.recipeSort }
         set { subject.value.recipeSort = newValue }
+    }
+
+    var recipesLayout: RecipesLayout {
+        get { subject.value.recipesLayout }
+        set { subject.value.recipesLayout = newValue }
     }
 
     var settings: AnyPublisher<AppSettings, Never> {

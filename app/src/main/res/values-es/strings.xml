@@ -134,6 +134,14 @@
         <item quantity="other">%1$d recetas</item>
     </plurals>
     <string name="cd_sort">Ordenar</string>
+    <string name="recipes_quick_under_30">Menos de 30 min</string>
+    <string name="recipes_quick_not_cooked">Aún sin cocinar</string>
+    <string name="recipes_quick_pantry">Con lo que hay en mi despensa</string>
+    <string name="recipes_quick_pantry_note">Muestra las recetas de las que tienes en la despensa al menos la mitad de los ingredientes, por nombre, no por cantidad.</string>
+    <string name="recipes_pantry_have">Tienes %1$d de %2$d</string>
+    <string name="recipes_no_results_filters">Ninguna receta coincide con estos filtros.</string>
+    <string name="cd_layout_to_grid">Ver como cuadrícula</string>
+    <string name="cd_layout_to_rows">Ver como lista</string>
     <string name="tag_saved">Guardada</string>
     <string name="time_just_now">Ahora mismo</string>
     <string name="time_yesterday">Ayer</string>
