@@ -114,6 +114,15 @@ class MealPlanMealsTest {
         assertNull(MealType.idForMeal("Lunch", emptyList()))
     }
 
+    @Test fun `the ticked meals are the picked ones that still exist, else Dinner, and none when all are unticked`() {
+        assertEquals(setOf("dinner"), MealType.chosenKeys(types, null))
+        assertEquals(setOf("lunch", "u-5"), MealType.chosenKeys(types, listOf("u-5", "lunch", "gone")))
+        assertEquals(setOf("dinner"), MealType.chosenKeys(types, listOf("gone")))
+        assertEquals(emptySet<String>(), MealType.chosenKeys(types, emptySet()))
+        assertEquals(setOf("breakfast"), MealType.chosenKeys(listOf(types[0]), null)) // no Dinner: the first
+        assertEquals(emptySet<String>(), MealType.chosenKeys(emptyList(), null))
+    }
+
     @Test fun `a type is named by its builtInKey, else its uid, never its name`() {
         assertEquals("dinner", types[2].key)
         assertEquals("u-5", types[4].key)

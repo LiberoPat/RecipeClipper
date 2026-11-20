@@ -32,10 +32,12 @@ data class MealType(
 
         /**
          * The keys ([MealType.key]) of the types ticked in "Plan my week" (#392): [picked] (what the cook
-         * chose, or last time's choice) kept to the types that still exist; with none left, Dinner's
-         * (else the first type's). Empty only when there are no types.
+         * chose, or last time's choice) kept to the types that still exist. With nothing picked yet
+         * (null), or every picked type gone, it is Dinner's (else the first type's); an empty
+         * [picked] is the cook having unticked everything, and stays empty.
          */
         fun chosenKeys(types: List<MealType>, picked: Collection<String>?): Set<String> {
+            if (picked != null && picked.isEmpty()) return emptySet()
             val kept = types.map { it.key }.filter { it.isNotEmpty() && picked?.contains(it) == true }.toSet()
             if (kept.isNotEmpty()) return kept
             val default = types.firstOrNull { it.builtInKey == DINNER } ?: types.firstOrNull()
