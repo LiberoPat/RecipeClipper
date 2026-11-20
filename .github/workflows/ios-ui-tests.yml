@@ -21,7 +21,8 @@ jobs:
   ios-ui:
     name: iOS UI tests
     runs-on: xcode-27
-    timeout-minutes: 120
+    # The full suite passed 2 h with batch 1's new tests (#416); 3 h leaves room to grow.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v7
 
