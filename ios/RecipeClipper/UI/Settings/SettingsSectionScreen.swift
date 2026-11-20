@@ -15,6 +15,7 @@ struct SettingsSectionScreen: View {
     var onShowTips: () -> Void = {}
     @State private var importing = false
     @State private var importingPaprika = false
+    @State private var importingRecipeKeeper = false
 
     var body: some View {
         let page = ScrollView {
@@ -40,6 +41,13 @@ struct SettingsSectionScreen: View {
         .fileImporter(isPresented: $importingPaprika, allowedContentTypes: [.item]) { result in
             switch result {
             case .success(let url): vm.onPaprikaPicked(url)
+            case .failure: vm.onImportPickFailed()
+            }
+        }
+        // Import from Recipe Keeper (#390): its export is a plain .zip, but any file may be picked.
+        .fileImporter(isPresented: $importingRecipeKeeper, allowedContentTypes: [.item]) { result in
+            switch result {
+            case .success(let url): vm.onRecipeKeeperPicked(url)
             case .failure: vm.onImportPickFailed()
             }
         }
@@ -179,7 +187,18 @@ private extension SettingsSectionScreen {
                 enabled: !state.backup.isBusy
             ) { importingPaprika = true }
             .accessibilityIdentifier("settings.importPaprika")
-            // What the import does with Paprika's categories (#387); on unless the cook turns it off.
+        }
+        // Recipe Keeper's, beside it (#390): behind the recipeKeeperImport flag.
+        if vm.showsRecipeKeeperImport {
+            ActionRow(
+                title: Strings.recipeKeeperImportTitle,
+                description: Strings.recipeKeeperImportDescription,
+                enabled: !state.backup.isBusy
+            ) { importingRecipeKeeper = true }
+            .accessibilityIdentifier("settings.importRecipeKeeper")
+        }
+        if vm.showsPaprikaImport || vm.showsRecipeKeeperImport {
+            // What the imports do with the other app's categories (#387, #390); on unless the cook turns it off.
             SwitchRow(
                 title: Strings.paprikaFilingTitle,
                 description: Strings.paprikaFilingDescription,

@@ -78,16 +78,20 @@ enum BackupStatus: Equatable {
     case importing
     /// Import from Paprika (#382) is reading the file; shares the one-at-a-time rule.
     case importingPaprika
+    /// Import from Recipe Keeper (#390): the same route and summary as Paprika's, its own words.
+    case importingRecipeKeeper
     /// The file is written: the screen opens the share sheet on it, then calls `onExportShared`.
     case readyToShare(URL)
     case imported(ImportSummary)
     case failed(BackupError)
     case importedPaprika(PaprikaSummary)
     case paprikaFailed(PaprikaError)
+    case importedRecipeKeeper(PaprikaSummary)
+    case recipeKeeperFailed(PaprikaError)
 
     var isBusy: Bool {
         switch self {
-        case .exporting, .importing, .importingPaprika, .readyToShare: return true
+        case .exporting, .importing, .importingPaprika, .importingRecipeKeeper, .readyToShare: return true
         default: return false
         }
     }
@@ -214,7 +218,10 @@ final class SettingsViewModel {
     /// The "Import from Paprika" row (#382): only with the `paprikaImport` flag on, and an importer.
     var showsPaprikaImport: Bool { paprika != nil && (flags?.isOn(.paprikaImport) ?? false) }
 
-    /// The switch under "Import from Paprika" (#387): whether the next import files recipes by their categories.
+    /// The "Import from Recipe Keeper" row (#390): only with the `recipeKeeperImport` flag on, and an importer.
+    var showsRecipeKeeperImport: Bool { paprika != nil && (flags?.isOn(.recipeKeeperImport) ?? false) }
+
+    /// The switch under the import rows (#387, #390): whether the next import files recipes by their categories.
     func onPaprikaFilingChange(_ enabled: Bool) { uiState.paprikaFiling = enabled }
 
     /// Import from the Paprika export the user picked in the file importer (#382).
@@ -227,6 +234,20 @@ final class SettingsViewModel {
             switch await paprika.importPaprika(url, filing: filing) {
             case .success(let summary): uiState.backup = .importedPaprika(summary)
             case .failure(let error): uiState.backup = .paprikaFailed(error)
+            }
+        }
+    }
+
+    /// Import from the Recipe Keeper export the user picked in the file importer (#390).
+    @discardableResult
+    func onRecipeKeeperPicked(_ url: URL) -> Task<Void, Never>? {
+        guard let paprika, !uiState.backup.isBusy else { return nil }
+        uiState.backup = .importingRecipeKeeper
+        let filing = uiState.paprikaFiling
+        return Task {
+            switch await paprika.importPaprika(url, filing: filing, source: .recipeKeeper) {
+            case .success(let summary): uiState.backup = .importedRecipeKeeper(summary)
+            case .failure(let error): uiState.backup = .recipeKeeperFailed(error)
             }
         }
     }

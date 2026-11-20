@@ -64,7 +64,9 @@ enum class Flag(val key: String) {
     /** Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo. */
     MULTI_SELECT("multiSelect"),
     /** Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library. */
-    PAPRIKA_IMPORT("paprikaImport");
+    PAPRIKA_IMPORT("paprikaImport"),
+    /** Import from Recipe Keeper (#390): Settings' Your recipes reads a Recipe Keeper export zip into the library. */
+    RECIPE_KEEPER_IMPORT("recipeKeeperImport");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

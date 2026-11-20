@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.model.Durations
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ManualRecipe
 import com.example.recipeclipper.data.model.UrlCleaner
+import com.example.recipeclipper.data.remote.ImportSource
 import com.example.recipeclipper.data.remote.PaprikaRecipe
 
 /** What a Paprika import did (#382), as the Settings page says it. Counts only; the screen picks the words. */
@@ -30,6 +31,9 @@ data class PaprikaSummary(
 /**
  * Paprika's recipes as a [Backup] (#382), so they merge like any import: through [BackupMerger],
  * the one place that applies the library limit to a file. Pure: no database, no clock of its own.
+ * The Recipe Keeper import (#390) maps its recipes to the same [PaprikaRecipe] and comes through
+ * here too; its [ImportSource] only changes the prefix of a recipe's own key
+ * (`manual:recipekeeper-<recipeId>`, else `manual:recipekeeper-h<hash>`).
  *
  * - **Identity** (what makes a second import of the same file add nothing): the recipe's cleaned
  *   source link when it has a real one, so it also meets the same recipe shared or clipped
@@ -60,10 +64,11 @@ object PaprikaImport {
 
     private val SAFE_UID = Regex("^[A-Za-z0-9-]{1,64}$")
 
-    fun identity(recipe: PaprikaRecipe): String {
+    fun identity(recipe: PaprikaRecipe, source: ImportSource = ImportSource.PAPRIKA): String {
         recipe.sourceUrl?.let { return UrlCleaner.clean(it) }
-        recipe.uid?.takeIf { SAFE_UID.matches(it) }?.let { return ManualRecipe.newSourceUrl("paprika-" + it.lowercase()) }
-        return ManualRecipe.newSourceUrl("paprika-h" + contentHash(recipe))
+        val prefix = source.keyPrefix
+        recipe.uid?.takeIf { SAFE_UID.matches(it) }?.let { return ManualRecipe.newSourceUrl("$prefix-" + it.lowercase()) }
+        return ManualRecipe.newSourceUrl("$prefix-h" + contentHash(recipe))
     }
 
     /** FNV-1a (64 bits) over the name and text: the same on both platforms, and nothing secret. */
@@ -81,11 +86,17 @@ object PaprikaImport {
         var favorite = recipe.favorite
     }
 
-    fun toBackup(recipes: List<PaprikaRecipe>, now: Long, filing: Boolean = false, newUid: () -> String): Mapped {
+    fun toBackup(
+        recipes: List<PaprikaRecipe>,
+        now: Long,
+        filing: Boolean = false,
+        source: ImportSource = ImportSource.PAPRIKA,
+        newUid: () -> String
+    ): Mapped {
         val entries = LinkedHashMap<String, Entry>()
         var repeated = 0
         for (recipe in recipes) {
-            val key = identity(recipe)
+            val key = identity(recipe, source)
             val seen = entries[key]
             if (seen != null) {
                 repeated++

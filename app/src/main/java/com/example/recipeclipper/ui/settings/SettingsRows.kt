@@ -105,13 +105,10 @@ internal fun BackupStatusText(status: BackupStatus) {
         is BackupStatus.Imported -> importSummaryText(resources, status.summary)
         BackupStatus.ImportingPaprika -> stringResource(R.string.paprika_importing)
         is BackupStatus.ImportedPaprika -> paprikaSummaryText(resources, status.summary)
-        is BackupStatus.PaprikaFailed -> when (status.error) {
-            PaprikaError.NOT_A_PAPRIKA_FILE -> stringResource(R.string.paprika_error_not_paprika)
-            PaprikaError.DAMAGED -> stringResource(R.string.paprika_error_damaged)
-            PaprikaError.TOO_LARGE -> stringResource(R.string.paprika_error_too_large)
-            PaprikaError.READ_FAILED -> stringResource(R.string.backup_error_read_failed)
-            PaprikaError.SAVE_FAILED -> stringResource(R.string.backup_error_save_failed)
-        }
+        is BackupStatus.PaprikaFailed -> importErrorText(status.error)
+        BackupStatus.ImportingRecipeKeeper -> stringResource(R.string.recipekeeper_importing)
+        is BackupStatus.ImportedRecipeKeeper -> paprikaSummaryText(resources, status.summary, R.plurals.recipekeeper_imported)
+        is BackupStatus.RecipeKeeperFailed -> importErrorText(status.error, recipeKeeper = true)
         is BackupStatus.Failed -> when (val error = status.error) {
             BackupError.NotABackup -> stringResource(R.string.backup_error_not_a_backup)
             is BackupError.NewerVersion -> stringResource(R.string.backup_error_newer_version, error.found)
@@ -124,7 +121,7 @@ internal fun BackupStatusText(status: BackupStatus) {
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
-        color = if (status is BackupStatus.Failed || status is BackupStatus.PaprikaFailed) {
+        color = if (status is BackupStatus.Failed || status is BackupStatus.PaprikaFailed || status is BackupStatus.RecipeKeeperFailed) {
             MaterialTheme.colorScheme.error
         } else {
             MaterialTheme.colorScheme.onBackground
@@ -135,15 +132,32 @@ internal fun BackupStatusText(status: BackupStatus) {
     )
 }
 
+/** Why an import from another app (#382 Paprika, #390 Recipe Keeper) failed, in words. */
+@Composable
+private fun importErrorText(error: PaprikaError, recipeKeeper: Boolean = false): String = when (error) {
+    PaprikaError.NOT_A_PAPRIKA_FILE -> stringResource(R.string.paprika_error_not_paprika)
+    PaprikaError.NOT_A_RECIPE_KEEPER_FILE -> stringResource(R.string.recipekeeper_error_not_recipekeeper)
+    PaprikaError.DAMAGED -> stringResource(R.string.paprika_error_damaged)
+    PaprikaError.TOO_LARGE ->
+        stringResource(if (recipeKeeper) R.string.recipekeeper_error_too_large else R.string.paprika_error_too_large)
+    PaprikaError.READ_FAILED -> stringResource(R.string.backup_error_read_failed)
+    PaprikaError.SAVE_FAILED -> stringResource(R.string.backup_error_save_failed)
+}
+
 /**
- * What an import from Paprika did (#382), one sentence per count that isn't zero: imported (or
- * "nothing new" / "nothing could be read"), already here, left out for the limit, entries that
- * weren't recipes or couldn't be read, the pictures left out (#386) and the lists made (#387).
+ * What an import from Paprika (#382) or Recipe Keeper (#390, [importedPlural] is its own "Imported
+ * %d recipes from…") did, one sentence per count that isn't zero: imported (or "nothing new" /
+ * "nothing could be read"), already here, left out for the limit, entries that weren't recipes or
+ * couldn't be read, the pictures left out (#386) and the lists made (#387).
  */
-private fun paprikaSummaryText(resources: android.content.res.Resources, s: PaprikaSummary): String {
+private fun paprikaSummaryText(
+    resources: android.content.res.Resources,
+    s: PaprikaSummary,
+    importedPlural: Int = R.plurals.paprika_imported
+): String {
     val parts = mutableListOf<String>()
     when {
-        s.imported > 0 -> parts += resources.getQuantityString(R.plurals.paprika_imported, s.imported, s.imported)
+        s.imported > 0 -> parts += resources.getQuantityString(importedPlural, s.imported, s.imported)
         s.skippedForLimit == 0 && s.alreadyHere > 0 -> parts += resources.getString(R.string.paprika_imported_nothing)
         s.skippedForLimit == 0 -> parts += resources.getString(R.string.paprika_nothing_found)
     }
@@ -261,6 +275,9 @@ internal val IMPORT_MIME_TYPES = arrayOf("application/json", "text/plain", "appl
 
 /** A Paprika export (#382) has no MIME type of its own: any file may be picked, and a wrong one is told so. */
 internal val PAPRIKA_MIME_TYPES = arrayOf("*/*")
+
+/** A Recipe Keeper export (#390) is a plain .zip, but file managers label it variously: any file may be picked. */
+internal val RECIPE_KEEPER_MIME_TYPES = arrayOf("*/*")
 
 /** An independent toggle: a title, a one-line description, and a [Switch] — never a
  *  checkmark, which would read as an exclusive choice among its siblings. */

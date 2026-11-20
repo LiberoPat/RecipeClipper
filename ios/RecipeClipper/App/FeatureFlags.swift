@@ -58,6 +58,8 @@ enum Flag: String, CaseIterable {
     case multiSelect
     /// Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library.
     case paprikaImport
+    /// Import from Recipe Keeper (#390): Settings' Your recipes reads a Recipe Keeper export zip into the library.
+    case recipeKeeperImport
 }
 
 /// One flag as `shared/flags.json` declares it.

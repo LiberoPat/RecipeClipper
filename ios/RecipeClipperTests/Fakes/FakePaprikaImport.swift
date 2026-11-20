@@ -11,10 +11,13 @@ final class FakePaprikaImportRepository: PaprikaImportRepository {
     private(set) var imported: [URL] = []
     /// The `filing` each import was asked for (#387).
     private(set) var filings: [Bool] = []
+    /// Whose file each import was asked for (#390).
+    private(set) var sources: [ImportSource] = []
 
-    func importPaprika(_ url: URL, filing: Bool) async -> PaprikaResult {
+    func importPaprika(_ url: URL, filing: Bool, source: ImportSource) async -> PaprikaResult {
         imported.append(url)
         filings.append(filing)
+        sources.append(source)
         await gate?.wait()
         return result
     }
@@ -43,9 +46,13 @@ final class FakePaprikaFiles: PaprikaFiles {
     var limits = PaprikaLimits()
     var photos: PhotoStore?
 
-    func read(_ url: URL) async -> PaprikaRead {
+    func read(_ url: URL, source: ImportSource) async -> PaprikaRead {
         files[url].map { data in
-            PaprikaZipReader.read(data, limits: limits, storePhoto: photos.map { store in { store.importData($0) } })
+            let store = photos.map { store in { store.importData($0) } }
+            switch source {
+            case .paprika: return PaprikaZipReader.read(data, limits: limits, storePhoto: store)
+            case .recipeKeeper: return RecipeKeeperZipReader.read(data, limits: limits, storePhoto: store)
+            }
         } ?? .failure(.readFailed)
     }
 }

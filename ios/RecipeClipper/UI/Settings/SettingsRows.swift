@@ -15,6 +15,9 @@ func backupStatusText(_ status: BackupStatus) -> (text: String, isError: Bool)? 
     case .importingPaprika: return (Strings.paprikaImporting, false)
     case .importedPaprika(let summary): return (Strings.paprikaSummary(summary), false)
     case .paprikaFailed(let error): return (Strings.message(for: error), true)
+    case .importingRecipeKeeper: return (Strings.recipeKeeperImporting, false)
+    case .importedRecipeKeeper(let summary): return (Strings.paprikaSummary(summary, importedKey: .recipeKeeper), false)
+    case .recipeKeeperFailed(let error): return (Strings.message(for: error, source: .recipeKeeper), true)
     }
 }
 

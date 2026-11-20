@@ -3,6 +3,7 @@ package com.example.recipeclipper.data
 import com.example.recipeclipper.data.backup.PaprikaImport
 import com.example.recipeclipper.data.backup.PaprikaSummary
 import com.example.recipeclipper.data.local.dao.BackupDao
+import com.example.recipeclipper.data.remote.ImportSource
 import com.example.recipeclipper.data.remote.PaprikaError
 import com.example.recipeclipper.data.remote.PaprikaRead
 import java.util.UUID
@@ -24,9 +25,10 @@ interface PaprikaImportRepository {
     /**
      * Merges the recipes of the picked `.paprikarecipes` file in (never replaces, never deletes;
      * see [PaprikaImport]). A file that can't be read writes nothing and says why. With [filing]
-     * (#387) each recipe's Paprika categories put it in lists of those names.
+     * (#387) each recipe's Paprika categories put it in lists of those names. [source] (#390) says
+     * whose file it is: the Recipe Keeper import is the same route with its own reader.
      */
-    suspend fun import(uri: String, filing: Boolean = false): PaprikaResult
+    suspend fun import(uri: String, filing: Boolean = false, source: ImportSource = ImportSource.PAPRIKA): PaprikaResult
 }
 
 /**
@@ -46,8 +48,8 @@ class DefaultPaprikaImportRepository @Inject constructor(
     private val photos: PhotoStore = NoPhotoStore
 ) : PaprikaImportRepository {
 
-    override suspend fun import(uri: String, filing: Boolean): PaprikaResult {
-        val contents = when (val read = files.read(uri)) {
+    override suspend fun import(uri: String, filing: Boolean, source: ImportSource): PaprikaResult {
+        val contents = when (val read = files.read(uri, source)) {
             is PaprikaRead.Failure -> return PaprikaResult.Failure(read.error)
             is PaprikaRead.Success -> read.contents
         }
@@ -57,12 +59,13 @@ class DefaultPaprikaImportRepository @Inject constructor(
             )
         }
         val now = clock.now()
-        val mapped = PaprikaImport.toBackup(contents.recipes, now, filing) { UUID.randomUUID().toString() }
+        val tag = if (source == ImportSource.PAPRIKA) "paprikaImport" else "recipeKeeperImport"
+        val mapped = PaprikaImport.toBackup(contents.recipes, now, filing, source) { UUID.randomUUID().toString() }
         val limit = library.limit
         // The pictures are already in the store (named for the merger by their own names). Those no
         // recipe ends up with (a recipe already here, one the limit left out, a failed write) go.
         val stored = contents.recipes.mapNotNullTo(LinkedHashSet()) { it.photoFile }
-        val summary = log.guard("paprikaImport", null) {
+        val summary = log.guard(tag, null) {
             backupDao.importBackup(
                 mapped.backup, limit, today = null, newUid = { UUID.randomUUID().toString() },
                 storedPhotos = stored.associateWith { it }, now = now, dropEmptyNewLists = true
@@ -73,7 +76,7 @@ class DefaultPaprikaImportRepository @Inject constructor(
             return PaprikaResult.Failure(PaprikaError.SAVE_FAILED)
         }
         if (stored.isNotEmpty()) {
-            val named = log.guard("paprikaImport", null) { backupDao.recipePhotoFiles().toSet() }
+            val named = log.guard(tag, null) { backupDao.recipePhotoFiles().toSet() }
             if (named != null) photos.delete(stored - named)
         }
         return PaprikaResult.Success(

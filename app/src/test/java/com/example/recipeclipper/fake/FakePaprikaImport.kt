@@ -5,10 +5,12 @@ import com.example.recipeclipper.data.PhotoStore
 import com.example.recipeclipper.data.PaprikaImportRepository
 import com.example.recipeclipper.data.PaprikaResult
 import com.example.recipeclipper.data.backup.PaprikaSummary
+import com.example.recipeclipper.data.remote.ImportSource
 import com.example.recipeclipper.data.remote.PaprikaArchive
 import com.example.recipeclipper.data.remote.PaprikaError
 import com.example.recipeclipper.data.remote.PaprikaLimits
 import com.example.recipeclipper.data.remote.PaprikaRead
+import com.example.recipeclipper.data.remote.RecipeKeeperArchive
 import kotlinx.coroutines.CompletableDeferred
 import java.io.File
 
@@ -25,9 +27,13 @@ class FakePaprikaImportRepository : PaprikaImportRepository {
     /** The `filing` each import was asked for (#387). */
     val filings = mutableListOf<Boolean>()
 
-    override suspend fun import(uri: String, filing: Boolean): PaprikaResult {
+    /** Whose file each import was asked for (#390). */
+    val sources = mutableListOf<ImportSource>()
+
+    override suspend fun import(uri: String, filing: Boolean, source: ImportSource): PaprikaResult {
         imported += uri
         filings += filing
+        sources += source
         gate?.await()
         return result
     }
@@ -41,6 +47,9 @@ class FakePaprikaFiles(
 
     val files = mutableMapOf<String, File>()
 
-    override suspend fun read(uri: String): PaprikaRead =
-        files[uri]?.let { PaprikaArchive.read(it, limits, photos?.let { store -> store::importBytes }) } ?: PaprikaRead.Failure(PaprikaError.READ_FAILED)
+    override suspend fun read(uri: String, source: ImportSource): PaprikaRead =
+        files[uri]?.let {
+            val store = photos?.let { store -> store::importBytes }
+            if (source == ImportSource.RECIPE_KEEPER) RecipeKeeperArchive.read(it, limits, store) else PaprikaArchive.read(it, limits, store)
+        } ?: PaprikaRead.Failure(PaprikaError.READ_FAILED)
 }

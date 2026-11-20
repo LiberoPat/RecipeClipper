@@ -2,10 +2,12 @@ package com.example.recipeclipper.data
 
 import android.content.Context
 import androidx.core.net.toUri
+import com.example.recipeclipper.data.remote.ImportSource
 import com.example.recipeclipper.data.remote.PaprikaArchive
 import com.example.recipeclipper.data.remote.PaprikaError
 import com.example.recipeclipper.data.remote.PaprikaLimits
 import com.example.recipeclipper.data.remote.PaprikaRead
+import com.example.recipeclipper.data.remote.RecipeKeeperArchive
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -24,8 +26,9 @@ interface PaprikaFiles {
     /**
      * The picked file's recipes, or why not ([PaprikaError.READ_FAILED] if it couldn't be opened).
      * Each recipe's picture is stored as it is read (#386): the recipe names the stored file.
+     * [source] (#390) picks the reader: a Paprika file, or a Recipe Keeper zip.
      */
-    suspend fun read(uri: String): PaprikaRead
+    suspend fun read(uri: String, source: ImportSource = ImportSource.PAPRIKA): PaprikaRead
 }
 
 /**
@@ -41,10 +44,10 @@ class AndroidPaprikaFiles @Inject constructor(
     private val photos: PhotoStore
 ) : PaprikaFiles {
 
-    override suspend fun read(uri: String): PaprikaRead = withContext(Dispatchers.IO) {
+    override suspend fun read(uri: String, source: ImportSource): PaprikaRead = withContext(Dispatchers.IO) {
         val limits = PaprikaLimits()
         val dir = File(context.cacheDir, DIR).apply { deleteRecursively(); mkdirs() }
-        val copy = File(dir, UUID.randomUUID().toString() + ".paprikarecipes")
+        val copy = File(dir, UUID.randomUUID().toString() + if (source == ImportSource.PAPRIKA) ".paprikarecipes" else ".zip")
         try {
             val input = context.contentResolver.openInputStream(uri.toUri())
                 ?: return@withContext PaprikaRead.Failure(PaprikaError.READ_FAILED)
@@ -66,11 +69,15 @@ class AndroidPaprikaFiles @Inject constructor(
                     within
                 }
             }
-            if (!copied) PaprikaRead.Failure(PaprikaError.TOO_LARGE) else PaprikaArchive.read(copy, limits, photos::importBytes)
+            when {
+                !copied -> PaprikaRead.Failure(PaprikaError.TOO_LARGE)
+                source == ImportSource.RECIPE_KEEPER -> RecipeKeeperArchive.read(copy, limits, photos::importBytes)
+                else -> PaprikaArchive.read(copy, limits, photos::importBytes)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            log.error("read paprika file failed", e)
+            log.error("read ${source.name} file failed", e)
             PaprikaRead.Failure(PaprikaError.READ_FAILED)
         } finally {
             dir.deleteRecursively()

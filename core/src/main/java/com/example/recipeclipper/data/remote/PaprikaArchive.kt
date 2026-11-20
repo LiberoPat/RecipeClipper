@@ -12,7 +12,10 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.ZipException
 import java.util.zip.ZipFile
 
-/** Why a Paprika file wasn't imported (#382): the cause, never the words (the screen picks those). */
+/**
+ * Why a Paprika file wasn't imported (#382): the cause, never the words (the screen picks those).
+ * The causes are shared with the Recipe Keeper import (#390), which reads through the same repository.
+ */
 enum class PaprikaError {
     /** Not a zip, or a zip with no `.paprikarecipe` entry in it. */
     NOT_A_PAPRIKA_FILE,
@@ -22,6 +25,9 @@ enum class PaprikaError {
 
     /** More entries, or more unpacked text, than any real export holds ([PaprikaLimits]). */
     TOO_LARGE,
+
+    /** Not a zip, or a zip with no `recipes.html` of Recipe Keeper's in it (#390). */
+    NOT_A_RECIPE_KEEPER_FILE,
 
     /** The file couldn't be opened or copied. */
     READ_FAILED,
@@ -179,15 +185,16 @@ object PaprikaArchive {
         }
     }
 
-    /** All of the stream's bytes, or null if there are more than [max]. */
-    private fun InputStream.readAtMost(max: Long): ByteArrayOutputStream? {
-        val out = ByteArrayOutputStream()
-        val buffer = ByteArray(64 * 1024)
-        while (true) {
-            val n = read(buffer)
-            if (n < 0) return out
-            out.write(buffer, 0, n)
-            if (out.size() > max) return null
-        }
+}
+
+/** All of the stream's bytes, or null if there are more than [max]. Shared with [RecipeKeeperArchive] (#390). */
+internal fun InputStream.readAtMost(max: Long): ByteArrayOutputStream? {
+    val out = ByteArrayOutputStream()
+    val buffer = ByteArray(64 * 1024)
+    while (true) {
+        val n = read(buffer)
+        if (n < 0) return out
+        out.write(buffer, 0, n)
+        if (out.size() > max) return null
     }
 }
