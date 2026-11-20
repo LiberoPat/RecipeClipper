@@ -47,6 +47,13 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class HomeScreenTest {
 
+    // 08:00 UTC on the day NOW falls in: breakfast is still on the Today card (#402).
+    private val zone = java.util.TimeZone.getDefault()
+
+    @org.junit.Before fun pinZone() = java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+
+    @org.junit.After fun restoreZone() = java.util.TimeZone.setDefault(zone)
+
     @get:Rule
     val compose = createComposeRule()
 
@@ -469,6 +476,6 @@ class HomeScreenTest {
     }
 
     private companion object {
-        const val NOW = 1_700_000_000_000L
+        const val NOW = 1_699_948_800_000L
     }
 }

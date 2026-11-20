@@ -10,8 +10,9 @@ final class HomeTodayTests: XCTestCase {
     private let repository = FakeRecipeRepository()
     private let plan = FakeMealPlanRepository()
     private let cooked = FakeCookedPhotoRepository()
-    /// Today at the test clock's 0, in whatever zone the machine is in: the day the card follows.
-    private let today = PlanDays.today(millis: 0)
+    /// The test clock's 0 is midnight UTC, and the card follows UTC's day and time.
+    private let utc = TimeZone(identifier: "UTC")!
+    private let today: Int64 = 0
 
     override func setUp() {
         super.setUp()
@@ -27,7 +28,7 @@ final class HomeTodayTests: XCTestCase {
     private func home(withCooked: Bool = true) async -> HomeViewModel {
         let vm = HomeViewModel(
             repository: repository, clock: clock, sleep: clock.sleep,
-            mealPlan: plan, cooked: withCooked ? cooked : nil
+            mealPlan: plan, cooked: withCooked ? cooked : nil, zone: utc
         )
         await settleMain()
         return vm
@@ -164,5 +165,113 @@ final class HomeTodayTests: XCTestCase {
         await settleMain()
 
         XCTAssertNil(vm.uiState.today)
+    }
+
+    // Meal windows (#402): breakfast until 11:00, lunch until 15:00, the rest to the day's end.
+
+    private func at(_ hours: Int64, _ minutes: Int64 = 0) -> Int64 { (hours * 60 + minutes) * 60_000 }
+
+    /// The Today card's home with the test clock already at `hours`:`minutes` on day 0 (UTC).
+    private func homeAt(_ hours: Int64, _ minutes: Int64 = 0) async -> HomeViewModel {
+        await clock.advance(by: at(hours, minutes))
+        return await home()
+    }
+
+    func testBreakfastLeadsAt1059AndIsGoneAt1100AsTheWindowEnds() async {
+        plan.meals.send([
+            meal(1, FakeMealPlanRepository.breakfast, 11, "Porridge"),
+            meal(2, FakeMealPlanRepository.dinner, 12, "Lemon chicken"),
+        ])
+        let vm = await homeAt(10, 59)
+        XCTAssertEqual(vm.uiState.today?.lead.title, "Porridge")
+        XCTAssertEqual(vm.uiState.today?.others.map(\.title), ["Lemon chicken"])
+
+        // The card re-evaluates by itself when the window ends.
+        await clock.advance(by: 60_000)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.today?.lead.title, "Lemon chicken")
+        XCTAssertEqual(vm.uiState.today?.others, [])
+    }
+
+    func testAFreshStartAt1100HasNoBreakfast() async {
+        plan.meals.send([meal(1, FakeMealPlanRepository.breakfast, 11, "Porridge")])
+        let vm = await homeAt(11)
+        XCTAssertNil(vm.uiState.today)
+    }
+
+    func testAnUncookedLunchAt1900IsGoneNotOnTheSecondLineEither() async {
+        plan.meals.send([
+            meal(1, FakeMealPlanRepository.lunch, 14, "Soup"),
+            meal(2, FakeMealPlanRepository.dinner, 12, "Lemon chicken"),
+            meal(3, FakeMealPlanRepository.snack, 13, "Apple slices"),
+        ])
+        let vm = await homeAt(19)
+
+        XCTAssertEqual(vm.uiState.today?.lead.title, "Lemon chicken")
+        XCTAssertEqual(vm.uiState.today?.others.map(\.title), ["Apple slices"])
+    }
+
+    func testLunchLeadsAt1459AndEndsAt1500() async {
+        plan.meals.send([meal(1, FakeMealPlanRepository.lunch, 14, "Soup")])
+        let vm = await homeAt(14, 59)
+        XCTAssertEqual(vm.uiState.today?.lead.title, "Soup")
+
+        await clock.advance(by: 60_000)
+        await settleMain()
+        XCTAssertNil(vm.uiState.today)
+    }
+
+    func testDinnerAt2359IsStillThere() async {
+        plan.meals.send([meal(1, FakeMealPlanRepository.dinner, 12, "Lemon chicken")])
+        let vm = await homeAt(23, 59)
+        XCTAssertEqual(vm.uiState.today?.lead.title, "Lemon chicken")
+    }
+
+    func testACooksOwnMealTypeHasNoWindow() async {
+        plan.types.send(FakeMealPlanRepository.defaultTypes + [MealType(id: 9, name: "Elevenses", builtInKey: nil, sortOrder: 9)])
+        plan.meals.send([meal(1, 9, 12, "Scones")])
+        let vm = await homeAt(23, 59)
+        XCTAssertEqual(vm.uiState.today?.lead.title, "Scones")
+    }
+
+    func testEveryWindowPassedAndNothingMidCookIsNoCard() async {
+        plan.meals.send([
+            meal(1, FakeMealPlanRepository.breakfast, 11, "Porridge"),
+            meal(2, FakeMealPlanRepository.lunch, 14, "Soup"),
+            meal(3, FakeMealPlanRepository.breakfast, nil, nil, note: "Coffee"),
+        ])
+        let vm = await homeAt(19)
+        XCTAssertNil(vm.uiState.today)
+    }
+}
+
+/// The Today card's meal windows (#402; Android's `MealWindowsTest`).
+final class MealWindowsTests: XCTestCase {
+    private func at(_ hours: Int64, _ minutes: Int64 = 0) -> Int64 { (hours * 60 + minutes) * 60_000 }
+
+    func testBreakfastLeadsUntil1100() {
+        XCTAssertTrue(MealWindows.isOpen("breakfast", millisOfDay: at(10, 59)))
+        XCTAssertFalse(MealWindows.isOpen("breakfast", millisOfDay: at(11)))
+    }
+
+    func testLunchLeadsUntil1500() {
+        XCTAssertTrue(MealWindows.isOpen("lunch", millisOfDay: at(14, 59)))
+        XCTAssertFalse(MealWindows.isOpen("lunch", millisOfDay: at(15)))
+        XCTAssertFalse(MealWindows.isOpen("lunch", millisOfDay: at(19)))
+    }
+
+    func testDinnerAndSnackLastToTheEndOfTheDayAndTheCooksOwnTypesHaveNoWindow() {
+        for key in ["dinner", "snack", nil, "brunch"] as [String?] {
+            XCTAssertTrue(MealWindows.isOpen(key, millisOfDay: 0))
+            XCTAssertTrue(MealWindows.isOpen(key, millisOfDay: at(23, 59)))
+        }
+    }
+
+    func testTheNextWindowToEndAndHowManyHave() {
+        XCTAssertEqual(MealWindows.untilNextEnd(0), at(11))
+        XCTAssertEqual(MealWindows.untilNextEnd(at(10, 59)), 60_000)
+        XCTAssertEqual(MealWindows.untilNextEnd(at(11)), at(4))
+        XCTAssertNil(MealWindows.untilNextEnd(at(15)))
+        XCTAssertEqual([0, at(10, 59), at(11), at(14, 59), at(15)].map(MealWindows.ended), [0, 0, 1, 1, 2])
     }
 }

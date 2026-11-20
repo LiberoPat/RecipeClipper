@@ -2859,6 +2859,14 @@ bends the settled link field: an always-visible field became a tile that opens i
     meals follow, one short line each ("Dinner: Lemon chicken"), in order, each tapping through to
     its recipe. A planned **note** shows its text, no button (and is never "cooked"). Nothing left
     to cook today and nothing mid-cook: **no card at all**, and the ways in stay.
+  - **Meal windows** (owner follow-up, 2026-11-19: at 7pm an uncooked lunch must not still lead).
+    By the meal type's built-in key, in local time: **breakfast until 11:00, lunch until 15:00,
+    dinner and snack until the end of the day**; the cook's own meal types have no window. A meal
+    whose window has passed drops off the card entirely (not onto the second line), cooked or
+    not, a note planned under it too. The times are constants in one place on each platform
+    (`MealWindows`, core and iOS, line for line); the end of a window is exclusive (10:59 breakfast
+    shows, 11:00 doesn't). The ViewModel's clock wakes at the earliest of midnight and the next
+    window's end (and within a minute at most), so the card changes by itself at 11:00 and 15:00.
   - **Cooked today** = the recipe has a `cooked_photos` entry dated today ("I made this" photo,
     "Mark as cooked", #116, #173), **or a run of it was finished today**: finishing cook mode
     ("Done — finish") now **records today's cooking** in that same table, once a day (no entry if one

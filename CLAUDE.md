@@ -208,7 +208,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   timer running on an unfinished run; never a finished run): "Continue cooking" with
   Resume cooking. Otherwise (`homeTonight`) "Today": the earliest of today's planned
   meals, in the meal types' order, not yet cooked (no cooking entry dated today; a
-  finished run records one), with Start cooking, the rest on a line under it; a note
+  finished run records one) and in its window (`MealWindows`: breakfast to 11:00,
+  lunch to 15:00, dinner and snack all day, own types always), with Start cooking, the rest on a line under it; a note
   shows its text; nothing left, no card. Off, always the most recent recipe. Then
   Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles, then a full-width Ask an AI tile (#351); one Recipes
   row with its count (a Lists row too only with `oneCookbook` off); the

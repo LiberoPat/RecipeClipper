@@ -426,4 +426,78 @@ class HomeViewModelTest {
 
         assertNull(vm.uiState.value.today)
     }
+
+    // Meal windows (#402): breakfast until 11:00, lunch until 15:00, the rest to the day's end.
+
+    private fun at(hours: Int, minutes: Int = 0) = (hours * 60L + minutes) * 60_000
+
+    /** The Today card's home with the test clock already at [hours]:[minutes] on day 0 (UTC). */
+    private fun TestScope.homeAt(hours: Int, minutes: Int = 0): HomeViewModel {
+        advanceTimeBy(at(hours, minutes))
+        runCurrent()
+        return home().also { runCurrent() }
+    }
+
+    @Test fun `breakfast leads at 10 59 and is gone at 11 00, as the window ends`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.meals.value = listOf(
+            meal(1, FakeMealPlanRepository.BREAKFAST, 11, "Porridge"),
+            meal(2, FakeMealPlanRepository.DINNER, 12, "Lemon chicken")
+        )
+        val vm = homeAt(10, 59)
+        assertEquals("Porridge", vm.uiState.value.today?.lead?.title)
+        assertEquals(listOf("Lemon chicken"), vm.uiState.value.today?.others?.map { it.title })
+
+        // The card re-evaluates by itself when the window ends.
+        advanceTimeBy(60_000)
+        runCurrent()
+        assertEquals("Lemon chicken", vm.uiState.value.today?.lead?.title)
+        assertEquals(emptyList<TodayMeal>(), vm.uiState.value.today?.others)
+    }
+
+    @Test fun `a fresh start at 11 00 has no breakfast`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.meals.value = listOf(meal(1, FakeMealPlanRepository.BREAKFAST, 11, "Porridge"))
+        assertNull(homeAt(11).uiState.value.today)
+    }
+
+    @Test fun `an uncooked lunch at 19 00 is gone, not on the second line either`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.meals.value = listOf(
+            meal(1, FakeMealPlanRepository.LUNCH, 14, "Soup"),
+            meal(2, FakeMealPlanRepository.DINNER, 12, "Lemon chicken"),
+            meal(3, FakeMealPlanRepository.SNACK, 13, "Apple slices")
+        )
+        val vm = homeAt(19)
+
+        assertEquals("Lemon chicken", vm.uiState.value.today?.lead?.title)
+        assertEquals(listOf("Apple slices"), vm.uiState.value.today?.others?.map { it.title })
+    }
+
+    @Test fun `lunch leads at 14 59 and ends at 15 00`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.meals.value = listOf(meal(1, FakeMealPlanRepository.LUNCH, 14, "Soup"))
+        val vm = homeAt(14, 59)
+        assertEquals("Soup", vm.uiState.value.today?.lead?.title)
+
+        advanceTimeBy(60_000)
+        runCurrent()
+        assertNull(vm.uiState.value.today)
+    }
+
+    @Test fun `dinner at 23 59 is still there`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.meals.value = listOf(meal(1, FakeMealPlanRepository.DINNER, 12, "Lemon chicken"))
+        assertEquals("Lemon chicken", homeAt(23, 59).uiState.value.today?.lead?.title)
+    }
+
+    @Test fun `a cook's own meal type has no window`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.types.value = FakeMealPlanRepository.DEFAULT_TYPES + com.example.recipeclipper.data.model.MealType(9, "Elevenses", null, 9)
+        plan.meals.value = listOf(meal(1, 9, 12, "Scones"))
+        assertEquals("Scones", homeAt(23, 59).uiState.value.today?.lead?.title)
+    }
+
+    @Test fun `every window passed and nothing mid-cook is no card`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.meals.value = listOf(
+            meal(1, FakeMealPlanRepository.BREAKFAST, 11, "Porridge"),
+            meal(2, FakeMealPlanRepository.LUNCH, 14, "Soup"),
+            meal(3, FakeMealPlanRepository.BREAKFAST, null, null, note = "Coffee")
+        )
+        assertNull(homeAt(19).uiState.value.today)
+    }
 }

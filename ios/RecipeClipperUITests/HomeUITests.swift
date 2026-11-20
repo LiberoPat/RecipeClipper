@@ -197,23 +197,25 @@ final class HomeUITests: RecipeUITestCase {
     }
 
     func testSeveralMealsLeadWithTheEarliestAndListTheRestInOrder() {
-        // Planned dinner first: the meal types' order decides, not the order planned.
+        // Snack planned first: the meal types' order decides, not the order planned. Only types
+        // that last the whole day, since the real clock decides what a breakfast or lunch window
+        // has left (#402; the windows are unit-tested).
         launch(
             .standard, flags: ["homeTonight"],
-            extraArguments: planToday("dinner:Chicken Adobo,breakfast:Banana Bread,lunch:#Leftovers")
+            extraArguments: planToday("snack:Banana Bread,dinner:Chicken Adobo,snack:#Fruit")
         )
 
         let lead = require(app.buttons["home.today.lead"])
-        XCTAssertTrue(lead.label.contains("Banana Bread"), lead.label)
+        XCTAssertTrue(lead.label.contains("Chicken Adobo"), lead.label)
         let others = app.buttons.matching(identifier: "home.today.other")
         XCTAssertEqual(others.count, 2)
-        XCTAssertEqual(others.element(boundBy: 0).label, "Lunch: Leftovers")
-        XCTAssertFalse(others.element(boundBy: 0).isEnabled, "a note opens nothing")
-        XCTAssertEqual(others.element(boundBy: 1).label, "Dinner: Chicken Adobo")
+        XCTAssertEqual(others.element(boundBy: 0).label, "Snack: Banana Bread")
+        XCTAssertEqual(others.element(boundBy: 1).label, "Snack: Fruit")
+        XCTAssertFalse(others.element(boundBy: 1).isEnabled, "a note opens nothing")
 
-        others.element(boundBy: 1).tap()
+        others.element(boundBy: 0).tap()
         require(bookmark, "the recipe, on the Week's stack")
-        require(text("Chicken Adobo"))
+        require(text("Banana Bread"))
         back()
         require(app.staticTexts["weekRange"], "the Week")
     }

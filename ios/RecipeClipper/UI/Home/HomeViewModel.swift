@@ -80,18 +80,26 @@ struct TodayMeal: Equatable {
 
 /// Home's Today card (#402): `lead`, the earliest meal today not yet cooked, and the `others`
 /// still to cook, in meal type order. A recipe counts as cooked today with a cooking entry dated
-/// today (a photo, "Mark as cooked", or a finished run), and then drops off.
+/// today (a photo, "Mark as cooked", or a finished run), and then drops off. A meal whose window
+/// has passed (`MealWindows`: breakfast 11:00, lunch 15:00) is gone, cooked or not.
 struct TodayCard: Equatable {
     let lead: TodayMeal
     let others: [TodayMeal]
 
-    /// Today's card at `today`, from the day's `meals`; nil when nothing is left to cook.
-    static func of(meals: [PlannedMeal], types: [MealType], today: Int64, cooked: Set<Int64>) -> TodayCard? {
+    /// Today's card at `today` and `millisOfDay` (local), from the day's `meals`; nil when nothing
+    /// is left to cook.
+    static func of(
+        meals: [PlannedMeal], types: [MealType], today: Int64, cooked: Set<Int64>, millisOfDay: Int64
+    ) -> TodayCard? {
+        let keys = Dictionary(uniqueKeysWithValues: types.map { ($0.id, $0.builtInKey) })
         let sorted = types.sorted { ($0.sortOrder, $0.id) < ($1.sortOrder, $1.id) }
         let order = Dictionary(uniqueKeysWithValues: sorted.enumerated().map { ($1.id, $0) })
         let names = Dictionary(uniqueKeysWithValues: types.map { ($0.id, $0.name) })
         let left = meals.enumerated()
-            .filter { $0.element.day == today && ($0.element.recipeId.map { !cooked.contains($0) } ?? true) }
+            .filter {
+                $0.element.day == today && ($0.element.recipeId.map { !cooked.contains($0) } ?? true)
+                    && MealWindows.isOpen(keys[$0.element.mealTypeId] ?? nil, millisOfDay: millisOfDay)
+            }
             .sorted { (order[$0.element.mealTypeId] ?? .max, $0.offset) < (order[$1.element.mealTypeId] ?? .max, $1.offset) }
             .compactMap { _, meal -> TodayMeal? in
                 let text = (meal.title ?? meal.note)?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -128,8 +136,10 @@ final class HomeViewModel {
     // Today's meals from Week, and which are cooked (#402); nil shows no Today card.
     @ObservationIgnored private let mealPlan: MealPlanRepository?
     @ObservationIgnored private let cooked: CookedPhotoRepository?
+    // Today's local time (#402); a test pins it.
+    @ObservationIgnored private let zone: TimeZone
     @ObservationIgnored private var todayCancellable: AnyCancellable?
-    @ObservationIgnored private var followedDay: Int64?
+    @ObservationIgnored private var followedMoment: Moment?
     @ObservationIgnored private var dayTask: Task<Void, Never>?
     // The resume card (#286): the latest recipe followed as its cook progress is saved.
     @ObservationIgnored private var followedId: Int64?
@@ -143,8 +153,10 @@ final class HomeViewModel {
     init(
         repository: RecipeRepository, backups: BackupRepository? = nil, files: BackupFiles? = nil,
         lists: ListRepository? = nil, clock: Clock = SystemClock(), sleep: @escaping Sleep = Sleeps.real,
-        pasted: PastedTextRouter? = nil, mealPlan: MealPlanRepository? = nil, cooked: CookedPhotoRepository? = nil
+        pasted: PastedTextRouter? = nil, mealPlan: MealPlanRepository? = nil, cooked: CookedPhotoRepository? = nil,
+        zone: TimeZone = .current
     ) {
+        self.zone = zone
         self.pasted = pasted
         self.mealPlan = mealPlan
         self.cooked = cooked
@@ -170,34 +182,62 @@ final class HomeViewModel {
         dayTask?.cancel()
     }
 
-    /// Follows today's card (#402) as the plan, the cooked entries and the day change. The clock's
-    /// day, never the screen's: a loop wakes at midnight (or within a minute, if the clock or zone
-    /// changed under it) and follows the new day.
+    /// Today and the local time in it (#402).
+    private struct Moment: Equatable {
+        let day: Int64
+        let millisOfDay: Int64
+
+        /// The card only changes with the day or when a meal window ends.
+        func sameCard(as other: Moment?) -> Bool {
+            guard let other else { return false }
+            return day == other.day && MealWindows.ended(millisOfDay) == MealWindows.ended(other.millisOfDay)
+        }
+    }
+
+    private func moment() -> (Moment, Int64) {
+        let now = clock.now()
+        let offset = Int64(zone.secondsFromGMT(for: Date(timeIntervalSince1970: TimeInterval(now) / 1000))) * 1000
+        let sinceMidnight = (((now + offset) % PlanDays.millisPerDay) + PlanDays.millisPerDay) % PlanDays.millisPerDay
+        return (Moment(day: PlanDays.today(millis: now, zone: zone), millisOfDay: sinceMidnight), sinceMidnight)
+    }
+
+    /// Follows today's card (#402) as the plan, the cooked entries, the day and the meal windows
+    /// change. The clock's, never the screen's: a loop wakes at midnight or when the next window
+    /// ends (and within a minute at most, if the clock or zone changed under it).
     private func followToday() {
         guard mealPlan != nil else { return }
-        followDay(PlanDays.today(millis: clock.now()))
-        dayTask = Task { [weak self, clock, sleep] in
+        follow(moment().0)
+        dayTask = Task { [weak self, sleep] in
             while !Task.isCancelled {
-                let now = clock.now()
-                let offset = Int64(TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: TimeInterval(now) / 1000))) * 1000
-                let untilMidnight = PlanDays.millisPerDay - (((now + offset) % PlanDays.millisPerDay) + PlanDays.millisPerDay) % PlanDays.millisPerDay
-                do { try await sleep(min(.milliseconds(untilMidnight), Self.dayCheck)) } catch { break }
-                self?.followDay(PlanDays.today(millis: clock.now()))
+                guard let wake = self?.nextWake() else { break }
+                do { try await sleep(wake) } catch { break }
+                guard let self else { break }
+                follow(moment().0)
             }
         }
     }
 
-    private func followDay(_ day: Int64) {
-        guard let mealPlan, day != followedDay else { return }
-        followedDay = day
+    /// How long until the card may change: midnight or the next window's end, a minute at most.
+    private func nextWake() -> Duration {
+        let sinceMidnight = moment().1
+        let wake = min(PlanDays.millisPerDay - sinceMidnight, MealWindows.untilNextEnd(sinceMidnight) ?? .max)
+        return min(.milliseconds(wake), Self.dayCheck)
+    }
+
+    private func follow(_ moment: Moment) {
+        guard let mealPlan, !moment.sameCard(as: followedMoment) else { return }
+        followedMoment = moment
+        let day = moment.day
         let cooked = cooked?.observeCookedOn(day: day) ?? Just(Set<Int64>()).eraseToAnyPublisher()
         todayCancellable = Publishers.CombineLatest3(
             mealPlan.observeDays(start: day, end: day), mealPlan.observeMealTypes(), cooked
         )
-        .map { meals, types, cookedIds in TodayCard.of(meals: meals, types: types, today: day, cooked: cookedIds) }
+        .map { meals, types, cookedIds in
+            TodayCard.of(meals: meals, types: types, today: day, cooked: cookedIds, millisOfDay: moment.millisOfDay)
+        }
         .receive(on: DispatchQueue.main)
         .sink { [weak self] card in
-            guard let self, followedDay == day, uiState.today != card else { return }
+            guard let self, followedMoment == moment, uiState.today != card else { return }
             uiState.today = card
         }
     }

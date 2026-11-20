@@ -16,6 +16,7 @@ import com.example.recipeclipper.data.importFile
 import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.edit.PastedTextRouter
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.MealWindows
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.Recipe
@@ -128,16 +129,26 @@ data class TodayMeal(
 /**
  * Home's Today card (#402): [lead], the earliest meal today not yet cooked, and the [others]
  * still to cook, in meal type order. A recipe counts as cooked today with a cooking entry dated
- * today (a photo, "Mark as cooked", or a finished run), and then drops off.
+ * today (a photo, "Mark as cooked", or a finished run), and then drops off. A meal whose window
+ * has passed ([MealWindows]: breakfast 11:00, lunch 15:00) is gone, cooked or not.
  */
 data class TodayCard(val lead: TodayMeal, val others: List<TodayMeal>) {
     companion object {
-        /** Today's card at [today], from the day's [meals]; null when nothing is left to cook. */
-        fun of(meals: List<PlannedMeal>, types: List<MealType>, today: Long, cooked: Set<Long>): TodayCard? {
+        /**
+         * Today's card at [today] and [millisOfDay] (local), from the day's [meals]; null when
+         * nothing is left to cook.
+         */
+        fun of(
+            meals: List<PlannedMeal>, types: List<MealType>, today: Long, cooked: Set<Long>, millisOfDay: Long
+        ): TodayCard? {
             val order = types.sortedWith(compareBy({ it.sortOrder }, { it.id }))
                 .mapIndexed { index, type -> type.id to index }.toMap()
             val names = types.associate { it.id to it.name }
-            val left = meals.filter { it.day == today && (it.recipeId == null || it.recipeId !in cooked) }
+            val keys = types.associate { it.id to it.builtInKey }
+            val left = meals.filter {
+                it.day == today && (it.recipeId == null || it.recipeId !in cooked) &&
+                    MealWindows.isOpen(keys[it.mealTypeId], millisOfDay)
+            }
                 .sortedBy { order[it.mealTypeId] ?: Int.MAX_VALUE }
                 .mapNotNull { meal ->
                     val title = (meal.title ?: meal.note)?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
@@ -205,26 +216,39 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-    /** Today as an epoch day, again when the day turns over (#402); the clock's, never the screen's. */
-    private val today: Flow<Long> = flow {
+    /** Today, and the time of day in it. */
+    private data class Moment(val day: Long, val millisOfDay: Long)
+
+    /**
+     * Today as an epoch day with the local time (#402), again when the day turns over or a meal
+     * window ends ([MealWindows]); the clock's, never the screen's.
+     */
+    private val today: Flow<Moment> = flow {
         while (true) {
             val now = clock.now()
-            emit(PlanDays.today(now))
             val zone = TimeZone.getDefault()
             val sinceMidnight = Math.floorMod(now + zone.getOffset(now), PlanDays.MILLIS_PER_DAY)
-            // Woken at midnight, or in a minute: a clock or zone changed under it is seen soon too.
-            delay(minOf(PlanDays.MILLIS_PER_DAY - sinceMidnight, DAY_CHECK_MS))
+            emit(Moment(PlanDays.today(now), sinceMidnight))
+            // Woken at midnight or when the next window ends, and in a minute at most: a clock or
+            // zone changed under it is seen soon too.
+            delay(
+                minOf(
+                    PlanDays.MILLIS_PER_DAY - sinceMidnight,
+                    MealWindows.untilNextEnd(sinceMidnight) ?: Long.MAX_VALUE,
+                    DAY_CHECK_MS
+                )
+            )
         }
-    }.distinctUntilChanged()
+    }.distinctUntilChanged { a, b -> a.day == b.day && MealWindows.ended(a.millisOfDay) == MealWindows.ended(b.millisOfDay) }
 
     /** Today's card (#402), followed as the plan, the cooked entries and the day change. */
     private val todayCard: Flow<TodayCard?> =
-        if (mealPlan == null) flowOf(null) else today.flatMapLatest { day ->
+        if (mealPlan == null) flowOf(null) else today.flatMapLatest { (day, millisOfDay) ->
             combine(
                 mealPlan.observeDays(day, day),
                 mealPlan.observeMealTypes(),
                 cooked?.observeCookedOn(day) ?: flowOf(emptySet())
-            ) { meals, types, cookedIds -> TodayCard.of(meals, types, day, cookedIds) }
+            ) { meals, types, cookedIds -> TodayCard.of(meals, types, day, cookedIds, millisOfDay) }
         }
 
     private val counts: Flow<Pair<Int, Int?>> = combine(
