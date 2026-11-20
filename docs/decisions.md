@@ -4978,8 +4978,12 @@ Behind the `mealPlanImport` flag (on by default; off, the first recipe opens the
   `ParseError.CutOff`; the screen picks the words ("That answer was cut off before the recipe
   ended. Ask the AI to send it again, or to continue.") and offers the same copy action with
   "Your answer was cut off. Please send the whole recipe again as schema.org Recipe JSON in one
-  ```json code block." Android: `TextIntent.Target.Failed` -> the `cutoff` route (`CutOffScreen`);
-  iOS: the share card's `.failed(.cutOff)` (no Try again, the text fails the same way). One whole
+  ```json code block." Shared and pasted text take the same road (#372): Android
+  `TextIntent.Target.Failed` -> `PasteTarget.CutOff` (`PastedTextRouter`) -> the `cutoff` route
+  (`CutOffScreen`) from `MainActivity` and `openPasted`; iOS `PasteTarget.cutOff` -> `Route.cutOff`
+  (`CutOffScreen`) from a paste, and the share card's `.failed(.cutOff)` from the extension (no
+  Try again, the text fails the same way). Paste a link and Paste the answer close as for any
+  other target. One whole
   recipe followed by a cut-off one stays the editor's (a single recipe is never a plan).
 - **What counts as a plan** (`MealPlanImport`, `:core`, `data/remote`; iOS `MealPlanImport.swift`):
   the recipes of **every whole JSON value in the text** (candidates cut by their matching bracket,
