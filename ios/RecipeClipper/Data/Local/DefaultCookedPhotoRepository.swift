@@ -12,6 +12,11 @@ protocol CookedPhotoRepository: AnyObject {
     /// "Mark as cooked" (#173): an entry cooked today with no photo and no note; nil if it
     /// couldn't be written.
     func markCooked(recipeId: Int64) async -> CookedPhoto?
+    /// Finishing cook mode records the cooking (#402), unless `recipeId` already has an entry dated
+    /// today (a photo, or "Mark as cooked"): one cooking a day is enough to say it was cooked.
+    func markCookedToday(recipeId: Int64) async
+    /// The recipes with an entry dated `day` (#402): what Home's Today card counts as cooked.
+    func observeCookedOn(day: Int64) -> AnyPublisher<Set<Int64>, Never>
     func edit(id: Int64, day: Int64, note: String?) async
     /// Deletes the entry; its file stays until `forget` or `sweep`, so `restore` can undo it.
     func delete(id: Int64) async -> CookedPhoto?
@@ -70,6 +75,16 @@ final class DefaultCookedPhotoRepository: CookedPhotoRepository {
             dataLog.error("markCooked failed: \(String(describing: error), privacy: .public)")
             return nil
         }
+    }
+
+    func markCookedToday(recipeId: Int64) async {
+        let today = PlanDays.today(millis: clock.now())
+        let already = (try? await db.read { conn in try CookedPhotoDao(db: conn).countOn(recipeId, day: today) > 0 }) ?? true
+        if !already { _ = await markCooked(recipeId: recipeId) }
+    }
+
+    func observeCookedOn(day: Int64) -> AnyPublisher<Set<Int64>, Never> {
+        db.observe { conn in try CookedPhotoDao(db: conn).recipesCookedOn(day) }
     }
 
     func edit(id: Int64, day: Int64, note: String?) async {

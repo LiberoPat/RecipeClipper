@@ -61,6 +61,24 @@ final class HomeResumeTests: XCTestCase {
         XCTAssertEqual(vm.uiState.resume, CookResume(recipeId: 1, step: 4, stepCount: 4, timerSecondsLeft: 120))
     }
 
+    // #402: a finished run is never a resume, whatever its timers.
+    func testAFinishedRunIsNeverResumedEvenWithATimerStillRunning() async {
+        let timer = SavedTimer(totalSeconds: 600, remainingSeconds: 600, endsAt: 120_000)
+        let vm = await cooking(CookProgress(active: false, currentStep: 3, doneSteps: [0, 1, 2, 3], timers: [3: timer]))
+
+        XCTAssertEqual(vm.uiState.continueCooking?.id, 1)
+        XCTAssertNil(vm.uiState.resume)
+    }
+
+    func testCookResumeOfAFinishedRunIsNilWhateverItsTimersAndCookMode() {
+        let timer = SavedTimer(totalSeconds: 600, remainingSeconds: 600, endsAt: 120_000)
+        let finished = recipe(1, CookProgress(active: true, doneSteps: [0, 1, 2, 3], timers: [3: timer]))
+        XCTAssertNil(CookResume.of(finished, now: 0))
+        // One step short of finished is still being cooked.
+        let almost = recipe(1, CookProgress(active: false, doneSteps: [0, 1, 2], timers: [3: timer]))
+        XCTAssertEqual(CookResume.of(almost, now: 0)?.timerSecondsLeft, 120)
+    }
+
     func testTheCardFollowsTheCooksProgressAsItIsSaved() async {
         let vm = await cooking(CookProgress())
         XCTAssertNil(vm.uiState.resume)

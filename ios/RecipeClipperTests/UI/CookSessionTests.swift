@@ -45,6 +45,33 @@ final class CookSessionTests: XCTestCase {
         XCTAssertTrue(session.hasRunningTimers)
     }
 
+    // #402: a finished run is over, timers and all.
+    func testFinishingTheRunStopsItsTimersThoseCountingAndThoseSavedAsRunning() {
+        let counting = session.startTimer(CookState(active: true, currentStep: 2, doneSteps: [0, 1]), step: 2, totalSeconds: 600).cook
+        // A timer saved running whose deadline this session isn't counting (never restored).
+        var withSaved = counting
+        withSaved.timers[0] = StepTimer(totalSeconds: 60, remainingSeconds: 30, running: true)
+
+        let done = session.done(withSaved, stepCount: 3)
+
+        XCTAssertTrue(done.finished)
+        XCTAssertEqual(done.stopped, [0, 2])
+        XCTAssertTrue(done.cook.timers.values.allSatisfy { !$0.running })
+        XCTAssertEqual(done.cook.timers[2]?.remainingSeconds, 600, "the time left is kept")
+        XCTAssertFalse(session.hasRunningTimers)
+        XCTAssertTrue(session.progress(done.cook).timers.values.allSatisfy { $0.endsAt == nil })
+    }
+
+    func testAStepDoneBeforeTheLastStopsNoTimer() {
+        let running = session.startTimer(CookState(active: true), step: 1, totalSeconds: 600).cook
+
+        let done = session.done(running, stepCount: 3)
+
+        XCTAssertFalse(done.finished)
+        XCTAssertEqual(done.stopped, [])
+        XCTAssertTrue(session.hasRunningTimers)
+    }
+
     func testAFinishedRunStartsFreshAndStopsItsTimersAnythingElseResumes() {
         var finished = session.startTimer(CookState(), step: 1, totalSeconds: 1200).cook
         finished.doneSteps = [0, 1, 2]

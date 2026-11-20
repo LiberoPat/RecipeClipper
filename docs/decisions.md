@@ -2846,7 +2846,41 @@ array in one string (einfachbacken), which no word table can read; and Japanese 
 The owner's pick (2026-10-19): 01 V2 "Resume first" with 02 V1 "Three equal doors". It
 bends the settled link field: an always-visible field became a tile that opens it.
 
-- **The resume card** is Continue cooking's recipe (the most recent, as before). The ViewModel
+- **Today's card (#402, owner, 2026-11-19; `homeTonight`).** The resume card used to be the most
+  recent recipe whether or not anything was being cooked, so a finished recipe still sat under
+  "Continue cooking". Now it is one of two cards (or none):
+  - **Mid-cook** (the recipe below): "Continue cooking" with Resume cooking, as before.
+  - **Otherwise: "Today".** Today's planned meals from Week, **in the meal types' own order** (the
+    order Week uses: Breakfast, Lunch, Dinner, Snack and the cook's own, as reordered; not dinner
+    first), and the card leads with **the earliest meal not yet cooked** (the owner first asked for
+    dinner first, then changed it, since the lead may be breakfast): the recipe's photo (a plain
+    band without one), "Today" over its name, and **Start cooking**. The rest of today's uncooked
+    meals follow, one short line each ("Dinner: Lemon chicken"), in order, each tapping through to
+    its recipe. A planned **note** shows its text, no button (and is never "cooked"). Nothing left
+    to cook today and nothing mid-cook: **no card at all**, and the ways in stay.
+  - **Cooked today** = the recipe has a `cooked_photos` entry dated today ("I made this" photo,
+    "Mark as cooked", #116, #173), **or a run of it was finished today**: finishing cook mode
+    ("Done — finish") now **records today's cooking** in that same table, once a day (no entry if one
+    is dated today already; no new store, and the entry shows in Your cooks and the Cooked view
+    like any). A recipe planned twice today (lunch and dinner) drops both once cooked.
+  - **Start cooking** opens the recipe **on the Week's stack** at the planned servings, in cook mode:
+    Android `week/recipe/{id}?servings=&startCook=true`, iOS `Route.startWeekRecipe`, and Back
+    returns to the Week. It starts with `CookController.start`: a finished last run starts afresh
+    (the reading view's Start cooking), an unfinished one stays where it was. A tap on the card's
+    photo or name, or on a line, opens the recipe on the Week's stack with no cook flag.
+  - **Live**: it follows the plan, the cooked entries and the day (the ViewModel's clock wakes at
+    midnight, or within a minute if the clock or zone moved), never the screen's own date.
+  - **A finished run is never a resume (#402).** `CookResume.of` is null when every step is done,
+    whatever its timers, and finishing the last step now **stops the run's timers**
+    (`CookSession.done`: the same as starting a finished run afresh): their alarms and countdowns
+    are cancelled (Android ongoing notification, iOS notification and Live Activity), and the saved
+    progress holds no deadline. Until then a finished run with the last step's rest timer still
+    counting was offered as Continue cooking's "Resume cooking". (A finished run opened from a
+    countdown or alert stays in the reading view, #333; with the timers stopped on finish, that is
+    only for a timer started after finishing.)
+  - Off (`homeTonight`): the card is exactly as below, always the most recent recipe.
+- **The resume card** is Continue cooking's recipe (the most recent, as before; with `homeTonight`
+  only while it is being cooked). The ViewModel
   follows that recipe through `observeRecipe(id)` (a repository flow that counts no view) and
   derives a `CookResume`: the recipe is being cooked when cook mode was left on or a step timer
   still runs. Then it shows the step stopped on ("Step 2 of 4", the existing `cook_position`)

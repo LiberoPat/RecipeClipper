@@ -28,6 +28,10 @@ enum Route: Hashable {
     /// The Week tab's stack (#49): a planned recipe at its planned servings (Android's
     /// `week/recipe/{id}?servings=`), and the meal types screen (`week/meal-types`).
     case weekRecipe(id: Int64, servings: Int?)
+    /// Home's Today card (#402): a planned recipe on the Week's stack, opened in cook mode at its
+    /// planned servings (Android's `week/recipe/{id}?servings=&startCook=true`): a finished last
+    /// run starts afresh, an unfinished one stays where it was.
+    case startWeekRecipe(id: Int64, servings: Int?)
     case mealTypes
     /// The week's "What I need" (#51; Android's `week/need/{weekStart}`).
     case whatINeed(weekStart: Int64)

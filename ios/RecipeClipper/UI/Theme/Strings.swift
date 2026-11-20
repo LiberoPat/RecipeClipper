@@ -330,6 +330,10 @@ enum Strings {
     static var homeResumeCooking: String { String(localized: "home_resume_cooking") }
     static var homeOpenRecipe: String { String(localized: "home_open_recipe") }
     static func homeTimerLeft(_ clock: String) -> String { String(localized: "home_timer_left \(clock)") }
+    static var homeToday: String { String(localized: "home_today") }
+    static func homeTodayOther(_ mealType: String, _ title: String) -> String {
+        String(localized: "home_today_other \(mealType) \(title)")
+    }
 
     // Recipes (#102; it replaced History)
     static var recipesTitle: String { String(localized: "recipes_title") }

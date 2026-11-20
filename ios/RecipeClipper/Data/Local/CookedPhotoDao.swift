@@ -57,6 +57,16 @@ struct CookedPhotoDao {
         )
     }
 
+    /// How many entries `recipeId` has dated `day`.
+    func countOn(_ recipeId: Int64, day: Int64) throws -> Int {
+        try db.queryOne("SELECT COUNT(*) FROM cooked_photos WHERE recipeId = ? AND day = ?", recipeId, day) { $0.int(0) } ?? 0
+    }
+
+    /// The recipes with an entry dated `day` (#402).
+    func recipesCookedOn(_ day: Int64) throws -> Set<Int64> {
+        Set(try db.query("SELECT DISTINCT recipeId FROM cooked_photos WHERE day = ?", day) { $0.int64(0) })
+    }
+
     func get(_ id: Int64) throws -> CookedPhotoRecord? {
         try db.queryOne("SELECT \(CookedPhotoRecord.columns) FROM cooked_photos WHERE id = ?", id, map: CookedPhotoRecord.init(row:))
     }

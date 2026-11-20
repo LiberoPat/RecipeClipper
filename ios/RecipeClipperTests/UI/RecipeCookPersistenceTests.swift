@@ -25,7 +25,9 @@ final class RecipeCookPersistenceTests: XCTestCase {
         clock: TestClock = TestClock(now: 0),
         alarms: FakeTimerAlarmScheduler? = nil,
         cookArg: Bool = false,
-        countdowns: Bool = false
+        countdowns: Bool = false,
+        cooked: FakeCookedPhotoRepository? = nil,
+        startCook: Bool = false
     ) async -> (RecipeViewModel, FakeRecipeRepository) {
         let repository = FakeRecipeRepository()
         repository.openResult = recipe
@@ -33,7 +35,8 @@ final class RecipeCookPersistenceTests: XCTestCase {
         let vm = RecipeViewModel(
             recipeId: recipe.id, url: nil, repository: repository, preferences: FakeAppPreferences(),
             clock: clock, sleep: clock.sleep, alarms: alarms, openInCookMode: cookArg,
-            countdowns: countdowns ? TimerCountdownSync(repository: repository, alarms: alarms) : nil
+            countdowns: countdowns ? TimerCountdownSync(repository: repository, alarms: alarms) : nil,
+            cooked: cooked, startInCookMode: startCook
         )
         await settleMain()
         return (vm, repository)
@@ -226,6 +229,71 @@ final class RecipeCookPersistenceTests: XCTestCase {
 
         XCTAssertTrue(alarms.pending.isEmpty)
         XCTAssertTrue(vm.uiState.cook.timers.isEmpty)
+    }
+
+    // #402: "Done — finish" ends the run's timers, their alerts and countdowns, and records the cooking.
+    func testFinishingARunStopsItsTimersAndCancelsTheirAlerts() async {
+        let alarms = FakeTimerAlarmScheduler()
+        let (vm, repository) = await open(recipe(instructions: ["Simmer for 10 minutes.", "Serve."]), alarms: alarms)
+        vm.onCookStart()
+        vm.onTimerStart(0)
+        XCTAssertEqual(alarms.pending.count, 1)
+
+        vm.onStepDone()
+        XCTAssertEqual(alarms.pending.count, 1, "not the last step: the timer runs on")
+        vm.onStepDone() // the last step: Done, finish
+        await vm.settleWrites()
+
+        XCTAssertTrue(alarms.pending.isEmpty)
+        XCTAssertEqual(alarms.cancelCalls.map(\.step), [0])
+        XCTAssertTrue(vm.uiState.cook.timers.values.allSatisfy { !$0.running })
+        XCTAssertNil(repository.setCookProgressCalls.last?.progress.timers[0]?.endsAt)
+    }
+
+    func testFinishingARunRecordsTodaysCookingOnce() async {
+        let cooked = FakeCookedPhotoRepository()
+        cooked.today = 0
+        let (vm, _) = await open(recipe(instructions: ["Serve."]), cooked: cooked)
+
+        vm.onCookStart()
+        vm.onStepDone()
+        await vm.settleWrites()
+        XCTAssertEqual(cooked.photos.value.map(\.recipeId), [id])
+
+        vm.onCookStart()
+        vm.onStepDone()
+        await vm.settleWrites()
+        XCTAssertEqual(cooked.photos.value.count, 1, "one cooking a day")
+    }
+
+    func testARunAlreadyMarkedCookedTodayAddsNoSecondEntryAndAnUnfinishedOneAddsNone() async {
+        let cooked = FakeCookedPhotoRepository()
+        cooked.today = 0
+        cooked.mark(recipeId: id)
+        let (vm, _) = await open(recipe(instructions: ["Chop.", "Serve."]), cooked: cooked)
+
+        vm.onCookStart()
+        vm.onStepDone()
+        await vm.settleWrites()
+        XCTAssertEqual(cooked.photos.value.count, 1)
+        vm.onStepDone()
+        await vm.settleWrites()
+        XCTAssertEqual(cooked.photos.value.count, 1)
+    }
+
+    // #402: Home's Today card opens the recipe in cook mode; a finished last run starts afresh.
+    func testStartCookOpensInCookModeAFinishedRunStartingAfreshAndAnUnfinishedOneWhereItWas() async {
+        let (fresh, _) = await open(
+            recipe(cook: CookProgress(currentStep: 2, doneSteps: [0, 1, 2])), startCook: true
+        )
+        XCTAssertTrue(fresh.uiState.cook.active)
+        XCTAssertEqual(fresh.uiState.cook.currentStep, 0)
+        XCTAssertTrue(fresh.uiState.cook.doneSteps.isEmpty)
+
+        let (resumed, _) = await open(recipe(cook: CookProgress(currentStep: 1, doneSteps: [0])), startCook: true)
+        XCTAssertTrue(resumed.uiState.cook.active)
+        XCTAssertEqual(resumed.uiState.cook.currentStep, 1)
+        XCTAssertEqual(resumed.uiState.cook.doneSteps, [0])
     }
 
     func testDeletingTheRecipeCancelsItsRunningTimers() async {
