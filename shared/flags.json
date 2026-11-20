@@ -95,6 +95,12 @@
       "description": "Recipe versions: JSON shared in whose isBasedOn names a recipe in the library (its link, as Change this recipe wrote it) is saved as a version of it, linked by the original's uid. The version shows Based on the original (a tap opens it) and the original lists its versions. Off, the link is neither saved nor shown, and the recipe is a plain chat recipe.",
       "defaults": { "debug": true, "release": true },
       "issue": 354
+    },
+    {
+      "key": "skipTonight",
+      "description": "Skip tonight: a planned meal's long-press menu on Week, and today's planned meals, gain Skip, which asks: push the rest of the week back a day (this meal and every later planned meal, meal types kept), move this meal to the next day with no meal of its type, or remove it from the plan. One undo restores exactly what was there. Off, Week offers Move and Remove only.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 398
     }
   ]
 }

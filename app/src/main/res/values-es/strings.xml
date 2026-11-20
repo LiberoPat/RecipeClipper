@@ -343,6 +343,15 @@
     <string name="action_add_meal">+ Añadir</string>
     <string name="action_move">Mover…</string>
     <string name="action_remove_from_plan">Quitar del plan</string>
+    <string name="action_skip">Saltar…</string>
+    <string name="action_skip_today">Saltar</string>
+    <string name="skip_meal_title">Saltar %1$s</string>
+    <string name="skip_push_week">Retrasar el resto de la semana un día</string>
+    <string name="skip_next_free_day">Mover al siguiente día libre</string>
+    <string name="skip_remove">Quitar del plan</string>
+    <string name="snackbar_skip_pushed">El resto de la semana se retrasó un día</string>
+    <string name="snackbar_skip_pushed_past_end">El resto de la semana se retrasó un día. Algunas comidas quedan más allá del final del plan.</string>
+    <string name="snackbar_skip_moved">%1$s movido al %2$s</string>
     <string name="add_to_day_title">Añadir al %1$s</string>
     <string name="label_search_or_note">Busca tus recetas o escribe una nota</string>
     <string name="action_add_as_note">Añadir «%1$s» como nota</string>

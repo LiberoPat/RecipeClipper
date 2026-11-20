@@ -40,6 +40,8 @@ enum Flag: String, CaseIterable {
     case mealPlanImport
     /// Recipe versions (#354): an AI's change to a recipe is saved linked to its original.
     case recipeVersions
+    /// Skip tonight (#398): Week's long-press menu and today's meals gain Skip: push the week, move to the next free day, or remove.
+    case skipTonight
 }
 
 /// One flag as `shared/flags.json` declares it.

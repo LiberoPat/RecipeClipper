@@ -327,6 +327,15 @@
     <string name="action_add_meal">+ Hinzufügen</string>
     <string name="action_move">Verschieben…</string>
     <string name="action_remove_from_plan">Aus dem Plan entfernen</string>
+    <string name="action_skip">Überspringen…</string>
+    <string name="action_skip_today">Überspringen</string>
+    <string name="skip_meal_title">%1$s überspringen</string>
+    <string name="skip_push_week">Den Rest der Woche um einen Tag verschieben</string>
+    <string name="skip_next_free_day">Auf den nächsten freien Tag verschieben</string>
+    <string name="skip_remove">Aus dem Plan entfernen</string>
+    <string name="snackbar_skip_pushed">Rest der Woche um einen Tag verschoben</string>
+    <string name="snackbar_skip_pushed_past_end">Rest der Woche um einen Tag verschoben. Einige Mahlzeiten liegen jetzt hinter dem Ende des Plans.</string>
+    <string name="snackbar_skip_moved">%1$s verschoben auf %2$s</string>
     <string name="add_to_day_title">Hinzufügen: %1$s</string>
     <string name="label_search_or_note">Rezepte suchen oder eine Notiz schreiben</string>
     <string name="action_add_as_note">„%1$s“ als Notiz hinzufügen</string>
