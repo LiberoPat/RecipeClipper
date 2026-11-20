@@ -4,7 +4,7 @@ import Foundation
 /// Debug builds only: launch arguments that drive the app to a screen without touch, for
 /// simulator screenshots (`simctl openurl` needs a tap on the system "Open in…?" prompt).
 ///   -debugOpen <recipe url>   push the import screen for that link
-///   -debugRoute recipes|lists|settings|list:<id>
+///   -debugRoute recipes|lists|settings|settings:<section, e.g. week>|list:<id>
 ///   -debugRename              open the rename alert once a list detail has loaded
 ///   -debugCook                start cook mode once the recipe has loaded
 enum DebugLaunch {
@@ -23,6 +23,10 @@ enum DebugLaunch {
         case "settings": path.append(.settings)
         case let route? where route.hasPrefix("list:"):
             if let id = Int64(route.dropFirst("list:".count)) { path.append(contentsOf: [.lists, .listDetail(id: id)]) }
+        case let route? where route.hasPrefix("settings:"):
+            if let section = SettingsSection(rawValue: String(route.dropFirst("settings:".count))) {
+                path.append(contentsOf: [.settings, .settingsSection(section)])
+            }
         default: break
         }
         if let url = value(after: "-debugOpen") { path.append(.importUrl(url)) }

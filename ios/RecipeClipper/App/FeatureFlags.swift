@@ -44,6 +44,8 @@ enum Flag: String, CaseIterable {
     case shopForWeek
     /// Skip tonight (#398): Week's long-press menu and today's meals gain Skip: push the week, move to the next free day, or remove.
     case skipTonight
+    /// The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397).
+    case eveningReminders
 }
 
 /// One flag as `shared/flags.json` declares it.

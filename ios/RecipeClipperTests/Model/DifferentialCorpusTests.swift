@@ -71,6 +71,9 @@ import XCTest
 // recipe), ingredients, steps and yield. Write only `Parse("{\"@type\":\"Recipe\", …}"),`.
 // Duration rows (#179): a prep, cook or total time, then Durations.format of it
 // (nil: hidden). Write only `Dur("PT1H30M"),` or `Dur("1 Std. 30 Min.", lang: "de"),`.
+// Ahead-of-time rows (#397): a recipe's steps, then AheadSteps.find: the index of the step to
+// start ahead of time and its quoted sentence (nil, nil: none). Write only `Ahead(["Marinate overnight."], nil, nil),`
+// or `Ahead(["Über Nacht marinieren."], lang: "de", nil, nil),`.
 // Chef mode rows (#100): a step, a short version of it, optionally the recipe's ingredient lines
 // (#129), then ShortStepCheck.accept (nil: the step shows as written). Write only
 // `Short("Bake for 20 minutes.", "Bake 20 min."),` or `Short("…", "…", lines: ["2 eggs"]),`.
@@ -310,6 +313,13 @@ final class DifferentialCorpusTests: XCTestCase {
         let time: String; let words: LanguageWords?; let shown: String?
         init(_ time: String, lang: String = "en", _ shown: String?) {
             self.time = time; self.words = LanguageWords.forTag(lang); self.shown = shown
+        }
+    }
+
+    private struct Ahead {
+        let steps: [String]; let words: LanguageWords?; let step: Int?; let quote: String?
+        init(_ steps: [String], lang: String = "en", _ step: Int?, _ quote: String?) {
+            self.steps = steps; self.words = LanguageWords.forTag(lang); self.step = step; self.quote = quote
         }
     }
 
@@ -2036,6 +2046,48 @@ final class DifferentialCorpusTests: XCTestCase {
         Dur("  ", nil),
     ]
 
+    private static let aheads: [Ahead] = [
+        Ahead(["Mix the marinade.", "Marinate the chicken at least 8 hours or overnight. Then grill it for 10 minutes."], 1, "Marinate the chicken at least 8 hours or overnight."),
+        Ahead(["Marinate for 4 hours in the fridge, turning once."], 0, "Marinate for 4 hours in the fridge, turning once."),
+        Ahead(["Marinate for 30 minutes."], nil, nil),
+        Ahead(["Let the dough rise for 1 to 2 hours."], nil, nil),
+        Ahead(["Let the dough rise for 8 to 12 hours."], 0, "Let the dough rise for 8 to 12 hours."),
+        Ahead(["Chill for at least 2 hours before serving."], 0, "Chill for at least 2 hours before serving."),
+        Ahead(["Chill for 1.5 hours."], nil, nil),
+        Ahead(["Refrigerate for up to 2 hours."], nil, nil),
+        Ahead(["Soak the beans in water for 8 hours."], 0, "Soak the beans in water for 8 hours."),
+        Ahead(["Serve with bread to soak up the sauce."], nil, nil),
+        Ahead(["Let the steak rest for 5 minutes."], nil, nil),
+        Ahead(["Rest for 5 minutes, then marinate for 6 hours."], 0, "Rest for 5 minutes, then marinate for 6 hours."),
+        Ahead(["Thaw the fish in the refrigerator the night before."], 0, "Thaw the fish in the refrigerator the night before."),
+        Ahead(["The sauce can be made ahead."], 0, "The sauce can be made ahead."),
+        Ahead(["There is no need to marinate overnight."], nil, nil),
+        Ahead(["Stir. Chill for 2.5 hours. Serve."], 0, "Chill for 2.5 hours."),
+        Ahead(["Marinate the chicken overnight in a large bowl with the garlic, the ginger, the soy sauce, the honey, the lime juice and plenty of black pepper, turning it once."], 0, "Marinate the chicken overnight in a large bowl with the garlic, the ginger, the soy sauce, the…"),
+        Ahead(["Marinate\n  overnight,\ncovered."], 0, "Marinate overnight, covered."),
+        Ahead(["Marinate overnight."], lang: "de", nil, nil),
+        Ahead(["Marinate overnight."], lang: "xx", nil, nil),
+        Ahead(["Das Fleisch über Nacht marinieren."], lang: "de", 0, "Das Fleisch über Nacht marinieren."),
+        Ahead(["Den Teig 8 Std. im Kühlschrank ruhen lassen."], lang: "de", 0, "Den Teig 8 Std. im Kühlschrank ruhen lassen."),
+        Ahead(["Mit Brot die Soße aufsaugen."], lang: "de", nil, nil),
+        Ahead(["Dejar marinar la carne durante la noche."], lang: "es", 0, "Dejar marinar la carne durante la noche."),
+        Ahead(["Remojar los garbanzos 12 horas."], lang: "es", 0, "Remojar los garbanzos 12 horas."),
+        Ahead(["Reposar 10 minutos."], lang: "es", nil, nil),
+        Ahead(["Laisser mariner le poulet toute la nuit."], lang: "fr", 0, "Laisser mariner le poulet toute la nuit."),
+        Ahead(["Mettre au frais 4 heures."], lang: "fr", 0, "Mettre au frais 4 heures."),
+        Ahead(["Laisser reposer 10 minutes."], lang: "fr", nil, nil),
+        Ahead(["Lasciare marinare la carne per una notte."], lang: "it", 0, "Lasciare marinare la carne per una notte."),
+        Ahead(["Lasciare lievitare per 2 ore."], lang: "it", 0, "Lasciare lievitare per 2 ore."),
+        Ahead(["Far riposare 5 minuti."], lang: "it", nil, nil),
+        Ahead(["Deixe marinar de um dia para o outro."], lang: "pt", 0, "Deixe marinar de um dia para o outro."),
+        Ahead(["Deixe de molho por 8 horas."], lang: "pt", 0, "Deixe de molho por 8 horas."),
+        Ahead(["Deixe descansar por 10 minutos."], lang: "pt", nil, nil),
+        Ahead(["鶏肉を切る。鶏肉を一晩漬け込む。焼く。"], lang: "ja", 0, "鶏肉を一晩漬け込む。"),
+        Ahead(["冷蔵庫で３時間寝かせる。"], lang: "ja", 0, "冷蔵庫で３時間寝かせる。"),
+        Ahead(["10分寝かせる。"], lang: "ja", nil, nil),
+        Ahead(["最大2時間冷やす。"], lang: "ja", nil, nil),
+    ]
+
     private static let shortSteps: [Short] = [
         Short("Preheat the oven to 350°F (180°C) and grease a 9x13-inch baking pan.", "Oven to 350°F (180°C); grease a 9x13-inch pan.", nil),
         Short("Bake for 25 to 30 minutes, until the top is golden.", "Bake 25–30 min until golden.", "Bake 25–30 min until golden."),
@@ -2807,6 +2859,14 @@ final class DifferentialCorpusTests: XCTestCase {
     func testDurationsMatchKotlin() {
         for row in Self.durations {
             XCTAssertEqual(Durations.format(row.time, words: row.words), row.shown, row.time)
+        }
+    }
+
+    func testAheadStepsMatchKotlin() {
+        for row in Self.aheads {
+            let found = AheadSteps.find(row.steps, words: row.words)
+            XCTAssertEqual(found?.step, row.step, row.steps.joined(separator: " | "))
+            XCTAssertEqual(found?.quote, row.quote, row.steps.joined(separator: " | "))
         }
     }
 

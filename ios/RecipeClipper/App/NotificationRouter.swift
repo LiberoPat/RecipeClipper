@@ -2,7 +2,8 @@ import Foundation
 import UserNotifications
 
 /// Handles the timer notifications: a tap opens that recipe in cook mode (an expiry reminder's,
-/// #52, opens the Pantry tab), and one arriving
+/// #52, opens the Pantry tab; a meal reminder's, #397, the first planned recipe on the Week's
+/// stack, or the Week tab), and one arriving
 /// while the app is in front shows as a banner unless that recipe is already on screen, where
 /// the in-app beep sounds instead. Installed as the notification center's delegate at launch,
 /// before the app finishes launching, so a tap that cold-starts the app is still delivered.
@@ -10,6 +11,8 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
     static let recipeIdKey = "recipeId"
     /// A tab to open on a tap: an expiry reminder's `AppTab.pantry` (#52).
     static let openTabKey = "openTab"
+    /// A recipe to open on the Week's stack on a tap: an evening or Tonight reminder's first planned recipe (#397).
+    static let openWeekRecipeKey = "openWeekRecipe"
     /// Set (to true) by an expiry reminder alone: its tab also opens the Use it up sheet (#305).
     /// Its own marker, so a notification that only wants the tab never pops the sheet.
     static let useItUpKey = "useItUp"
@@ -29,7 +32,9 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         let tab = (userInfo[Self.openTabKey] as? String).flatMap(AppTab.init)
         let useItUp = (userInfo[Self.useItUpKey] as? Bool) ?? false
+        let weekRecipe = (userInfo[Self.openWeekRecipeKey] as? NSNumber)?.int64Value
         Task { @MainActor in
+            if let weekRecipe { self.router?.openInWeek(recipe: weekRecipe) }
             if let id { self.router?.openInRecipes(.cookRecipe(id: id)) }
             // An expiry reminder opens its tab on Use it up (#305), which shows only when the flag is on.
             if useItUp { self.router?.requestUseItUp() } else if let tab { self.router?.select(tab) }

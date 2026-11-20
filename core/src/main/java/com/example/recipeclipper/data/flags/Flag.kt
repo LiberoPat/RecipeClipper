@@ -50,7 +50,9 @@ enum class Flag(val key: String) {
     /** Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients. */
     SHOP_FOR_WEEK("shopForWeek"),
     /** Skip tonight (#398): Week's long-press menu and today's meals gain Skip: push the week, move to the next free day, or remove. */
-    SKIP_TONIGHT("skipTonight");
+    SKIP_TONIGHT("skipTonight"),
+    /** The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397). */
+    EVENING_REMINDERS("eveningReminders");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

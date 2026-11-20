@@ -107,6 +107,12 @@
       "description": "Skip tonight: a planned meal's long-press menu on Week, and today's planned meals, gain Skip, which asks: push the rest of the week back a day (this meal and every later planned meal, meal types kept), move this meal to the next day with no meal of its type, or remove it from the plan. One undo restores exactly what was there. Off, Week offers Move and Remove only.",
       "defaults": { "debug": true, "release": true },
       "issue": 398
+    },
+    {
+      "key": "eveningReminders",
+      "description": "Evening-before reminder: a notification at the cook's time (19:00 by default, Settings > Week) naming tomorrow's planned meals and quoting any step to start ahead of time (marinate, soak, thaw, chill for hours, rise overnight, found by a word table in the recipe's own language); a tap opens the first recipe on the Week tab. An optional afternoon \"Tonight\" reminder (off by default). Off, neither is scheduled and Settings has no Week section.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 397
     }
   ]
 }

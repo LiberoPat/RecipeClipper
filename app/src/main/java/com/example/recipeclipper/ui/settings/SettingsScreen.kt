@@ -164,6 +164,9 @@ private fun sectionValue(section: SettingsSection, state: SettingsUiState): Stri
     SettingsSection.STEPS -> stringResource(
         if (state.amountsInSteps) R.string.settings_value_amounts_on else R.string.settings_value_amounts_off
     )
+    SettingsSection.WEEK -> stringResource(
+        if (state.eveningReminder || state.tonightReminder) R.string.settings_value_reminders_on else R.string.settings_value_reminders_off
+    )
     SettingsSection.PANTRY -> stringResource(
         if (state.expiryReminders) R.string.settings_value_reminders_on else R.string.settings_value_reminders_off
     )

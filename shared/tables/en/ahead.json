@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "AheadSteps (#397): finds the step that has to be started ahead of time, so the evening-before reminder can quote it. Matched in the recipe's own language only. All fragments are regexes, matched case-insensitively and, in a spaced language, as whole words (never inside a longer word); groups are non-capturing. always: a phrase that says so by itself ('overnight', 'the day before', 'make ahead'). verbs: an action that is ahead of time only when the same sentence also gives at least two hours ('marinate for 8 hours', 'chill at least 2 hours'): the hours come right after the verb or just before it. hours: the unit words for hours. counts: words that stand for two hours or more before an hours word ('two', 'several', 'a few'); a digit counts when it is 2 or more, and in a range its first number decides ('8 to 12 hours'; '1 to 2 hours' is not enough). upTo: words right before an amount that make it a limit, not a wait ('up to 2 hours'). skip: phrases that must never trigger; a match that overlaps one is dropped ('soak up the sauce', 'rest for 5 minutes', 'no need to marinate'). A language with no table detects nothing.",
+  "always": [
+    "overnight",
+    "over night",
+    "(?:the )?(?:night|evening|day) before",
+    "(?:a|one) day (?:ahead|in advance|before)",
+    "make[- ]ahead",
+    "make (?:\\p{L}+ ){0,3}ahead",
+    "made (?:\\p{L}+ ){0,3}ahead",
+    "(?:thaw|defrost)\\p{L}*(?:\\s+\\p{L}+){0,5}?\\s+(?:in|inside) (?:the |your )?(?:fridge|refrigerator)"
+  ],
+  "verbs": [
+    "marinat(?:e|es|ed|ing)",
+    "brin(?:e|es|ed|ing)",
+    "soak(?:s|ed|ing)?",
+    "thaw(?:s|ed|ing)?",
+    "defrost(?:s|ed|ing)?",
+    "chill(?:s|ed|ing)?",
+    "refrigerat(?:e|es|ed|ing)",
+    "rest(?:s|ed|ing)?",
+    "ris(?:e|es|ing)",
+    "proof(?:s|ed|ing)?",
+    "prov(?:e|es|ing)",
+    "freez(?:e|es|ing)",
+    "ferment(?:s|ed|ing)?",
+    "(?:stand|sit)(?:s|ing)?"
+  ],
+  "hours": [
+    "hours?",
+    "hrs?\\.?"
+  ],
+  "counts": [
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "twelve",
+    "twenty[- ]four",
+    "several",
+    "a few",
+    "a couple of",
+    "a couple"
+  ],
+  "upTo": [
+    "up to",
+    "at most",
+    "no more than",
+    "maximum of",
+    "maximum",
+    "max\\.?"
+  ],
+  "skip": [
+    "soak(?:s|ed|ing)? up",
+    "rest for \\d+ (?:minutes?|mins?|seconds?)",
+    "overnight oats",
+    "no need to.*",
+    "not necessary.*",
+    "don't need to.*",
+    "do not need to.*"
+  ]
+}
