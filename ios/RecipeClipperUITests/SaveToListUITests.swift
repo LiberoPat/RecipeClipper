@@ -98,7 +98,7 @@ final class SaveToListUITests: RecipeUITestCase {
         dismissSheet()
         requireState(bookmark, "label == 'Saved to a list'", "the bookmark to fill")
 
-        back()
+        backToHome()
         openLists()
         requireState(row("Lunch"), "label CONTAINS '1 recipe'", "Lunch's count on the Lists screen")
     }

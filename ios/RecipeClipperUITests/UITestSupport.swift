@@ -129,14 +129,28 @@ class RecipeUITestCase: XCTestCase {
         settingsRow(section).tap()
     }
 
-    /// Opens a recipe from Home and waits for its title.
+    /// Opens a recipe the way a cook would and waits for its screen. From Home that is Continue
+    /// cooking when the recipe is the most recent (the only recipe Home lists, #371), else the
+    /// Recipes screen and the recipe's row; from Recipes it is the row. Every test that needs
+    /// "a recipe open" goes through this, so a change to Home's shape is made here once.
     func openRecipe(_ title: String) {
-        require(row(title)).tap()
+        let onRecipes = app.textFields["Search titles and ingredients"]
+        if !onRecipes.exists && !row(title).exists && homePasteLink.exists {
+            openRecipes()
+        }
+        require(row(title), "the row for \(title)").tap()
         require(bookmark, "the recipe screen for \(title)")
     }
 
     func back() {
         app.navigationBars.buttons.element(boundBy: 0).tap()
+    }
+
+    /// Backs out to Home, however deep: a recipe opened through Recipes (`openRecipe`) is one
+    /// screen further from Home than Continue cooking's.
+    func backToHome() {
+        for _ in 0..<4 where !homePasteLink.exists { back() }
+        require(homePasteLink, "Home")
     }
 
     // MARK: - Waiting
