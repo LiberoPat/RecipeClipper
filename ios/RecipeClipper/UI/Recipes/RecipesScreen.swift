@@ -19,15 +19,35 @@ struct RecipesScreen: View {
     var onOpenView: (RecipeFilter) -> Void = { _ in }
     /// The strip's Lists card (#371): the Lists screen, Back to here.
     var onOpenLists: () -> Void = {}
+    /// The long-press menu on a row (#376, the `rowActions` flag) and Select (#377, `multiSelect`).
+    var rowActions = false
+    var multiSelect = false
+    /// Makes the Add to plan sheet's ViewModel, once a row's menu first needs it; nil leaves the item out.
+    var makePlanVM: (() -> AddToPlanViewModel)? = nil
 
     @State private var scanSource: ScanSource?
-    @State private var saveSheetOpen = false
+    /// What a row's menu has open: the save-to-list, plan and share sheets.
+    @State private var rowMenu = RowMenuPresenter()
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
     @State private var sideInset = ReadableWidth.gutter
 
     /// A link imports as always; any other pasted text goes where the same text shared would (#372).
     private func openPasted(_ target: PasteTarget) {
         if case .link(let url) = target { onOpenUrl(url) } else { onOpenPasted(target) }
+    }
+
+    /// The long-press menu for one row (#376); nil while selecting or with the flag off.
+    private func menu(for recipe: RecipeSummary) -> RecipeRowActions? {
+        guard rowActions, !vm.uiState.selecting, let saveVM else { return nil }
+        return RecipeRowActions(
+            onAddToList: { rowMenu.addToList([recipe], saveVM: saveVM) },
+            onAddToPlan: makePlanVM.map { make in
+                { rowMenu.addToPlan(recipe, makePlanVM: make) { await vm.yieldServings(recipeId: recipe.id) } }
+            },
+            onShare: { rowMenu.share { await vm.onShare(recipeId: recipe.id, labels: Strings.shareTextLabels) } },
+            onSelect: multiSelect ? { vm.onStartSelecting(recipe) } : nil,
+            onDelete: { vm.onRequestDelete([recipe]) }
+        )
     }
 
     var body: some View {
@@ -81,25 +101,32 @@ struct RecipesScreen: View {
                     VStack(spacing: 0) {
                         Hairline()
                         LibraryRow(
-                            recipe: recipe, onClick: { onOpenRecipe(recipe.id) },
+                            recipe: recipe,
+                            onClick: { state.selecting ? vm.onToggleSelected(recipe.id) : onOpenRecipe(recipe.id) },
                             onSaveToList: oneCookbook && saveVM != nil ? {
-                                saveVM?.setRecipe(recipe.id, title: recipe.title)
-                                saveSheetOpen = true
-                            } : nil
+                                if let saveVM { rowMenu.addToList([recipe], saveVM: saveVM) }
+                            } : nil,
+                            selecting: state.selecting, selected: state.selectedIds.contains(recipe.id)
                         )
+                        .recipeRowMenu(menu(for: recipe))
                     }
                         .listRowSeparator(.hidden)
+                        // No swipes while selecting (#377): a tap ticks, Delete is the bar's.
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) { vm.onDelete(recipe) } label: {
-                                Label(Strings.delete, systemImage: "trash")
+                            if !state.selecting {
+                                Button(role: .destructive) { vm.onDelete(recipe) } label: {
+                                    Label(Strings.delete, systemImage: "trash")
+                                }
+                                .tint(Palette.error)
                             }
-                            .tint(Palette.error)
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                            Button(role: .destructive) { vm.onDelete(recipe) } label: {
-                                Label(Strings.delete, systemImage: "trash")
+                            if !state.selecting {
+                                Button(role: .destructive) { vm.onDelete(recipe) } label: {
+                                    Label(Strings.delete, systemImage: "trash")
+                                }
+                                .tint(Palette.error)
                             }
-                            .tint(Palette.error)
                         }
                 }
             }
@@ -114,9 +141,23 @@ struct RecipesScreen: View {
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
+        // Selecting (#377): Done leaves it (Back would leave the screen, so it is hidden meanwhile).
+        .navigationBarBackButtonHidden(state.selecting)
+        .toolbar(state.selecting ? .hidden : .automatic, for: .tabBar)
         .toolbar {
+            if state.selecting {
+                ToolbarItem(placement: .principal) { RecipesSelectionTitle(count: state.selectedIds.count) }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(Strings.done, action: vm.onExitSelection)
+                        .accessibilityIdentifier("recipes.selection.done")
+                }
+            }
             ToolbarItemGroup(placement: .topBarTrailing) {
-                if state.view == nil {
+                if multiSelect && !state.selecting && state.canSelect {
+                    Button(Strings.select) { vm.onStartSelecting() }
+                        .accessibilityIdentifier("recipes.select")
+                }
+                if state.view == nil && !state.selecting {
                 Menu {
                     Button(Strings.typeRecipe, action: onNewRecipe)
                     Button(Strings.pasteLink, action: vm.onPasteLink)
@@ -175,13 +216,18 @@ struct RecipesScreen: View {
             await SnackbarTimeout.run(pending: state.pendingDeletes, onTimeout: vm.onSnackbarDismissed)
         }
         .scanSources($scanSource) { onScan?($0) }
-        .sheet(isPresented: $saveSheetOpen) {
-            if let saveVM {
-                SaveToListSheet(vm: saveVM)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
+        .rowMenuSheets(rowMenu, saveVM: saveVM)
+        // The selection's actions (#377): Add to list over the ticked recipes, or Delete them, with one confirmation.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if state.selecting, let saveVM {
+                RecipesSelectionBar(
+                    count: state.selectedIds.count,
+                    onAddToList: { rowMenu.addToList(vm.selectedRecipes, saveVM: saveVM) },
+                    onDelete: { vm.onRequestDelete(vm.selectedRecipes) }
+                )
             }
         }
+        .recipeDeleteAlert(state.confirmingDelete, onConfirm: vm.onConfirmDelete, onCancel: vm.onCancelDelete)
     }
 
     /// What an empty list says: the search's, else the filter's (while there is a library to

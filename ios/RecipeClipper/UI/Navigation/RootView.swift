@@ -228,7 +228,10 @@ struct RootView: View {
                     oneCookbook: container.featureFlags.isOn(.oneCookbook),
                     saveVM: saveVM,
                     onOpenView: { push(.recipesView($0)) },
-                    onOpenLists: { push(.lists) }
+                    onOpenLists: { push(.lists) },
+                    rowActions: container.featureFlags.isOn(.rowActions),
+                    multiSelect: container.featureFlags.isOn(.multiSelect),
+                    makePlanVM: container.makeAddToPlanViewModel
                 )
             }
         case .recipesView(let view):
@@ -238,7 +241,10 @@ struct RootView: View {
                     vm: vm,
                     onOpenRecipe: { push(.recipe(id: $0)) },
                     oneCookbook: true,
-                    saveVM: saveVM
+                    saveVM: saveVM,
+                    rowActions: container.featureFlags.isOn(.rowActions),
+                    multiSelect: container.featureFlags.isOn(.multiSelect),
+                    makePlanVM: container.makeAddToPlanViewModel
                 )
             }
         case .settings:
@@ -270,8 +276,13 @@ struct RootView: View {
             // Full screen, like the recipe and cook mode, so editing isn't a tab of its own.
             .toolbar(.hidden, for: .tabBar)
         case .listDetail(let id):
-            ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
-                ListDetailScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) }, makePrintVM: container.makePrintViewModel)
+            ScreenHost2(makeA: { container.makeListDetailViewModel(listId: id) }, makeB: container.makeSaveToListViewModel) { vm, saveVM in
+                ListDetailScreen(
+                    vm: vm, onOpenRecipe: { push(.recipe(id: $0)) }, makePrintVM: container.makePrintViewModel,
+                    rowActions: container.featureFlags.isOn(.rowActions),
+                    multiSelect: container.featureFlags.isOn(.multiSelect),
+                    saveVM: saveVM, makePlanVM: container.makeAddToPlanViewModel
+                )
             }
         case .clip(let url, let blocked, let check):
             ScreenHost({ container.makeClipViewModel(url: url, blocked: blocked, check: check) }) { vm in

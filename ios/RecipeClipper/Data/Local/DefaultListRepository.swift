@@ -52,6 +52,38 @@ final class DefaultListRepository: ListRepository {
         }
     }
 
+    func setMembershipAll(recipeIds: [Int64], listId: Int64, inList: Bool) async {
+        let now = clock.now()
+        await perform("setMembershipAll") { dao in
+            if inList {
+                try dao.addAllToList(recipeIds: recipeIds, listId: listId, addedAt: now)
+            } else {
+                try dao.removeAllFromList(recipeIds: recipeIds, listId: listId)
+            }
+        }
+    }
+
+    func observeMembershipCounts(recipeIds: [Int64]) -> AnyPublisher<[Int64: Int], Never> {
+        db.observe { conn in try ListDao(db: conn).membershipCounts(recipeIds: recipeIds) }
+    }
+
+    @discardableResult
+    func createList(name: String, addRecipeIds: [Int64]) async -> Int64 {
+        let now = clock.now()
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            return try await db.write { conn in
+                let dao = ListDao(db: conn)
+                let id = try dao.create(name: trimmed, recipeId: ListDao.noRecipe, now: now)
+                try dao.addAllToList(recipeIds: addRecipeIds, listId: id, addedAt: now)
+                return id
+            }
+        } catch {
+            dataLog.error("createList failed: \(String(describing: error), privacy: .public)")
+            return 0
+        }
+    }
+
     @discardableResult
     func createList(name: String, addRecipeId: Int64?) async -> Int64 {
         let now = clock.now()

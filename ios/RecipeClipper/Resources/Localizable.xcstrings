@@ -5922,7 +5922,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Supprimer cette recette ?"
+                  "value" : "Supprimer %lld recette ?"
                 }
               },
               "many" : {
@@ -5970,7 +5970,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Excluir esta receita?"
+                  "value" : "Excluir %lld receita?"
                 }
               },
               "many" : {

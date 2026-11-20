@@ -5202,11 +5202,22 @@ removes just its entries: the menu, or every Select), on both platforms.
   `RecipeDeletions`, `RecipeRowSupport`, `SelectionBar`), the row composables `LibraryRow` and
   `RecipeRow` (a long click and `selecting`/`selected`), `SaveToListViewModel.setRecipes`,
   `ListDetailViewModel` (now also given `RecipeRepository` and `AppPreferences`).
+- **iOS differences.** The menu is a `.contextMenu` (`UI/Recipes/RecipeRowMenu.swift`, with the
+  delete alert, the sheets and the selection bar); `RecipeDeletions`, `RecipeSelection` and
+  `RecipeRowSupport` are the same collaborators beside `RecipesViewModel`. The row's checkbox is
+  always in it, zero wide when not selecting (#203, #216: a row's structure never changes with its
+  state). While selecting the navigation bar shows "N selected" and Done (the back button is hidden,
+  so Done is the way out), the tab bar is hidden and the actions sit in a bar at the foot of the
+  screen. With `rowActions` off a held press on a row opens the recipe, as a tap does. Repository
+  writes are one SQLite transaction each (`ListDao.setMembers`, `createWith`, `deleteAll`), the
+  rollback of a failed write is a unit test.
 - **Tests.** Android: `RecipesRowActionsViewModelTest`, `ListDetailRowActionsViewModelTest`,
   `SaveToListSeveralViewModelTest`, `DefaultRecipeRepositoryBulkDeleteTest`, `ListDaoBulkTest` (real
   SQLite: all or none), `RecipesRowActionsScreenTest` and `ListDetailRowActionsScreenTest` (the menu,
   Select, Back, rotation, the one confirmation and the one Undo, the free-tier refusal, the
   indeterminate row), over the hand-written fakes.
+  iOS: `RecipeRowActionsTests`, `SaveToListSeveralTests`, `RowActionsDataTests` (all or none, the
+  free-tier undo refusal for several) and `RowActionsUITests` (long press, select, delete, Undo).
 
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 

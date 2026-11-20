@@ -265,6 +265,10 @@ protocol RecipeRepository: AnyObject {
     /// Hard delete; memberships go with it. Nil if it was already gone.
     func delete(id: Int64) async -> DeletedRecipe?
 
+    /// `delete` for several recipes in ONE transaction (#377): all go or none. Ids already gone
+    /// are skipped; the rest come back in the order given, for one all-or-nothing `restoreAll`.
+    func deleteAll(ids: [Int64]) async -> [DeletedRecipe]
+
     /// Undoes a burst of `delete`s, all or nothing (#345): under the free tier's limit a restore that
     /// would take the library past it restores none and answers `.libraryFull`, the same one
     /// `LibraryLimit` check as every other way in, in the one transaction. Unlocked, or with the
@@ -438,6 +442,13 @@ protocol NotificationPermission: AnyObject {
 }
 
 extension RecipeRepository {
+    /// One `delete` after another: the default for a repository that has no transaction to share.
+    func deleteAll(ids: [Int64]) async -> [DeletedRecipe] {
+        var gone: [DeletedRecipe] = []
+        for id in ids { if let deleted = await delete(id: id) { gone.append(deleted) } }
+        return gone
+    }
+
     /// The ordinary case: nothing rendered already, so the repository fetches. Every caller but
     /// the Safari share extension (#35) uses this.
     func importFromUrl(_ sharedUrl: String) async -> ParseResult {
@@ -466,10 +477,23 @@ protocol ListRepository: AnyObject {
     /// Writes immediately. Adding is insert-or-ignore: re-adding never rewrites addedAt.
     func setMembership(recipeId: Int64, listId: Int64, inList: Bool) async
 
+    /// `setMembership` for several recipes in one transaction (#377): ticking a list for a
+    /// selection adds all (insert-or-ignore, so a recipe already in keeps its addedAt), unticking
+    /// removes all.
+    func setMembershipAll(recipeIds: [Int64], listId: Int64, inList: Bool) async
+
+    /// For each list, how many of `recipeIds` it contains (#377): what the sheet draws its
+    /// tri-state checkboxes from. A list holding none may be absent.
+    func observeMembershipCounts(recipeIds: [Int64]) -> AnyPublisher<[Int64: Int], Never>
+
     /// Creates a user list (name trimmed) and, when given, puts `addRecipeId` straight in,
     /// in one transaction. Returns the new list's id.
     @discardableResult
     func createList(name: String, addRecipeId: Int64?) async -> Int64
+
+    /// `createList` with several recipes put straight in (#377), still one transaction.
+    @discardableResult
+    func createList(name: String, addRecipeIds: [Int64]) async -> Int64
 
     func rename(listId: Int64, name: String) async
 

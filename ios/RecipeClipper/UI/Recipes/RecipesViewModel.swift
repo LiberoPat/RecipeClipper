@@ -30,6 +30,15 @@ struct RecipesUiState: Equatable {
     var lists: [RecipeList] = []
     /// An Undo was refused, the free library being full (#345): the screen says so once.
     var restoreRefused = false
+    /// Selecting several recipes (#377): whether the screen is, and the ticked recipes that are listed now
+    /// (a search never leaves a hidden one for an action to take).
+    var selecting = false
+    var selectedIds: Set<Int64> = []
+    /// The recipes a Delete (a row's menu, or the selection's) asks to confirm; empty when none.
+    var confirmingDelete: [RecipeSummary] = []
+
+    /// The top bar's Select shows once there is a row to select.
+    var canSelect: Bool { !(recipes?.isEmpty ?? true) }
 
     /// The strip shows once there is a recipe or a list to show (V4), never inside a view.
     var showsViewsStrip: Bool { view == nil && ((counts?.all ?? 0) > 0 || !lists.isEmpty) }
@@ -74,17 +83,19 @@ final class RecipesViewModel {
     /// What the database last answered, in its own order, so a new sort needs no new query.
     @ObservationIgnored private var found: [RecipeSummary]?
 
-    // What swipe-to-delete captured, keyed by recipe id and kept in swipe order, so a second
-    // swipe within the snackbar's few seconds cannot overwrite the first and strand it.
-    @ObservationIgnored private var captured: [Int64: DeletedRecipe] = [:]
-    @ObservationIgnored private var capturedOrder: [Int64] = []
-    @ObservationIgnored private var batches = 0
+    // The deletes not yet settled, for the one Undo snackbar; the selection and a row's menu (#376, #377).
+    @ObservationIgnored private let deletions: RecipeDeletions
+    @ObservationIgnored private let rowSupport: RecipeRowSupport
+    @ObservationIgnored private var selection = RecipeSelection()
 
     init(
         repository: RecipeRepository, preferences: AppPreferences, sleep: @escaping Sleep = Sleeps.real,
         library: LibraryPolicy? = nil, cookedSort: Bool = false, countdowns: TimerCountdownSync? = nil,
-        view: RecipeFilter? = nil, lists: ListRepository? = nil, pasted: PastedTextRouter? = nil
+        view: RecipeFilter? = nil, lists: ListRepository? = nil, pasted: PastedTextRouter? = nil,
+        decisions: DecisionRepository? = nil
     ) {
+        deletions = RecipeDeletions(repository: repository, countdowns: countdowns)
+        rowSupport = RecipeRowSupport(repository: repository, preferences: preferences, decisions: decisions)
         self.pasted = pasted
         self.cookedSort = cookedSort
         self.countdowns = countdowns
@@ -104,6 +115,7 @@ final class RecipesViewModel {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] sort in self?.applySort(sort) }
+        deletions.onChange = { [weak self] in self?.syncDeletions() }
         schedule(query: "")
         countsSubscription = repository.observeRecipeCounts()
             .receive(on: DispatchQueue.main)
@@ -174,6 +186,7 @@ final class RecipesViewModel {
                 guard let self else { return }
                 self.found = recipes
                 self.uiState.recipes = Self.sorted(recipes, self.uiState.sort)
+                self.syncSelection()
             }
     }
 
@@ -195,6 +208,18 @@ final class RecipesViewModel {
         guard sort != uiState.sort else { return }
         uiState.sort = sort
         if let found { uiState.recipes = Self.sorted(found, sort) }
+    }
+
+    private func syncDeletions() {
+        let state = deletions.state
+        uiState.pendingDeletes = state.pendingDeletes
+        uiState.deleteBatch = state.deleteBatch
+        uiState.restoreRefused = state.restoreRefused
+    }
+
+    private func syncSelection() {
+        uiState.selecting = selection.isSelecting
+        uiState.selectedIds = selection.effective(in: uiState.recipes)
     }
 
     /// "Paste a link" from the + menu: opens the alert, empty.
@@ -260,57 +285,70 @@ final class RecipesViewModel {
     /// Swipe-to-delete: deletes immediately, keeping what it removed so `onUndoDelete` can
     /// restore it.
     func onDelete(_ recipe: RecipeSummary) {
-        Task {
-            guard let removed = await repository.delete(id: recipe.id) else { return }
-            uiState.restoreRefused = false // a new swipe's Undo snackbar takes the place
-            // Its countdown goes with it; Undo brings the timer back when the recipe is opened.
-            await countdowns?.reconcile()
-            if captured[recipe.id] == nil { capturedOrder.append(recipe.id) }
-            captured[recipe.id] = removed
-            // The first of a burst starts a new batch; the rest join it.
-            if uiState.deleteBatch == nil {
-                batches += 1
-                uiState.deleteBatch = batches
-            }
-            uiState.pendingDeletes.append(recipe.title)
-        }
+        Task { await deletions.delete([recipe]) }
     }
 
     /// Restores everything still pending, oldest first. All or nothing: one snackbar covers
     /// the batch, so there is no way to pick one out of it. On the free tier at its limit (#345)
     /// none comes back: `RecipesUiState.restoreRefused`.
-    func onUndoDelete() {
-        guard !capturedOrder.isEmpty else { return }
-        let removed = capturedOrder.compactMap { captured[$0] }
-        clearCaptured()
-        Task {
-            // The free library's limit is checked in the repository's transaction (#345): a burst
-            // that wouldn't fit restores none, and the deletes stand, photo files included.
-            if await repository.restoreAll(removed) == .libraryFull {
-                uiState.restoreRefused = true
-                for deleted in removed { await repository.forget(deleted) }
-            }
-        }
-    }
+    func onUndoDelete() { deletions.undo() }
 
     /// The screen has said the Undo was refused.
-    func onRestoreRefusedShown() { uiState.restoreRefused = false }
+    func onRestoreRefusedShown() { deletions.restoreRefusedShown() }
 
     /// The snackbar timed out: the deletes stand.
-    func onSnackbarDismissed() {
-        // Their photos (#116) were kept only for Undo.
-        let settled = capturedOrder.compactMap { captured[$0] }
-        clearCaptured()
-        if !settled.isEmpty {
-            Task { for deleted in settled { await repository.forget(deleted) } }
-        }
+    func onSnackbarDismissed() { deletions.settle() }
+
+    // MARK: A row's menu and selecting several (#376, #377)
+
+    /// Starts selecting (#377): a row's menu begins with that row ticked, the top bar's Select with none.
+    func onStartSelecting(_ recipe: RecipeSummary? = nil) {
+        selection.start(recipe?.id)
+        syncSelection()
     }
 
-    private func clearCaptured() {
-        captured.removeAll()
-        capturedOrder.removeAll()
-        uiState.pendingDeletes = []
-        uiState.deleteBatch = nil
+    func onToggleSelected(_ id: Int64) {
+        selection.toggle(id)
+        syncSelection()
+    }
+
+    /// Done, or Back: leaves selecting, dropping the ticks.
+    func onExitSelection() {
+        selection.exit()
+        syncSelection()
+    }
+
+    /// Asks to confirm deleting `recipes`: a row's menu passes its row, the selection's Delete the ticked ones.
+    func onRequestDelete(_ recipes: [RecipeSummary]) {
+        uiState.confirmingDelete = recipes
+    }
+
+    func onCancelDelete() { uiState.confirmingDelete = [] }
+
+    /// The confirmation's Delete: every recipe in one transaction, one batch, one Undo (#345's
+    /// free-tier rule applies to it); selecting ends.
+    func onConfirmDelete() {
+        let recipes = uiState.confirmingDelete
+        uiState.confirmingDelete = []
+        selection.exit()
+        syncSelection()
+        Task { await deletions.delete(recipes) }
+    }
+
+    /// The selected recipes, in the order listed: what the selection's actions take.
+    var selectedRecipes: [RecipeSummary] {
+        (uiState.recipes ?? []).filter { uiState.selectedIds.contains($0.id) }
+    }
+
+    /// A row's Share: the recipe as the reading view would send it, at its saved servings and the
+    /// user's units. `labels` come from the screen's strings. Nil when the recipe is gone.
+    func onShare(recipeId: Int64, labels: RecipeShareText.Labels = .english) async -> (title: String, text: String)? {
+        await rowSupport.shareText(id: recipeId, labels: labels)
+    }
+
+    /// A row's Add to plan starts from the recipe's own yield (nil when it has no number).
+    func yieldServings(recipeId: Int64) async -> Int? {
+        await rowSupport.yieldServings(id: recipeId)
     }
 }
 
