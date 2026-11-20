@@ -23,6 +23,7 @@ import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
+import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.SourceType
 import com.example.recipeclipper.data.remote.RecipeSource
@@ -261,6 +262,9 @@ class DatabaseErrorTest {
         override suspend fun restore(entry: MealPlanEntryEntity) = throw Boom()
         override suspend fun setSlot(id: Long, day: Long, mealTypeId: Long, sortOrder: Int, now: Long) = throw Boom()
         override suspend fun deleteEntry(id: Long) = throw Boom()
+        override suspend fun entriesFrom(from: Long): List<MealPlanEntryEntity> = throw Boom()
+        override suspend fun setDay(id: Long, day: Long, now: Long) = throw Boom()
+        override suspend fun updateEntry(entry: MealPlanEntryEntity) = throw Boom()
         override suspend fun nextTypeOrder(): Int = throw Boom()
         override suspend fun insertType(type: MealTypeEntity): Long = throw Boom()
         override suspend fun renameType(id: Long, name: String, now: Long) = throw Boom()
@@ -278,6 +282,8 @@ class DatabaseErrorTest {
         plan.addNote("Eat out", day = 20_000, mealTypeId = 3)
         plan.move(entryId = 5, day = 20_001, mealTypeId = 2)
         assertNull(plan.delete(5))
+        assertNull(plan.skip(5, PlanShift.Choice.PUSH_WEEK, today = 20_000, lastDay = 21_000))
+        plan.undoSkip(MealPlanRepository.SkippedMeals(PlanShift.Result(emptyList(), emptyList(), emptyList()), listOf(MealPlanEntryEntity(id = 5, day = 20_000, mealTypeId = 3, recipeId = null, servings = null, note = "x", sortOrder = 0, updatedAt = 1))))
         plan.addMealType("Brunch")
         plan.renameMealType(5, "Supper")
         plan.reorderMealTypes(listOf(2, 1))
@@ -293,6 +299,7 @@ class DatabaseErrorTest {
         assertEquals(
             listOf(
                 "addRecipe failed", "addNote failed", "move failed", "deleteMeal failed",
+                "skipMeal failed", "undoSkipMeal failed",
                 "addMealType failed", "renameMealType failed", "reorderMealTypes failed",
                 "deleteMealType failed", "observeMealTypes failed", "observeDays failed",
                 "saveWeekAsMenu failed", "applyMenu failed", "renameMenu failed", "deleteMenu failed",

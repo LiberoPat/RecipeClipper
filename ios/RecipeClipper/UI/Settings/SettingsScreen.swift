@@ -53,6 +53,8 @@ struct SettingsScreen: View {
         // Dark mode is the system's call: the one choice here is cook mode's.
         case .appearance: return state.darkWhileCooking ? Strings.darkWhileCookingTitle : Strings.settingsValueSystemTheme
         case .steps: return state.amountsInSteps ? Strings.settingsValueAmountsOn : Strings.settingsValueAmountsOff
+        case .week:
+            return state.eveningReminder || state.tonightReminder ? Strings.settingsValueRemindersOn : Strings.settingsValueRemindersOff
         case .pantry: return state.expiryReminders ? Strings.settingsValueRemindersOn : Strings.settingsValueRemindersOff
         // The automatic copy's "Last backed up", as its page says it, but how long ago.
         case .yourRecipes:

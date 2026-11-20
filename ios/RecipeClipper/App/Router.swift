@@ -66,6 +66,14 @@ final class Router {
         push(route)
     }
 
+    /// A planned recipe opened from a reminder (#397): the Week tab, with the recipe on its own
+    /// stack (Android's `openRoute` of `week/recipe/{id}`), not pushed twice when it is already on top.
+    func openInWeek(recipe id: Int64) {
+        selectedTab = .week
+        if case .weekRecipe(let top, _) = weekPath.last, top == id { return }
+        weekPath.append(.weekRecipe(id: id, servings: nil))
+    }
+
     /// The recipe a route shows, with or without cook mode; nil for any other.
     private static func recipeId(of route: Route?) -> Int64? {
         switch route {

@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "language": "de",
+  "about": "Perishables (#396), see en/perishables.json. German compounds are matched only whole, as in the density table: 'Lachsfilet' is listed itself, 'Räucherlachs' (one word) matches nothing, and an adjective in front ('geräucherter Lachs') makes it a skip entry because the name then ends in 'lachs'. A draft for a native speaker to review (docs/translations.md). The same group keys and days as en.",
+  "groups": [
+    { "key": "fish", "minDays": 1, "maxDays": 2, "aliases": [
+        "fisch", "weißfisch", "fischfilet", "fischfilets", "lachs", "lachsfilet", "lachsfilets", "lachssteak",
+        "forelle", "forellen", "forellenfilet", "kabeljau", "kabeljaufilet", "seelachs", "seelachsfilet",
+        "schellfisch", "heilbutt", "wolfsbarsch", "dorade", "zander", "zanderfilet", "thunfischsteak",
+        "makrele", "seezunge", "scholle", "garnele", "garnelen", "riesengarnele", "riesengarnelen",
+        "jakobsmuschel", "jakobsmuscheln", "miesmuschel", "miesmuscheln", "venusmuschel", "venusmuscheln",
+        "auster", "austern", "hummer", "tintenfisch", "calamari", "oktopus", "krake"
+      ] },
+    { "key": "mince", "minDays": 1, "maxDays": 2, "aliases": [
+        "hackfleisch", "gemischtes hackfleisch", "rinderhackfleisch", "rinderhack", "schweinehackfleisch",
+        "schweinehack", "lammhackfleisch", "lammhack", "hähnchenhack", "hühnerhack", "putenhack", "hack",
+        "bratwurstmasse", "brät", "bratwurstbrät"
+      ] },
+    { "key": "poultry", "minDays": 1, "maxDays": 2, "aliases": [
+        "hähnchen", "hühnchen", "huhn", "poulet", "ganzes hähnchen", "hähnchenbrust", "hähnchenbrustfilet",
+        "hähnchenbrustfilets", "hühnerbrust", "hühnerbrustfilet", "hähnchenschenkel", "hähnchenkeule",
+        "hähnchenkeulen", "hähnchenflügel", "hähnchenfilet", "hühnerkeule", "hühnerkeulen", "pute",
+        "putenbrust", "putenbrustfilet", "putenschnitzel", "putenschenkel", "ente", "entenbrust", "entenkeule"
+      ] },
+    { "key": "mushrooms", "minDays": 3, "maxDays": 5, "aliases": [
+        "pilz", "pilze", "champignon", "champignons", "braune champignons", "weiße champignons",
+        "kräuterseitling", "kräuterseitlinge", "kräuterseitlinge", "shiitake", "shiitakepilze", "austernpilz",
+        "austernpilze", "seitling", "seitlinge", "pfifferling", "pfifferlinge", "steinpilz", "steinpilze",
+        "portobello", "frische pilze", "frische champignons", "frische steinpilze", "morchel", "morcheln",
+        "egerling", "egerlinge", "braune egerlinge"
+      ] },
+    { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["avocado", "avocados", "reife avocado"] },
+    { "key": "parsley", "minDays": 2, "maxDays": 3, "aliases": [
+        "petersilie", "glatte petersilie", "krause petersilie", "frische petersilie"
+      ] },
+    { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
+        "salat", "grüner salat", "kopfsalat", "eisbergsalat", "römersalat", "romanasalat", "romana", "feldsalat",
+        "rucola", "babyspinat", "blattspinat", "spinat", "frischer spinat", "blattsalat", "pflücksalat",
+        "eichblattsalat", "lollo rosso", "lollo biondo", "endiviensalat", "mischsalat", "gemischter salat",
+        "salatmischung", "brunnenkresse", "babyblattsalat", "babyleaf"
+      ] },
+    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
+        "erdbeere", "erdbeeren", "himbeere", "himbeeren", "beeren", "gemischte beeren", "waldbeeren",
+        "frische beeren"
+      ] },
+    { "key": "blackberries", "minDays": 3, "maxDays": 5, "aliases": ["brombeere", "brombeeren"] }
+  ],
+  "skip": [
+    "fischsauce", "fischfond", "geräucherter lachs", "geräucherte forelle", "geräucherte makrele",
+    "geräucherter fisch", "gebeizter lachs", "tiefgekühlter lachs", "tiefgekühlter fisch",
+    "tiefgekühlte garnelen", "tiefgekühlte riesengarnelen", "tk lachs", "tk fisch", "tk garnelen",
+    "getrocknete garnelen", "gekochte garnelen", "tiefgekühlte muscheln", "gekochtes hackfleisch",
+    "tiefgekühltes hackfleisch", "tk hackfleisch", "gekochtes hähnchen", "gegrilltes hähnchen",
+    "geräuchertes hähnchen", "gebratenes hähnchen", "tiefgekühltes hähnchen", "tk hähnchen",
+    "gekochte pute", "geräucherte pute", "geräucherte putenbrust", "gekochte ente", "geräucherte ente",
+    "getrocknete pilze", "getrocknete steinpilze", "getrocknete shiitake", "getrocknete shiitakepilze",
+    "getrocknete morcheln", "getrocknete champignons", "tiefgekühlte pilze", "tk pilze", "eingelegte pilze",
+    "eingelegte champignons", "tiefgekühlte champignons", "getrocknete petersilie",
+    "tiefgekühlte petersilie", "tiefgekühlter spinat", "tk spinat", "tiefgekühlter blattspinat",
+    "tk blattspinat", "tiefgekühlter rahmspinat", "tiefgekühlte erdbeeren", "tk erdbeeren",
+    "tiefgekühlte himbeeren", "tk himbeeren", "tiefgekühlte brombeeren", "tk brombeeren",
+    "tiefgekühlte beeren", "tk beeren", "tiefgekühlte waldbeeren", "tk waldbeeren", "gefrorene beeren",
+    "getrocknete erdbeeren", "getrocknete himbeeren", "getrocknete beeren", "getrocknete waldbeeren"
+  ]
+}

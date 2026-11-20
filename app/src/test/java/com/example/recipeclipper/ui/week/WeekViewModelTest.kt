@@ -2,8 +2,13 @@ package com.example.recipeclipper.ui.week
 
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.model.Menu
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.PlanDays
+import com.example.recipeclipper.data.model.PlanShift.Choice
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.BREAKFAST
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.DINNER
@@ -572,5 +577,182 @@ class WeekViewModelTest {
         vm.onApplyMenu(plan.menus.value.single())
         advanceUntilIdle()
         assertEquals(listOf(today + 5 to "Monday pasta", today + 2 to "Friday fish"), plan.meals.value.map { it.day to it.note })
+    }
+
+    // --- Skip tonight (#398)
+
+    private fun daysOf(vm: WeekViewModel, vararg days: Long) = days.map { d -> vm.uiState.value.mealsOn(d).map { it.id } }
+
+    @Test
+    fun `skipping opens the sheet for a meal from today on, never one in the past`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today - 1, DINNER, servings = null)
+        plan.addRecipe(8, today, DINNER, servings = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+        val past = plan.meals.value.first { it.day == today - 1 }
+        val tonight = plan.meals.value.first { it.day == today }
+
+        assertFalse(vm.uiState.value.canSkip(past))
+        vm.onSkipStart(past)
+        assertNull(vm.uiState.value.skipping)
+
+        assertTrue(vm.uiState.value.canSkip(tonight))
+        vm.onSkipStart(tonight)
+        assertEquals(tonight, vm.uiState.value.skipping?.meal)
+        vm.onSkipDismissed()
+        assertNull(vm.uiState.value.skipping)
+        assertTrue(plan.skips.isEmpty())
+    }
+
+    @Test
+    fun `pushing the week moves the meal and every later one, and says so once`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        plan.addRecipe(8, today + 1, DINNER, servings = null)
+        plan.addNote("Eat out", today + 3, LUNCH)
+        val vm = viewModel()
+        advanceUntilIdle()
+        val (a, b, note) = plan.meals.value
+
+        vm.onSkipStart(a)
+        vm.onSkip(Choice.PUSH_WEEK)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.skipping)
+        assertEquals(listOf(a.id to today + 1, b.id to today + 2, note.id to today + 4), plan.meals.value.map { it.id to it.day })
+        assertEquals(listOf(emptyList(), listOf(a.id), listOf(b.id)), daysOf(vm, today, today + 1, today + 2))
+        val notice = vm.uiState.value.skipped!!
+        assertEquals(Choice.PUSH_WEEK, notice.choice)
+        assertEquals("Recipe 7", notice.label)
+        assertFalse(notice.pastEnd)
+        // The repository was asked once, with today and the list's last day.
+        assertEquals(listOf(listOf(a.id, Choice.PUSH_WEEK, today, today + 730)), plan.skips)
+    }
+
+    @Test
+    fun `move to the next free day names where it went, and undo puts everything back`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        plan.addRecipe(8, today + 1, DINNER, servings = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+        val before = plan.meals.value
+        val tonight = before.first()
+
+        vm.onSkipStart(tonight)
+        vm.onSkip(Choice.NEXT_FREE_DAY)
+        advanceUntilIdle()
+        assertEquals(today + 2, vm.uiState.value.skipped?.toDay)
+        assertEquals(today + 2, plan.meals.value.first { it.id == tonight.id }.day)
+
+        vm.onUndoSkip()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.skipped)
+        assertEquals(before.map { it.id to it.day }.sortedBy { it.first }, plan.meals.value.map { it.id to it.day }.sortedBy { it.first })
+    }
+
+    @Test
+    fun `removing through skip is one undo too`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+        val meal = plan.meals.value.single()
+
+        vm.onSkipStart(meal)
+        vm.onSkip(Choice.REMOVE)
+        advanceUntilIdle()
+        assertTrue(plan.meals.value.isEmpty())
+        assertEquals(Choice.REMOVE, vm.uiState.value.skipped?.choice)
+        assertNull(vm.uiState.value.removed) // one snackbar only
+
+        vm.onUndoSkip()
+        advanceUntilIdle()
+        assertEquals(listOf(meal.id), plan.meals.value.map { it.id })
+    }
+
+    @Test
+    fun `a skip stands once the snackbar goes`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onSkipStart(plan.meals.value.single())
+        vm.onSkip(Choice.PUSH_WEEK)
+        advanceUntilIdle()
+
+        vm.onSkipSnackbarDismissed()
+        vm.onUndoSkip()
+        advanceUntilIdle()
+        assertEquals(today + 1, plan.meals.value.single().day)
+    }
+
+    @Test
+    fun `a second skip or a removal settles the first, one undo at a time`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        plan.addRecipe(8, today + 4, DINNER, servings = null)
+        plan.addRecipe(9, today + 6, DINNER, servings = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+        val (first, second, third) = plan.meals.value
+
+        vm.onSkipStart(first)
+        vm.onSkip(Choice.NEXT_FREE_DAY)
+        advanceUntilIdle()
+        vm.onSkipStart(second)
+        vm.onSkip(Choice.NEXT_FREE_DAY)
+        advanceUntilIdle()
+        vm.onUndoSkip() // undoes the second only
+        advanceUntilIdle()
+        assertEquals(listOf(first.id to today + 1, second.id to today + 4, third.id to today + 6), plan.meals.value.map { it.id to it.day })
+
+        vm.onSkipStart(first)
+        vm.onSkip(Choice.NEXT_FREE_DAY)
+        advanceUntilIdle()
+        vm.onRemove(third)
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.skipped) // the removal's snackbar replaced the skip's
+        assertEquals("Recipe 9", vm.uiState.value.removed?.label)
+        vm.onUndoSkip() // nothing pending: nothing happens
+        advanceUntilIdle()
+        assertEquals(today + 2, plan.meals.value.first { it.id == first.id }.day)
+    }
+
+    @Test
+    fun `a failed skip changes nothing and shows nothing`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        plan.failSkips = true
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onSkipStart(plan.meals.value.single())
+        vm.onSkip(Choice.PUSH_WEEK)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.skipped)
+        assertEquals(today, plan.meals.value.single().day)
+    }
+
+    @Test
+    fun `with the skipTonight flag off nothing is offered`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        val flags = FeatureFlags(FakeFeatureFlagStore(mapOf(Flag.SKIP_TONIGHT.key to false)), FlagRegistry.definitions, true)
+        val vm = WeekViewModel(plan, recipes, calendar, flags = flags)
+        advanceUntilIdle()
+        val meal = plan.meals.value.single()
+
+        assertFalse(vm.uiState.value.canSkip(meal))
+        vm.onSkipStart(meal)
+        assertNull(vm.uiState.value.skipping)
+    }
+
+    @Test
+    fun `a push that leaves a meal past the last day shown is flagged for the snackbar`() = runTest(mainDispatcherRule.dispatcher) {
+        plan.addRecipe(7, today, DINNER, servings = null)
+        plan.addRecipe(8, today + 730, DINNER, servings = null)
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onSkipStart(plan.meals.value.first())
+        vm.onSkip(Choice.PUSH_WEEK)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.skipped!!.pastEnd)
     }
 }

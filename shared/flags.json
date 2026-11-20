@@ -143,6 +143,24 @@
       "description": "Select several recipes in Recipes, a view or a list (a Select action, or Select in the long-press menu): add them to a list, take them off this list, or delete them with one confirmation and one Undo. Off, no Select action or menu entry.",
       "defaults": { "debug": true, "release": true },
       "issue": 377
+    },
+    {
+      "key": "skipTonight",
+      "description": "Skip tonight: a planned meal's long-press menu on Week, and today's planned meals, gain Skip, which asks: push the rest of the week back a day (this meal and every later planned meal, meal types kept), move this meal to the next day with no meal of its type, or remove it from the plan. One undo restores exactly what was there. Off, Week offers Move and Remove only.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 398
+    },
+    {
+      "key": "eveningReminders",
+      "description": "Evening-before reminder: a notification at the cook's time (19:00 by default, Settings > Week) naming tomorrow's planned meals and quoting any step to start ahead of time (marinate, soak, thaw, chill for hours, rise overnight, found by a word table in the recipe's own language); a tap opens the first recipe on the Week tab. An optional afternoon \"Tonight\" reminder (off by default). Off, neither is scheduled and Settings has no Week section.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 397
+    },
+    {
+      "key": "freshFood",
+      "description": "Fresh food (#396): Shop for this week splits To buy into Buy now and Buy later in the week (a perishable ingredient, matched in the recipe's language's perishables table, whose every planned meal is 3 or more days from today), each later line saying the day it is for, with its own Add to groceries; the meal-plan review and the Week's meal rows gain a quiet note when a perishable meal is planned later than its group keeps from the plan's first day ('keeps about 1-2 days once bought: cook it earlier?'), with a one-tap swap with the earliest day that fits. Nothing moves unless the cook taps. Off, To buy is one list and there is no note.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 396
     }
   ]
 }

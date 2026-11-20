@@ -62,7 +62,13 @@ enum class Flag(val key: String) {
     /** A long-press menu on a recipe row (#376): Add to list, Add to plan, Share, Delete, Remove from this list. */
     ROW_ACTIONS("rowActions"),
     /** Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo. */
-    MULTI_SELECT("multiSelect");
+    MULTI_SELECT("multiSelect"),
+    /** Skip tonight (#398): Week's long-press menu and today's meals gain Skip: push the week, move to the next free day, or remove. */
+    SKIP_TONIGHT("skipTonight"),
+    /** The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397). */
+    EVENING_REMINDERS("eveningReminders"),
+    /** Fresh food (#396): Shop for this week in two trips (Buy now, Buy later in the week), and the plan's "cook it earlier?" note. */
+    FRESH_FOOD("freshFood");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
