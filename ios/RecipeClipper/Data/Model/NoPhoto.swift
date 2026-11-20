@@ -38,8 +38,9 @@ enum NoPhoto {
             let all = words.strings("articles", "articles").map { Array($0.lowercased().unicodeScalars) }
                 .enumerated().sorted { $0.element.count != $1.element.count ? $0.element.count > $1.element.count : $0.offset < $1.offset }
                 .map(\.element)
-            glued = all.filter { $0.last == "'" || $0.last == "\u{2019}" }
-            spaced = all.filter { article in !glued.contains(where: { $0 == article }) }
+            let glue = all.filter { $0.last == "'" || $0.last == "\u{2019}" }
+            glued = glue
+            spaced = all.filter { article in !glue.contains(where: { $0 == article }) }
         }
     }
 

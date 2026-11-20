@@ -9,6 +9,7 @@ struct ResumeCard: View {
     let resume: CookResume?
     let onResume: () -> Void
     let onOpen: () -> Void
+    @Environment(\.noPhotoImage) private var noPhotoImage
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -51,9 +52,16 @@ struct ResumeCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
-    /// The recipe's photo, or a plain themed band: never a stock image.
+    /// The recipe's photo, or its designed image (#403: its first ingredient names on its tint,
+    /// 112 pt; a plain themed band with `noPhotoImage` off): never a stock image.
     @ViewBuilder private var photo: some View {
-        if let image = recipe.imageUrl, let url = URL(string: image) {
+        if noPhotoImage {
+            RecipeImage(url: recipe.imageUrl, recipe: recipe.noPhoto, style: .label)
+                .frame(maxWidth: .infinity)
+                .frame(height: recipe.imageUrl == nil ? 112 : 136)
+                .clipped()
+                .accessibilityHidden(true)
+        } else if let image = recipe.imageUrl, let url = URL(string: image) {
             Color.clear
                 .frame(maxWidth: .infinity)
                 .frame(height: 136)

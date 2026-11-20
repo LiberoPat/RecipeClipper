@@ -61,7 +61,10 @@ struct ListsScreen: View {
     @ViewBuilder private func cell(_ tile: CoverTile, state: ListsUiState) -> some View {
         switch tile {
         case .list(let list):
-            ListCoverTile(list: list, photos: state.coverPhotos[list.id] ?? []) { onOpenList(list.id) }
+            ListCoverTile(
+                list: list, photos: state.coverPhotos[list.id] ?? [],
+                placeholders: state.coverPlaceholders[list.id] ?? []
+            ) { onOpenList(list.id) }
         case .newList:
             NewListTile(action: vm.onStartCreating)
         }

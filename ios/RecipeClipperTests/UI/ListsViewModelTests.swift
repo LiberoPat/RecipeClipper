@@ -41,6 +41,16 @@ final class ListsViewModelTests: XCTestCase {
         XCTAssertNil(vm.uiState.coverPhotos[1], "no photo: a plain tile")
     }
 
+    func testEachListsPlaceholderCoversArriveFourAtMost() async {
+        let repository = repositoryWithBuiltIns()
+        repository.coverPlaceholders.send([1: (1...5).map { NoPhotoSource(uid: "uid-\($0)", title: "Recipe \($0)") }])
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.coverPlaceholders[1]?.map(\.uid), (1...4).map { "uid-\($0)" })
+        XCTAssertNil(vm.uiState.coverPlaceholders[2], "an empty list: the bookmark tile")
+    }
+
     func testNothingHereIsTickedSinceNoRecipeIsInHand() async {
         let repository = repositoryWithBuiltIns()
         repository.stageMembership([(7, 2)])

@@ -50,7 +50,8 @@ extension RecipeRecord {
             cook: CookStateJSON.decode(cookState),
             servingsTarget: servingsTarget,
             origin: ContentOrigin.from(name: contentOrigin),
-            editedAt: editedAt
+            editedAt: editedAt,
+            uid: uid
         )
     }
 }
@@ -80,7 +81,10 @@ extension RecipeSummaryRecord {
             isClipped: isClipped,
             lastCookedDay: lastCookedDay,
             sourceUrl: sourceUrl,
-            isFromChat: isFromChat
+            isFromChat: isFromChat,
+            uid: uid,
+            language: language,
+            ingredients: ingredients
         )
     }
 }

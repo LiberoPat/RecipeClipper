@@ -33,7 +33,7 @@ struct ListDao {
             """
             SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
                    r.contentOrigin = 'CLIPPED' AS isClipped, NULL AS lastCookedDay, r.sourceUrl,
-                   r.contentOrigin = 'CHAT' AS isFromChat
+                   r.contentOrigin = 'CHAT' AS isFromChat, r.uid, r.language, NULL AS ingredients
             FROM recipes r
             JOIN recipe_list_cross_ref c ON c.recipeId = r.id
             WHERE c.listId = ?
@@ -66,6 +66,29 @@ struct ListDao {
             ORDER BY c.listId, c.addedAt DESC, r.id DESC
             """,
             Int64(Self.coverPhotoLimit), map: ListCoverPhotoRecord.init(row:)
+        )
+    }
+
+    /// The covers of lists with no photo (#403): up to `coverPhotoLimit` recipes per list, from
+    /// the ones in it that have no photo, most recently added first, with what their designed
+    /// images are drawn from. Used only for a list `coverPhotos` has no row for; a list with a
+    /// photo shows photos alone. The same correlated `LIMIT` as above.
+    func coverPlaceholders() throws -> [ListCoverPlaceholderRecord] {
+        try db.query(
+            """
+            SELECT c.listId, r.uid, r.title, r.language, r.ingredients
+            FROM recipe_list_cross_ref c
+            JOIN recipes r ON r.id = c.recipeId
+            WHERE (r.imageUrl IS NULL OR r.imageUrl = '')
+              AND r.id IN (
+                  SELECT c2.recipeId FROM recipe_list_cross_ref c2
+                  JOIN recipes r2 ON r2.id = c2.recipeId
+                  WHERE c2.listId = c.listId AND (r2.imageUrl IS NULL OR r2.imageUrl = '')
+                  ORDER BY c2.addedAt DESC, r2.id DESC
+                  LIMIT ?)
+            ORDER BY c.listId, c.addedAt DESC, r.id DESC
+            """,
+            Int64(Self.coverPhotoLimit), map: ListCoverPlaceholderRecord.init(row:)
         )
     }
 

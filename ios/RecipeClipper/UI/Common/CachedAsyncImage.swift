@@ -71,6 +71,15 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     private let placeholder: () -> Placeholder
 
     @State private var image: UIImage?
+    private var failureHandler: (() -> Void)?
+
+    /// Called once when the image could not be loaded or decoded (not while it loads): a recipe's
+    /// picture falls back to its no-photo image (#403).
+    func onFailure(_ handler: @escaping () -> Void) -> Self {
+        var copy = self
+        copy.failureHandler = handler
+        return copy
+    }
 
     init(
         url: URL?,
@@ -92,9 +101,14 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         }
         .task(id: url) {
             image = nil
-            guard let url, let data = try? await ImageLoader.shared.data(for: url) else { return }
+            guard let url else { return }
+            guard let data = try? await ImageLoader.shared.data(for: url) else {
+                if !Task.isCancelled { failureHandler?() }
+                return
+            }
             guard !Task.isCancelled else { return }
             image = UIImage(data: data)
+            if image == nil { failureHandler?() }
         }
     }
 }

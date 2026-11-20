@@ -117,7 +117,7 @@ struct RecentlyViewedRow: View {
                 ForEach(recipes) { recipe in
                     Button { onOpenRecipe(recipe.id) } label: {
                         VStack(alignment: .leading, spacing: 6) {
-                            RecipeThumbnail(url: recipe.imageUrl, base: 84)
+                            RecipeThumbnail(url: recipe.imageUrl, recipe: recipe.noPhoto, base: 84)
                             Text(recipe.title)
                                 .textStyle(Typography.labelMedium)
                                 .foregroundStyle(Palette.onBackground)

@@ -314,6 +314,11 @@ struct RecipeSummaryRecord: Equatable {
     let lastCookedDay: Int64?
     let sourceUrl: String
     let isFromChat: Bool
+    /// The recipe's stable uid and language, for its no-photo image (#403), and its ingredient
+    /// lines only where an image shows them (Home's card); empty elsewhere.
+    let uid: String
+    let language: String?
+    let ingredients: [String]
 
     init(row: SQLiteRow) {
         id = row.int64(0)
@@ -326,6 +331,9 @@ struct RecipeSummaryRecord: Equatable {
         lastCookedDay = row.isNull(7) ? nil : row.int64(7)
         sourceUrl = row.string(8)
         isFromChat = row.bool(9)
+        uid = row.string(10)
+        language = row.optionalString(11)
+        ingredients = row.isNull(12) ? [] : JSONColumns.decodeStrings(row.string(12))
     }
 }
 
@@ -362,6 +370,20 @@ struct ListCoverPhotoRecord: Equatable {
     init(row: SQLiteRow) {
         listId = row.int64(0)
         imageUrl = row.string(1)
+    }
+}
+
+/// One recipe with no photo on a list's cover (#403): what its designed image is drawn from.
+struct ListCoverPlaceholderRecord: Equatable {
+    let listId: Int64
+    let source: NoPhotoSource
+
+    init(row: SQLiteRow) {
+        listId = row.int64(0)
+        source = NoPhotoSource(
+            uid: row.string(1), title: row.string(2), language: row.optionalString(3),
+            ingredients: JSONColumns.decodeStrings(row.string(4))
+        )
     }
 }
 

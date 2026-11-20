@@ -92,6 +92,13 @@ struct Recipe: Equatable {
     var origin: ContentOrigin = .parsed
     /// When the user last saved an edit, or nil if never.
     var editedAt: Int64? = nil
+    /// The stored row's stable uid (#403: its tint), or empty for a recipe not stored yet.
+    var uid: String = ""
+
+    /// What its no-photo image is drawn from (#403); a recipe not stored yet is tinted by its link.
+    var noPhoto: NoPhotoSource {
+        NoPhotoSource(uid: uid.isEmpty ? sourceUrl : uid, title: name, language: language, ingredients: ingredients)
+    }
 
     /// "Update from source" applies: the user's version of a recipe that has a real link.
     var canUpdateFromSource: Bool {
@@ -116,6 +123,16 @@ struct RecipeSummary: Equatable, Identifiable {
     var sourceUrl: String = ""
     /// Read from a chat's JSON (#355, origin CHAT): the row says "From a chat".
     var isFromChat: Bool = false
+    /// Its stable uid and stored language, for its image when it has no photo (#403).
+    var uid: String = ""
+    var language: String? = nil
+    /// Its ingredient lines, only where an image shows them (Home's card, #403); else empty.
+    var ingredients: [String] = []
+
+    /// What its no-photo image is drawn from (#403).
+    var noPhoto: NoPhotoSource {
+        NoPhotoSource(uid: uid.isEmpty ? "recipe-\(id)" : uid, title: title, language: language, ingredients: ingredients)
+    }
 
     /// The site, as the reading view credits it; nil for a typed or scanned recipe.
     var sourceDomain: String? { ManualRecipe.isManual(sourceUrl) ? nil : SourceDomain.of(sourceUrl) }

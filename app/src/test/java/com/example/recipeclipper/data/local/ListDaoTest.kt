@@ -274,6 +274,50 @@ class ListDaoTest {
         )
     }
 
+    // --- Covers of recipes with no photo (#403) ---
+
+    private suspend fun placeholders() =
+        lists.observeCoverPlaceholders().first().groupBy({ it.listId }, { it.title })
+
+    /** The recipes with no photo, up to four, newest added first; a photo's recipe is not one. */
+    @Test
+    fun placeholderCoversAreTheNoPhotoRecipesNewestFirstUpToFour() = runBlocking {
+        val favorites = favoritesId()
+        (1..6).forEach { n ->
+            val id = recipes.upsert(recipe("https://example.com/$n", "R$n").copy(imageUrl = null), historyLimit = 50)
+            lists.addToList(RecipeListCrossRef(id, favorites, addedAt = n * 10L))
+        }
+        val photo = addRecipe("https://example.com/photo", image = "https://img/p.jpg")
+        lists.addToList(RecipeListCrossRef(photo, favorites, addedAt = 100))
+        val blank = recipes.upsert(recipe("https://example.com/blank", "Blank").copy(imageUrl = ""), historyLimit = 50)
+        lists.addToList(RecipeListCrossRef(blank, favorites, addedAt = 5))
+
+        assertEquals(mapOf(favorites to listOf("R6", "R5", "R4", "R3")), placeholders())
+    }
+
+    /** What the image is drawn from comes with it: the recipe's own uid, language and lines. */
+    @Test
+    fun placeholderCoversCarryWhatTheImageIsDrawnFrom() = runBlocking {
+        val favorites = favoritesId()
+        val id = recipes.upsert(
+            recipe("https://example.com/a", "Lentil Soup")
+                .copy(imageUrl = null, ingredients = listOf("1 cup red lentils"), language = "en"),
+            historyLimit = 50
+        )
+        lists.addToList(RecipeListCrossRef(id, favorites, addedAt = 10))
+
+        val row = lists.observeCoverPlaceholders().first().single()
+        assertEquals(recipes.get(id)!!.uid, row.uid)
+        assertEquals("en", row.language)
+        assertEquals(listOf("1 cup red lentils"), row.ingredients)
+    }
+
+    /** An empty list has no row: it keeps the bookmark tile. */
+    @Test
+    fun anEmptyListHasNoPlaceholderCover() = runBlocking {
+        assertTrue(lists.observeCoverPlaceholders().first().isEmpty())
+    }
+
     /** Leaving a list takes the photo off its cover; the recipe itself stays. */
     @Test
     fun coversFollowMembership() = runBlocking {

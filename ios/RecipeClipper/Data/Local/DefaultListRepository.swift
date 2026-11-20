@@ -37,6 +37,14 @@ final class DefaultListRepository: ListRepository {
         }
     }
 
+    func observeCoverPlaceholders() -> AnyPublisher<[Int64: [NoPhotoSource]], Never> {
+        db.observe { conn in
+            try ListDao(db: conn).coverPlaceholders().reduce(into: [Int64: [NoPhotoSource]]()) { covers, row in
+                covers[row.listId, default: []].append(row.source)
+            }
+        }
+    }
+
     func observeSavedRecipes() -> AnyPublisher<[SavedRecipe], Never> {
         db.observe { conn in try ListDao(db: conn).savedRecipes() }
     }

@@ -460,13 +460,13 @@ private struct MealRow: View {
         Button(action: onOpen) {
             HStack(spacing: 12) {
                 if meal.recipeId != nil {
-                    CachedAsyncImage(url: meal.imageUrl.flatMap(URL.init(string:))) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
-                        Color.clear
-                    }
+                    RecipeImage(
+                        url: meal.imageUrl,
+                        recipe: NoPhotoSource(
+                            uid: meal.recipeUid ?? "recipe-\(meal.recipeId ?? 0)", title: meal.title ?? "", language: meal.language
+                        )
+                    )
                         .frame(width: 44, height: 44)
-                        .background(Palette.hairline)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 VStack(alignment: .leading, spacing: 0) {
