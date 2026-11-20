@@ -601,6 +601,16 @@ enum Strings {
     static var addMeal: String { String(localized: "action_add_meal") }
     static var move: String { String(localized: "action_move") }
     static var removeFromPlan: String { String(localized: "action_remove_from_plan") }
+    // Skip tonight (#398)
+    static var skip: String { String(localized: "action_skip") }
+    static var skipToday: String { String(localized: "action_skip_today") }
+    static func skipMealTitle(_ label: String) -> String { String(localized: "skip_meal_title \(label)") }
+    static var skipPushWeek: String { String(localized: "skip_push_week") }
+    static var skipNextFreeDay: String { String(localized: "skip_next_free_day") }
+    static var skipRemove: String { String(localized: "skip_remove") }
+    static var skipPushed: String { String(localized: "snackbar_skip_pushed") }
+    static var skipPushedPastEnd: String { String(localized: "snackbar_skip_pushed_past_end") }
+    static func skipMoved(_ label: String, _ day: String) -> String { String(localized: "snackbar_skip_moved \(label) \(day)") }
     static func addToDayTitle(_ day: String) -> String { String(localized: "add_to_day_title \(day)") }
     static var searchOrNote: String { String(localized: "label_search_or_note") }
     static func addAsNote(_ text: String) -> String { String(localized: "action_add_as_note \(text)") }
@@ -794,6 +804,16 @@ enum Strings {
     static func whatINeedPantryAndWeek(_ have: String, _ use: String) -> String {
         String(localized: "what_i_need_pantry_and_week \(have) \(use)")
     }
+    // Fresh food (#396): Shop for this week in two trips, and the plan's note.
+    static var whatINeedBuyNow: String { String(localized: "what_i_need_buy_now") }
+    static var whatINeedBuyLater: String { String(localized: "what_i_need_buy_later") }
+    static var whatINeedBuyLaterNote: String { String(localized: "what_i_need_buy_later_note") }
+    static var whatINeedNothingToBuyNow: String { String(localized: "what_i_need_nothing_to_buy_now") }
+    static var whatINeedAddLater: String { String(localized: "what_i_need_add_later") }
+    static func whatINeedLaterFor(_ day: String) -> String { String(localized: "what_i_need_later_for \(day)") }
+    static func freshKeeps(_ days: String) -> String { String(localized: "fresh_keeps \(days)") }
+    static func freshNudge(_ name: String, _ days: String) -> String { String(localized: "fresh_nudge \(name) \(days)") }
+    static func freshNudgeSwap(_ day: String) -> String { String(localized: "fresh_nudge_swap \(day)") }
     static var addToPantry: String { String(localized: "action_add_to_pantry") }
 
     // "I made this" (#116)
@@ -851,6 +871,33 @@ enum Strings {
     static var settingsSectionHelp: String { String(localized: "settings_section_help") }
     static var settingsShowTips: String { String(localized: "settings_show_tips") }
     static var settingsShowTipsDescription: String { String(localized: "settings_show_tips_description") }
+    // The evening and Tonight reminders (#397)
+    static var eveningReminderTitle: String { String(localized: "evening_reminder_title") }
+    static var eveningReminderDescription: String { String(localized: "evening_reminder_description") }
+    static var tonightReminderTitle: String { String(localized: "tonight_reminder_title") }
+    static var tonightReminderDescription: String { String(localized: "tonight_reminder_description") }
+    static var reminderTimeTitle: String { String(localized: "reminder_time_title") }
+    static var reminderTimeDialogTitle: String { String(localized: "reminder_time_dialog_title") }
+
+    /// "Tomorrow: Porridge, Lemon chicken" / "Tonight: Lemon chicken".
+    static func mealReminderTitle(_ reminder: MealReminder) -> String {
+        MealReminderText.title(
+            reminder,
+            tomorrow: { String(localized: "meal_reminder_tomorrow \($0)") },
+            tonight: { String(localized: "meal_reminder_tonight \($0)") }
+        )
+    }
+
+    /// What to do ahead, quoting the step; nil when nothing.
+    static func mealReminderBody(_ reminder: MealReminder) -> String? {
+        MealReminderText.body(
+            reminder,
+            one: { String(localized: "meal_reminder_ahead_one \($0)") },
+            header: String(localized: "meal_reminder_ahead_header"),
+            item: { String(localized: "meal_reminder_ahead_item \($0) \($1)") }
+        )
+    }
+
     // Settings' index (#286): each section's current value, beside its name.
     static var settingsValueSystemTheme: String { String(localized: "settings_value_system_theme") }
     static var settingsValueAmountsOn: String { String(localized: "settings_value_amounts_on") }

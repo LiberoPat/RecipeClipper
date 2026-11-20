@@ -170,8 +170,8 @@ class AskAiViewModel @Inject constructor(
     private val input = MutableStateFlow(AskAiUiState())
     private val planInput = MutableStateFlow(PlanInput())
 
-    /** The types ticked last time, read once: a choice made now is [PlanInput.meals]. */
-    private val remembered: List<String>? = choices?.planMealKeys
+    /** The types ticked last time: until a choice is made now ([PlanInput.meals]), and again once the sheet is closed. */
+    private val remembered: List<String>? get() = choices?.planMealKeys
 
     /** The favourites list's recipes, by title as the list orders them (most recently added first). */
     private val favourites: Flow<List<String>> = lists.observeLists()

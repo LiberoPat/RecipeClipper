@@ -14,6 +14,18 @@ struct SettingsUiState: Equatable {
     /// Turning reminders on was refused (notifications not allowed): the switch stays off and
     /// says why, until it is turned on successfully.
     var expiryRemindersDenied = false
+    /// The evening-before reminder of tomorrow's meals (#397), and its time (minutes since midnight).
+    var eveningReminder = true
+    var eveningReminderMinute = MealReminders.eveningMinute
+    /// The optional afternoon Tonight reminder, and its time.
+    var tonightReminder = false
+    var tonightReminderMinute = MealReminders.tonightMinute
+    /// What the screen last found: whether the phone lets the app post notifications at all.
+    var notificationsAllowed = true
+    /// Turning a Week reminder on was refused: the switch stays off and says why, until one is turned on.
+    var weekRemindersDenied = false
+    /// The Week page says notifications are off: refused just now, or on with the phone not allowing them.
+    var weekRemindersBlocked: Bool { weekRemindersDenied || (!notificationsAllowed && (eveningReminder || tonightReminder)) }
     /// Ingredient amounts inside steps (#101).
     var amountsInSteps = false
     /// e.g. "1.0 (1)", shown at the foot; tapping it `SettingsViewModel.developerTaps` times opens
@@ -149,6 +161,8 @@ final class SettingsViewModel {
                 var next = Self.uiState(settings)
                 next.backup = self.uiState.backup
                 next.expiryRemindersDenied = self.uiState.expiryRemindersDenied
+                next.notificationsAllowed = self.uiState.notificationsAllowed
+                next.weekRemindersDenied = self.uiState.weekRemindersDenied
                 next.appVersion = self.appVersion
                 next.chefSupport = self.uiState.chefSupport
                 next.unlockBusy = self.uiState.unlockBusy
@@ -191,6 +205,10 @@ final class SettingsViewModel {
             temperatureUnit: settings.temperatureUnit,
             darkWhileCooking: settings.darkWhileCooking,
             expiryReminders: settings.expiryReminders,
+            eveningReminder: settings.eveningReminder,
+            eveningReminderMinute: settings.eveningReminderMinute,
+            tonightReminder: settings.tonightReminder,
+            tonightReminderMinute: settings.tonightReminderMinute,
             amountsInSteps: settings.amountsInSteps,
             chefMode: settings.chefMode
         )
@@ -198,7 +216,62 @@ final class SettingsViewModel {
 
     /// The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag.
     var sections: [SettingsSection] {
-        SettingsSection.allCases.filter { $0 != .unlimited || unlockRow != nil }
+        SettingsSection.allCases.filter { ($0 != .unlimited || unlockRow != nil) && ($0 != .week || showsWeekReminders) }
+    }
+
+    /// The Week section (#397): only with the `eveningReminders` flag on.
+    var showsWeekReminders: Bool { flags?.isOn(.eveningReminders) ?? false }
+
+    /// A Week reminder's switch (#397), like the expiry reminders': on asks for notification
+    /// permission first (only here, never on launch); refused, the switch stays off and the page
+    /// says why. Returns the work so a test can await it.
+    @discardableResult
+    func onWeekReminderChange(_ kind: MealReminderKind, _ on: Bool) -> Task<Void, Never>? {
+        guard on else {
+            setWeekReminder(kind, false)
+            return nil
+        }
+        return Task {
+            let granted = await notificationPermission.request()
+            setWeekReminder(kind, granted)
+            uiState.notificationsAllowed = granted
+            uiState.weekRemindersDenied = !granted
+        }
+    }
+
+    private func setWeekReminder(_ kind: MealReminderKind, _ on: Bool) {
+        switch kind {
+        case .evening:
+            preferences.eveningReminder = on
+            uiState.eveningReminder = on
+        case .tonight:
+            preferences.tonightReminder = on
+            uiState.tonightReminder = on
+        }
+    }
+
+    /// The time of a Week reminder, as minutes since local midnight.
+    func onWeekReminderTime(_ kind: MealReminderKind, _ minute: Int) {
+        let at = min(max(minute, 0), 24 * 60 - 1)
+        switch kind {
+        case .evening:
+            preferences.eveningReminderMinute = at
+            uiState.eveningReminderMinute = at
+        case .tonight:
+            preferences.tonightReminderMinute = at
+            uiState.tonightReminderMinute = at
+        }
+    }
+
+    /// Looks again whether notifications are allowed, each time the Week page comes to the front:
+    /// the cook can change it in the system settings and come back. Returns the work for a test.
+    @discardableResult
+    func onWeekPageShown() -> Task<Void, Never> {
+        Task {
+            let allowed = await notificationPermission.allowed()
+            uiState.notificationsAllowed = allowed
+            if allowed { uiState.weekRemindersDenied = false }
+        }
     }
 
     /// The Steps section's "Chef mode" (#100): only with the `chefMode` flag on.

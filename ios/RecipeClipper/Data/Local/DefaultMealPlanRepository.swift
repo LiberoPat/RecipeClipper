@@ -66,6 +66,22 @@ final class DefaultMealPlanRepository: MealPlanRepository {
         await perform("restoreMeal") { dao in try dao.restore(deleted.entry) }
     }
 
+    func skip(mealId: Int64, choice: PlanShift.Choice, today: Int64, lastDay: Int64) async -> SkippedMeals? {
+        let now = clock.now()
+        do {
+            return try await db.write { conn in
+                try MealPlanDao(db: conn).skip(mealId, choice: choice, today: today, lastDay: lastDay, now: now)
+            }
+        } catch {
+            dataLog.error("skipMeal failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    func undoSkip(_ skipped: SkippedMeals) async {
+        await perform("undoSkipMeal") { dao in try dao.undoSkip(skipped.before) }
+    }
+
     func addMealType(name: String) async {
         let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }

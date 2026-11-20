@@ -441,6 +441,15 @@
     <string name="action_add_meal">+ Add</string>
     <string name="action_move">Move…</string>
     <string name="action_remove_from_plan">Remove from plan</string>
+    <string name="action_skip">Skip…</string>
+    <string name="action_skip_today">Skip</string>
+    <string name="skip_meal_title">Skip %1$s</string>
+    <string name="skip_push_week">Push the rest of the week back a day</string>
+    <string name="skip_next_free_day">Move to the next free day</string>
+    <string name="skip_remove">Remove from the plan</string>
+    <string name="snackbar_skip_pushed">Pushed the rest of the week back a day</string>
+    <string name="snackbar_skip_pushed_past_end">Pushed the rest of the week back a day. Some meals now fall past the end of the plan.</string>
+    <string name="snackbar_skip_moved">Moved %1$s to %2$s</string>
     <string name="add_to_day_title">Add to %1$s</string>
     <string name="label_search_or_note">Search your recipes, or type a note</string>
     <string name="action_add_as_note">Add “%1$s” as a note</string>
@@ -582,6 +591,16 @@
     <string name="what_i_need_nothing_to_buy">Nothing to buy: every ingredient is in your pantry.</string>
     <string name="what_i_need_you_have">You have %1$s</string>
     <string name="what_i_need_added">Added to groceries</string>
+    <!-- Fresh food (#396): Shop for this week in two trips, and the plan's note -->
+    <string name="what_i_need_buy_now">Buy now</string>
+    <string name="what_i_need_buy_later">Buy later in the week</string>
+    <string name="what_i_need_buy_later_note">For meals 3 or more days away. Add these when you shop again, or now.</string>
+    <string name="what_i_need_nothing_to_buy_now">Nothing to buy now</string>
+    <string name="what_i_need_add_later">Add these to groceries</string>
+    <string name="what_i_need_later_for">For %1$s</string>
+    <string name="fresh_keeps">Keeps about %1$s days once bought</string>
+    <string name="fresh_nudge">%1$s: keeps about %2$s days once bought. Cook it earlier?</string>
+    <string name="fresh_nudge_swap">Swap with %1$s</string>
     <!-- What I need (#302): the pantry's amount beside the week's, never compared -->
     <string name="what_i_need_pantry_amount">You have %1$s</string>
     <string name="what_i_need_pantry_and_week">You have %1$s · this week\'s recipes use %2$s</string>
@@ -898,4 +917,18 @@
     <string name="ai_prompt_use_saved_only">Use only my saved recipes listed above. Don\'t write them out: for each one give just @type \"Recipe\", its \"name\", its link exactly as listed in \"isBasedOn\", and its day and meal. Use a recipe more than once only if there are fewer recipes than meals.</string>
     <string name="ai_prompt_use_saved_mix" tools:ignore="PluralsCandidate">Use up to %1$d of my saved recipes listed above and suggest new recipes for the rest. For a saved recipe don\'t write it out: give just @type \"Recipe\", its \"name\", its link exactly as listed in \"isBasedOn\", and its day and meal. Write every new recipe out in full.</string>
     <string name="ai_prompt_reply_plan_meals">Reply with a JSON array in one ```json code block: one schema.org Recipe object for each of these meals on each day listed, day by day in the order listed. Give each object two extra properties: \"%1$s\", holding that day\'s date exactly as listed (YYYY-MM-DD), and \"%2$s\", holding the meal\'s name exactly as listed.</string>
+    <!-- Evening and Tonight reminders (#397) -->
+    <string name="meal_reminders_channel_name">Meal reminders</string>
+    <string name="meal_reminders_channel_description">Tomorrow\'s and tonight\'s planned meals</string>
+    <string name="meal_reminder_tomorrow">Tomorrow: %1$s</string>
+    <string name="meal_reminder_tonight">Tonight: %1$s</string>
+    <string name="meal_reminder_ahead_one">To do ahead: “%1$s”</string>
+    <string name="meal_reminder_ahead_header">To do ahead:</string>
+    <string name="meal_reminder_ahead_item">%1$s: “%2$s”</string>
+    <string name="evening_reminder_title">Evening reminder</string>
+    <string name="evening_reminder_description">The evening before: tomorrow\'s planned meals, and anything to start ahead of time</string>
+    <string name="tonight_reminder_title">Tonight reminder</string>
+    <string name="tonight_reminder_description">In the afternoon: tonight\'s planned meals</string>
+    <string name="reminder_time_title">Time</string>
+    <string name="reminder_time_dialog_title">Reminder time</string>
 </resources>

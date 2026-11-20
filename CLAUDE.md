@@ -41,13 +41,13 @@ automatically, the free limit at 50, a views strip on Recipes); lists; scaling a
 Settings; cook mode with saved progress and background timer alerts; sharing
 out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
-backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147), with "Use it up" (#305); Chef
+backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147), with "Use it up" (#305), Skip tonight (#398) and fresh food (#396) on Week; Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
 (`reddit` flag, #11), or the photo read on the device and checked by the cook (`photoText`,
-#198), and your own photos scanned the same way (#226), or text shared in (#306); "Ask an AI" prompts that come back as recipe JSON (#351, #353), a week of them reviewed into Week (#352), and changes saved as versions of the recipe they changed (#354), the answer shared or pasted (#372); running timers outside the app
-(a Live Activity, an ongoing notification) and the Tonight and Groceries widgets (#309); the UI in six languages (drafts awaiting a native speaker:
+#198), and your own photos scanned the same way (#226), or text shared in (#306); "Ask an AI" prompts that come back as recipe JSON (#351, #353), a week of them reviewed into Week (#352; choose the meals, the start day and your own recipes, #392, #367), and changes saved as versions of the recipe they changed (#354), the answer shared or pasted (#372); running timers outside the app
+(a Live Activity, an ongoing notification) and the Tonight and Groceries widgets (#309); the evening-before reminder of tomorrow's meals, quoting a step to start ahead (#397); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: other recipe languages,
@@ -171,6 +171,9 @@ Decisions, not suggestions. Don't relitigate them in code.
   on-device model only picks text that's on the page (#103) and never writes
   a number the cook sees (#100, #104). Anything the app doesn't understand
   stays as written.
+- **Never claim a date or a fact about the cook's food** (#396, `freshFood`): fresh-food notes and
+  Shop for this week's "Buy later" say only "keeps about N days once bought", a range from
+  `shared/tables/<lang>/perishables.json`. A name the table doesn't list is not perishable: bought now.
 
 ## UI decisions
 

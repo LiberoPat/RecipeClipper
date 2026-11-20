@@ -98,6 +98,55 @@ final class FakeMealPlanRepository: MealPlanRepository {
         meals.value.append(meal)
     }
 
+    /// Every `skip` asked for, in order.
+    struct SkipCall: Equatable {
+        let mealId: Int64
+        let choice: PlanShift.Choice
+        let today: Int64
+        let lastDay: Int64
+    }
+    var skips: [SkipCall] = []
+    /// When true, `skip` fails as a database error would: nothing written, nil returned.
+    var failSkips = false
+    private var skipSnapshots: [(skipped: SkippedMeals, plan: [PlannedMeal])] = []
+
+    /// The plan in plan order, as the DAO lists it for `skip`.
+    private func inPlanOrder() -> [PlannedMeal] {
+        let rank = Dictionary(uniqueKeysWithValues: types.value.enumerated().map { ($1.id, $0) })
+        return meals.value.enumerated().sorted {
+            ($0.element.day, rank[$0.element.mealTypeId] ?? .max, $0.offset)
+                < ($1.element.day, rank[$1.element.mealTypeId] ?? .max, $1.offset)
+        }.map(\.element)
+    }
+
+    func skip(mealId: Int64, choice: PlanShift.Choice, today: Int64, lastDay: Int64) async -> SkippedMeals? {
+        skips.append(SkipCall(mealId: mealId, choice: choice, today: today, lastDay: lastDay))
+        if failSkips { return nil }
+        guard let result = PlanShift.plan(inPlanOrder(), skippedId: mealId, choice: choice, today: today, lastDay: lastDay) else { return nil }
+        let before = meals.value
+        let toDay = Dictionary(uniqueKeysWithValues: result.moved.map { ($0.mealId, $0.toDay) })
+        meals.value = meals.value.filter { !result.removed.contains($0.id) }.map { meal in
+            guard let day = toDay[meal.id] else { return meal }
+            return PlannedMeal(
+                id: meal.id, day: day, mealTypeId: meal.mealTypeId, recipeId: meal.recipeId, title: meal.title,
+                imageUrl: meal.imageUrl, servings: meal.servings, note: meal.note, uid: meal.uid
+            )
+        }
+        let skipped = SkippedMeals(result: result, before: [])
+        skipSnapshots.append((skipped, before))
+        return skipped
+    }
+
+    func undoSkip(_ skipped: SkippedMeals) async {
+        guard let index = skipSnapshots.firstIndex(where: { $0.skipped == skipped }) else { return }
+        let before = skipSnapshots.remove(at: index).plan
+        let ids = Set(skipped.result.moved.map(\.mealId) + skipped.result.removed)
+        // The skipped meals back as they were, at their old place; whatever else changed since stays.
+        let now = Dictionary(uniqueKeysWithValues: meals.value.map { ($0.id, $0) })
+        let restored = before.compactMap { old in ids.contains(old.id) ? old : now[old.id] }
+        meals.value = restored + meals.value.filter { current in !before.contains { $0.id == current.id } }
+    }
+
     func addMealType(name: String) async {
         let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }

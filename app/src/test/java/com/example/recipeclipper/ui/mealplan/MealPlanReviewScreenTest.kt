@@ -27,6 +27,11 @@ import com.example.recipeclipper.ui.navigation.Tab
 import com.example.recipeclipper.ui.navigation.mealPlanDestination
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagRegistry
+import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -57,7 +62,7 @@ class MealPlanReviewScreenTest {
     private lateinit var nav: NavHostController
 
     /** The review as the route opens it: the plan waiting in the inbox under the key the route carries. */
-    private fun show(plan: MealPlanImport.Plan) {
+    private fun show(plan: MealPlanImport.Plan, flags: FeatureFlags? = null, meals: Boolean = false) {
         val key = inbox.offerPlan("shared", plan)
         compose.setContent {
             nav = rememberNavController()
@@ -69,7 +74,8 @@ class MealPlanReviewScreenTest {
                     remember(routeKey) {
                         MealPlanReviewViewModel(
                             SavedStateHandle(mapOf(MealPlanReviewViewModel.PLAN_ARG to routeKey)),
-                            recipes, week, FakePlanCalendar(), policy, FakeEntitlements(), inbox, Dispatchers.Unconfined
+                            recipes, week, FakePlanCalendar(), policy, FakeEntitlements(), inbox, Dispatchers.Unconfined,
+                            flags ?: FeatureFlags(FakeFeatureFlagStore(mapOf(Flag.PLAN_MY_WEEK_PLUS.key to meals)), FlagRegistry.definitions, isDebug = true)
                         )
                     }
                 }
@@ -115,6 +121,42 @@ class MealPlanReviewScreenTest {
     }
 
     @Test
+    fun withMealsEachRowShowsItsMealAndAnExistingRecipeSaysSo() {
+        recipes.history.value = listOf(
+            RecipeSummary(7, "Chicken Adobo", null, null, 7, true, sourceUrl = "https://example.com/adobo")
+        )
+        val named = MealPlanImport.Item(
+            Recipe(name = "Adobo", image = null, ingredients = emptyList(), instructions = emptyList(), prepTime = null,
+                cookTime = null, totalTime = null, yield = null, sourceUrl = ""),
+            today, "Dinner", "https://example.com/adobo"
+        )
+        val gone = named.copy(link = "https://example.com/gone")
+        val written = MealPlanImport.Item(recipe("Porridge"), today + 1, "Breakfast")
+        show(MealPlanImport.Plan(listOf(named, gone, written)), meals = true)
+
+        compose.onNodeWithText("Chicken Adobo").assertIsDisplayed()
+        compose.onNodeWithText("Already in your recipes").assertIsDisplayed()
+        compose.onNodeWithTag("mealplan_not_found").assertIsDisplayed()
+        compose.onNodeWithText("Left out, not found in your recipes: 1").assertIsDisplayed()
+        compose.onNodeWithTag("mealplan_meal_0").assertIsDisplayed()
+        compose.onNodeWithTag("mealplan_meal_2").assertIsDisplayed()
+        compose.onNodeWithText("Breakfast").assertIsDisplayed()
+
+        // Change the written recipe's meal before Save.
+        compose.onNodeWithTag("mealplan_meal_2").performClick()
+        compose.onNodeWithText("Snack").performClick()
+        recipes.addManualQueue.add(recipe("Porridge", 3))
+        compose.onNodeWithTag("mealplan_save").performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf("Porridge"), recipes.addManualCalls.map { it.name })
+        assertEquals(
+            listOf(7L to FakeMealPlanRepository.DINNER, 3L to FakeMealPlanRepository.SNACK),
+            week.meals.value.map { it.recipeId!! to it.mealTypeId }
+        )
+    }
+
+    @Test
     fun aCutOffAnswerSaysSoAndOffersAMessageForTheAI() {
         show(MealPlanImport.Plan(plan("Omelette", "Soup").items, cutOff = true))
 
@@ -144,6 +186,31 @@ class MealPlanReviewScreenTest {
         compose.onNodeWithText("room for 1 more", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("mealplan_wont_fit_1").assertIsDisplayed()
         compose.onNodeWithText("Unlock").assertIsDisplayed()
+    }
+
+    /** Fresh food (#396): a note under the perishable recipe planned late, with one swap; nothing moves until it is tapped. */
+    @Test
+    fun aPerishableRecipePlannedLateGetsAQuietNoteAndOneSwap() {
+        val flags = FeatureFlags(FakeFeatureFlagStore(mapOf("freshFood" to true)), FlagRegistry.definitions, isDebug = true)
+        val salmon = recipe("Salmon bowls").copy(ingredients = listOf("2 salmon fillets", "1 cup rice"))
+        recipes.addManualQueue.add(recipe("Omelette", 1))
+        recipes.addManualQueue.add(recipe("Salmon bowls", 2))
+        show(
+            MealPlanImport.Plan(listOf(MealPlanImport.Item(recipe("Omelette"), today), MealPlanImport.Item(salmon, today + 5))),
+            flags
+        )
+
+        compose.onNodeWithTag("mealplan_fresh_1").assertIsDisplayed()
+        compose.onNodeWithText("Salmon fillets: keeps about 1-2 days once bought. Cook it earlier?").assertIsDisplayed()
+        compose.onNodeWithTag("mealplan_fresh_0").assertDoesNotExist()
+
+        compose.onNodeWithTag("freshSwap").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("mealplan_fresh_1").assertDoesNotExist()
+        compose.onNodeWithTag("mealplan_save").performClick()
+        compose.waitForIdle()
+        // Planned as swapped: the omelette on the later day, the salmon on the first.
+        assertEquals(listOf(today + 5, today), week.meals.value.map { it.day })
     }
 
     @Test

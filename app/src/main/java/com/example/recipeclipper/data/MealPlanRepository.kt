@@ -3,6 +3,7 @@ package com.example.recipeclipper.data
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.Menu
+import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.PlannedMeal
 import kotlinx.coroutines.flow.Flow
 
@@ -39,6 +40,23 @@ interface MealPlanRepository {
 
     /** Undoes [delete]: the same meal, in the same place. */
     suspend fun restore(deleted: DeletedMeal)
+
+    /**
+     * What [skip] did: its [result] (which meals moved, where from and to: the seam for #396), and
+     * what [undoSkip] needs. Opaque to callers beyond [result].
+     */
+    data class SkippedMeals(val result: PlanShift.Result, val before: List<MealPlanEntryEntity>)
+
+    /**
+     * Skip tonight (#398): skips the planned meal [mealId] with [choice], every move in one
+     * transaction (see [PlanShift]); [today] and [lastDay] (the last day the plan shows) are the
+     * caller's. Null when nothing was skipped: the meal is gone, is in the past, or the write
+     * failed.
+     */
+    suspend fun skip(mealId: Long, choice: PlanShift.Choice, today: Long, lastDay: Long): SkippedMeals?
+
+    /** Undoes [skip]: every meal it moved or removed back as it was. */
+    suspend fun undoSkip(skipped: SkippedMeals)
 
     /** A user's own meal type, last in the order. A blank name is ignored. */
     suspend fun addMealType(name: String)
