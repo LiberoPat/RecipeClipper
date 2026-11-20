@@ -87,7 +87,6 @@ final class MealPlanReviewViewModel {
     @ObservationIgnored private let entitlements: Entitlements
     /// Plan my week's choices (#392, #367) are on: nil/false reads the answer as before, dinners and new recipes.
     @ObservationIgnored private let meals: Bool
-    @ObservationIgnored private let today: Int64
     /// What was read, by `ReviewItem.index`; the rows are these with the cook's choices.
     @ObservationIgnored private var read: [MealPlanImport.Item] = []
     @ObservationIgnored private var mealTypes: [MealType] = []
