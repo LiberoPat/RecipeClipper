@@ -65,7 +65,7 @@ struct ListDropDelegate: DropDelegate {
     func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
 
     func performDrop(info: DropInfo) -> Bool {
-        MainActor.assumeIsolated { vm.onDragEnd() }
+        MainActor.assumeIsolated { vm.onDrop(on: targetId) }
         return true
     }
 }

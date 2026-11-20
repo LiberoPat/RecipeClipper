@@ -184,6 +184,34 @@ final class ListsViewModelTests: XCTestCase {
         XCTAssertTrue(repository.reorderCalls.isEmpty)
     }
 
+    /// A slow device can finish the lift with the finger already over the target, and the system
+    /// never reports entering it. Letting go over a cover still gives the held one its place.
+    func testLettingGoOverACoverTakesItsPlaceEvenIfTheDragNeverEnteredIt() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onDragStart(3)
+        vm.onDrop(on: 1)
+        await settleMain()
+
+        XCTAssertEqual(repository.reorderCalls, [[3, 1, 2]])
+        XCTAssertNil(vm.uiState.draggingId)
+    }
+
+    func testLettingGoOnTheScreenAroundTheCoversOnlyEndsTheDrag() async {
+        let repository = repositoryWithThree()
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onDragStart(3)
+        vm.onDrop(on: nil)
+        await settleMain()
+
+        XCTAssertTrue(repository.reorderCalls.isEmpty)
+        XCTAssertNil(vm.uiState.draggingId)
+    }
+
     func testDroppingWhereItStartedStoresNothing() async {
         let repository = repositoryWithThree()
         let vm = ListsViewModel(repository: repository)

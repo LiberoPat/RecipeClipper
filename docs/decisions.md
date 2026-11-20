@@ -5638,7 +5638,9 @@ release), on both platforms.
   ever dragged over.
 - **iOS uses the system's drag and drop.** `.onDrag` on each cover (the long-press lift, with its
   haptic) and `.onDrop` with `ListDropDelegate`: `dropEntered` on a cover calls `onDragOver`, a drop on
-  a cover, or on the screen around the covers, calls `onDragEnd`; leaving the screen mid-drag
+  a cover, or on the screen around the covers, calls `onDrop(on:)` (the held cover takes the
+  target's place first, then `onDragEnd`: on a slow runner the lift finished with the finger
+  already over the target and `dropEntered` never came, so nothing moved); leaving the screen mid-drag
   calls `onDragCancel`. The grid is `CoverGridLayout`, a `Layout`, in place of the rows of
   `HStack`s: the old rows were keyed by their first cover, so moving a cover between rows rebuilt
   the one being held and lost the drop target. One `ForEach` in a custom layout keeps every cover's

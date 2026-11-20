@@ -98,6 +98,15 @@ final class ListsViewModel {
         showCurrentOrder()
     }
 
+    /// The cook let go over a cover (`targetId`) or the screen around the covers (nil). Over a
+    /// cover, the held one takes its place first, whether or not the drag was reported entering
+    /// it: on a slow device the lift can finish with the finger already there, and the system
+    /// then never says "entered" (a nightly dropped Lunch on Favorites and nothing moved).
+    func onDrop(on targetId: Int64?) {
+        if let targetId { onDragOver(targetId) }
+        onDragEnd()
+    }
+
     /// The cook let go: the order the drag made is stored, once.
     func onDragEnd() {
         guard let order = dragOrder else { return }

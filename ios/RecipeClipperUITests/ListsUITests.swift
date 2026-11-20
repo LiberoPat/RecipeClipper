@@ -60,6 +60,18 @@ final class ListsUITests: RecipeUITestCase {
     /// now, and stays first on coming back to the screen (the order was stored). The ViewModel
     /// tests carry the rules; this proves the system drag reaches them.
     func testAHeldCoverDraggedOntoAnotherTakesItsPlace() {
+        dragLunchOntoFavorites(hold: 1.5, velocity: .slow, thenHold: 1.5)
+    }
+
+    /// The same, with the finger moving as soon as it can. A slow runner (the nightly's) may not
+    /// have finished lifting the cover when the finger is already over Favorites, and then the
+    /// system never says the drag entered it: only the drop on it counts, and it must still give
+    /// Lunch the place (`ListsViewModel.onDrop`). Reproduced here with a short press.
+    func testACoverDraggedAtOnceStillTakesThePlaceItIsDroppedOn() {
+        dragLunchOntoFavorites(hold: 0.7, velocity: .fast, thenHold: 0.2)
+    }
+
+    private func dragLunchOntoFavorites(hold: TimeInterval, velocity: XCUIGestureVelocity, thenHold: TimeInterval) {
         launch(flags: ["reorderLists"])
         openLists()
 
@@ -70,11 +82,9 @@ final class ListsUITests: RecipeUITestCase {
         requireState(lunch, "isHittable == true", "Lunch on screen")
         requireState(favorites, "isHittable == true", "Favorites on screen")
 
-        // Hold long enough for the system's lift, drag slowly, and hold over the target so the
-        // drop registers before the finger lifts.
         let from = lunch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
         let to = favorites.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
-        from.press(forDuration: 1.5, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 1.5)
+        from.press(forDuration: hold, thenDragTo: to, withVelocity: velocity, thenHoldForDuration: thenHold)
 
         // The drop is stored and drawn a moment later (an animation, a write, a publication),
         // so wait for the new order rather than reading it at once. If it never comes it failed.
