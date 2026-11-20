@@ -16,6 +16,7 @@ import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeLink
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.SavedRecipe
 import com.example.recipeclipper.data.model.SampleRecipe
 import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.UrlCleaner
@@ -440,6 +441,10 @@ class DefaultRecipeRepository @Inject constructor(
         return recipeDao.observeHistory(query, listed, cooked, typed, chat).map { rows -> rows.map { it.toDomain() } }
             .orEmptyOnError(log, "observeHistory")
     }
+
+    override fun observeRecipeLines(): Flow<List<SavedRecipe>> =
+        recipeDao.observeRecipeLines().map { rows -> rows.map { SavedRecipe(it.id, it.title, it.language, it.ingredients) } }
+            .orEmptyOnError(log, "observeRecipeLines")
 
     override fun observeRecipeCounts(): Flow<RecipeCounts> =
         recipeDao.observeLibraryCounts().map { RecipeCounts(it.total, it.inList, it.cooked, it.typed, it.chat) }.catch { e ->

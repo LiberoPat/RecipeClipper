@@ -11,7 +11,10 @@ import Observation
 /// the search; `counts` are the library's, whatever the filter or search, nil until the
 /// database answers. `view` is the automatic view the screen was opened on (V4: Not in a list,
 /// Cooked, Typed by you), nil for the whole cookbook; `lists` are the lists the strip shows
-/// after the views (#345).
+/// after the views (#345). `quick` are the chips on under search (#378: 30 min or less, Not cooked yet,
+/// Uses what's in my pantry), combined with each other, the search and the sort; not remembered.
+/// `coverage` is, with the pantry chip on, how many of each recipe's nameable ingredients the pantry
+/// has ("You have 6 of 8"), by recipe id. `layout` is the stored choice of rows or a photo grid (#380).
 struct RecipesUiState: Equatable {
     var query = ""
     var recipes: [RecipeSummary]?
@@ -30,6 +33,15 @@ struct RecipesUiState: Equatable {
     var lists: [RecipeList] = []
     /// An Undo was refused, the free library being full (#345): the screen says so once.
     var restoreRefused = false
+    var quick: Set<RecipeQuickFilter> = []
+    var coverage: [Int64: PantryCoverage] = [:]
+    var layout: RecipesLayout = .rows
+
+    /// The chips offered: Not cooked yet is no question inside the Cooked view, which holds only
+    /// cooked recipes.
+    var quickFilters: [RecipeQuickFilter] {
+        RecipeQuickFilter.allCases.filter { $0 != .notCooked || view != .cooked }
+    }
 
     /// The strip shows once there is a recipe or a list to show (V4), never inside a view.
     var showsViewsStrip: Bool { view == nil && ((counts?.all ?? 0) > 0 || !lists.isEmpty) }
@@ -62,6 +74,23 @@ final class RecipesViewModel {
     @ObservationIgnored private var historySubscription: AnyCancellable?
     @ObservationIgnored private var countSubscription: AnyCancellable?
     @ObservationIgnored private var listsSubscription: AnyCancellable?
+    @ObservationIgnored private var layoutSubscription: AnyCancellable?
+    @ObservationIgnored private var coverageSubscription: AnyCancellable?
+    @ObservationIgnored private var coverageTask: Task<Void, Never>?
+    /// "Uses what's in my pantry" (#378); without it the chip matches nothing.
+    @ObservationIgnored private let pantry: PantryRepository?
+    /// How each recipe's ingredients stand against the pantry, nil while that is being worked out.
+    @ObservationIgnored private var coverage: [Int64: PantryCoverage]?
+    @ObservationIgnored private var coverageInputs: CoverageInputs?
+    /// How many times the pantry was matched against every recipe; the tests read it (#378).
+    @ObservationIgnored private(set) var coverageMatchings = 0
+
+    /// What the coverage is matched from; the same again is skipped, so a tick or a cook step
+    /// (which rewrite a recipe without changing a line) match nothing again.
+    private struct CoverageInputs: Equatable {
+        let lines: [SavedRecipe]
+        let items: [PantryItem]
+    }
     @ObservationIgnored private let library: LibraryPolicy?
     /// Recently cooked (#116) only while its flag is on; stored, it reads as the default.
     @ObservationIgnored private let cookedSort: Bool
@@ -83,9 +112,11 @@ final class RecipesViewModel {
     init(
         repository: RecipeRepository, preferences: AppPreferences, sleep: @escaping Sleep = Sleeps.real,
         library: LibraryPolicy? = nil, cookedSort: Bool = false, countdowns: TimerCountdownSync? = nil,
-        view: RecipeFilter? = nil, lists: ListRepository? = nil, pasted: PastedTextRouter? = nil
+        view: RecipeFilter? = nil, lists: ListRepository? = nil, pasted: PastedTextRouter? = nil,
+        pantry: PantryRepository? = nil
     ) {
         self.pasted = pasted
+        self.pantry = pantry
         self.cookedSort = cookedSort
         self.countdowns = countdowns
         self.repository = repository
@@ -104,6 +135,12 @@ final class RecipesViewModel {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] sort in self?.applySort(sort) }
+        uiState.layout = preferences.recipesLayout
+        layoutSubscription = preferences.settings
+            .map(\.recipesLayout)
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] layout in self?.uiState.layout = layout }
         schedule(query: "")
         countsSubscription = repository.observeRecipeCounts()
             .receive(on: DispatchQueue.main)
@@ -130,7 +167,7 @@ final class RecipesViewModel {
 
     /// The line under search, with the count and the sort (#286): shown once there is a row to
     /// order, or on the free tier, whose count shows even for an empty library.
-    var showsSortLine: Bool { count != nil || !(uiState.recipes?.isEmpty ?? true) }
+    var showsSortLine: Bool { count != nil || !(uiState.recipes?.isEmpty ?? true) || !uiState.quick.isEmpty }
 
     /// The cap on recipes in no list (the old history's 50) while it applies, nil when nothing
     /// clears on its own (the free tier and an unlocked library have their own rules).
@@ -173,7 +210,7 @@ final class RecipesViewModel {
             .sink { [weak self] recipes in
                 guard let self else { return }
                 self.found = recipes
-                self.uiState.recipes = Self.sorted(recipes, self.uiState.sort)
+                self.refreshShown()
             }
     }
 
@@ -194,7 +231,72 @@ final class RecipesViewModel {
     private func applySort(_ sort: RecipeSort) {
         guard sort != uiState.sort else { return }
         uiState.sort = sort
-        if let found { uiState.recipes = Self.sorted(found, sort) }
+        refreshShown()
+    }
+
+    /// The search's matches, narrowed by the chips, then in the sort's order. Nothing is shown while
+    /// the pantry chip's answer is still on its way, rather than a wrong "no recipes" for a moment.
+    private func refreshShown() {
+        let chips = uiState.quick
+        uiState.coverage = chips.contains(.usesPantry) ? (coverage ?? [:]) : [:]
+        guard let found else { return }
+        if chips.contains(.usesPantry) && coverage == nil {
+            uiState.recipes = nil
+            return
+        }
+        uiState.recipes = Self.sorted(
+            RecipeQuickFilters.apply(found, filters: chips, coverage: coverage ?? [:]), uiState.sort
+        )
+    }
+
+    /// A chip (#378): on, or off again. Each answers at once; the chips combine.
+    func onQuickFilterToggle(_ filter: RecipeQuickFilter) {
+        if uiState.quick.contains(filter) { uiState.quick.remove(filter) } else { uiState.quick.insert(filter) }
+        if filter == .usesPantry {
+            if uiState.quick.contains(.usesPantry) { startCoverage() } else { stopCoverage() }
+        }
+        refreshShown()
+    }
+
+    /// The rows / grid toggle (#380): stored at once and applied at once.
+    func onLayoutChange(_ layout: RecipesLayout) {
+        preferences.recipesLayout = layout
+        uiState.layout = layout
+    }
+
+    /// The lines of every recipe are read only while the pantry chip is on.
+    private func startCoverage() {
+        coverage = nil
+        coverageInputs = nil
+        guard let pantry else { coverage = [:]; return }
+        coverageSubscription = repository.observeRecipeLines()
+            .combineLatest(pantry.observeItems())
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] lines, items in self?.matchCoverage(lines, items) }
+    }
+
+    private func stopCoverage() {
+        coverageSubscription = nil
+        coverageTask?.cancel()
+        coverage = nil
+        coverageInputs = nil
+    }
+
+    /// Matches the pantry against every recipe off the main actor, unless nothing it's made from changed.
+    private func matchCoverage(_ lines: [SavedRecipe], _ items: [PantryItem]) {
+        let inputs = CoverageInputs(lines: lines, items: items)
+        guard inputs != coverageInputs else { return }
+        coverageInputs = inputs
+        coverageMatchings += 1
+        coverageTask?.cancel()
+        coverageTask = Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                RecipeQuickFilters.coverages(inputs.lines, pantry: inputs.items)
+            }.value
+            guard !Task.isCancelled, let self, self.uiState.quick.contains(.usesPantry) else { return }
+            self.coverage = result
+            self.refreshShown()
+        }
     }
 
     /// "Paste a link" from the + menu: opens the alert, empty.

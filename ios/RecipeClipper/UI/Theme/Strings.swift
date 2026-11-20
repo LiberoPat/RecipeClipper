@@ -389,6 +389,17 @@ enum Strings {
     // Recipes: the tidy list (#286). The count left of the sort, under search.
     static func recipesListed(_ n: Int) -> String { String(localized: "recipes_listed \(n)") }
     static var sort: String { String(localized: "cd_sort") }
+    // Recipes: quick filter chips (#378) and the rows / grid toggle (#380).
+    static var recipesQuickThirtyOrLess: String { String(localized: "recipes_quick_30_or_less") }
+    static var recipesQuickNotCooked: String { String(localized: "recipes_quick_not_cooked") }
+    static var recipesQuickPantry: String { String(localized: "recipes_quick_pantry") }
+    static var recipesQuickPantryNote: String { String(localized: "recipes_quick_pantry_note") }
+    static func recipesPantryHave(_ have: Int, of total: Int) -> String {
+        String(localized: "recipes_pantry_have \(have) \(total)")
+    }
+    static var recipesNoResultsFilters: String { String(localized: "recipes_no_results_filters") }
+    static var layoutToGrid: String { String(localized: "cd_layout_to_grid") }
+    static var layoutToRows: String { String(localized: "cd_layout_to_rows") }
 
     /// One snackbar message for the whole pending batch, or nil when nothing is pending.
     static func deletedMessage(_ pending: [String]) -> String? {

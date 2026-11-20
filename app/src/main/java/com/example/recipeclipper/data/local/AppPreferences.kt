@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.local
 
 import com.example.recipeclipper.data.model.RecipeSort
+import com.example.recipeclipper.data.model.RecipesLayout
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 import kotlinx.coroutines.flow.Flow
@@ -51,6 +52,9 @@ interface AppPreferences {
     /** The Recipes screen's sort (#102): a view preference, kept so it survives leaving the screen. */
     var recipeSort: RecipeSort
 
+    /** The Recipes screen's layout (#380), rows or a photo grid: a view preference like [recipeSort]. */
+    var recipesLayout: RecipesLayout
+
     /**
      * The current values first, then every change, never repeating a value. A screen that
      * collects this stays current when Settings changes a default while it is open (#24).
@@ -61,7 +65,7 @@ interface AppPreferences {
     val current: AppSettings
         get() = AppSettings(
             unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps,
-            recipeSort
+            recipeSort, recipesLayout
         )
 }
 
@@ -74,5 +78,6 @@ data class AppSettings(
     val expiryReminders: Boolean = false,
     val chefMode: Boolean = false,
     val amountsInSteps: Boolean = false,
-    val recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED
+    val recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED,
+    val recipesLayout: RecipesLayout = RecipesLayout.ROWS
 )

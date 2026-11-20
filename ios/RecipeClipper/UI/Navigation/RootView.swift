@@ -238,7 +238,9 @@ struct RootView: View {
                     oneCookbook: container.featureFlags.isOn(.oneCookbook),
                     saveVM: saveVM,
                     onOpenView: { push(.recipesView($0)) },
-                    onOpenLists: { push(.lists) }
+                    onOpenLists: { push(.lists) },
+                    quickFilters: container.featureFlags.isOn(.recipeFilters),
+                    gridEnabled: container.featureFlags.isOn(.recipesGrid)
                 )
             }
         case .recipesView(let view):
@@ -248,7 +250,9 @@ struct RootView: View {
                     vm: vm,
                     onOpenRecipe: { push(.recipe(id: $0)) },
                     oneCookbook: true,
-                    saveVM: saveVM
+                    saveVM: saveVM,
+                    quickFilters: container.featureFlags.isOn(.recipeFilters),
+                    gridEnabled: container.featureFlags.isOn(.recipesGrid)
                 )
             }
         case .settings:

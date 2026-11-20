@@ -9,7 +9,20 @@ import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.edit.PastedTextRouter
+import com.example.recipeclipper.data.PantryRepository
+import com.example.recipeclipper.data.model.PantryCoverage
 import com.example.recipeclipper.data.model.RecipeCounts
+import com.example.recipeclipper.data.model.RecipeQuickFilter
+import com.example.recipeclipper.data.model.RecipeQuickFilters
+import com.example.recipeclipper.data.model.RecipesLayout
+import com.example.recipeclipper.di.DefaultDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSort
@@ -48,6 +61,10 @@ import javax.inject.Inject
  * when nothing clears on its own (always, with `oneCookbook` on, #345).
  * [view] is the automatic view the screen was opened on (V4: Not in a list, Cooked, Typed by you),
  * null for the whole cookbook; [lists] are the lists the strip shows after the views.
+ * [quick] are the chips on under search (#378: 30 min or less, Not cooked yet, Uses what's in my
+ * pantry), combined with each other, the search and the sort; not remembered. [coverage] is, with the
+ * pantry chip on, how many of each recipe's nameable ingredients the pantry has ("You have 6 of 8"),
+ * by recipe id. [layout] is the stored choice of rows or a photo grid (#380).
  */
 data class RecipesUiState(
     val query: String = "",
@@ -66,7 +83,10 @@ data class RecipesUiState(
     val view: RecipeFilter? = null,
     val lists: List<RecipeList> = emptyList(),
     /** An Undo was refused, the free library being full (#345): the screen says so once, then clears it. */
-    val restoreRefused: Boolean = false
+    val restoreRefused: Boolean = false,
+    val quick: Set<RecipeQuickFilter> = emptySet(),
+    val coverage: Map<Long, PantryCoverage> = emptyMap(),
+    val layout: RecipesLayout = RecipesLayout.ROWS
 ) {
     /** The filter shows once there is a recipe to filter, and stays when a filter matches none. */
     val showsFilter: Boolean get() = (counts?.all ?: 0) > 0
@@ -82,6 +102,13 @@ data class RecipesUiState(
     /** The strip shows once there is a recipe or a list to show (V4), never inside a view. */
     val showsViewsStrip: Boolean get() = view == null && ((counts?.all ?: 0) > 0 || lists.isNotEmpty())
 
+    /**
+     * The chips offered: Not cooked yet is no question inside the Cooked view, which holds only
+     * cooked recipes.
+     */
+    val quickFilters: List<RecipeQuickFilter>
+        get() = RecipeQuickFilter.entries.filter { it != RecipeQuickFilter.NOT_COOKED || view != RecipeFilter.COOKED }
+
     /** The dialog's Open is enabled only for what reads as a link (`UrlInput`). */
     val canOpenLink: Boolean get() = !linkInput.isNullOrBlank()
 
@@ -92,7 +119,7 @@ data class RecipesUiState(
      * The line under search, with the count and the sort (#286): shown once there is a row to
      * order, or on the free tier, whose count shows even for an empty library.
      */
-    val showsSortLine: Boolean get() = count != null || !recipes.isNullOrEmpty()
+    val showsSortLine: Boolean get() = count != null || !recipes.isNullOrEmpty() || quick.isNotEmpty()
 }
 
 /** [recipes] saved of the free tier's [max]; a library from before the limit can be over it. */
@@ -114,7 +141,11 @@ class RecipesViewModel @Inject constructor(
     /** The automatic view's route argument (V4), when opened on one. */
     savedStateHandle: SavedStateHandle? = null,
     /** "Paste a link" takes any text (#372): where it goes is the shared-text route's; null opens links only. */
-    private val pasted: PastedTextRouter? = null
+    private val pasted: PastedTextRouter? = null,
+    /** "Uses what's in my pantry" (#378); without it the chip matches nothing. */
+    private val pantry: PantryRepository? = null,
+    /** Where the pantry is matched against every recipe, off the main thread. */
+    @DefaultDispatcher private val matching: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
 
     private val view: RecipeFilter? = RecipeFilter.fromRouteName(savedStateHandle?.get<String>(VIEW_ARG))
@@ -128,6 +159,9 @@ class RecipesViewModel @Inject constructor(
     private val sort = preferences.settings
         .map { it.recipeSort }
         .distinctUntilChanged()
+    private val layout = preferences.settings.map { it.recipesLayout }.distinctUntilChanged()
+    // The chips on (#378): in the ViewModel so they survive rotation; not stored, so Recipes opens with none.
+    private val quick = MutableStateFlow<Set<RecipeQuickFilter>>(emptySet())
     private val linkInput = MutableStateFlow<String?>(null)
     private val linkNoRecipe = MutableStateFlow(false)
     private val restoreRefused = MutableStateFlow(false)
@@ -148,6 +182,37 @@ class RecipesViewModel @Inject constructor(
         .flatMapLatest { (q, f) -> repository.observeHistory(q, f) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    // How many of each recipe's ingredients the pantry has, only while its chip is on (the lines of
+    // every recipe are read only then); null while that is being worked out. Matched once per change
+    // of the pantry or a recipe's lines: a tick or a cook step rewrites a recipe without changing one.
+    private val coverage: Flow<Map<Long, PantryCoverage>?> = quick
+        .map { RecipeQuickFilter.USES_PANTRY in it }
+        .distinctUntilChanged()
+        .flatMapLatest { on -> if (on) pantryCoverage() else flowOf(emptyMap()) }
+        // Shared by the rows and the "You have" lines: matched once, not once per collector.
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    private fun pantryCoverage(): Flow<Map<Long, PantryCoverage>?> {
+        val pantry = pantry ?: return flowOf(emptyMap())
+        val matched = combine(repository.observeRecipeLines(), pantry.observeItems()) { lines, items -> lines to items }
+            .distinctUntilChanged()
+            .mapLatest { (lines, items) -> withContext(matching) { RecipeQuickFilters.coverages(lines, items) } }
+        return flow {
+            emit(null)
+            emitAll(matched)
+        }
+    }
+
+    // The search's matches, narrowed by the chips, then in the sort's order. Nothing is shown while
+    // the pantry chip's answer is still on its way, rather than a wrong "no recipes" for a moment.
+    private val shown: Flow<List<RecipeSummary>?> = combine(recipes, quick, coverage, sort) { found, chips, cover, order ->
+        when {
+            found == null -> null
+            RecipeQuickFilter.USES_PANTRY in chips && cover == null -> null
+            else -> sorted(RecipeQuickFilters.apply(found, chips, cover.orEmpty()), order)
+        }
+    }
+
     // Only on the free tier: unlocked, or with the flag off, there is nothing to count against.
     private val count = combine(repository.observeCount(), library.limits) { saved, limit ->
         when (limit) {
@@ -166,16 +231,21 @@ class RecipesViewModel @Inject constructor(
 
     val uiState: StateFlow<RecipesUiState> =
         combine(
-            combine(query, recipes, pendingDeletes, sort, linkInput) { q, found, pending, order, link ->
-                RecipesUiState(q, found?.let { sorted(it, order) }, pending.titles, pending.batch, order, link)
+            combine(query, shown, pendingDeletes, sort, linkInput) { q, found, pending, order, link ->
+                RecipesUiState(q, found, pending.titles, pending.batch, order, link)
             }.combine(restoreRefused) { state, refused -> state.copy(restoreRefused = refused) }
                 .combine(linkNoRecipe) { state, none -> state.copy(linkNoRecipe = none) },
             count,
             filter,
             counts,
-            combine(cullKeep, listsFlow) { keep, shelves -> keep to shelves }
-        ) { state, saved, picked, all, (keep, shelves) ->
-            state.copy(count = saved, filter = picked, counts = all, cullKeep = keep, view = view, lists = shelves)
+            combine(cullKeep, listsFlow, quick, layout, coverage) { keep, shelves, chips, shape, cover ->
+                Extras(keep, shelves, chips, shape, cover.orEmpty())
+            }
+        ) { state, saved, picked, all, extras ->
+            state.copy(
+                count = saved, filter = picked, counts = all, cullKeep = extras.keep, view = view, lists = extras.lists,
+                quick = extras.quick, layout = extras.layout, coverage = extras.coverage
+            )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipesUiState())
 
     fun onQueryChange(text: String) {
@@ -188,6 +258,16 @@ class RecipesViewModel @Inject constructor(
 
     fun onSortChange(value: RecipeSort) {
         preferences.recipeSort = value
+    }
+
+    /** A chip (#378): on, or off again. Each answers at once; the chips combine. */
+    fun onQuickFilterToggle(filter: RecipeQuickFilter) {
+        quick.update { if (filter in it) it - filter else it + filter }
+    }
+
+    /** The rows / grid toggle (#380): stored, so it survives leaving the screen. */
+    fun onLayoutChange(value: RecipesLayout) {
+        preferences.recipesLayout = value
     }
 
     /** "Paste a link" from the + menu: opens the dialog, empty. */
@@ -273,6 +353,15 @@ class RecipesViewModel @Inject constructor(
         // Their photos (#116) were kept only for Undo.
         if (settled.isNotEmpty()) viewModelScope.launch { settled.forEach { repository.forget(it) } }
     }
+
+    /** What the last combine adds to the state (the five-flow `combine` has no room for more). */
+    private data class Extras(
+        val keep: Int?,
+        val lists: List<RecipeList>,
+        val quick: Set<RecipeQuickFilter>,
+        val layout: RecipesLayout,
+        val coverage: Map<Long, PantryCoverage>
+    )
 
     /** The burst being deleted: its [batch], null when nothing is pending, and its titles. */
     private data class PendingDeletes(val batch: Int? = null, val titles: List<String> = emptyList())

@@ -314,6 +314,9 @@ struct RecipeSummaryRecord: Equatable {
     let lastCookedDay: Int64?
     let sourceUrl: String
     let isFromChat: Bool
+    let prepTime: String?
+    let cookTime: String?
+    let language: String?
 
     init(row: SQLiteRow) {
         id = row.int64(0)
@@ -326,6 +329,9 @@ struct RecipeSummaryRecord: Equatable {
         lastCookedDay = row.isNull(7) ? nil : row.int64(7)
         sourceUrl = row.string(8)
         isFromChat = row.bool(9)
+        prepTime = row.optionalString(10)
+        cookTime = row.optionalString(11)
+        language = row.optionalString(12)
     }
 }
 

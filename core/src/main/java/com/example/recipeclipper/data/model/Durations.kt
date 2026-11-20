@@ -72,6 +72,50 @@ object Durations {
         return text
     }
 
+    private const val MAX_PART = 10_000_000L
+
+    /** What [format] writes for a language with no tables: English's symbols, "1h 30m", "1h", "20m". */
+    private val ENGLISH_SHAPE = Regex("^(?:(\\d+)h(?: (\\d+)m)?|(\\d+)m)$")
+
+    /**
+     * How many minutes [raw] says, read the way [format] reads it (#378: "30 min or less"), or null
+     * when it isn't a time the app can read: blank, a zero total ("PT0S", which [format] hides),
+     * a range ("20 to 25 minutes"), a word ("Overnight") or a figure too large for an Int. Never
+     * a guess. Reads ISO, a phrase in the recipe's words and what [format] writes back ("1h 30m",
+     * "1h 30min"), so a stored time reads as it shows. With [words] null (a language with no
+     * tables) only ISO and English's "1h 30m" are read. Iso seconds round as [format] rounds them.
+     */
+    fun minutes(raw: String, words: LanguageWords? = LanguageWords.ENGLISH): Int? {
+        val text = raw.trim()
+        if (text.isBlank()) return null
+        // A part that is absent counts nothing; one past ten million is no real time (and keeps the
+        // sums below from overflowing, which iOS's Int would trap on).
+        fun part(digits: String): Long? = if (digits.isEmpty()) 0 else digits.toLongOrNull()?.takeIf { it <= MAX_PART }
+        val iso = ISO_DURATION.find(text)?.takeIf { m -> m.groupValues.drop(1).any { it.isNotBlank() } }
+        val total: Long? = when {
+            iso != null -> {
+                val g = iso.groupValues
+                val seconds = g[4].toDoubleOrNull() ?: 0.0
+                val days = part(g[1])
+                val hours = part(g[2])
+                val minutes = part(g[3])
+                if (days == null || hours == null || minutes == null) null
+                else days * 24 * 60 + hours * 60 + minutes + (seconds / 60.0).roundToInt()
+            }
+            words == null -> ENGLISH_SHAPE.matchEntire(text)?.groupValues?.let { g ->
+                val hours = part(g[1])
+                val minutes = part(g[2].ifEmpty { g[3] })
+                if (hours == null || minutes == null) null else hours * 60 + minutes
+            }
+            else -> patterns(words).phrase.matchEntire(text)?.groupValues?.let { g ->
+                val hours = part(g[1])
+                val minutes = part(g[2].ifEmpty { g[3] })
+                if (hours == null || minutes == null) null else hours * 60 + minutes
+            }
+        }
+        return total?.takeIf { it in 1..Int.MAX_VALUE }?.toInt()
+    }
+
     /** "1h 30m", "1h" or "20m"; null for a zero total; [asWritten] for a total that
      *  overflowed to a negative number. */
     private fun renderMinutes(totalMinutes: Int, asWritten: String, d: Patterns): String? {

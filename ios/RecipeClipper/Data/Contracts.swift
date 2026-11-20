@@ -285,6 +285,9 @@ protocol RecipeRepository: AnyObject {
     /// How many recipes there are, and how many are in a list: the Recipes filter's counts (#345).
     func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never>
 
+    /// Every recipe's ingredient lines as stored, as they change (#378: "Uses what's in my pantry").
+    func observeRecipeLines() -> AnyPublisher<[SavedRecipe], Never>
+
     /// The `limit` most recently viewed. Re-emits on change.
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never>
 
@@ -372,6 +375,9 @@ extension RecipeRepository {
             }
         }.eraseToAnyPublisher()
     }
+
+    /// Test doubles that have nothing to do with "Uses what's in my pantry" (#378) needn't implement it.
+    func observeRecipeLines() -> AnyPublisher<[SavedRecipe], Never> { Just([]).eraseToAnyPublisher() }
 
     func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never> {
         observeHistory(query: "")
@@ -741,6 +747,8 @@ protocol AppPreferences: AnyObject {
     var amountsInSteps: Bool { get set }
     /// The Recipes screen's sort (#102): a view preference, kept so it survives leaving the screen.
     var recipeSort: RecipeSort { get set }
+    /// The Recipes screen's layout (#380), rows or a photo grid: a view preference like `recipeSort`.
+    var recipesLayout: RecipesLayout { get set }
 
     /// The current values first, then every change, never repeating a value. Delivery may be
     /// asynchronous, so a subscriber receives on main.
@@ -758,7 +766,8 @@ extension AppPreferences {
             expiryReminders: expiryReminders,
             chefMode: chefMode,
             amountsInSteps: amountsInSteps,
-            recipeSort: recipeSort
+            recipeSort: recipeSort,
+            recipesLayout: recipesLayout
         )
     }
 }
@@ -858,4 +867,5 @@ struct AppSettings: Equatable {
     var chefMode = false
     var amountsInSteps = false
     var recipeSort: RecipeSort = .recentlyViewed
+    var recipesLayout: RecipesLayout = .rows
 }

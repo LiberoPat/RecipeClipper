@@ -29,7 +29,11 @@ data class RecipeSummaryRow(
     /** Its link, for the site the Recipes row credits (#286). */
     val sourceUrl: String = "",
     /** Read from a chat's JSON (#355, origin CHAT). */
-    val isFromChat: Boolean = false
+    val isFromChat: Boolean = false,
+    /** The times as stored and the language they're in, for "30 min or less" (#378); only the Recipes query reads them. */
+    val prepTime: String? = null,
+    val cookTime: String? = null,
+    val language: String? = null
 )
 
 /** [RecipeDao.observeLibraryCounts]: every recipe, those in at least one list, cooked, typed in and from a chat (#345, #355). */
@@ -306,7 +310,8 @@ abstract class RecipeDao {
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
                sourceUrl,
-               contentOrigin = 'CHAT' AS isFromChat
+               contentOrigin = 'CHAT' AS isFromChat,
+               prepTime, cookTime, language
         FROM recipes
         WHERE (:query = ''
            OR instr(lower(title), lower(:query)) > 0
@@ -336,6 +341,14 @@ abstract class RecipeDao {
         """
     )
     abstract fun observeLibraryCounts(): Flow<LibraryCountsRow>
+
+    /**
+     * Every recipe's ingredient lines as stored, for "Uses what's in my pantry" (#378): read only
+     * while that chip is on. Equal rows are skipped downstream, so a tick or a cook step (which
+     * rewrite a recipe without changing a line) match nothing again.
+     */
+    @Query("SELECT id, title, language, ingredients FROM recipes ORDER BY id")
+    abstract fun observeRecipeLines(): Flow<List<SavedRecipeRow>>
 
     @Query(
         """

@@ -215,6 +215,15 @@
         <item quantity="other">%1$d recipes</item>
     </plurals>
     <string name="cd_sort">Sort</string>
+    <!-- Recipes: quick filter chips (#378) and the rows / grid toggle (#380) -->
+    <string name="recipes_quick_30_or_less">30 min or less</string>
+    <string name="recipes_quick_not_cooked">Not cooked yet</string>
+    <string name="recipes_quick_pantry">Uses what\'s in my pantry</string>
+    <string name="recipes_quick_pantry_note">Shows recipes where at least half of the ingredients are in your pantry, by name, not by amount.</string>
+    <string name="recipes_pantry_have">You have %1$d of %2$d</string>
+    <string name="recipes_no_results_filters">No recipes match these filters.</string>
+    <string name="cd_layout_to_grid">Show as a grid</string>
+    <string name="cd_layout_to_rows">Show as a list</string>
 
     <!-- Shared -->
     <string name="tag_saved">Saved</string>

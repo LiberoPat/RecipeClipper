@@ -48,6 +48,10 @@ enum Flag: String, CaseIterable {
     case homeTonight
     /// Select all / Clear all at the top of the put-away and Update the pantry checklists (#406).
     case pantrySelectAll
+    /// Recipes' quick filter chips under search (#378): 30 min or less, Not cooked yet, Uses what's in my pantry.
+    case recipeFilters
+    /// A toggle on Recipes between the rows and a photo grid (#380).
+    case recipesGrid
 }
 
 /// One flag as `shared/flags.json` declares it.

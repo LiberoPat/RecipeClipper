@@ -54,7 +54,11 @@ enum class Flag(val key: String) {
     /** Home's Today card (#402): today's next uncooked planned meal, when nothing is being cooked. */
     HOME_TONIGHT("homeTonight"),
     /** Select all / Clear all at the top of the put-away and Update the pantry checklists (#406). */
-    PANTRY_SELECT_ALL("pantrySelectAll");
+    PANTRY_SELECT_ALL("pantrySelectAll"),
+    /** Recipes' quick filter chips under search (#378): 30 min or less, Not cooked yet, Uses what's in my pantry. */
+    RECIPE_FILTERS("recipeFilters"),
+    /** A toggle on Recipes between the rows and a photo grid (#380). */
+    RECIPES_GRID("recipesGrid");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

@@ -53,6 +53,16 @@ import java.io.File
  * own saved recipe, against one in-stock pantry item of that name expiring today, as the indices
  * of the recipes that use it; write only those (optionally `, lang: "de"`).
  *
+ * `Mins("time")` rows (#378) pin [Durations.minutes]: a stored prep, cook or total time as the
+ * minutes it says, or nil (unreadable, zero or too large); write only the time (optionally
+ * `, lang: "de"`). `Quick(total, prep, cook)` rows pin [RecipeQuickFilters] ("30 min or less"): a
+ * recipe's total, prep and cook times (a string or nil each; optionally `, lang: "de"`), as the
+ * minutes read ([RecipeQuickFilters.minutes]) and whether it is 30 min or less; write only the three times.
+ * `Cover([pantry], [lines])` rows pin [RecipeQuickFilters.coverage] ("Uses what's in my pantry"):
+ * pantry items by name ("*salt" a staple, "-butter" out of stock) against one recipe's lines
+ * (optionally `, lang: "de"`), as how many nameable lines the pantry has, how many there are, and
+ * whether that is half or more (nil, nil, false: the language has no tables); write only those two lists.
+ *
  * `Tonight([types], [meals])` rows (#309) pin the Tonight widget ([WidgetContent.tonight]): meal
  * types written "id sortOrder name" and planned meals written "dayOffset typeId t|n text" (a
  * recipe's title or a note; today is offset 0), as each shown meal's type name, then its title;
@@ -189,6 +199,16 @@ class DifferentialCorpusTest {
     private val useItRow = Regex(
         """^(\s*)UseIt\("((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
     )
+    // A minutes row (#378): a stored time, optionally its language.
+    private val minutesRow = Regex("""^(\s*)Mins\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A quick-filter row (#378): a recipe's total, prep and cook times (nil or a string each), optionally its language.
+    private val quickRow = Regex(
+        """^(\s*)Quick\((nil|"(?:[^"\\]|\\.)*"), (nil|"(?:[^"\\]|\\.)*"), (nil|"(?:[^"\\]|\\.)*")(?:, lang: "([a-z]+)")?"""
+    )
+    // A pantry-coverage row (#378): the pantry's names, one recipe's lines, optionally their language.
+    private val coverRow = Regex(
+        """^(\s*)Cover\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
+    )
     // A Tonight widget row (#309): the meal types, then the planned meals.
     private val tonightRow =
         Regex("""^(\s*)Tonight\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
@@ -313,6 +333,9 @@ class DifferentialCorpusTest {
         entryRow.find(line)?.let { m -> return entryRow(m) }
         needRow.find(line)?.let { m -> return needRow(m) }
         useItRow.find(line)?.let { m -> return useItRow(m) }
+        minutesRow.find(line)?.let { m -> return minutesRow(m) }
+        quickRow.find(line)?.let { m -> return quickRow(m) }
+        coverRow.find(line)?.let { m -> return coverRow(m) }
         tonightRow.find(line)?.let { m -> return tonightRow(m) }
         toBuyRow.find(line)?.let { m -> return toBuyRow(m) }
         fittedRow.find(line)?.let { m -> return fittedRow(m) }
@@ -608,6 +631,45 @@ class DifferentialCorpusTest {
         val saved = lines.mapIndexed { i, line -> SavedRecipe(i.toLong(), "r$i", language, listOf(line)) }
         val used = UseItUp.groups(listOf(item), saved, 0).firstOrNull()?.recipes.orEmpty().map { it.id }.sorted()
         return m.groupValues[1] + "UseIt(${q(name)}, ${list(lines)}$lang, ${used.joinToString(", ", "[", "]")}),"
+    }
+
+    /** `Mins(time, lang:, minutes)` (#378): [Durations.minutes], nil when the time can't be read. */
+    private fun minutesRow(m: MatchResult): String {
+        val text = unescape(m.groupValues[2])
+        val language = m.groupValues[3].ifEmpty { "en" }
+        val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+        val minutes = Durations.minutes(text, LanguageWords.forTag(language))?.toString() ?: "nil"
+        return m.groupValues[1] + "Mins(${q(text)}$lang, $minutes),"
+    }
+
+    /** `Quick(total, prep, cook, lang:, minutes, thirtyOrLess)` (#378): [RecipeQuickFilters] on a recipe with those times. */
+    private fun quickRow(m: MatchResult): String {
+        val (total, prep, cook) = (2..4).map { g -> optionalLiteral.find(m.groupValues[g])!!.groups[1]?.value?.let(::unescape) }
+        val language = m.groupValues[5].ifEmpty { "en" }
+        val lang = if (m.groupValues[5].isEmpty()) "" else ", lang: ${q(language)}"
+        val recipe = RecipeSummary(1, "r", null, total, 0, false, prepTime = prep, cookTime = cook, language = language)
+        val minutes = RecipeQuickFilters.minutes(recipe)?.toString() ?: "nil"
+        fun lit(v: String?) = v?.let(::q) ?: "nil"
+        return m.groupValues[1] + "Quick(${lit(total)}, ${lit(prep)}, ${lit(cook)}$lang, $minutes, ${RecipeQuickFilters.thirtyOrLess(recipe)}),"
+    }
+
+    /**
+     * `Cover([pantry], [lines], lang:, have, total, matches)` (#378): [RecipeQuickFilters.coverage] of one
+     * recipe's lines by those pantry items ("*name" a staple, "-name" out of stock, in the lines' language).
+     */
+    private fun coverRow(m: MatchResult): String {
+        val (names, lines) = literals(m.groupValues[2]) to literals(m.groupValues[3])
+        val language = m.groupValues[4].ifEmpty { "en" }
+        val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
+        val pantry = names.mapIndexed { i, n ->
+            PantryItem(
+                i + 1L, n.trimStart('*', '-'), null, language, Aisle.OTHER, inStock = !n.startsWith("-"),
+                alwaysHave = n.startsWith("*"), purchasedDay = null, expiresDay = null
+            )
+        }
+        val coverage = RecipeQuickFilters.coverage(SavedRecipe(1, "r", language, lines), pantry)
+        val result = coverage?.let { "${it.have}, ${it.total}, ${it.matches}" } ?: "nil, nil, false"
+        return m.groupValues[1] + "Cover(${list(names)}, ${list(lines)}$lang, $result),"
     }
 
     private fun literals(group: String) = literal.findAll(group).map { unescape(it.groupValues[1]) }.toList()

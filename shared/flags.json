@@ -119,6 +119,18 @@
       "description": "A Select all / Clear all row at the top of both pantry checklists: Done shopping's put-away sheet and Update the pantry after cooking. A tri-state checkbox that ticks or unticks every row; the sheets' own button still does all the writing. Shown only with two or more tickable rows. Off, the sheets are as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 406
+    },
+    {
+      "key": "recipeFilters",
+      "description": "Recipes: quick filter chips under search (30 min or less, Not cooked yet, Uses what's in my pantry) that combine with each other, the search and the sort; the pantry chip shows how many of a recipe's ingredients you have on each row it keeps. Off, Recipes has no chips.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 378
+    },
+    {
+      "key": "recipesGrid",
+      "description": "Recipes: a toggle beside the sort between the tidy rows and a photo grid (title under each photo, the bookmark kept); the choice is remembered. Off, Recipes is the rows.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 380
     }
   ]
 }

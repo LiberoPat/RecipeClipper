@@ -8,6 +8,8 @@ struct LibraryRow: View {
     let onClick: () -> Void
     /// One cookbook (#345): an outlined bookmark on a recipe in no list, opening the save-to-list sheet.
     var onSaveToList: (() -> Void)? = nil
+    /// With the pantry chip on (#378): how many of its ingredients the pantry has, "You have 6 of 8".
+    var pantry: PantryCoverage? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -49,6 +51,7 @@ struct LibraryRow: View {
                         details(stacked: stacked)
                             .textStyle(Typography.bodySmall)
                             .foregroundStyle(Palette.muted)
+                        if let pantry { PantryLine(pantry: pantry, recipeId: recipe.id) }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     if recipe.isSaved {

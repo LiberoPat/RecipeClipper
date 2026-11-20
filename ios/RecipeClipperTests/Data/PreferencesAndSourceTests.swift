@@ -69,6 +69,20 @@ final class UserDefaultsAppPreferencesTests: XCTestCase {
         XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).recipeSort, .recentlyViewed)
     }
 
+    /// #380: stored under `recipes_layout` by its Android name; an unknown name reads as the rows.
+    func testRecipesLayoutDefaultsToRowsRoundTripsByNameAndFallsBack() {
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).recipesLayout, .rows)
+
+        UserDefaultsAppPreferences(defaults: defaults).recipesLayout = .grid
+        XCTAssertEqual(defaults.string(forKey: "recipes_layout"), "GRID")
+        let reread = UserDefaultsAppPreferences(defaults: defaults)
+        XCTAssertEqual(reread.recipesLayout, .grid)
+        XCTAssertEqual(reread.current.recipesLayout, .grid)
+
+        defaults.set("MOSAIC", forKey: "recipes_layout")
+        XCTAssertEqual(UserDefaultsAppPreferences(defaults: defaults).recipesLayout, .rows)
+    }
+
     func testThePantryUseUpLogRoundTripsUnderPantryUseUpSkippingWhatItCantRead() {
         UserDefaultsAppPreferences(defaults: defaults).useUps = [12: 2_000, 7: 1_000]
         XCTAssertEqual(defaults.string(forKey: "pantry_use_up"), "7:1000,12:2000")

@@ -549,6 +549,10 @@ final class DefaultRecipeRepository: RecipeRepository {
         db.observe { conn in try RecipeDao(db: conn).libraryCounts() }
     }
 
+    func observeRecipeLines() -> AnyPublisher<[SavedRecipe], Never> {
+        db.observe { conn in try RecipeDao(db: conn).recipeLines() }
+    }
+
     func observeRecent(limit: Int) -> AnyPublisher<[RecipeSummary], Never> {
         db.observe { conn in try RecipeDao(db: conn).recent(limit: limit).map { $0.toDomain() } }
     }
