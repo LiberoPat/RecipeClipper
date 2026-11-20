@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "Perishables (#396), see en/perishables.json. Japanese is not spaced, so any character is a word boundary and an alias matches the end of a name ('塩鮭' ends in '鮭', which is why it is a skip entry). Matching is by the name IngredientName.of reads, which puts the name first in a line. A draft for a native speaker to review (docs/translations.md). The same group keys and days as en; meat cuts are not listed.",
+  "groups": [
+    { "key": "fish", "minDays": 1, "maxDays": 2, "aliases": [
+        "鮭", "生鮭", "サーモン", "鱈", "たら", "生たら", "鯖", "さば", "鯵", "あじ", "ぶり", "鰤", "鯛", "たい",
+        "白身魚", "魚", "えび", "海老", "エビ", "むきえび", "いか", "イカ", "ほたて", "帆立", "あさり", "牡蠣",
+        "たこ", "タコ", "ムール貝", "はまぐり", "しじみ"
+      ] },
+    { "key": "mince", "minDays": 1, "maxDays": 2, "aliases": ["ひき肉", "挽き肉", "挽肉", "ミンチ"] },
+    { "key": "poultry", "minDays": 1, "maxDays": 2, "aliases": [
+        "鶏肉", "鶏むね肉", "鶏もも肉", "鶏胸肉", "鶏もも", "鶏むね", "手羽先", "手羽元", "手羽中", "ささみ", "鶏ささみ",
+        "鶏レバー", "鶏ひき肉"
+      ] },
+    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+        "きのこ", "キノコ", "しいたけ", "椎茸", "生しいたけ", "しめじ", "えのき", "えのきたけ", "エリンギ", "まいたけ",
+        "舞茸", "なめこ", "マッシュルーム"
+      ] },
+    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["アボカド", "アボガド"] },
+    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+        "バジル", "パセリ", "イタリアンパセリ", "ミント", "ディル", "チャイブ", "パクチー", "香菜", "セルフィーユ",
+        "タラゴン", "大葉", "青じそ"
+      ] },
+    { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
+        "レタス", "サニーレタス", "グリーンリーフ", "リーフレタス", "ロメインレタス", "サラダ菜", "ほうれん草",
+        "ほうれんそう", "ベビーリーフ", "ルッコラ", "クレソン", "ミックスリーフ", "サラダミックス"
+      ] },
+    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": ["いちご", "イチゴ", "苺", "ストロベリー", "ブルーベリー"] },
+    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": ["ラズベリー", "ブラックベリー", "ミックスベリー"] }
+  ],
+  "skip": [
+    "塩鮭", "焼き鮭", "スモークサーモン", "しめさば", "さきいか", "干しえび", "干し海老", "桜えび", "桜海老", "冷凍えび",
+    "冷凍海老", "冷凍エビ", "冷凍いか", "冷凍魚", "冷凍鮭", "干し椎茸", "干ししいたけ", "乾燥しいたけ", "乾燥きのこ",
+    "冷凍きのこ", "ドライバジル", "ドライパセリ", "ドライミント", "ドライディル", "乾燥パセリ", "乾燥バジル",
+    "乾燥ミント", "冷凍パセリ", "冷凍ほうれん草", "冷凍ほうれんそう", "冷凍いちご", "冷凍イチゴ", "冷凍ブルーベリー",
+    "冷凍ラズベリー", "冷凍ミックスベリー", "冷凍ブラックベリー", "ドライいちご", "ドライブルーベリー", "ドライラズベリー",
+    "蒸し鶏", "ゆで鶏", "冷凍ひき肉", "冷凍鶏肉"
+  ]
+}

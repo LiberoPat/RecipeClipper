@@ -2,9 +2,17 @@ package com.example.recipeclipper.ui.week
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.FreshMeal
+import com.example.recipeclipper.data.model.FreshNudge
+import com.example.recipeclipper.data.model.FreshPlan
+import com.example.recipeclipper.data.model.LanguageWords
+import com.example.recipeclipper.data.model.Perishables
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.Menu
@@ -132,7 +140,9 @@ data class WeekUiState(
     /** The shown week as a calendar file, waiting for the screen to share it (#52). */
     val calendarFile: CalendarFile? = null,
     /** Saved weekly menus and their dialogs (#52). */
-    val menus: MenusUiState = MenusUiState()
+    val menus: MenusUiState = MenusUiState(),
+    /** Fresh food (#396): the quiet note under a planned meal, by [PlannedMeal.id]; empty with the flag off. */
+    val freshNudges: Map<Long, FreshNudge> = emptyMap()
 ) {
     /** The first day of the block at the top. */
     val weekStart: Long get() = PlanDays.blockStart(topDay, today)
@@ -179,7 +189,10 @@ data class WeekUiState(
 class WeekViewModel @Inject constructor(
     private val plan: MealPlanRepository,
     private val recipes: RecipeRepository,
-    private val calendar: PlanCalendar
+    private val calendar: PlanCalendar,
+    // Fresh food (#396): the planned recipes' ingredients and the flag. Without both, no notes.
+    private val groceries: GroceryRepository? = null,
+    private val flags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val _uiState: MutableStateFlow<WeekUiState>
@@ -191,6 +204,12 @@ class WeekViewModel @Inject constructor(
     private var removedMeal: MealPlanRepository.DeletedMeal? = null
     private var scrollRequests = 0
 
+    /** The day the fresh-food notes count from (#396): today, which moves on a new day. */
+    private val freshFrom: MutableStateFlow<Long>
+
+    /** The meals the notes were worked out from, for a swap's meal types. */
+    private var freshMeals: List<PlannedMeal> = emptyList()
+
     init {
         val today = calendar.today()
         window = MutableStateFlow(today - WINDOW_BEFORE)
@@ -198,7 +217,15 @@ class WeekViewModel @Inject constructor(
             WeekUiState(today = today, firstDay = today - DAYS_BEFORE, lastDay = today + DAYS_AFTER, topDay = today)
         )
         uiState = _uiState.asStateFlow()
+        freshFrom = MutableStateFlow(today)
 
+        if (groceries != null && flags?.isOn(Flag.FRESH_FOOD) == true) {
+            viewModelScope.launch {
+                freshFrom.flatMapLatest { from ->
+                    plan.observeDays(from, from + FRESH_DAYS - 1).map { meals -> from to meals }
+                }.collect { (from, meals) -> showFreshNudges(groceries, from, meals) }
+            }
+        }
         viewModelScope.launch {
             window.flatMapLatest { from ->
                 plan.observeDays(from, from + WINDOW_DAYS - 1).map { meals -> from to meals }
@@ -249,6 +276,41 @@ class WeekViewModel @Inject constructor(
         }
     }
 
+    // --- Fresh food (#396)
+
+    /**
+     * The quiet notes for today and the next [FRESH_DAYS] - 1 days: each planned recipe's most
+     * delicate perishable ingredient, against the plan's first day ([FreshPlan]). Worked out again
+     * whenever the plan changes; nothing is moved here.
+     */
+    private suspend fun showFreshNudges(groceries: GroceryRepository, from: Long, meals: List<PlannedMeal>) {
+        val planned = groceries.plannedIngredients(from, from + FRESH_DAYS - 1).associateBy { it.entryId }
+        val fresh = meals.map { meal ->
+            val recipe = planned[meal.id]
+            FreshMeal(
+                meal.id, meal.day,
+                recipe?.let { Perishables.mostDelicate(it.ingredients, LanguageWords.forRecipe(it.language, it.title, it.ingredients)) }
+            )
+        }
+        freshMeals = meals
+        val nudges = FreshPlan.nudges(fresh, from).associateBy { it.key }
+        _uiState.update { it.copy(freshNudges = nudges) }
+    }
+
+    /**
+     * The cook tapped "Swap with ..." under a note: the two meals trade days, each keeping its meal
+     * type. Only on the tap.
+     */
+    fun onFreshSwap(mealId: Long) {
+        val nudge = _uiState.value.freshNudges[mealId] ?: return
+        val meal = freshMeals.firstOrNull { it.id == nudge.key } ?: return
+        val partner = freshMeals.firstOrNull { it.id == nudge.swapKey } ?: return
+        viewModelScope.launch {
+            plan.move(meal.id, nudge.swapDay, meal.mealTypeId)
+            plan.move(partner.id, nudge.day, partner.mealTypeId)
+        }
+    }
+
     // --- Scrolling and weeks (#232)
 
     /**
@@ -283,6 +345,7 @@ class WeekViewModel @Inject constructor(
     /** "Today": back to today at the top, which may have changed since the screen opened. */
     fun onToday() {
         val today = calendar.today()
+        freshFrom.value = today
         _uiState.update { it.copy(today = today) }
         jumpTo(today, animate = true)
     }
@@ -294,6 +357,7 @@ class WeekViewModel @Inject constructor(
     fun onScreenResumed() {
         val today = calendar.today()
         if (today == _uiState.value.today) return
+        freshFrom.value = today
         _uiState.update { it.copy(today = today) }
         jumpTo(today, animate = false)
     }
@@ -548,5 +612,8 @@ class WeekViewModel @Inject constructor(
         /** The window of meals held: four weeks either side of the block at the top. */
         const val WINDOW_BEFORE = 28L
         const val WINDOW_DAYS = 63L
+
+        /** The days from today the fresh-food notes cover (#396): the first two weeks. */
+        const val FRESH_DAYS = 14L
     }
 }

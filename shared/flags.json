@@ -101,6 +101,12 @@
       "description": "Week's menu has one item, Shop for this week, which opens What I need for the week shown (To buy and In your pantry, Add to groceries adds To buy once). Off, the menu has the two items it had: What I need and Add this week's ingredients.",
       "defaults": { "debug": true, "release": true },
       "issue": 384
+    },
+    {
+      "key": "freshFood",
+      "description": "Fresh food (#396): Shop for this week splits To buy into Buy now and Buy later in the week (a perishable ingredient, matched in the recipe's language's perishables table, whose every planned meal is 4 or more days from today), each later line saying the day it is for, with its own Add to groceries; the meal-plan review and the Week's meal rows gain a quiet note when a perishable meal is planned later than its group keeps from the plan's first day ('keeps about 1-2 days once bought: cook it earlier?'), with a one-tap swap with the earliest day that fits. Nothing moves unless the cook taps. Off, To buy is one list and there is no note.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 396
     }
   ]
 }

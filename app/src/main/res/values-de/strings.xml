@@ -523,6 +523,15 @@
     <string name="what_i_need_nothing_to_buy">Nichts zu kaufen: Jede Zutat ist in deinem Vorrat.</string>
     <string name="what_i_need_you_have">Du hast %1$s</string>
     <string name="what_i_need_added">Zum Einkauf hinzugefügt</string>
+    <string name="what_i_need_buy_now">Jetzt kaufen</string>
+    <string name="what_i_need_buy_later">Später in der Woche kaufen</string>
+    <string name="what_i_need_buy_later_note">Für Mahlzeiten in 4 oder mehr Tagen. Füge sie beim nächsten Einkauf hinzu oder gleich.</string>
+    <string name="what_i_need_nothing_to_buy_now">Jetzt ist nichts zu kaufen</string>
+    <string name="what_i_need_add_later">Diese zum Einkauf hinzufügen</string>
+    <string name="what_i_need_later_for">Für %1$s</string>
+    <string name="fresh_keeps">Hält sich nach dem Kauf etwa %1$s Tage</string>
+    <string name="fresh_nudge">%1$s: hält sich nach dem Kauf etwa %2$s Tage. Früher kochen?</string>
+    <string name="fresh_nudge_swap">Mit %1$s tauschen</string>
     <!-- What I need (#302): the pantry's amount beside the week's, never compared -->
     <string name="what_i_need_pantry_amount">Du hast %1$s</string>
     <string name="what_i_need_pantry_and_week">Du hast %1$s · die Rezepte dieser Woche verwenden %2$s</string>

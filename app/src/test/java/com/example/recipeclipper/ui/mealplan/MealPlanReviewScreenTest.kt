@@ -13,6 +13,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.FlagRegistry
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.remote.MealPlanImport
@@ -57,7 +60,7 @@ class MealPlanReviewScreenTest {
     private lateinit var nav: NavHostController
 
     /** The review as the route opens it: the plan waiting in the inbox under the key the route carries. */
-    private fun show(plan: MealPlanImport.Plan) {
+    private fun show(plan: MealPlanImport.Plan, flags: FeatureFlags? = null) {
         val key = inbox.offerPlan("shared", plan)
         compose.setContent {
             nav = rememberNavController()
@@ -69,7 +72,7 @@ class MealPlanReviewScreenTest {
                     remember(routeKey) {
                         MealPlanReviewViewModel(
                             SavedStateHandle(mapOf(MealPlanReviewViewModel.PLAN_ARG to routeKey)),
-                            recipes, week, FakePlanCalendar(), policy, FakeEntitlements(), inbox, Dispatchers.Unconfined
+                            recipes, week, FakePlanCalendar(), policy, FakeEntitlements(), inbox, Dispatchers.Unconfined, flags
                         )
                     }
                 }
@@ -124,6 +127,31 @@ class MealPlanReviewScreenTest {
         compose.onNodeWithText("room for 1 more", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("mealplan_wont_fit_1").assertIsDisplayed()
         compose.onNodeWithText("Unlock").assertIsDisplayed()
+    }
+
+    /** Fresh food (#396): a note under the perishable recipe planned late, with one swap; nothing moves until it is tapped. */
+    @Test
+    fun aPerishableRecipePlannedLateGetsAQuietNoteAndOneSwap() {
+        val flags = FeatureFlags(FakeFeatureFlagStore(mapOf("freshFood" to true)), FlagRegistry.definitions, isDebug = true)
+        val salmon = recipe("Salmon bowls").copy(ingredients = listOf("2 salmon fillets", "1 cup rice"))
+        recipes.addManualQueue.add(recipe("Omelette", 1))
+        recipes.addManualQueue.add(recipe("Salmon bowls", 2))
+        show(
+            MealPlanImport.Plan(listOf(MealPlanImport.Item(recipe("Omelette"), today), MealPlanImport.Item(salmon, today + 5))),
+            flags
+        )
+
+        compose.onNodeWithTag("mealplan_fresh_1").assertIsDisplayed()
+        compose.onNodeWithText("Salmon fillets: keeps about 1-2 days once bought. Cook it earlier?").assertIsDisplayed()
+        compose.onNodeWithTag("mealplan_fresh_0").assertDoesNotExist()
+
+        compose.onNodeWithTag("freshSwap").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("mealplan_fresh_1").assertDoesNotExist()
+        compose.onNodeWithTag("mealplan_save").performClick()
+        compose.waitForIdle()
+        // Planned as swapped: the omelette on the later day, the salmon on the first.
+        assertEquals(listOf(today + 5, today), week.meals.value.map { it.day })
     }
 
     @Test

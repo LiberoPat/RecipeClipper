@@ -84,10 +84,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.FreshNudge
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.TooltipScreen
+import com.example.recipeclipper.ui.common.FreshNudgeNote
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
@@ -606,7 +608,9 @@ private fun DayList(
                 onOpenRecipe = onOpenRecipe,
                 onAdd = { viewModel.onAddToDay(day) },
                 onMove = viewModel::onMoveStart,
-                onRemove = viewModel::onRemove
+                onRemove = viewModel::onRemove,
+                freshNudges = state.freshNudges,
+                onFreshSwap = viewModel::onFreshSwap
             )
         }
     }
@@ -623,7 +627,9 @@ private fun DaySection(
     onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit,
     onAdd: () -> Unit,
     onMove: (PlannedMeal) -> Unit,
-    onRemove: (PlannedMeal) -> Unit
+    onRemove: (PlannedMeal) -> Unit,
+    freshNudges: Map<Long, FreshNudge>,
+    onFreshSwap: (Long) -> Unit
 ) {
     Column(Modifier.fillMaxWidth()) {
         DayHeader(day = day, isToday = isToday)
@@ -636,6 +642,10 @@ private fun DaySection(
                     onMove = { onMove(meal) },
                     onRemove = { onRemove(meal) }
                 )
+                // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
+                freshNudges[meal.id]?.let { nudge ->
+                    FreshNudgeNote(nudge, { onFreshSwap(meal.id) }, Modifier.padding(start = 56.dp).testTag("fresh-${meal.id}"))
+                }
             }
         }
         if (nothingPlanned) {

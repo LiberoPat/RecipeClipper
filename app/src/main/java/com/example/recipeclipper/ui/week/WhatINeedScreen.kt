@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.week
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -27,9 +28,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.LaterRow
 import com.example.recipeclipper.data.model.NeedRow
 import com.example.recipeclipper.data.model.NeedStatus
 import com.example.recipeclipper.ui.common.LocalFlagValues
+import com.example.recipeclipper.ui.plan.dayTitle
 import com.example.recipeclipper.ui.plan.shortWeekday
 import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.ui.recipe.BackButton
@@ -79,28 +82,31 @@ fun WhatINeedScreen(
                         Muted(stringResource(R.string.groceries_week_empty), Modifier.padding(top = 16.dp))
                     }
                     else -> {
+                        // Fresh food (#396): with perishables for meals 4+ days away, To buy is two trips.
+                        val trips = state.trips?.takeIf { it.later.isNotEmpty() }
+                        val buyRows = if (trips != null) trips.now else needs.buy
                         item(key = "buyHeading") {
                             Column(Modifier.padding(top = 18.dp)) {
-                                SectionHeading(stringResource(R.string.what_i_need_buy))
+                                SectionHeading(stringResource(if (trips != null) R.string.what_i_need_buy_now else R.string.what_i_need_buy))
                                 Spacer(Modifier.height(8.dp))
-                                if (needs.buy.isEmpty()) {
-                                    Muted(stringResource(R.string.what_i_need_nothing_to_buy))
+                                if (buyRows.isEmpty()) {
+                                    Muted(stringResource(if (trips != null) R.string.what_i_need_nothing_to_buy_now else R.string.what_i_need_nothing_to_buy))
                                 } else {
-                                    Button(
-                                        onClick = viewModel::onAddBuyToGroceries,
-                                        enabled = !state.added,
-                                        modifier = Modifier.testTag("addBuyToGroceries")
-                                    ) {
-                                        Text(
-                                            stringResource(
-                                                if (state.added) R.string.what_i_need_added else R.string.action_add_to_groceries
-                                            )
-                                        )
-                                    }
+                                    AddButton(added = state.added, tag = "addBuyToGroceries", addLabel = R.string.action_add_to_groceries, onClick = viewModel::onAddBuyToGroceries)
                                 }
                             }
                         }
-                        itemsIndexed(needs.buy, key = { i, _ -> "buy-$i" }) { _, row -> NeedRowView(row) }
+                        itemsIndexed(buyRows, key = { i, _ -> "buy-$i" }) { _, row -> NeedRowView(row) }
+                        if (trips != null) {
+                            item(key = "laterHeading") {
+                                Column(Modifier.padding(top = 24.dp).testTag("buyLater")) {
+                                    SectionHeading(stringResource(R.string.what_i_need_buy_later))
+                                    Muted(stringResource(R.string.what_i_need_buy_later_note), Modifier.padding(top = 4.dp, bottom = 8.dp))
+                                    AddButton(added = state.addedLater, tag = "addLaterToGroceries", addLabel = R.string.what_i_need_add_later, onClick = viewModel::onAddLaterToGroceries)
+                                }
+                            }
+                            itemsIndexed(trips.later, key = { i, _ -> "later-$i" }) { _, later -> NeedRowView(later.row, later) }
+                        }
                         if (needs.have.isNotEmpty()) {
                             item(key = "haveHeading") {
                                 Column(Modifier.padding(top = 24.dp)) {
@@ -118,12 +124,24 @@ fun WhatINeedScreen(
 }
 
 @Composable
-private fun NeedRowView(row: NeedRow) {
+private fun AddButton(added: Boolean, tag: String, @StringRes addLabel: Int, onClick: () -> Unit) {
+    Button(onClick = onClick, enabled = !added, modifier = Modifier.testTag(tag)) {
+        Text(stringResource(if (added) R.string.what_i_need_added else addLabel))
+    }
+}
+
+/** One ingredient of the week; [later] (#396) adds the day it is first needed and what its group keeps. */
+@Composable
+private fun NeedRowView(row: NeedRow, later: LaterRow? = null) {
     Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
         Text(
             row.name ?: row.lines.first().text,
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
         )
+        if (later != null) {
+            Muted(stringResource(R.string.what_i_need_later_for, dayTitle(later.firstDay)), Modifier.testTag("laterFor"))
+            Muted(stringResource(R.string.fresh_keeps, later.group.keeps))
+        }
         when (row.status) {
             NeedStatus.HAVE -> {
                 Muted(stringResource(R.string.what_i_need_you_have, row.pantryName.orEmpty()))

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "Perishables (#396): groups of fresh ingredients with a 'keeps about N days once bought' hint, for Shop for this week's second trip and the plan's 'cook it earlier?' note. An ingredient matches by the END of its name (IngredientName.of, with a listed singular and plural read as one word, names.json pluralPairs), longest alias first, exactly like the density table: 'smoked salmon' (skip) beats 'salmon' by being longer. skip lists names that would otherwise end in an alias but are not fresh (dried, frozen, canned, cooked, smoked, cured); a skip also wins a tie. minDays and maxDays are the hint's range, the cautious end of the published fridge-storage ranges (docs/decisions.md names the source of each group); they are a hint, never a date the app claims to know. The same keys and days in every language's file. Only fresh food that goes off within days belongs here; anything not listed is not perishable as far as the app says, and is bought now. Aliases are lowercase, hyphens written as spaces, apostrophes left out.",
+  "groups": [
+    { "key": "fish", "minDays": 1, "maxDays": 2, "aliases": [
+        "fish", "white fish", "fish fillet", "fillet of fish", "salmon", "salmon fillet", "salmon steak",
+        "trout", "rainbow trout", "sea trout", "cod", "cod fillet", "haddock", "haddock fillet", "halibut",
+        "sea bass", "seabass", "bass", "snapper", "red snapper", "tilapia", "mackerel", "mackerel fillet",
+        "sole", "plaice", "monkfish", "swordfish", "mahi mahi", "tuna steak", "sea bream", "bream", "pollock",
+        "shrimp", "prawn", "king prawn", "tiger prawn", "jumbo shrimp", "scallop", "mussel", "clam", "oyster",
+        "lobster", "lobster tail", "squid", "calamari", "octopus", "cuttlefish"
+      ] },
+    { "key": "mince", "minDays": 1, "maxDays": 2, "aliases": [
+        "mince", "minced meat", "ground meat", "ground beef", "lean ground beef", "minced beef", "beef mince",
+        "ground pork", "pork mince", "minced pork", "ground lamb", "lamb mince", "minced lamb",
+        "ground turkey", "turkey mince", "minced turkey", "ground chicken", "chicken mince", "minced chicken",
+        "italian sausage", "pork sausage", "breakfast sausage", "sausage meat", "sausagemeat"
+      ] },
+    { "key": "poultry", "minDays": 1, "maxDays": 2, "aliases": [
+        "chicken", "whole chicken", "chicken breast", "chicken thigh", "chicken drumstick", "chicken wing",
+        "chicken leg", "chicken fillet", "chicken tender", "chicken tenderloin", "chicken piece",
+        "turkey", "turkey breast", "turkey thigh", "duck", "duck breast", "duck leg"
+      ] },
+    { "key": "meatCuts", "minDays": 3, "maxDays": 5, "aliases": [
+        "steak", "beef steak", "sirloin steak", "sirloin", "ribeye", "ribeye steak", "rib eye", "rib eye steak",
+        "strip steak", "flank steak", "skirt steak", "fillet steak", "pork chop", "pork loin", "pork tenderloin",
+        "pork shoulder", "pork belly", "lamb chop", "lamb shank", "leg of lamb", "beef roast", "chuck roast",
+        "brisket", "beef brisket", "short rib", "pork rib", "spare rib", "baby back rib", "beef rib"
+      ] },
+    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+        "mushroom", "button mushroom", "white mushroom", "brown mushroom", "chestnut mushroom", "field mushroom",
+        "closed cup mushroom", "wild mushroom", "mixed mushroom", "cremini", "cremini mushroom", "crimini",
+        "baby bella", "baby bella mushroom", "portobello", "portobello mushroom", "portabella",
+        "shiitake", "shiitake mushroom", "oyster mushroom", "king oyster mushroom", "enoki", "enoki mushroom",
+        "chanterelle", "chanterelle mushroom", "morel"
+      ] },
+    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["avocado", "hass avocado"] },
+    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+        "fresh herbs", "basil", "basil leaf", "thai basil", "cilantro", "cilantro leaf", "fresh coriander",
+        "coriander leaf", "parsley", "parsley leaf", "flat leaf parsley", "mint", "mint leaf", "dill",
+        "fresh dill", "chives", "tarragon", "chervil"
+      ] },
+    { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
+        "lettuce", "lettuce leaf", "romaine", "romaine heart", "cos lettuce", "little gem", "spinach",
+        "baby spinach", "spinach leaf", "arugula", "rocket", "arugula leaf", "rocket leaf", "salad leaf",
+        "salad green", "salad greens", "mixed green", "mixed greens", "mixed salad", "mixed salad leaf",
+        "mesclun", "spring mix", "watercress", "lambs lettuce", "mache", "baby leaf", "baby leaf salad",
+        "baby salad leaf", "bagged salad"
+      ] },
+    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": ["strawberry", "blueberry"] },
+    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
+        "raspberry", "blackberry", "berry", "mixed berry", "summer berry", "fresh berry"
+      ] }
+  ],
+  "skip": [
+    "fish sauce", "fish stock", "dried herbs",
+    "smoked salmon", "canned salmon", "tinned salmon", "pink salmon", "cooked salmon", "flaked salmon", "hot smoked salmon",
+    "smoked trout", "smoked mackerel", "smoked haddock", "smoked cod", "canned tuna", "dried shrimp", "dried prawn",
+    "frozen fish", "frozen white fish", "frozen salmon", "frozen cod", "frozen shrimp", "frozen prawn", "frozen king prawn",
+    "frozen fish fillet", "frozen squid", "frozen scallop", "canned clam", "canned mussel", "smoked oyster", "canned oyster",
+    "cooked shrimp", "cooked prawn", "cooked ground beef", "cooked mince", "cooked ground turkey", "cooked ground chicken",
+    "smoked sausage", "cured sausage", "cooked sausage",
+    "rotisserie chicken", "cooked chicken", "shredded chicken", "smoked chicken", "fried chicken", "roast chicken",
+    "roasted chicken", "leftover chicken", "canned chicken", "frozen chicken", "deli chicken", "popcorn chicken",
+    "cooked turkey", "smoked turkey", "deli turkey", "roast turkey", "roasted turkey", "leftover turkey", "frozen turkey",
+    "smoked duck", "peking duck", "cooked duck", "frozen duck",
+    "cauliflower steak", "tofu steak", "frozen steak", "smoked brisket", "corned beef brisket", "smoked pork shoulder",
+    "smoked pork belly", "cooked pork belly", "smoked pork chop", "cured pork loin",
+    "dried mushroom", "dried wild mushroom", "dried mixed mushroom", "dried shiitake", "dried shiitake mushroom",
+    "dried porcini", "dried porcini mushroom", "dried oyster mushroom", "dried morel", "dried chanterelle",
+    "canned mushroom", "tinned mushroom", "jarred mushroom", "pickled mushroom", "marinated mushroom",
+    "mushroom stock", "freeze dried mushroom", "frozen mushroom",
+    "dried basil", "dried parsley", "dried mint", "dried dill", "dried chives", "dried tarragon", "dried chervil",
+    "dried cilantro", "dill weed", "frozen basil", "frozen parsley", "frozen herbs", "frozen chives",
+    "frozen spinach", "frozen leaf spinach", "frozen chopped spinach", "frozen baby spinach", "canned spinach",
+    "creamed spinach", "dried spinach",
+    "frozen strawberry", "frozen blueberry", "frozen raspberry", "frozen blackberry", "frozen berry",
+    "frozen mixed berry", "frozen summer berry", "dried strawberry", "dried blueberry", "dried raspberry",
+    "dried berry", "dried mixed berry", "wild blueberry", "goji berry", "juniper berry", "canned blueberry",
+    "tinned strawberry", "canned strawberry"
+  ]
+}

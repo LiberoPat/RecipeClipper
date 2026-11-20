@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "language": "fr",
+  "about": "Perishables (#396), see en/perishables.json. French puts the modifier after the noun ('saumon fumé', 'champignons séchés'), so the end-of-name rule already refuses those; 'filet de saumon' ends in 'saumon' and matches. A product made from the food ('bouillon de poulet', 'confiture de fraises') also ends in it, so skipPrefixes lists the openings that make a name a product, not the food. A draft for a native speaker to review (docs/translations.md). The same group keys and days as en.",
+  "skipPrefixes": [
+    "bouillon de", "fond de", "fumet de", "sauce de", "sauce au", "sauce aux", "soupe de", "velouté de", "crème de",
+    "salade de", "confiture de", "gelée de", "compote de", "coulis de", "jus de", "sirop de", "glace à la",
+    "glace au", "huile de", "extrait de", "pesto au", "pesto de", "arôme de", "poudre de", "pâte de", "cube de",
+    "tarte aux", "tarte à la", "mousse de", "purée de", "liqueur de", "beurre de", "vinaigre de", "confit de",
+    "rillettes de", "pâté de", "terrine de", "mousse au", "gâteau aux", "gâteau au", "sorbet à la", "sorbet au"
+  ],
+  "groups": [
+    { "key": "fish", "minDays": 1, "maxDays": 2, "aliases": [
+        "poisson", "poissons", "poisson blanc", "poisson frais", "saumon", "saumon frais", "truite", "cabillaud",
+        "cabillaud frais", "merlu", "colin", "lieu noir", "bar", "loup de mer", "dorade", "daurade",
+        "thon frais", "maquereau", "sole", "lotte", "espadon", "crevette", "crevettes", "crevettes fraîches",
+        "gambas", "langoustine", "langoustines", "saint-jacques", "saint jacques", "noix de saint jacques",
+        "moule", "moules", "palourde", "palourdes", "huître", "huîtres", "homard", "calamar", "calamars",
+        "encornet", "encornets", "poulpe", "seiche", "bulots"
+      ] },
+    { "key": "mince", "minDays": 1, "maxDays": 2, "aliases": [
+        "viande hachée", "bœuf haché", "boeuf haché", "porc haché", "veau haché", "agneau haché",
+        "poulet haché", "dinde hachée", "steak haché", "chair à saucisse", "chair à saucisses",
+        "viande de bœuf hachée", "viande hachée de bœuf", "viande hachée de porc", "saucisse fraîche",
+        "saucisses fraîches", "saucisse de toulouse", "saucisses de toulouse", "chair de saucisse"
+      ] },
+    { "key": "poultry", "minDays": 1, "maxDays": 2, "aliases": [
+        "poulet", "poulet fermier", "poulet entier", "blanc de poulet", "blancs de poulet", "cuisse de poulet",
+        "cuisses de poulet", "pilon de poulet", "pilons de poulet", "aile de poulet", "ailes de poulet",
+        "escalope de poulet", "escalopes de poulet", "filet de poulet", "filets de poulet", "aiguillettes de poulet",
+        "dinde", "escalope de dinde", "blanc de dinde", "filet de dinde", "canard", "magret de canard", "magrets de canard",
+        "cuisse de canard", "cuisses de canard"
+      ] },
+    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+        "champignon", "champignons", "champignon de paris", "champignons de paris", "champignons blancs",
+        "champignons bruns", "champignons frais", "champignons des bois", "pleurote", "pleurotes", "shiitaké",
+        "shiitake", "girolle", "girolles", "cèpe", "cèpes", "cèpes frais", "chanterelle", "chanterelles",
+        "portobello", "morille", "morilles", "morilles fraîches"
+      ] },
+    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["avocat", "avocats", "avocat mûr"] },
+    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+        "basilic", "basilic frais", "coriandre fraîche", "persil", "persil frais", "persil plat", "persil frisé",
+        "menthe", "menthe fraîche", "aneth", "aneth frais", "ciboulette", "ciboulette fraîche", "estragon",
+        "estragon frais", "cerfeuil", "cerfeuil frais", "herbes fraîches", "feuilles de basilic",
+        "feuilles de menthe", "feuilles de coriandre"
+      ] },
+    { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
+        "laitue", "salade", "salade verte", "romaine", "salade romaine", "laitue romaine", "mâche", "roquette",
+        "épinard", "épinards", "épinards frais", "jeunes pousses", "jeunes pousses d'épinard", "pousses d'épinard",
+        "mesclun", "cresson", "batavia", "feuille de chêne", "frisée", "scarole", "mélange de salades",
+        "mélange de jeunes pousses", "salade mélangée"
+      ] },
+    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": [
+        "fraise", "fraises", "fraises fraîches", "myrtille", "myrtilles", "myrtilles fraîches", "bleuet", "bleuets"
+      ] },
+    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
+        "framboise", "framboises", "framboises fraîches", "mûre", "mûres", "fruits rouges", "fruits des bois",
+        "baies", "fruits rouges frais"
+      ] }
+  ],
+  "skip": [
+    "saumon fumé", "thon en boîte", "thon en conserve", "poisson surgelé", "crevettes surgelées",
+    "poulet rôti", "poulet cuit", "poulet fumé", "poulet surgelé", "dinde fumée", "dinde cuite",
+    "champignons séchés", "champignons en conserve", "champignons surgelés", "cèpes séchés",
+    "basilic séché", "persil séché", "menthe séchée", "épinards surgelés", "fraises surgelées",
+    "myrtilles surgelées", "framboises surgelées", "fruits rouges surgelés", "fruits des bois surgelés",
+    "baies de goji", "baies de genièvre", "myrtilles séchées"
+  ]
+}

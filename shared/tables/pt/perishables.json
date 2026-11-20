@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "language": "pt",
+  "about": "Perishables (#396), see en/perishables.json. Portuguese puts the modifier after the noun ('salmão defumado'), so the end-of-name rule already refuses it; 'filé de salmão' ends in 'salmão' and matches. A product made from the food ('caldo de frango', 'geleia de morango') also ends in it, so skipPrefixes lists the openings that make a name a product, not the food. A draft for a native speaker to review (docs/translations.md). The same group keys and days as en.",
+  "skipPrefixes": [
+    "caldo de", "fundo de", "fumet de", "molho de", "molho com", "sopa de", "creme de", "salada de", "geleia de",
+    "geleia", "compota de", "calda de", "suco de", "sumo de", "xarope de", "sorvete de", "óleo de", "azeite de",
+    "extrato de", "pesto de", "essência de", "pó de", "pasta de", "tablete de", "torta de", "mousse de", "purê de",
+    "licor de", "manteiga de", "vinagre de", "patê de", "empada de", "bolo de", "recheio de"
+  ],
+  "groups": [
+    { "key": "fish", "minDays": 1, "maxDays": 2, "aliases": [
+        "peixe", "peixes", "peixe branco", "peixe fresco", "salmão", "salmão fresco", "truta", "bacalhau fresco",
+        "merluza", "robalo", "dourada", "atum fresco", "linguado", "cavala", "tilápia", "pescada", "badejo",
+        "camarão", "camarões", "camarão rosa", "camarão fresco", "lula", "lulas", "polvo", "mexilhão", "mexilhões",
+        "vieira", "vieiras", "ostra", "ostras", "lagosta", "vôngole", "vôngoles", "amêijoa", "amêijoas"
+      ] },
+    { "key": "mince", "minDays": 1, "maxDays": 2, "aliases": [
+        "carne moída", "carne moída bovina", "carne de porco moída", "carne de boi moída", "patinho moído",
+        "acém moído", "carne de frango moída", "frango moído", "carne picada", "carne de vaca picada",
+        "linguiça fresca", "linguiça toscana", "linguiça de porco fresca", "carne moída mista"
+      ] },
+    { "key": "poultry", "minDays": 1, "maxDays": 2, "aliases": [
+        "frango", "frango inteiro", "galinha", "peito de frango", "peitos de frango", "coxa de frango",
+        "coxas de frango", "sobrecoxa de frango", "sobrecoxas de frango", "asa de frango", "asas de frango",
+        "filé de frango", "filés de frango", "frango caipira", "peru", "peito de peru", "pato", "peito de pato"
+      ] },
+    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+        "cogumelo", "cogumelos", "cogumelos frescos", "cogumelo paris", "cogumelos paris", "champignon",
+        "champignons", "shiitake", "shimeji", "portobello", "cogumelo-de-paris", "cogumelos shiitake",
+        "cogumelos shimeji"
+      ] },
+    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["abacate", "abacates", "abacate maduro"] },
+    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+        "manjericão", "manjericão fresco", "coentro", "coentro fresco", "salsinha", "salsinha fresca", "salsa fresca",
+        "hortelã", "hortelã fresca", "endro", "cebolinha", "cebolinha fresca", "estragão", "cerefólio",
+        "ervas frescas", "folhas de manjericão", "folhas de hortelã", "folhas de coentro"
+      ] },
+    { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
+        "alface", "alface americana", "alface romana", "alface crespa", "alface lisa", "alface roxa", "rúcula",
+        "espinafre", "espinafres", "espinafre fresco", "folhas de espinafre", "mix de folhas", "mix de folhas verdes",
+        "folhas verdes", "agrião", "salada verde", "mix de salada", "mix de alfaces", "baby leaf"
+      ] },
+    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": [
+        "morango", "morangos", "morangos frescos", "mirtilo", "mirtilos", "mirtilos frescos"
+      ] },
+    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
+        "framboesa", "framboesas", "amora", "amoras", "frutas vermelhas", "frutas do bosque", "frutas silvestres",
+        "frutos vermelhos", "frutos silvestres"
+      ] }
+  ],
+  "skip": [
+    "salmão defumado", "atum em lata", "peixe congelado", "camarão congelado",
+    "frango assado", "frango cozido", "frango defumado", "frango congelado", "frango desfiado",
+    "cogumelos secos", "cogumelos em conserva", "cogumelos congelados",
+    "manjericão seco", "salsinha seca", "hortelã seca", "espinafre congelado", "morangos congelados",
+    "mirtilos congelados", "framboesas congeladas", "frutas vermelhas congeladas", "bagas de goji"
+  ]
+}

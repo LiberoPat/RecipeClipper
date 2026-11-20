@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "language": "it",
+  "about": "Perishables (#396), see en/perishables.json. Italian puts the modifier after the noun ('salmone affumicato'), so the end-of-name rule already refuses it; 'filetto di salmone' ends in 'salmone' and matches. A product made from the food ('brodo di pollo', 'marmellata di fragole') also ends in it, so skipPrefixes lists the openings that make a name a product, not the food. A draft for a native speaker to review (docs/translations.md). The same group keys and days as en.",
+  "skipPrefixes": [
+    "brodo di", "fondo di", "fumetto di", "salsa di", "salsa ai", "salsa al", "sugo ai", "sugo al", "zuppa di",
+    "crema di", "insalata di", "marmellata di", "confettura di", "composta di", "gelatina di", "succo di",
+    "sciroppo di", "gelato al", "gelato alla", "olio di", "olio al", "olio alla", "estratto di", "pesto di", "aroma di",
+    "polvere di", "pasta di", "dado di", "torta di", "torta ai", "torta alle", "mousse di", "purè di", "liquore di",
+    "burro di", "aceto di", "aceto al", "pâté di", "paté di", "sorbetto al", "sorbetto alla"
+  ],
+  "groups": [
+    { "key": "fish", "minDays": 1, "maxDays": 2, "aliases": [
+        "pesce", "pesci", "pesce bianco", "pesce fresco", "salmone", "salmone fresco", "trota", "merluzzo",
+        "merluzzo fresco", "nasello", "branzino", "spigola", "orata", "tonno fresco", "sgombro", "sogliola",
+        "rana pescatrice", "pesce spada", "gambero", "gamberi", "gamberetto", "gamberetti", "mazzancolle",
+        "scampo", "scampi", "capesante", "cozza", "cozze", "vongola", "vongole", "ostrica", "ostriche",
+        "aragosta", "calamaro", "calamari", "totano", "totani", "polpo", "seppia", "seppie", "gamberi freschi"
+      ] },
+    { "key": "mince", "minDays": 1, "maxDays": 2, "aliases": [
+        "carne macinata", "macinato", "macinato di manzo", "macinato di maiale", "macinato misto",
+        "macinato di vitello", "macinato di pollo", "macinato di tacchino", "carne tritata", "manzo macinato",
+        "maiale macinato", "pollo macinato", "tacchino macinato", "salsiccia fresca", "salsicce fresche",
+        "luganega", "salsiccia di maiale fresca"
+      ] },
+    { "key": "poultry", "minDays": 1, "maxDays": 2, "aliases": [
+        "pollo", "pollo intero", "petto di pollo", "petti di pollo", "coscia di pollo", "cosce di pollo",
+        "sovracoscia di pollo", "sovracosce di pollo", "ali di pollo", "ala di pollo", "fusi di pollo", "fuso di pollo",
+        "filetto di pollo", "filetti di pollo", "fesa di tacchino", "petto di tacchino", "tacchino", "anatra",
+        "petto di anatra", "cosce di anatra", "pollo ruspante"
+      ] },
+    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+        "fungo", "funghi", "funghi freschi", "champignon", "funghi champignon", "porcini freschi",
+        "funghi porcini freschi", "pleurotus", "funghi pleurotus", "shiitake", "finferli", "galletti",
+        "portobello", "cardoncelli", "funghi misti", "funghi prataioli", "funghi cardoncelli"
+      ] },
+    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["avocado", "avocado maturo", "avocadi"] },
+    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+        "basilico", "basilico fresco", "coriandolo fresco", "prezzemolo", "prezzemolo fresco", "menta",
+        "menta fresca", "aneto", "aneto fresco", "erba cipollina", "dragoncello", "dragoncello fresco",
+        "cerfoglio", "erbe fresche", "erbe aromatiche fresche", "foglie di basilico", "foglie di menta"
+      ] },
+    { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
+        "lattuga", "lattuga romana", "lattuga iceberg", "insalata", "insalata verde", "insalata mista",
+        "insalata mista in busta", "spinaci", "spinacio", "spinaci freschi", "baby spinaci", "rucola", "ruchetta",
+        "songino", "crescione", "valeriana", "misticanza", "lattughino", "insalatina", "foglie di spinaci"
+      ] },
+    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": [
+        "fragola", "fragole", "fragole fresche", "mirtillo", "mirtilli", "mirtilli neri", "mirtilli freschi"
+      ] },
+    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
+        "lampone", "lamponi", "mora", "more", "frutti di bosco", "frutti rossi", "bacche", "frutti di bosco freschi"
+      ] }
+  ],
+  "skip": [
+    "salmone affumicato", "tonno in scatola", "pesce surgelato", "gamberi surgelati",
+    "pollo arrosto", "pollo cotto", "pollo affumicato", "pollo surgelato",
+    "funghi secchi", "funghi in scatola", "funghi surgelati", "porcini secchi",
+    "basilico secco", "prezzemolo secco", "menta secca", "spinaci surgelati", "fragole surgelate",
+    "mirtilli surgelati", "lamponi surgelati", "frutti di bosco surgelati", "bacche di goji", "bacche di ginepro",
+    "mirtilli secchi", "mirtilli rossi"
+  ]
+}
