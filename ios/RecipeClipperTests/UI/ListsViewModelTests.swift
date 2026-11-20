@@ -146,6 +146,28 @@ final class ListsViewModelTests: XCTestCase {
         XCTAssertEqual(vm.uiState.lists.map(\.id), [3, 1, 2])
     }
 
+    /// The drop's write is done before the database's publication of it reaches the screen. In
+    /// that gap the covers must stay where the drag put them, not snap back to the old order and
+    /// then forward again (a flicker the cook sees, and a UI test can catch mid-way).
+    func testTheCoversNeverSnapBackBetweenTheDropAndTheStoredOrderArriving() async {
+        let repository = repositoryWithThree()
+        repository.reorderPublishDelay = .milliseconds(150)
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        vm.onDragStart(3)
+        vm.onDragOver(1)
+        vm.onDragEnd()
+        for _ in 0..<100 {
+            XCTAssertEqual(vm.uiState.lists.map(\.id), [3, 1, 2])
+            try? await Task.sleep(nanoseconds: 3_000_000)
+        }
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.lists.map(\.id), [3, 1, 2])
+        XCTAssertNil(vm.uiState.draggingId)
+    }
+
     func testACoverDraggedOverSeveralInTurnTakesEachPlace() async {
         let repository = repositoryWithThree()
         let vm = ListsViewModel(repository: repository)
