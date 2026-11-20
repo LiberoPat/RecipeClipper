@@ -83,10 +83,12 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.TooltipScreen
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.ui.groceries.AddToGroceriesSheet
@@ -119,7 +121,8 @@ import kotlinx.coroutines.flow.filterNotNull
  * servings; long-pressing a meal offers Move and Remove (Remove can be undone). The menu's "Add
  * this week's ingredients" (#50) opens the grocery sheet over every recipe planned in the week
  * shown; [groceriesViewModel] null leaves it out. "What I need" (#51) opens the week against the
- * pantry; [onOpenWhatINeed] null leaves it out.
+ * pantry; [onOpenWhatINeed] null leaves it out. With [shopForWeek] (#384) the menu has just one
+ * item, "Shop for this week", which opens What I need, and no "Add this week's ingredients".
  */
 @Composable
 fun WeekScreen(
@@ -127,7 +130,8 @@ fun WeekScreen(
     onOpenMealTypes: () -> Unit,
     onOpenWhatINeed: ((weekStart: Long) -> Unit)? = null,
     viewModel: WeekViewModel = hiltViewModel(),
-    groceriesViewModel: AddToGroceriesViewModel? = null
+    groceriesViewModel: AddToGroceriesViewModel? = null,
+    shopForWeek: Boolean = LocalFlagValues.current.isOn(Flag.SHOP_FOR_WEEK)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var groceriesSheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -181,7 +185,8 @@ fun WeekScreen(
                             // The week's own actions act on the week shown, so the month view
                             // leaves them out.
                             onOpenWhatINeed = onOpenWhatINeed?.takeIf { month == null }?.let { open -> { open(state.weekStart) } },
-                            onAddToGroceries = groceriesViewModel?.takeIf { month == null }?.let { sheet ->
+                            shopForWeek = shopForWeek,
+                            onAddToGroceries = groceriesViewModel?.takeIf { month == null && !shopForWeek }?.let { sheet ->
                                 {
                                     sheet.loadWeek(state.weekStart)
                                     groceriesSheetOpen = true
@@ -271,6 +276,7 @@ private fun TitleRow(
     onToggleMonth: () -> Unit,
     onOpenMealTypes: () -> Unit,
     onOpenWhatINeed: (() -> Unit)?,
+    shopForWeek: Boolean,
     onAddToGroceries: (() -> Unit)?,
     onShareCalendar: (() -> Unit)?,
     canShareCalendar: Boolean,
@@ -286,7 +292,7 @@ private fun TitleRow(
         TextButton(onClick = onToggleMonth, modifier = Modifier.testTag("toggleMonth")) {
             Text(stringResource(if (showingMonth) R.string.action_week_view else R.string.action_month_view))
         }
-        WeekMenu(onOpenMealTypes, onOpenWhatINeed, onAddToGroceries, onShareCalendar, canShareCalendar, onSaveMenu, onApplyMenu)
+        WeekMenu(onOpenMealTypes, onOpenWhatINeed, shopForWeek, onAddToGroceries, onShareCalendar, canShareCalendar, onSaveMenu, onApplyMenu)
     }
 }
 
@@ -445,6 +451,7 @@ private fun MonthGrid(month: MonthUiState, today: Long, onSelect: (Long) -> Unit
 private fun WeekMenu(
     onOpenMealTypes: () -> Unit,
     onOpenWhatINeed: (() -> Unit)?,
+    shopForWeek: Boolean,
     onAddToGroceries: (() -> Unit)?,
     onShareCalendar: (() -> Unit)?,
     canShareCalendar: Boolean,
@@ -459,7 +466,13 @@ private fun WeekMenu(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             if (onOpenWhatINeed != null) {
                 DropdownMenuItem(
-                    text = { MenuItemText(stringResource(R.string.what_i_need_title), stringResource(R.string.menu_desc_what_i_need)) },
+                    text = {
+                        if (shopForWeek) {
+                            MenuItemText(stringResource(R.string.action_shop_for_week), stringResource(R.string.menu_desc_shop_for_week))
+                        } else {
+                            MenuItemText(stringResource(R.string.what_i_need_title), stringResource(R.string.menu_desc_what_i_need))
+                        }
+                    },
                     onClick = {
                         expanded = false
                         onOpenWhatINeed()

@@ -97,6 +97,12 @@
       "issue": 354
     },
     {
+      "key": "shopForWeek",
+      "description": "Week's menu has one item, Shop for this week, which opens What I need for the week shown (To buy and In your pantry, Add to groceries adds To buy once). Off, the menu has the two items it had: What I need and Add this week's ingredients.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 384
+    },
+    {
       "key": "homeTonight",
       "description": "Home's Today card: when nothing is being cooked, today's earliest planned meal not yet cooked (in the meal types' order) with Start cooking, the rest of today's meals on a line under it; a recipe cooked today (a cooking entry dated today, or a finished run) drops off, and with nothing left there is no card. Off, Home always shows the most recent recipe under Continue cooking, as before.",
       "defaults": { "debug": true, "release": true },

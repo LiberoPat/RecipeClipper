@@ -458,6 +458,7 @@
     <string name="action_add_to_groceries">Add to groceries</string>
     <string name="add_to_groceries_title">Add to groceries</string>
     <string name="action_add_week_to_groceries">Add this week\'s ingredients</string>
+    <string name="action_shop_for_week">Shop for this week</string>
     <string name="groceries_week_empty">No recipes are planned this week.</string>
     <string name="action_share_groceries">Send list</string>
     <!-- A list sent from another phone, shared in or pasted (#149) -->
@@ -782,6 +783,7 @@
     <string name="menu_desc_update_from_source">Replace your edits with the website\'s latest</string>
     <string name="menu_desc_what_i_need">What this week\'s recipes need that your pantry doesn\'t have</string>
     <string name="menu_desc_add_week_to_groceries">Onto your grocery list, except what you have</string>
+    <string name="menu_desc_shop_for_week">What the week needs and what you have</string>
     <string name="menu_desc_save_week_as_menu">Keep this week\'s meals to reuse later</string>
     <string name="menu_desc_apply_menu">Add a saved menu\'s meals to this week</string>
     <string name="menu_desc_meal_types">Add, rename or reorder the day\'s meals</string>

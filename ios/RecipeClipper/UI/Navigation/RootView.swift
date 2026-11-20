@@ -149,7 +149,8 @@ struct RootView: View {
                     onOpenRecipe: { router.weekPath.append(.weekRecipe(id: $0, servings: $1)) },
                     onOpenMealTypes: { router.weekPath.append(.mealTypes) },
                     onOpenWhatINeed: { router.weekPath.append(.whatINeed(weekStart: $0)) },
-                    makeGroceriesVM: container.makeAddToGroceriesViewModel
+                    makeGroceriesVM: container.makeAddToGroceriesViewModel,
+                    shopForWeek: container.featureFlags.isOn(.shopForWeek)
                 )
             }
             .navigationDestination(for: Route.self) { route in
@@ -222,7 +223,7 @@ struct RootView: View {
         case .mealTypes:
             ScreenHost(container.makeMealTypesViewModel) { vm in MealTypesScreen(vm: vm) }
         case .whatINeed(let weekStart):
-            ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in WhatINeedScreen(vm: vm) }
+            ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in WhatINeedScreen(vm: vm, shopForWeek: container.featureFlags.isOn(.shopForWeek)) }
         case .recipes:
             ScreenHost2(makeA: { container.makeRecipesViewModel() }, makeB: container.makeSaveToListViewModel) { vm, saveVM in
                 // The + menu: "Type a recipe" is Home's "+ New recipe"; "Paste a link" is Home's field.

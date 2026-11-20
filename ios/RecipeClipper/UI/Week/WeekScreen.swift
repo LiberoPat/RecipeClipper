@@ -13,6 +13,8 @@ struct WeekScreen: View {
     var onOpenWhatINeed: ((Int64) -> Void)? = nil
     /// Makes the "Add this week's ingredients" sheet's ViewModel (#50); nil hides the item.
     var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
+    /// The `shopForWeek` flag (#384): the menu's one "Shop for this week" in place of the two.
+    var shopForWeek = false
     @State private var groceriesVM: AddToGroceriesViewModel?
     @State private var groceriesSheet: AddToGroceriesViewModel?
     /// The week's .ics file once written, for the share sheet (#52).
@@ -66,20 +68,30 @@ struct WeekScreen: View {
                 Menu {
                     // The week's own actions act on the week shown, so the month view leaves
                     // them out.
-                    if let onOpenWhatINeed, state.month == nil {
-                        Button { onOpenWhatINeed(vm.uiState.weekStart) } label: {
-                            Text(Strings.whatINeedTitle); Text(Strings.menuDescWhatINeed)
-                        }
-                    }
-                    if let makeGroceriesVM, state.month == nil {
-                        Button {
-                            let groceries = groceriesVM ?? makeGroceriesVM()
-                            groceriesVM = groceries
-                            groceriesSheet = groceries
-                            let start = vm.uiState.weekStart
-                            groceries.loadWeek(start)
-                        } label: {
-                            Text(Strings.addWeekToGroceries); Text(Strings.menuDescAddWeekToGroceries)
+                    ForEach(WeekShoppingMenu.items(
+                        shopForWeek: shopForWeek, canOpenWhatINeed: onOpenWhatINeed != nil,
+                        canAddToGroceries: makeGroceriesVM != nil, inMonth: state.month != nil
+                    ), id: \.self) { item in
+                        switch item {
+                        case .shopForWeek:
+                            Button { onOpenWhatINeed?(vm.uiState.weekStart) } label: {
+                                Text(Strings.shopForWeek); Text(Strings.menuDescShopForWeek)
+                            }
+                        case .whatINeed:
+                            Button { onOpenWhatINeed?(vm.uiState.weekStart) } label: {
+                                Text(Strings.whatINeedTitle); Text(Strings.menuDescWhatINeed)
+                            }
+                        case .addWeekIngredients:
+                            Button {
+                                guard let makeGroceriesVM else { return }
+                                let groceries = groceriesVM ?? makeGroceriesVM()
+                                groceriesVM = groceries
+                                groceriesSheet = groceries
+                                let start = vm.uiState.weekStart
+                                groceries.loadWeek(start)
+                            } label: {
+                                Text(Strings.addWeekToGroceries); Text(Strings.menuDescAddWeekToGroceries)
+                            }
                         }
                     }
                     if state.month == nil {

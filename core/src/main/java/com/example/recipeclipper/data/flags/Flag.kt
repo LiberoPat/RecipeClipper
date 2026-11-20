@@ -47,6 +47,8 @@ enum class Flag(val key: String) {
     MEAL_PLAN_IMPORT("mealPlanImport"),
     /** Recipe versions (#354): an AI's change to a recipe is saved linked to its original. */
     RECIPE_VERSIONS("recipeVersions"),
+    /** Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients. */
+    SHOP_FOR_WEEK("shopForWeek"),
     /** Home's Today card (#402): today's next uncooked planned meal, when nothing is being cooked. */
     HOME_TONIGHT("homeTonight");
 
