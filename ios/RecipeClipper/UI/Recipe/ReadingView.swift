@@ -24,7 +24,7 @@ struct ReadingView: View {
         ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if let image = recipe.image, let url = URL(string: image) {
+                if let image = recipe.displayImage, let url = URL(string: image) {
                     RecipePhoto(url: url, name: recipe.name)
                         .padding(.bottom, 16)
                 }

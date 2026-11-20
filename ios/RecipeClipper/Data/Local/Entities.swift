@@ -36,12 +36,16 @@ struct RecipeRecord: Equatable {
     /// key: a delete clears it by hand (`RecipeDao.clearOrphanedLinks`), so it never points at
     /// nothing. `update` never writes it, as it never writes the uid.
     var basedOnUid: String? = nil
+    /// The recipe's own picture (#386): the name of a file in the photo store, preferred over
+    /// `imageUrl` wherever the recipe's picture shows. Not an "I made this" photo (#116): never a
+    /// cooking. nil for none. The user's: `update` never writes it, so a re-share or an edit keeps it.
+    var photoFile: String? = nil
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
         totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language, \
-        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid
+        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid, photoFile
         """
 
     init(
@@ -51,7 +55,8 @@ struct RecipeRecord: Equatable {
         sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = [],
         notes: String? = nil, uid: String = newUid(), language: String? = nil,
         cookState: String? = nil, servingsTarget: Int? = nil,
-        contentOrigin: String = "PARSED", editedAt: Int64? = nil, basedOnUid: String? = nil
+        contentOrigin: String = "PARSED", editedAt: Int64? = nil, basedOnUid: String? = nil,
+        photoFile: String? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -74,6 +79,7 @@ struct RecipeRecord: Equatable {
         self.contentOrigin = contentOrigin
         self.editedAt = editedAt
         self.basedOnUid = basedOnUid
+        self.photoFile = photoFile
     }
 
     init(row: SQLiteRow) {
@@ -98,6 +104,7 @@ struct RecipeRecord: Equatable {
         contentOrigin = row.string(18)
         editedAt = row.isNull(19) ? nil : row.int64(19)
         basedOnUid = row.optionalString(20)
+        photoFile = row.optionalString(21)
     }
 }
 

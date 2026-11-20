@@ -14,6 +14,7 @@ struct SettingsSectionScreen: View {
     /// "Show tips again" (#190).
     var onShowTips: () -> Void = {}
     @State private var importing = false
+    @State private var importingPaprika = false
 
     var body: some View {
         let page = ScrollView {
@@ -32,6 +33,13 @@ struct SettingsSectionScreen: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .plainText, .zip]) { result in
             switch result {
             case .success(let url): vm.onImportPicked(url)
+            case .failure: vm.onImportPickFailed()
+            }
+        }
+        // Import from Paprika (#382): a .paprikarecipes file has no system type, so any file may be picked.
+        .fileImporter(isPresented: $importingPaprika, allowedContentTypes: [.item]) { result in
+            switch result {
+            case .success(let url): vm.onPaprikaPicked(url)
             case .failure: vm.onImportPickFailed()
             }
         }
@@ -163,6 +171,22 @@ private extension SettingsSectionScreen {
             enabled: !state.backup.isBusy
         ) { importing = true }
         .accessibilityIdentifier("settings.import")
+        // Another app's file, beside this app's own (#382): behind the paprikaImport flag.
+        if vm.showsPaprikaImport {
+            ActionRow(
+                title: Strings.paprikaImportTitle,
+                description: Strings.paprikaImportDescription,
+                enabled: !state.backup.isBusy
+            ) { importingPaprika = true }
+            .accessibilityIdentifier("settings.importPaprika")
+            // What the import does with Paprika's categories (#387); on unless the cook turns it off.
+            SwitchRow(
+                title: Strings.paprikaFilingTitle,
+                description: Strings.paprikaFilingDescription,
+                isOn: Binding(get: { state.paprikaFiling }, set: vm.onPaprikaFilingChange)
+            )
+            .accessibilityIdentifier("settings.paprikaFiling")
+        }
         if let status = backupStatusText(state.backup) {
             Text(status.text)
                 .textStyle(Typography.bodyMedium)

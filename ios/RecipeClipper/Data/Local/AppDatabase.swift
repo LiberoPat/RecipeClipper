@@ -152,6 +152,7 @@ final class AppDatabase: @unchecked Sendable {
         addRunningLow,
         addBasedOn,
         numberListsInShownOrder,
+        addPhotoFile,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -475,6 +476,12 @@ final class AppDatabase: @unchecked Sendable {
         for (position, id) in ids.enumerated() {
             try db.run("UPDATE lists SET sortOrder = ? WHERE id = ?", position, id)
         }
+    }
+
+    /// Version 18 (Android's Room version 19, `MIGRATION_18_19`): a recipe's own stored picture
+    /// (#386), `recipes.photoFile`, the name of a file in the photo store. Null for every existing recipe.
+    private static func addPhotoFile(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN photoFile TEXT")
     }
 
     private static func addMenus(_ db: SQLiteConnection) throws {

@@ -12,6 +12,10 @@ import com.example.recipeclipper.data.backup.BackupDestination
 import com.example.recipeclipper.data.BackupFiles
 import com.example.recipeclipper.data.BackupRepository
 import com.example.recipeclipper.data.ChefSupport
+import com.example.recipeclipper.data.PaprikaImportRepository
+import com.example.recipeclipper.data.PaprikaResult
+import com.example.recipeclipper.data.backup.PaprikaSummary
+import com.example.recipeclipper.data.remote.PaprikaError
 import com.example.recipeclipper.data.Entitlements
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.ShortStepRepository
@@ -67,7 +71,11 @@ data class SettingsUiState(
     /** A purchase or restore that didn't simply unlock; shown until the next one starts. */
     val unlockNotice: PurchaseOutcome? = null,
     /** The automatic backup copy's rows (#150); null without one (tests that don't care). */
-    val autoBackup: AutoBackupRow? = null
+    val autoBackup: AutoBackupRow? = null,
+    /** The "Import from Paprika" row (#382): only with the `paprikaImport` flag on. */
+    val showsPaprikaImport: Boolean = false,
+    /** "Put recipes in lists by their Paprika categories" (#387): on by default; this visit's choice, not a saved setting. */
+    val paprikaFiling: Boolean = true
 ) {
     val chefModeAvailable: Boolean get() = chefSupport is ChefSupport.Available
 
@@ -134,13 +142,19 @@ sealed class BackupStatus {
     object Exporting : BackupStatus()
     object Importing : BackupStatus()
 
+    /** Import from Paprika (#382) is reading the file; shares the one-at-a-time rule above. */
+    object ImportingPaprika : BackupStatus()
+
     /** The file is written: the screen opens the share sheet on [uri], then calls
      *  [SettingsViewModel.onExportShared]. */
     data class ReadyToShare(val uri: String) : BackupStatus()
     data class Imported(val summary: ImportSummary) : BackupStatus()
     data class Failed(val error: BackupError) : BackupStatus()
+    data class ImportedPaprika(val summary: PaprikaSummary) : BackupStatus()
+    data class PaprikaFailed(val error: PaprikaError) : BackupStatus()
 
-    val isBusy: Boolean get() = this == Exporting || this == Importing || this is ReadyToShare
+    val isBusy: Boolean
+        get() = this == Exporting || this == Importing || this == ImportingPaprika || this is ReadyToShare
 }
 
 /**
@@ -166,7 +180,9 @@ class SettingsViewModel @Inject constructor(
     private val entitlements: Entitlements = Entitlements.Unavailable,
     // The automatic backup copy (#150); without it the section keeps only Export and Import.
     private val autoBackup: AutoBackup? = null,
-    private val clock: Clock = Clock { System.currentTimeMillis() }
+    private val clock: Clock = Clock { System.currentTimeMillis() },
+    // Import from Paprika (#382); without it the row isn't shown.
+    private val paprika: PaprikaImportRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
@@ -197,7 +213,8 @@ class SettingsViewModel @Inject constructor(
                 flags.values.collect { values ->
                     _uiState.update {
                         it.copy(
-                            showsChefMode = values.isOn(Flag.CHEF_MODE)
+                            showsChefMode = values.isOn(Flag.CHEF_MODE),
+                            showsPaprikaImport = paprika != null && values.isOn(Flag.PAPRIKA_IMPORT)
                         )
                     }
                     if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
@@ -268,7 +285,10 @@ class SettingsViewModel @Inject constructor(
         chefSupport = previous?.chefSupport,
         unlock = previous?.unlock,
         unlockNotice = previous?.unlockNotice,
-        autoBackup = previous?.autoBackup
+        autoBackup = previous?.autoBackup,
+        showsPaprikaImport = previous?.showsPaprikaImport
+            ?: (paprika != null && featureFlags?.isOn(Flag.PAPRIKA_IMPORT) == true),
+        paprikaFiling = previous?.paprikaFiling ?: true
     )
 
     // Taps on the version so far. Here, not in the screen, so a rotation mid-sequence keeps it.
@@ -355,6 +375,26 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(backup = BackupStatus.Importing) }
         viewModelScope.launch {
             _uiState.update { it.copy(backup = backups.importFile(files, uri).toStatus()) }
+        }
+    }
+
+    /** The switch under "Import from Paprika" (#387): whether the next import files recipes by their categories. */
+    fun onPaprikaFilingChange(enabled: Boolean) {
+        _uiState.update { it.copy(paprikaFiling = enabled) }
+    }
+
+    /** Import from the Paprika export the user picked in the system file picker (#382). */
+    fun onPaprikaPicked(uri: String) {
+        val importer = paprika ?: return
+        if (_uiState.value.backup.isBusy) return
+        val filing = _uiState.value.paprikaFiling
+        _uiState.update { it.copy(backup = BackupStatus.ImportingPaprika) }
+        viewModelScope.launch {
+            val status = when (val result = importer.import(uri, filing)) {
+                is PaprikaResult.Success -> BackupStatus.ImportedPaprika(result.summary)
+                is PaprikaResult.Failure -> BackupStatus.PaprikaFailed(result.error)
+            }
+            _uiState.update { it.copy(backup = status) }
         }
     }
 

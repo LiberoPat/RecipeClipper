@@ -56,6 +56,8 @@ enum Flag: String, CaseIterable {
     case rowActions
     /// Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo.
     case multiSelect
+    /// Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library.
+    case paprikaImport
 }
 
 /// One flag as `shared/flags.json` declares it.

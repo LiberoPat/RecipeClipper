@@ -119,7 +119,10 @@ final class DefaultCookedPhotoRepository: CookedPhotoRepository {
     }
 
     func sweep() async {
-        guard let named = try? await db.read({ conn in try CookedPhotoDao(db: conn).fileNames() }) else { return }
+        // A recipe's own picture (#386) is named by its recipe, not by a cooking.
+        guard let named = try? await db.read({ conn in
+            try CookedPhotoDao(db: conn).fileNames().union(CookedPhotoDao(db: conn).recipePhotoFileNames())
+        }) else { return }
         let cutoff = clock.now() - photoSweepGraceMillis
         let orphans = await store.files().filter { !named.contains($0.key) && $0.value < cutoff }.map(\.key)
         await store.delete(orphans)

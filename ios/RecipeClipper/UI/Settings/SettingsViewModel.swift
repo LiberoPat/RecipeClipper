@@ -29,6 +29,8 @@ struct SettingsUiState: Equatable {
     var unlockNotice: PurchaseOutcome?
     /// The automatic backup copy's rows (#150); nil without one (tests that don't care).
     var autoBackup: AutoBackupRow?
+    /// "Put recipes in lists by their Paprika categories" (#387): on by default; this visit's choice, not a saved setting.
+    var paprikaFiling = true
 }
 
 /// The automatic backup copy's rows in Your recipes (#150; Android's `AutoBackupRow`): the
@@ -74,14 +76,18 @@ enum BackupStatus: Equatable {
     case idle
     case exporting
     case importing
+    /// Import from Paprika (#382) is reading the file; shares the one-at-a-time rule.
+    case importingPaprika
     /// The file is written: the screen opens the share sheet on it, then calls `onExportShared`.
     case readyToShare(URL)
     case imported(ImportSummary)
     case failed(BackupError)
+    case importedPaprika(PaprikaSummary)
+    case paprikaFailed(PaprikaError)
 
     var isBusy: Bool {
         switch self {
-        case .exporting, .importing, .readyToShare: return true
+        case .exporting, .importing, .importingPaprika, .readyToShare: return true
         default: return false
         }
     }
@@ -115,6 +121,7 @@ final class SettingsViewModel {
     @ObservationIgnored private var askedChefSupport = false
     @ObservationIgnored private let entitlements: Entitlements
     @ObservationIgnored private let autoBackup: AutoBackup?
+    @ObservationIgnored private let paprika: PaprikaImportRepository?
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private var autoBackupSubscription: AnyCancellable?
 
@@ -127,8 +134,10 @@ final class SettingsViewModel {
         shortSteps: ShortStepRepository? = nil,
         entitlements: Entitlements = UnavailableEntitlements(),
         autoBackup: AutoBackup? = nil,
-        clock: Clock = SystemClock()
+        clock: Clock = SystemClock(),
+        paprika: PaprikaImportRepository? = nil
     ) {
+        self.paprika = paprika
         self.autoBackup = autoBackup
         self.clock = clock
         self.flags = flags
@@ -154,6 +163,7 @@ final class SettingsViewModel {
                 next.unlockBusy = self.uiState.unlockBusy
                 next.unlockNotice = self.uiState.unlockNotice
                 next.autoBackup = self.uiState.autoBackup
+                next.paprikaFiling = self.uiState.paprikaFiling
                 self.uiState = next
             }
         if let autoBackup {
@@ -199,6 +209,26 @@ final class SettingsViewModel {
     /// The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag.
     var sections: [SettingsSection] {
         SettingsSection.allCases.filter { $0 != .unlimited || unlockRow != nil }
+    }
+
+    /// The "Import from Paprika" row (#382): only with the `paprikaImport` flag on, and an importer.
+    var showsPaprikaImport: Bool { paprika != nil && (flags?.isOn(.paprikaImport) ?? false) }
+
+    /// The switch under "Import from Paprika" (#387): whether the next import files recipes by their categories.
+    func onPaprikaFilingChange(_ enabled: Bool) { uiState.paprikaFiling = enabled }
+
+    /// Import from the Paprika export the user picked in the file importer (#382).
+    @discardableResult
+    func onPaprikaPicked(_ url: URL) -> Task<Void, Never>? {
+        guard let paprika, !uiState.backup.isBusy else { return nil }
+        uiState.backup = .importingPaprika
+        let filing = uiState.paprikaFiling
+        return Task {
+            switch await paprika.importPaprika(url, filing: filing) {
+            case .success(let summary): uiState.backup = .importedPaprika(summary)
+            case .failure(let error): uiState.backup = .paprikaFailed(error)
+            }
+        }
     }
 
     /// The Steps section's "Chef mode" (#100): only with the `chefMode` flag on.

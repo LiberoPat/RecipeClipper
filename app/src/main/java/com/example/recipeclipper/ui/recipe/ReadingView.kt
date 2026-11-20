@@ -58,7 +58,7 @@ internal fun ReadingView(
     var editingNotes by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     // The list's items: the top bar, the photo if any, the title block, then one per line.
-    val firstLine = if (recipe.image != null) 3 else 2
+    val firstLine = if (recipe.displayImage != null) 3 else 2
     val firstStep = firstLine + content.ingredients.size + 1
     val jump = state.ingredientJump
     // A step's ingredient link (#254): scroll to its lines, or back to the step.
@@ -81,7 +81,7 @@ internal fun ReadingView(
                 ReadingTopBar(recipe, state, actions, isSaved, photoCount)
             }
 
-            recipe.image?.let { image ->
+            recipe.displayImage?.let { image ->
                 item {
                     AsyncImage(
                         model = image,

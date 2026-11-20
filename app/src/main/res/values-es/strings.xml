@@ -211,6 +211,42 @@
     <string name="backup_error_read_failed">No se ha podido abrir ese archivo.</string>
     <string name="backup_error_save_failed">No se han podido guardar las recetas importadas. No se cambió nada.</string>
     <string name="backup_error_export_failed">No se ha podido crear el archivo de exportación.</string>
+    <!-- Settings → Your recipes: import from Paprika (#382) -->
+    <string name="paprika_import_title">Importar desde Paprika</string>
+    <string name="paprika_import_description">Añadir las recetas de un archivo de exportación de Paprika (.paprikarecipes). Nada se reemplaza ni se elimina.</string>
+    <string name="paprika_importing">Leyendo el archivo de Paprika…</string>
+    <string name="paprika_imported_nothing">Nada nuevo: todas las recetas de ese archivo ya estaban aquí.</string>
+    <string name="paprika_nothing_found">No se pudo leer ninguna receta de ese archivo.</string>
+    <string name="paprika_error_not_paprika">Ese archivo no es una exportación de Paprika. Elige un archivo .paprikarecipes.</string>
+    <string name="paprika_error_damaged">Ese archivo está dañado o incompleto. No se importó nada.</string>
+    <string name="paprika_error_too_large">Ese archivo es mucho más grande de lo que debería ser una exportación de Paprika. No se importó nada.</string>
+    <string name="paprika_filing_title">Poner las recetas en listas según sus categorías de Paprika</string>
+    <string name="paprika_filing_description">Una lista con ese nombre, o una nueva. No se quita nada de ninguna lista.</string>
+    <plurals name="paprika_photos_left_out">
+        <item quantity="one">No se pudo leer %d foto y se dejó fuera.</item>
+        <item quantity="many">No se pudieron leer %d de fotos y se dejaron fuera.</item>
+        <item quantity="other">No se pudieron leer %d fotos y se dejaron fuera.</item>
+    </plurals>
+    <plurals name="paprika_lists_made">
+        <item quantity="one">Se creó %d lista nueva a partir de las categorías.</item>
+        <item quantity="many">Se crearon %d de listas nuevas a partir de las categorías.</item>
+        <item quantity="other">Se crearon %d listas nuevas a partir de las categorías.</item>
+    </plurals>
+    <plurals name="paprika_imported">
+        <item quantity="one">Se importó %d receta de Paprika.</item>
+        <item quantity="many">Se importaron %d de recetas de Paprika.</item>
+        <item quantity="other">Se importaron %d recetas de Paprika.</item>
+    </plurals>
+    <plurals name="paprika_not_recipes">
+        <item quantity="one">%d entrada sin nombre, o sin ingredientes ni pasos, se dejó fuera.</item>
+        <item quantity="many">%d de entradas sin nombre, o sin ingredientes ni pasos, se dejaron fuera.</item>
+        <item quantity="other">%d entradas sin nombre, o sin ingredientes ni pasos, se dejaron fuera.</item>
+    </plurals>
+    <plurals name="paprika_unreadable">
+        <item quantity="one">No se pudo leer %d entrada.</item>
+        <item quantity="many">No se pudieron leer %d de entradas.</item>
+        <item quantity="other">No se pudieron leer %d entradas.</item>
+    </plurals>
     <string name="temperature_as_written">Como en la receta</string>
     <string name="temperature_as_written_description">Exactamente la temperatura de la receta</string>
     <string name="temperature_celsius">Celsius (°C)</string>

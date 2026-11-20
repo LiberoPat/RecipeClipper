@@ -24,7 +24,8 @@ extension Recipe {
             cookState: CookStateJSON.encode(cook),
             servingsTarget: servingsTarget,
             contentOrigin: origin.rawValue,
-            editedAt: editedAt
+            editedAt: editedAt,
+            photoFile: photoFile
         )
     }
 }
@@ -50,7 +51,8 @@ extension RecipeRecord {
             cook: CookStateJSON.decode(cookState),
             servingsTarget: servingsTarget,
             origin: ContentOrigin.from(name: contentOrigin),
-            editedAt: editedAt
+            editedAt: editedAt,
+            photoFile: photoFile
         )
     }
 }

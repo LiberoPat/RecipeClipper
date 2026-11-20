@@ -62,7 +62,9 @@ enum class Flag(val key: String) {
     /** A long-press menu on a recipe row (#376): Add to list, Add to plan, Share, Delete, Remove from this list. */
     ROW_ACTIONS("rowActions"),
     /** Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo. */
-    MULTI_SELECT("multiSelect");
+    MULTI_SELECT("multiSelect"),
+    /** Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library. */
+    PAPRIKA_IMPORT("paprikaImport");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

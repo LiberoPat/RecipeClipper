@@ -35,7 +35,7 @@ abstract class MealPlanDao {
      */
     @Query(
         """
-        SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, r.imageUrl, e.uid
+        SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, ${RecipeImageSql.AS_R} AS imageUrl, e.uid
         FROM meal_plan_entries e
         JOIN meal_types t ON t.id = e.mealTypeId
         LEFT JOIN recipes r ON r.id = e.recipeId

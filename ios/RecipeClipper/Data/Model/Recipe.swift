@@ -92,6 +92,12 @@ struct Recipe: Equatable {
     var origin: ContentOrigin = .parsed
     /// When the user last saved an edit, or nil if never.
     var editedAt: Int64? = nil
+    /// The recipe's own picture, stored on the phone (#386): a file name in the photo store, or nil.
+    /// Not part of `image` (a web link, which the editor shows and saves).
+    var photoFile: String? = nil
+
+    /// What the screens show as the recipe's picture (#386): its stored photo (with its link behind it, for a missing file), else its link.
+    var displayImage: String? { photoFile.map { StoredPhoto.model($0, fallback: image) } ?? image }
 
     /// "Update from source" applies: the user's version of a recipe that has a real link.
     var canUpdateFromSource: Bool {

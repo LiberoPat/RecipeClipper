@@ -46,7 +46,7 @@ mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
 (`reddit` flag, #11), or the photo read on the device and checked by the cook (`photoText`,
-#198), and your own photos scanned the same way (#226), or text shared in (#306); "Ask an AI" prompts that come back as recipe JSON (#351, #353), a week of them reviewed into Week (#352), and changes saved as versions of the recipe they changed (#354), the answer shared or pasted (#372); running timers outside the app
+#198), and your own photos scanned the same way (#226), or text shared in (#306); "Ask an AI" prompts that come back as recipe JSON (#351, #353), a week of them reviewed into Week (#352), and changes saved as versions of the recipe they changed (#354), the answer shared or pasted (#372); a Paprika export imported from Settings, with its photos and categories (#382, #386, #387); running timers outside the app
 (a Live Activity, an ongoing notification) and the Tonight and Groceries widgets (#309); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
@@ -242,12 +242,14 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 18** (iOS `user_version` 17),
+- Room database `recipe_clipper.db`, **version 19** (iOS `user_version` 18),
   schema exported to `app/schemas/`: commit it. **Never use destructive
   migration**, and give every migration a `MigrationTest`. iOS mirrors the
   schema in SQLite, with `PRAGMA user_version` migrations, in the App Group
   container the share extension also writes to. User data rows carry a
   unique, never-changing `uid`, which an export file uses.
+- **A recipe's own photo** is `recipes.photoFile` (#386), a file in the photo store, shown in
+  preference to `imageUrl` (as `photo://<name>`) and never a cooking; a re-share or an edit keeps it.
 - `recipes.sourceUrl` is unique, and always cleaned first by `UrlCleaner`. It
   strips only `utm_*`, known click ids (`fbclid`, `gclid`, …) and the
   `#fragment`, lowercases the scheme and host, upgrades `http` to `https`,

@@ -74,6 +74,15 @@ final class DefaultBackupRepository: BackupRepository {
         var withPhotos = backup
         var pictures: [String: URL] = [:]
         if let photos {
+            // A recipe's own picture (#386) is named after the recipe's row, and only if its file is here.
+            let rows = Dictionary(uniqueKeysWithValues: snapshot.recipes.map { ($0.uid, $0) })
+            withPhotos.recipes = withPhotos.recipes.map { recipe in
+                guard let row = rows[recipe.id], let name = row.photoFile, photos.exists(name) else { return recipe }
+                var named = recipe
+                named.photo = "photos/recipe-\(row.id).jpg"
+                pictures[named.photo!] = URL(fileURLWithPath: photos.path(name))
+                return named
+            }
             withPhotos.cookedPhotos = snapshot.cookedPhotos.compactMap { p in
                 guard let recipe = recipeUids[p.recipeId] else { return nil }
                 let file = p.fileName.map { name in
@@ -102,7 +111,7 @@ final class DefaultBackupRepository: BackupRepository {
         // stays out. Copies the import didn't use are swept later (the store's grace period).
         var stored: [String: String] = [:]
         if let photos {
-            for file in Set(backup.cookedPhotos.compactMap(\.file)) {
+            for file in Set(backup.cookedPhotos.compactMap(\.file) + backup.recipes.compactMap(\.photo)) {
                 guard let local = package.photos[file], let name = await photos.adopt(local) else { continue }
                 stored[file] = name
             }

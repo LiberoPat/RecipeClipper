@@ -9,7 +9,7 @@ struct RecipeDao {
     /// Shared by every summary query. "Saved" is derived: a recipe is saved when at least one
     /// list contains it. There is deliberately no isSaved column.
     private static let summaryColumns = """
-        id, title, imageUrl, totalTime, lastViewedAt,
+        id, title, \(RecipeImageSql.plain) AS imageUrl, totalTime, lastViewedAt,
         EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
         contentOrigin = 'CLIPPED' AS isClipped,
         (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
@@ -43,13 +43,13 @@ struct RecipeDao {
         try db.run(
             """
             INSERT INTO recipes (\(RecipeRecord.columns))
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             r.id == 0 ? nil : r.id, r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
             JSONColumns.encode(r.checkedIngredients), r.notes, r.uid, r.language, r.cookState, r.servingsTarget,
-            r.contentOrigin, r.editedAt, r.basedOnUid
+            r.contentOrigin, r.editedAt, r.basedOnUid, r.photoFile
         )
         return db.lastInsertRowId
     }

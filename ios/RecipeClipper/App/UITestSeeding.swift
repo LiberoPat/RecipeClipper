@@ -185,6 +185,7 @@ enum UITestSeeding {
         let photoDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("UITestPhotos")
         try? FileManager.default.removeItem(at: photoDirectory)
         let photoStore = FilePhotoStore(directory: photoDirectory)
+        ImageLoader.photoDirectory = photoDirectory
         let backupRepository = DefaultBackupRepository(db: database, clock: clock, photos: photoStore)
         let container = AppContainer(
             recipeRepository: DefaultRecipeRepository(
@@ -212,6 +213,9 @@ enum UITestSeeding {
             autoBackup: arguments.contains(backupFolderFlag)
                 ? AutoBackup(backups: backupRepository, folder: UITestBackupFolder(), store: MemoryAutoBackupStore(), clock: clock)
                 : nil,
+            paprikaImportRepository: DefaultPaprikaImportRepository(
+                files: FilePaprikaFiles(photos: photoStore), db: database, clock: clock, library: libraryLimit, photos: photoStore
+            ),
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             tourPreferences: preferences,
             photoTextReader: ProcessInfo.processInfo.environment[UITestPhotoTextReader.visionKey] == "1"

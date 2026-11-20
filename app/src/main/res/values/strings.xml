@@ -295,6 +295,37 @@
     <string name="backup_error_read_failed">Couldn\'t open that file.</string>
     <string name="backup_error_save_failed">Couldn\'t save the imported recipes. Nothing was changed.</string>
     <string name="backup_error_export_failed">Couldn\'t create the export file.</string>
+    <!-- Settings → Your recipes: import from Paprika (#382) -->
+    <string name="paprika_import_title">Import from Paprika</string>
+    <string name="paprika_import_description">Add the recipes from a Paprika export file (.paprikarecipes). Nothing here is replaced or deleted.</string>
+    <string name="paprika_importing">Reading the Paprika file…</string>
+    <string name="paprika_imported_nothing">Nothing new: every recipe in that file is already here.</string>
+    <string name="paprika_nothing_found">No recipes could be read from that file.</string>
+    <string name="paprika_error_not_paprika">That isn\'t a Paprika export. Choose a .paprikarecipes file.</string>
+    <string name="paprika_error_damaged">That file is damaged or cut short. Nothing was imported.</string>
+    <string name="paprika_error_too_large">That file is far larger than a Paprika export should be. Nothing was imported.</string>
+    <string name="paprika_filing_title">Put recipes in lists by their Paprika categories</string>
+    <string name="paprika_filing_description">A list of that name, or a new one. Nothing is taken out of a list.</string>
+    <plurals name="paprika_photos_left_out">
+        <item quantity="one">%d picture couldn\'t be read and was left out.</item>
+        <item quantity="other">%d pictures couldn\'t be read and were left out.</item>
+    </plurals>
+    <plurals name="paprika_lists_made">
+        <item quantity="one">%d new list was made from the categories.</item>
+        <item quantity="other">%d new lists were made from the categories.</item>
+    </plurals>
+    <plurals name="paprika_imported">
+        <item quantity="one">Imported %d recipe from Paprika.</item>
+        <item quantity="other">Imported %d recipes from Paprika.</item>
+    </plurals>
+    <plurals name="paprika_not_recipes">
+        <item quantity="one">%d entry with no name, or with no ingredients or steps, was left out.</item>
+        <item quantity="other">%d entries with no name, or with no ingredients or steps, were left out.</item>
+    </plurals>
+    <plurals name="paprika_unreadable">
+        <item quantity="one">%d entry couldn\'t be read.</item>
+        <item quantity="other">%d entries couldn\'t be read.</item>
+    </plurals>
     <string name="temperature_as_written">As written</string>
     <string name="temperature_as_written_description">Exactly the temperature the recipe uses</string>
     <string name="temperature_celsius">Celsius (°C)</string>

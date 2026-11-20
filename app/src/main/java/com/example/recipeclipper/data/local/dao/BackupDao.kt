@@ -143,6 +143,7 @@ abstract class BackupDao {
         """
         SELECT id, uid, sourceUrl,
                (notes IS NOT NULL AND trim(notes) != '') AS hasNotes,
+               (photoFile IS NOT NULL) AS hasPhoto,
                (EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id)
                     OR contentOrigin IN ('MANUAL', 'CHAT')
                     OR EXISTS(SELECT 1 FROM cooked_photos p WHERE p.recipeId = recipes.id)) AS isListed
@@ -171,6 +172,14 @@ abstract class BackupDao {
     @Query("UPDATE recipes SET notes = :notes WHERE id = :id AND (notes IS NULL OR trim(notes) = '')")
     abstract suspend fun fillNote(id: Long, notes: String)
 
+    /** Only ever fills a missing picture (#386); the plan never names a recipe that has one. */
+    @Query("UPDATE recipes SET photoFile = :file WHERE id = :id AND photoFile IS NULL")
+    abstract suspend fun fillPhotoFile(id: Long, file: String)
+
+    /** Every picture file a recipe names (#386): what an import that fails leaves alone. */
+    @Query("SELECT photoFile FROM recipes WHERE photoFile IS NOT NULL")
+    abstract suspend fun recipePhotoFiles(): List<String>
+
     @Transaction
     open suspend fun importBackup(
         backup: Backup,
@@ -179,7 +188,9 @@ abstract class BackupDao {
         newUid: () -> String,
         /** The package's pictures (#116), by path in the zip, already copied in: their stored names. */
         storedPhotos: Map<String, String> = emptyMap(),
-        now: Long = 0L
+        now: Long = 0L,
+        /** A new list no recipe comes into is not made (#387): the Paprika import's, which files by category. */
+        dropEmptyNewLists: Boolean = false
     ): ImportSummary {
         // Unlimited (#107) leaves nothing out: every recipe comes in.
         val historyLimit = when (limit) {
@@ -206,7 +217,8 @@ abstract class BackupDao {
             existingMenuUids = existingMenuUids().toSet(),
             existingMenuEntryUids = existingMenuEntryUids().toSet(),
             existingCookedPhotoUids = existingCookedPhotoUids().toSet(),
-            availablePhotoFiles = storedPhotos.keys
+            availablePhotoFiles = storedPhotos.keys,
+            dropEmptyNewLists = dropEmptyNewLists
         )
         writePlan(plan, storedPhotos, now)
         return plan.summary
@@ -278,11 +290,13 @@ abstract class BackupDao {
                     language = r.language,
                     contentOrigin = r.contentOrigin,
                     editedAt = r.editedAt,
-                    basedOnUid = r.basedOn
+                    basedOnUid = r.basedOn,
+                    photoFile = r.photo?.let(storedPhotos::get)
                 )
             )
         }
         plan.noteUpdates.forEach { fillNote(it.recipeId, it.notes) }
+        plan.photoUpdates.forEach { update -> storedPhotos[update.file]?.let { fillPhotoFile(update.recipeId, it) } }
 
         val newListIds = HashMap<String, Long>()
         for (l in plan.newLists) {

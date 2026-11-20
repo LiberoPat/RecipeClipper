@@ -284,7 +284,7 @@ abstract class RecipeDao {
     // "Saved" is derived: a recipe is saved when at least one list contains it.
     @Query(
         """
-        SELECT id, title, imageUrl, totalTime, lastViewedAt,
+        SELECT id, title, ${RecipeImageSql.PLAIN} AS imageUrl, totalTime, lastViewedAt,
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
@@ -321,7 +321,7 @@ abstract class RecipeDao {
      */
     @Query(
         """
-        SELECT id, title, imageUrl, totalTime, lastViewedAt,
+        SELECT id, title, ${RecipeImageSql.PLAIN} AS imageUrl, totalTime, lastViewedAt,
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
@@ -368,7 +368,7 @@ abstract class RecipeDao {
 
     @Query(
         """
-        SELECT id, title, imageUrl, totalTime, lastViewedAt,
+        SELECT id, title, ${RecipeImageSql.PLAIN} AS imageUrl, totalTime, lastViewedAt,
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
@@ -533,7 +533,9 @@ abstract class RecipeDao {
             notes = existing.notes,
             cookState = cook,
             servingsTarget = existing.servingsTarget,
-            basedOnUid = existing.basedOnUid
+            basedOnUid = existing.basedOnUid,
+            // The recipe's own picture (#386) is the user's: a refresh or an edit never takes it away.
+            photoFile = existing.photoFile
         )
     }
 
