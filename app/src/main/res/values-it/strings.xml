@@ -526,7 +526,11 @@
     <!-- A grocery line's recipe tag, read aloud (#422): "For Mushroom omelette, Thursday" -->
     <string name="grocery_tag_for">Per %1$s</string>
     <string name="grocery_tag_for_day">Per %1$s, %2$s</string>
-    <string name="grocery_tag_more">Altre %1$d ricette</string>
+    <plurals name="grocery_tag_more">
+        <item quantity="one">%1$d altra ricetta</item>
+        <item quantity="many">%1$d di altre ricette</item>
+        <item quantity="other">%1$d altre ricette</item>
+    </plurals>
     <!-- Linking a typed grocery item to a recipe (#422): its long-press menu, and the picker's title -->
     <string name="action_for_a_recipe">Per una ricetta…</string>
     <string name="action_not_for_a_recipe">Non per una ricetta</string>

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -103,7 +104,7 @@ private fun RecipeTagChip(tag: RecipeTag, onClick: () -> Unit, testTag: String) 
 /** "+N": the tags not shown. Not a button: the recipes are all on the Recipes screen. */
 @Composable
 private fun MoreTag(more: Int, testPrefix: String) {
-    val spoken = stringResource(R.string.grocery_tag_more, more)
+    val spoken = pluralStringResource(R.plurals.grocery_tag_more, more, more)
     Text(
         "+$more",
         style = MaterialTheme.typography.labelMedium,
