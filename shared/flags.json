@@ -95,6 +95,12 @@
       "description": "Recipe versions: JSON shared in whose isBasedOn names a recipe in the library (its link, as Change this recipe wrote it) is saved as a version of it, linked by the original's uid. The version shows Based on the original (a tap opens it) and the original lists its versions. Off, the link is neither saved nor shown, and the recipe is a plain chat recipe.",
       "defaults": { "debug": true, "release": true },
       "issue": 354
+    },
+    {
+      "key": "eveningReminders",
+      "description": "Evening-before reminder: a notification at the cook's time (19:00 by default, Settings > Week) naming tomorrow's planned meals and quoting any step to start ahead of time (marinate, soak, thaw, chill for hours, rise overnight, found by a word table in the recipe's own language); a tap opens the first recipe on the Week tab. An optional afternoon \"Tonight\" reminder (off by default). Off, neither is scheduled and Settings has no Week section.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 397
     }
   ]
 }

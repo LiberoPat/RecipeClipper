@@ -3,6 +3,7 @@ package com.example.recipeclipper.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.example.recipeclipper.data.model.MealReminders
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.Tooltip
@@ -59,6 +60,33 @@ class SharedPrefsAppPreferences @Inject constructor(
         get() = prefs.getBoolean(KEY_EXPIRY_REMINDERS, false)
         set(value) {
             prefs.edit { putBoolean(KEY_EXPIRY_REMINDERS, value) }
+        }
+
+    override var eveningReminder: Boolean
+        get() = prefs.getBoolean(KEY_EVENING_REMINDER, true)
+        set(value) {
+            prefs.edit { putBoolean(KEY_EVENING_REMINDER, value) }
+        }
+
+    // A stored time outside the day (a damaged file) reads as the default.
+    override var eveningReminderMinute: Int
+        get() = prefs.getInt(KEY_EVENING_REMINDER_MINUTE, MealReminders.EVENING_MINUTE).takeIf { it in 0 until 24 * 60 }
+            ?: MealReminders.EVENING_MINUTE
+        set(value) {
+            prefs.edit { putInt(KEY_EVENING_REMINDER_MINUTE, value.coerceIn(0, 24 * 60 - 1)) }
+        }
+
+    override var tonightReminder: Boolean
+        get() = prefs.getBoolean(KEY_TONIGHT_REMINDER, false)
+        set(value) {
+            prefs.edit { putBoolean(KEY_TONIGHT_REMINDER, value) }
+        }
+
+    override var tonightReminderMinute: Int
+        get() = prefs.getInt(KEY_TONIGHT_REMINDER_MINUTE, MealReminders.TONIGHT_MINUTE).takeIf { it in 0 until 24 * 60 }
+            ?: MealReminders.TONIGHT_MINUTE
+        set(value) {
+            prefs.edit { putInt(KEY_TONIGHT_REMINDER_MINUTE, value.coerceIn(0, 24 * 60 - 1)) }
         }
 
     override var chefMode: Boolean
@@ -127,6 +155,10 @@ class SharedPrefsAppPreferences @Inject constructor(
         const val KEY_DARK_COOKING = "dark_while_cooking"
         const val KEY_TEMPERATURE_UNIT = "temperature_unit"
         const val KEY_EXPIRY_REMINDERS = "expiry_reminders"
+        const val KEY_EVENING_REMINDER = "evening_reminder"
+        const val KEY_EVENING_REMINDER_MINUTE = "evening_reminder_minute"
+        const val KEY_TONIGHT_REMINDER = "tonight_reminder"
+        const val KEY_TONIGHT_REMINDER_MINUTE = "tonight_reminder_minute"
         const val KEY_CHEF_MODE = "chef_mode"
         const val KEY_AMOUNTS_IN_STEPS = "amounts_in_steps"
         const val KEY_RECIPE_SORT = "recipe_sort"

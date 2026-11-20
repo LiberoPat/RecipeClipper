@@ -2552,6 +2552,111 @@ The optional extras of #46, one PR each.
   follow the plan's rules (a recipe meal needs its recipe, a note always comes in, no meal type
   means Dinner), its recipes come in like listed ones, and a menu left with no meals is dropped.
 
+## The evening-before reminder, and Tonight (#397)
+
+The owner's hardest part of the app is shopping and then cooking through the week
+(2026-11-19): fresh food going off, time on weeknights, plans changing, forgetting
+what's next. #52's expiry reminder covers the first; this is "what's next", the evening
+before, with the one thing a cook most often forgets: the step that has to be started ahead.
+Behind `eveningReminders` (on by default, issue #397).
+
+- **A notification at the cook's time, default 19:00,** naming tomorrow's planned meals:
+  "Tomorrow: Porridge, Lemon chicken". Meals are in meal type order (Breakfast before Dinner,
+  as the Tonight widget has them, then the plan's order), a recipe by its title and a planned
+  note by its text; the same recipe planned twice is named once; a recipe that's gone and an
+  empty note name nothing. **Nothing planned tomorrow, nothing sent.** A tap opens the first
+  planned recipe on the Week's own stack (`week/recipe/{id}`, iOS `Router.openInWeek`), so Back
+  returns to the week; when every meal is a note, the Week tab.
+- **"Tonight", off by default, default 16:00:** the same notification on the day itself,
+  "Tonight: Lemon chicken". It leaves out Breakfast and Lunch (by their `builtInKey`, so a
+  rename doesn't change it): they are over by the afternoon. It never quotes an ahead step,
+  since it is too late for one.
+- **Settings > Week** (a new section, #286's index: Units, Oven temperature, Appearance, Steps,
+  **Week**, Pantry…; only with the flag). Each reminder is a switch and, while it is on, a
+  time (Android's Material time picker in the phone's 12 or 24-hour format; iOS's compact
+  `DatePicker`). The permission is asked **when a switch goes on, never at launch**, as #52
+  asks (Android 13+ `POST_NOTIFICATIONS` from the Settings screen; iOS `requestAuthorization`
+  through the `NotificationPermission` seam). Refused, the switch stays off and the page says
+  to allow notifications in the system settings, in the error colour (the same sentence as the
+  Pantry's). **The evening reminder is on by default**, as the issue says ("on by default once
+  notifications are allowed"): so a phone that has already allowed notifications (a step timer
+  asked, #10) gets it without a prompt, and one that hasn't gets nothing until the cook allows
+  them. Each time the page comes to the front it looks again whether notifications are allowed
+  (`onNotificationsAllowed` / `onWeekPageShown`), and while a reminder is on and they are not
+  it shows that line, so the default never leaves a silent switch unexplained. The index's value is "Reminders on" while
+  either is on.
+- **Keys** (`unit_preferences` / UserDefaults, the same on both): `evening_reminder` (default
+  on), `evening_reminder_minute` (1140), `tonight_reminder` (off), `tonight_reminder_minute`
+  (960); a minute outside the day reads as the default.
+
+### What it says about the steps to start ahead
+
+- **Found from the steps by a word table, `shared/tables/<language>/ahead.json`, in the
+  recipe's own language (#14), never the phone's.** `AheadSteps.find(steps, words)` (core, iOS
+  the same line for line; the corpus's `Ahead` rows pin the two) returns the first step, in
+  step order, with a sentence that qualifies, and that sentence, trimmed, as the quote. A
+  language with no table detects nothing; every shipped language has one (en, de, es, fr, it,
+  pt, ja), as every table does.
+- **A sentence qualifies by an `always` phrase** ("overnight", "the night before", "the day
+  before", "a day ahead", "make ahead", "can be made ahead", "thaw … in the fridge") **or by a
+  `verb` with at least two hours** in the same sentence, the hours right after the verb (60
+  characters) or just before it (40): marinate, brine, soak, thaw, defrost, chill,
+  refrigerate, rest, rise, prove, proof, freeze, ferment, stand, sit. "Marinate at least 8
+  hours or overnight." and "Chill 2+ hours" qualify; "Marinate for 30 minutes", "rise for 1 to
+  2 hours" (a range's first number decides, so 8 to 12 hours qualifies) and "chill for 1.5
+  hours" do not. Hours are digits (decimal comma too), or a count word from the table
+  ("two", "several", "a few", "a couple of"); `hours` has the unit words, so "Std.", "h" and
+  "時間" work. **A limit is not a wait:** an amount right after an `upTo` word ("up to 2
+  hours", "no more than", "bis zu", "jusqu'à", "最大") never counts.
+- **`skip` phrases never trigger:** a match that overlaps one is dropped ("soak up the
+  sauce", "rest for 5 minutes", "overnight oats", "no need to marinate", "not necessary…").
+  A skip only blocks what it overlaps, so a later qualifying sentence in the same step still
+  counts. Patterns are regex fragments in the table, case-insensitive, as whole words in a
+  spaced language (Japanese has none); groups are non-capturing; `\p{L}` rather than `\w`, since
+  Java's `\w` is ASCII only.
+- **Sentences end at `.`, `!` or `?` followed by a space and not a lower-case letter** ("1.5
+  hours" and "8 Std. im Kühlschrank" stay whole; a German abbreviation's period is not a full
+  stop), and at `。`, `！`, `？` wherever they stand. The quote is that sentence on one line,
+  at most 100 characters, cut at a word with an ellipsis. Rules of thumb, not guesses: a
+  step the table doesn't recognise says nothing, and a missing quote is the table's gap to
+  fill (edit the table, both apps read it), never code.
+- **The notification's body** (one string per sentence, in the UI language; the quote itself
+  stays as the recipe wrote it): one recipe, "To do ahead: “Marinate at least 8 hours or
+  overnight.”"; several, a header line and a line each, "Lemon chicken: “…”". The owner's
+  example read "Marinate tonight:"; the verb isn't known in six languages without a string per
+  verb, so the label is the one general "To do ahead" (the owner's call to refine).
+
+### Scheduling
+
+- **Android: one `AlarmManager` alarm per kind, for its next firing** (`MealReminderCoordinator`,
+  `reminders/AndroidMealReminderScheduler`). Exact where the app may schedule exact alarms
+  (`setExactAndAllowWhileIdle`; unlike a timer's `setAlarmClock` it shows no alarm icon: a
+  reminder is not an alarm clock), else `setAndAllowWhileIdle`, which can be minutes late, as
+  #10 decided; no Settings prompt for the exact-alarm permission. The alarm is armed whether or
+  not anything is planned. **The receiver decides**: at fire time `MealReminderCoordinator.due`
+  reads the plan, the recipes' steps and the setting as they are then, so a meal moved or
+  removed since, a switch turned off, the flag off, or an alarm that arrives a day late
+  (its day isn't today) sends nothing; then it arms the next, a day later at the earliest
+  (`rearm`: an alarm a moment early can't re-arm itself for the same minute), touching the other
+  kind's alarm not at all (both may share a minute). Because the receiver reads the database,
+  the plan changing needs no rescheduling here; the settings, the flag, a boot or app update,
+  the time or the time zone changing (`TimerBootReceiver` also takes `TIME_SET` and
+  `TIMEZONE_CHANGED`) and every app start re-arm from scratch. Channel "Meal reminders"
+  (default importance); the tap's `OPEN_MEAL_REMINDER` intent goes through MainActivity's route
+  queue to `week/recipe/{id}` (`openRoute` lands a `week/recipe/` route in the Week tab, not
+  Recipes).
+- **iOS: pending `UNCalendarNotificationTrigger` requests, replaced wholesale**
+  (`meals.<kind>.<day>`), each carrying its words as planned: nothing runs when one fires.
+  `MealReminderCoordinator` observes the next nine days' plan and the meal types, the settings
+  and the flag, and replans on every change; coming back to the foreground replans from today
+  (the share extension saves in its own process, and a re-share can change a recipe's steps).
+  At most `MealReminders.maxDays` (7) per kind, so at most 14 pending with the expiry reminders'
+  30 and the timers under iOS's 64. It never asks for permission itself.
+- **Pure planning** (`MealReminders`, both platforms, `MealRemindersTest(s)`): the day it fires
+  and the day it names (`mealDay`), the first day a time can still fire (`firstDay`: today while
+  the minute of the day is before it), the meals named, the reminder built, and the text
+  functions that take the platform's strings as functions.
+
 ## Chef mode: short steps written on the device (#100)
 
 Part of #99: the model writes words, code owns every number.
@@ -5532,7 +5637,8 @@ ui/            navigation, home, recipes (the library), recipe, clip, edit, save
                the received file's sheet, #149), print (Print or save as PDF, the cookbook PDF, #318),
                theme, common
 timers/        AlarmManager scheduler, alarm and boot receivers, the "time's up" notification
-reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receiver, the notification (#52)
+reminders/     the pantry's expiry reminder: one AlarmManager alarm, its receiver, the notification (#52);
+               the evening and Tonight reminders: one alarm per kind, built from the plan when it fires (#397)
 ```
 
 ### Routes
@@ -5577,6 +5683,8 @@ extension writes to as well.
 **Sections, in order:** Units (with "Also convert liquids" for Ounces only), Oven temperature
 (independent of units, default As written), Appearance ("Dark while cooking"), Steps
 ("Amounts in steps", off, #101; "Chef mode", behind the `chefMode` flag, #100),
+Week (the evening-before and Tonight reminders with their times, behind the `eveningReminders`
+flag, #397),
 Pantry ("Expiry reminders"; asks for notifications when turned on,
 never at launch), Your recipes (export, import and the automatic copy, #150), Help ("Show
 tips again", #190), and Unlimited recipes (only with `freeTier`: "Unlock for <store price>"
@@ -5593,7 +5701,7 @@ own page (`settings/<section>`; iOS `Route.settingsSection`) holding exactly the
 had on the one long screen; Back returns to the index. The values come from the settings, never
 sample text: Units and Oven temperature their choice; Appearance "Dark while cooking" when on,
 else "System theme" (dark mode is the system's call); Steps "Amounts on/off" (Chef mode isn't
-summarised); Pantry "Reminders on/off"; Your recipes the automatic copy's "Last backed up"
+summarised); Week and Pantry "Reminders on/off"; Your recipes the automatic copy's "Last backed up"
 (how long ago) or "Not backed up yet", in the error colour while any of its page's warnings
 shows; Unlimited recipes "Unlocked" once it is; Help none. The value takes at most half the row
 and wraps; at the largest text sizes it sits under the name. Each page has its own ViewModel,
@@ -5603,7 +5711,8 @@ is hosted by Help's page, so its visit is that page's; the index hosts none.
 
 **Keys** (the SharedPreferences file `unit_preferences`, and `UserDefaults` on iOS,
 the same on both): `unit_system`, `convert_liquids`, `temperature_unit`,
-`dark_while_cooking`, `expiry_reminders`, `chef_mode`, `amounts_in_steps`,
+`dark_while_cooking`, `expiry_reminders`, `evening_reminder`, `evening_reminder_minute`,
+`tonight_reminder`, `tonight_reminder_minute` (#397), `chef_mode`, `amounts_in_steps`,
 `recipe_sort` (the Recipes screen's sort), the tour's `tour_sample_added` (#151) and
 `tooltip_<id>` (#190; #151's `tour_welcome` and `tour_tip_*` are ignored), and `pantry_use_up` (#147: recipe id to when
 its sheet was settled, pruned to 12 h on each write), each enum stored by name, an

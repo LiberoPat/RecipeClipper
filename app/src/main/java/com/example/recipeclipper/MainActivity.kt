@@ -21,6 +21,7 @@ import com.example.recipeclipper.data.backup.ShareFile
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.reminders.ExpiryNotifications
+import com.example.recipeclipper.reminders.MealReminderNotifications
 import com.example.recipeclipper.timers.TimerNotifications
 import com.example.recipeclipper.widgets.HomeWidgets
 import com.example.recipeclipper.ui.common.LocalFlagValues
@@ -187,6 +188,12 @@ class MainActivity : ComponentActivity() {
         }
         // The home-screen widgets (#309): Tonight opens the Week, the list opens Groceries.
         if (intent?.action == HomeWidgets.ACTION_OPEN_WEEK) return Tab.WEEK.route
+        // The evening-before and Tonight reminders (#397): the first planned recipe on the Week's
+        // own stack, or the Week tab when every meal is a note.
+        if (intent?.action == MealReminderNotifications.ACTION_OPEN_MEAL) {
+            val id = intent.getLongExtra(MealReminderNotifications.EXTRA_RECIPE_ID, -1)
+            return if (id > 0) Routes.weekRecipe(id, null) else Tab.WEEK.route
+        }
         if (intent?.action == HomeWidgets.ACTION_OPEN_GROCERIES) return Tab.GROCERIES.route
         if (intent?.action == TimerNotifications.ACTION_OPEN_COOK) {
             val id = intent.getLongExtra(TimerNotifications.EXTRA_RECIPE_ID, -1)

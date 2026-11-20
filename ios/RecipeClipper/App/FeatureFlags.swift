@@ -40,6 +40,8 @@ enum Flag: String, CaseIterable {
     case mealPlanImport
     /// Recipe versions (#354): an AI's change to a recipe is saved linked to its original.
     case recipeVersions
+    /// The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397).
+    case eveningReminders
 }
 
 /// One flag as `shared/flags.json` declares it.

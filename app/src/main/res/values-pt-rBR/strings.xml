@@ -835,4 +835,18 @@
     <string name="ai_prompt_temperature_f">Dê as temperaturas do forno em °F.</string>
     <string name="ai_prompt_write_in">Escreva em %1$s.</string>
     <string name="ai_prompt_note_outside">Coloque qualquer outra coisa que queira dizer fora do bloco de código.</string>
+    <!-- Evening and Tonight reminders (#397) -->
+    <string name="meal_reminders_channel_name">Lembretes de refeições</string>
+    <string name="meal_reminders_channel_description">As refeições planejadas para amanhã e hoje à noite</string>
+    <string name="meal_reminder_tomorrow">Amanhã: %1$s</string>
+    <string name="meal_reminder_tonight">Hoje à noite: %1$s</string>
+    <string name="meal_reminder_ahead_one">Para fazer antes: “%1$s”</string>
+    <string name="meal_reminder_ahead_header">Para fazer antes:</string>
+    <string name="meal_reminder_ahead_item">%1$s: “%2$s”</string>
+    <string name="evening_reminder_title">Lembrete da noite</string>
+    <string name="evening_reminder_description">Na noite anterior: as refeições planejadas para amanhã e o que precisa ser preparado antes</string>
+    <string name="tonight_reminder_title">Lembrete de hoje à noite</string>
+    <string name="tonight_reminder_description">À tarde: as refeições planejadas para hoje à noite</string>
+    <string name="reminder_time_title">Horário</string>
+    <string name="reminder_time_dialog_title">Horário do lembrete</string>
 </resources>

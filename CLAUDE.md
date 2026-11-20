@@ -47,7 +47,7 @@ by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); 
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
 (`reddit` flag, #11), or the photo read on the device and checked by the cook (`photoText`,
 #198), and your own photos scanned the same way (#226), or text shared in (#306); "Ask an AI" prompts that come back as recipe JSON (#351, #353), a week of them reviewed into Week (#352), and changes saved as versions of the recipe they changed (#354), the answer shared or pasted (#372); running timers outside the app
-(a Live Activity, an ongoing notification) and the Tonight and Groceries widgets (#309); the UI in six languages (drafts awaiting a native speaker:
+(a Live Activity, an ongoing notification) and the Tonight and Groceries widgets (#309); the evening-before reminder of tomorrow's meals, quoting a step to start ahead (#397); the UI in six languages (drafts awaiting a native speaker:
 `docs/translations.md`). iOS also honours Dynamic Type.
 
 Not built, all tracked as issues: other recipe languages,

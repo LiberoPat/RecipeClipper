@@ -24,6 +24,8 @@ final class AppContainer {
     let notificationPermission: NotificationPermission
     /// Keeps the pantry's expiry reminders scheduled (#52); the live app only.
     private(set) var expiryReminders: ExpiryReminderCoordinator?
+    /// Keeps the evening and Tonight reminders scheduled (#397); the live app only.
+    private(set) var mealReminders: MealReminderCoordinator?
     /// The home-screen widgets' redraws (#309); the live app only.
     private(set) var widgetRefresher: WidgetRefresher?
     /// Where the share extension leaves a Reddit post it was blocked from reading (#213); nil
@@ -139,6 +141,8 @@ final class AppContainer {
         sharedDatabase?.refreshObservers()
         // A day may have passed: plan the expiry reminders from today again.
         expiryReminders?.reschedule()
+        // And the evening and Tonight reminders (#397), whose recipes the extension may have re-shared.
+        mealReminders?.refresh()
         // A re-share from the extension may have dropped a cook's progress: its countdowns go (#333).
         Task { await timerCountdowns.reconcile() }
     }
@@ -161,6 +165,16 @@ final class AppContainer {
         )
         coordinator.start()
         expiryReminders = coordinator
+    }
+
+    /// Starts the evening and Tonight reminders (#397) over `scheduler`. The live app only.
+    func startMealReminders(_ scheduler: MealReminderScheduler) {
+        let coordinator = MealReminderCoordinator(
+            mealPlan: mealPlanRepository, recipes: recipeRepository, preferences: preferences,
+            flags: featureFlags, scheduler: scheduler, clock: clock
+        )
+        coordinator.start()
+        mealReminders = coordinator
     }
 
     /// The real graph: SQLite on disk, the blog source, UserDefaults. The database and the
@@ -257,6 +271,7 @@ final class AppContainer {
         // copies) go once the process is past them.
         if let photos = container.cookedPhotoRepository { Task { await photos.sweep() } }
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
+        if !testing { container.startMealReminders(NotificationMealReminderScheduler()) }
         if !testing { container.startWidgets(WidgetRefresher(switchStore: DefaultsWidgetsSwitch(defaults: defaults))) }
         if !testing { container.followLiveTimersFlag() }
         storeKit?.start()

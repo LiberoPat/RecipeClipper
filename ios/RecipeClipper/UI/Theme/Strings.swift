@@ -832,6 +832,33 @@ enum Strings {
     static var settingsSectionHelp: String { String(localized: "settings_section_help") }
     static var settingsShowTips: String { String(localized: "settings_show_tips") }
     static var settingsShowTipsDescription: String { String(localized: "settings_show_tips_description") }
+    // The evening and Tonight reminders (#397)
+    static var eveningReminderTitle: String { String(localized: "evening_reminder_title") }
+    static var eveningReminderDescription: String { String(localized: "evening_reminder_description") }
+    static var tonightReminderTitle: String { String(localized: "tonight_reminder_title") }
+    static var tonightReminderDescription: String { String(localized: "tonight_reminder_description") }
+    static var reminderTimeTitle: String { String(localized: "reminder_time_title") }
+    static var reminderTimeDialogTitle: String { String(localized: "reminder_time_dialog_title") }
+
+    /// "Tomorrow: Porridge, Lemon chicken" / "Tonight: Lemon chicken".
+    static func mealReminderTitle(_ reminder: MealReminder) -> String {
+        MealReminderText.title(
+            reminder,
+            tomorrow: { String(localized: "meal_reminder_tomorrow \($0)") },
+            tonight: { String(localized: "meal_reminder_tonight \($0)") }
+        )
+    }
+
+    /// What to do ahead, quoting the step; nil when nothing.
+    static func mealReminderBody(_ reminder: MealReminder) -> String? {
+        MealReminderText.body(
+            reminder,
+            one: { String(localized: "meal_reminder_ahead_one \($0)") },
+            header: String(localized: "meal_reminder_ahead_header"),
+            item: { String(localized: "meal_reminder_ahead_item \($0) \($1)") }
+        )
+    }
+
     // Settings' index (#286): each section's current value, beside its name.
     static var settingsValueSystemTheme: String { String(localized: "settings_value_system_theme") }
     static var settingsValueAmountsOn: String { String(localized: "settings_value_amounts_on") }

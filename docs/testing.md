@@ -403,6 +403,15 @@ Kotlin (each step against its lines as given and doubled in Metric; write only
 `RecipeStepAmountsScreenTest` and `AmountsInStepsSettingsTest` (Robolectric) and
 `AmountsInStepsUITests` (iOS, the `cook` scenario's "1 lb beef") cover the screens.
 
+The evening-before and Tonight reminders (#397): which step is "ahead of time" is JVM-tested for
+every phrase and skip phrase of every language (`AheadStepsTest`; iOS `AheadStepsTests`; the
+corpus's `Ahead` rows pin the two), the meals named, the order, the text and the first day
+(`MealRemindersTest` / `MealRemindersTests`), and what the alarms do (`MealReminderCoordinatorTest`:
+armed, re-armed, and what the receiver builds, or doesn't, when the plan, a switch, the flag or the day has
+changed; iOS `MealReminderCoordinatorTests`), with the Settings > Week switches and times
+(`SettingsWeekRemindersTest` / `SettingsWeekRemindersTests`). The notification itself and the tap were
+checked by hand (docs/decisions.md, "The evening-before reminder").
+
 Pantry expiry reminders (#52): when they fall and what they list is JVM-tested
 (`ExpiryRemindersTest`, `ExpiryReminderCoordinatorTest`,
 `SettingsExpiryRemindersTest`) and mirrored on iOS (`ExpiryRemindersTests`,
