@@ -110,8 +110,9 @@ struct ClipScreen: View {
         .animation(.easeOut(duration: 0.2), value: state.notice)
         // Each notice shows for a while, then goes; a newer one restarts the wait.
         .task(id: state.notice?.serial) {
-            guard let serial = state.notice?.serial else { return }
-            do { try await Task.sleep(for: SnackbarTimeout.duration) } catch { return }
+            guard let notice = state.notice else { return }
+            let serial = notice.serial
+            do { try await Task.sleep(for: notice.message.snackbarWindow) } catch { return }
             vm.onNoticeShown(serial)
         }
         .onChange(of: state.savedRecipeId) { _, id in

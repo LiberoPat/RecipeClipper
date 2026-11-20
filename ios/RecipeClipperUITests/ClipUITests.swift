@@ -71,7 +71,9 @@ final class ClipUITests: RecipeUITestCase {
         // A tag takes back its own add; the snackbar's Undo brings it back.
         onPage(page.buttons["Ingredients · 3"], "the Ingredients tag").tap()
         require(text("3 ingredients removed"), "the removed snackbar")
-        app.buttons["Undo"].tap()
+        // The removal's snackbar lasts the undo window (10 s), not a notice's 4: a runner whose
+        // tree is slow (the web view's) took 4 s between seeing the text and finding Undo.
+        require(app.buttons["Undo"], "the snackbar's Undo").tap()
         onPage(page.buttons["Ingredients · 3"], "the Ingredients tag, back")
 
         tapOnPage("Brown the butter until it smells nutty.")
