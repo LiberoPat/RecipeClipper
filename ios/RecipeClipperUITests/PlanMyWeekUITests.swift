@@ -29,6 +29,8 @@ final class PlanMyWeekUITests: RecipeUITestCase {
         XCTAssertTrue(app.buttons["askAiMeal-breakfast"].isSelected)
         XCTAssertTrue(require(app.buttons["askAiSource-NEW"], "New recipes").isSelected)
         require(app.buttons["planDay-\(todayEpochDay())"], "today on the start-day strip")
+        app.swipeUp()
+        app.swipeUp()
         screenshot("ios-sheet")
 
         app.buttons["askAiSource-MINE"].tap()
