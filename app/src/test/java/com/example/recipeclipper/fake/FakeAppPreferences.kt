@@ -2,6 +2,7 @@ package com.example.recipeclipper.fake
 
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
+import com.example.recipeclipper.data.model.MealReminders
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipesLayout
 import com.example.recipeclipper.data.model.TemperatureUnit
@@ -24,13 +25,17 @@ class FakeAppPreferences(
     chefMode: Boolean = false,
     amountsInSteps: Boolean = false,
     recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED,
-    recipesLayout: RecipesLayout = RecipesLayout.ROWS
+    recipesLayout: RecipesLayout = RecipesLayout.ROWS,
+    eveningReminder: Boolean = true,
+    eveningReminderMinute: Int = MealReminders.EVENING_MINUTE,
+    tonightReminder: Boolean = false,
+    tonightReminderMinute: Int = MealReminders.TONIGHT_MINUTE
 ) : AppPreferences {
 
     private val state = MutableStateFlow(
         AppSettings(
             unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps,
-            recipeSort, recipesLayout
+            recipeSort, recipesLayout, eveningReminder, eveningReminderMinute, tonightReminder, tonightReminderMinute
         )
     )
 
@@ -55,6 +60,22 @@ class FakeAppPreferences(
     override var expiryReminders: Boolean
         get() = state.value.expiryReminders
         set(value) = state.update { it.copy(expiryReminders = value) }
+
+    override var eveningReminder: Boolean
+        get() = state.value.eveningReminder
+        set(value) = state.update { it.copy(eveningReminder = value) }
+
+    override var eveningReminderMinute: Int
+        get() = state.value.eveningReminderMinute
+        set(value) = state.update { it.copy(eveningReminderMinute = value) }
+
+    override var tonightReminder: Boolean
+        get() = state.value.tonightReminder
+        set(value) = state.update { it.copy(tonightReminder = value) }
+
+    override var tonightReminderMinute: Int
+        get() = state.value.tonightReminderMinute
+        set(value) = state.update { it.copy(tonightReminderMinute = value) }
 
     override var chefMode: Boolean
         get() = state.value.chefMode

@@ -51,6 +51,27 @@ recipes), the "wasn't added" plurals (every form, the `many` ones included) and 
 confirmations are right as they were. The doubtful ones are under "Proposals for a native
 speaker" below.
 
+## Fresh food, 2026-11-19 (#396)
+
+Two things need a native speaker, both drafts written by Claude:
+
+- **Nine strings** on both platforms (`what_i_need_buy_now`, `what_i_need_buy_later`,
+  `what_i_need_buy_later_note`, `what_i_need_nothing_to_buy_now`, `what_i_need_add_later`,
+  `what_i_need_later_for`, `fresh_keeps`, `fresh_nudge`, `fresh_nudge_swap`). The wording to check: "Buy now"
+  / "Buy later in the week" (*Comprar ahora / más tarde*, *Acheter maintenant / plus tard dans la
+  semaine*, *Jetzt kaufen / Später in der Woche kaufen*, *Compra adesso / più tardi nella settimana*,
+  *Comprar agora / mais tarde na semana*), and "keeps about N days once bought" (*se conserva unos N días
+  tras la compra*, *se garde environ N jours après l'achat*, *hält sich nach dem Kauf etwa N Tage*, *si
+  conserva circa N giorni dopo l'acquisto*, *dura cerca de N dias depois de comprado*), which must
+  stay a hint, never a promise. The note puts a colon after the ingredient so no verb has to agree with
+  it; French spaces it (" :") as the language does.
+- **`shared/tables/<language>/perishables.json`** for de, es, fr, it, pt and ja (en is the solid one): the
+  ingredient names per group, the `skip` entries (smoked, dried, frozen, canned, cooked: not fresh) and,
+  for fr, es, it and pt, `skipPrefixes` ("caldo de", "confiture de", "pesto di": a product made from the
+  food). A native speaker should add the names a cook really writes, check that none of the `skip`s
+  hides a fresh ingredient and that no alias is a different thing in that language ("mora", "bayas",
+  "salade", Japanese "いか" and "たら" inside longer words). Missing a name only means "bought now".
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,

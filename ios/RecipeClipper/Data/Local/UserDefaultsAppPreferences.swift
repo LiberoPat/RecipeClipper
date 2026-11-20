@@ -11,6 +11,10 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let temperatureUnit = "temperature_unit"
         static let darkWhileCooking = "dark_while_cooking"
         static let expiryReminders = "expiry_reminders"
+        static let eveningReminder = "evening_reminder"
+        static let eveningReminderMinute = "evening_reminder_minute"
+        static let tonightReminder = "tonight_reminder"
+        static let tonightReminderMinute = "tonight_reminder_minute"
         static let chefMode = "chef_mode"
         static let amountsInSteps = "amounts_in_steps"
         static let recipeSort = "recipe_sort"
@@ -47,6 +51,32 @@ final class UserDefaultsAppPreferences: AppPreferences {
     var expiryReminders: Bool {
         get { defaults.bool(forKey: Key.expiryReminders) }
         set { defaults.set(newValue, forKey: Key.expiryReminders) }
+    }
+
+    var eveningReminder: Bool {
+        get { defaults.object(forKey: Key.eveningReminder) as? Bool ?? true }   // on when unset
+        set { defaults.set(newValue, forKey: Key.eveningReminder) }
+    }
+
+    // A stored time outside the day (a damaged file) reads as the default.
+    var eveningReminderMinute: Int {
+        get { Self.minute(defaults.object(forKey: Key.eveningReminderMinute), MealReminders.eveningMinute) }
+        set { defaults.set(min(max(newValue, 0), 24 * 60 - 1), forKey: Key.eveningReminderMinute) }
+    }
+
+    var tonightReminder: Bool {
+        get { defaults.bool(forKey: Key.tonightReminder) }
+        set { defaults.set(newValue, forKey: Key.tonightReminder) }
+    }
+
+    var tonightReminderMinute: Int {
+        get { Self.minute(defaults.object(forKey: Key.tonightReminderMinute), MealReminders.tonightMinute) }
+        set { defaults.set(min(max(newValue, 0), 24 * 60 - 1), forKey: Key.tonightReminderMinute) }
+    }
+
+    private static func minute(_ stored: Any?, _ fallback: Int) -> Int {
+        if let value = stored as? Int, (0..<24 * 60).contains(value) { return value }
+        return fallback
     }
 
     var chefMode: Bool {

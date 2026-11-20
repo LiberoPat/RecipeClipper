@@ -28,6 +28,8 @@ final class AppContainer {
     let notificationPermission: NotificationPermission
     /// Keeps the pantry's expiry reminders scheduled (#52); the live app only.
     private(set) var expiryReminders: ExpiryReminderCoordinator?
+    /// Keeps the evening and Tonight reminders scheduled (#397); the live app only.
+    private(set) var mealReminders: MealReminderCoordinator?
     /// The home-screen widgets' redraws (#309); the live app only.
     private(set) var widgetRefresher: WidgetRefresher?
     /// Where the share extension leaves a Reddit post it was blocked from reading (#213); nil
@@ -147,6 +149,8 @@ final class AppContainer {
         sharedDatabase?.refreshObservers()
         // A day may have passed: plan the expiry reminders from today again.
         expiryReminders?.reschedule()
+        // And the evening and Tonight reminders (#397), whose recipes the extension may have re-shared.
+        mealReminders?.refresh()
         // A re-share from the extension may have dropped a cook's progress: its countdowns go (#333).
         Task { await timerCountdowns.reconcile() }
     }
@@ -169,6 +173,16 @@ final class AppContainer {
         )
         coordinator.start()
         expiryReminders = coordinator
+    }
+
+    /// Starts the evening and Tonight reminders (#397) over `scheduler`. The live app only.
+    func startMealReminders(_ scheduler: MealReminderScheduler) {
+        let coordinator = MealReminderCoordinator(
+            mealPlan: mealPlanRepository, recipes: recipeRepository, preferences: preferences,
+            flags: featureFlags, scheduler: scheduler, clock: clock
+        )
+        coordinator.start()
+        mealReminders = coordinator
     }
 
     /// The real graph: SQLite on disk, the blog source, UserDefaults. The database and the
@@ -275,6 +289,7 @@ final class AppContainer {
         // copies) go once the process is past them.
         if let photos = container.cookedPhotoRepository { Task { await photos.sweep() } }
         if !testing { container.startExpiryReminders(NotificationExpiryReminderScheduler()) }
+        if !testing { container.startMealReminders(NotificationMealReminderScheduler()) }
         if !testing { container.startWidgets(WidgetRefresher(switchStore: DefaultsWidgetsSwitch(defaults: defaults))) }
         if !testing { container.followLiveTimersFlag() }
         storeKit?.start()
@@ -347,7 +362,11 @@ final class AppContainer {
     }
 
     func makeWeekViewModel() -> WeekViewModel {
-        WeekViewModel(plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar)
+        WeekViewModel(
+            plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar,
+            skipOn: { [featureFlags] in featureFlags.isOn(.skipTonight) },
+            groceries: groceryRepository, freshFood: featureFlags.isOn(.freshFood)
+        )
     }
 
     func makeAddToPlanViewModel() -> AddToPlanViewModel {
@@ -441,7 +460,7 @@ final class AppContainer {
     func makeWhatINeedViewModel(weekStart: Int64) -> WhatINeedViewModel {
         WhatINeedViewModel(
             weekStart: weekStart, groceries: groceryRepository, pantry: pantryRepository, preferences: preferences,
-            decisions: decisionRepository
+            decisions: decisionRepository, calendar: planCalendar, freshFood: featureFlags.isOn(.freshFood)
         )
     }
 
@@ -494,7 +513,8 @@ final class AppContainer {
     func makeMealPlanReviewViewModel(text: String) -> MealPlanReviewViewModel {
         MealPlanReviewViewModel(
             text: text, recipes: recipeRepository, plan: mealPlanRepository, calendar: planCalendar,
-            limit: { [libraryPolicy] in libraryPolicy.limit }, entitlements: entitlements
+            limit: { [libraryPolicy] in libraryPolicy.limit }, entitlements: entitlements,
+            freshFood: featureFlags.isOn(.freshFood)
         )
     }
 

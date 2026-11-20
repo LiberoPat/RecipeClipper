@@ -485,4 +485,176 @@ final class WeekViewModelTests: XCTestCase {
         vm.onCalendarShared()
         XCTAssertNil(vm.uiState.calendarFile)
     }
+
+    // MARK: Skip tonight (#398)
+
+    private let dinner = FakeMealPlanRepository.dinner
+    private let lunch = FakeMealPlanRepository.lunch
+
+    func testSkippingOpensTheSheetForAMealFromTodayOnNeverOneInThePast() async {
+        await plan.addRecipe(recipeId: 7, day: today - 1, mealTypeId: dinner, servings: nil)
+        await plan.addRecipe(recipeId: 8, day: today, mealTypeId: dinner, servings: nil)
+        let vm = viewModel()
+        await settleMain()
+        let past = plan.meals.value.first { $0.day == today - 1 }!
+        let tonight = plan.meals.value.first { $0.day == today }!
+
+        XCTAssertFalse(vm.uiState.canSkip(past))
+        vm.onSkipStart(past)
+        XCTAssertNil(vm.uiState.skipping)
+
+        XCTAssertTrue(vm.uiState.canSkip(tonight))
+        vm.onSkipStart(tonight)
+        XCTAssertEqual(vm.uiState.skipping?.meal, tonight)
+        vm.onSkipDismissed()
+        XCTAssertNil(vm.uiState.skipping)
+        XCTAssertTrue(plan.skips.isEmpty)
+    }
+
+    func testPushingTheWeekMovesTheMealAndEveryLaterOneAndSaysSoOnce() async {
+        await plan.addRecipe(recipeId: 7, day: today, mealTypeId: dinner, servings: nil)
+        await plan.addRecipe(recipeId: 8, day: today + 1, mealTypeId: dinner, servings: nil)
+        await plan.addNote("Eat out", day: today + 3, mealTypeId: lunch)
+        let vm = viewModel()
+        await settleMain()
+        let meals = plan.meals.value
+
+        vm.onSkipStart(meals[0])
+        vm.onSkip(.pushWeek)
+        await settleMain()
+
+        XCTAssertNil(vm.uiState.skipping)
+        XCTAssertEqual(plan.meals.value.map { [$0.id, $0.day] }, [[meals[0].id, today + 1], [meals[1].id, today + 2], [meals[2].id, today + 4]])
+        XCTAssertEqual(vm.uiState.mealsOn(today).map(\.id), [])
+        XCTAssertEqual(vm.uiState.mealsOn(today + 1).map(\.id), [meals[0].id])
+        let notice = vm.uiState.skipped
+        XCTAssertEqual(notice?.choice, .pushWeek)
+        XCTAssertEqual(notice?.label, "Recipe 7")
+        XCTAssertEqual(notice?.pastEnd, false)
+        // The repository was asked once, with today and the list's last day.
+        XCTAssertEqual(plan.skips, [FakeMealPlanRepository.SkipCall(mealId: meals[0].id, choice: .pushWeek, today: today, lastDay: today + 730)])
+    }
+
+    func testMoveToTheNextFreeDayNamesWhereItWentAndUndoPutsEverythingBack() async {
+        await plan.addRecipe(recipeId: 7, day: today, mealTypeId: dinner, servings: nil)
+        await plan.addRecipe(recipeId: 8, day: today + 1, mealTypeId: dinner, servings: nil)
+        let vm = viewModel()
+        await settleMain()
+        let before = plan.meals.value
+        let tonight = before[0]
+
+        vm.onSkipStart(tonight)
+        vm.onSkip(.nextFreeDay)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.skipped?.toDay, today + 2)
+        XCTAssertEqual(plan.meals.value.first { $0.id == tonight.id }?.day, today + 2)
+
+        vm.onUndoSkip()
+        await settleMain()
+        XCTAssertNil(vm.uiState.skipped)
+        XCTAssertEqual(
+            plan.meals.value.map { [$0.id, $0.day] }.sorted { $0[0] < $1[0] },
+            before.map { [$0.id, $0.day] }.sorted { $0[0] < $1[0] }
+        )
+    }
+
+    func testRemovingThroughSkipIsOneUndoToo() async {
+        await plan.addRecipe(recipeId: 7, day: today, mealTypeId: dinner, servings: nil)
+        let vm = viewModel()
+        await settleMain()
+        let meal = plan.meals.value[0]
+
+        vm.onSkipStart(meal)
+        vm.onSkip(.remove)
+        await settleMain()
+        XCTAssertTrue(plan.meals.value.isEmpty)
+        XCTAssertEqual(vm.uiState.skipped?.choice, .remove)
+        XCTAssertNil(vm.uiState.removed) // one snackbar only
+
+        vm.onUndoSkip()
+        await settleMain()
+        XCTAssertEqual(plan.meals.value.map(\.id), [meal.id])
+    }
+
+    func testASkipStandsOnceTheSnackbarGoes() async {
+        await plan.addRecipe(recipeId: 7, day: today, mealTypeId: dinner, servings: nil)
+        let vm = viewModel()
+        await settleMain()
+        vm.onSkipStart(plan.meals.value[0])
+        vm.onSkip(.pushWeek)
+        await settleMain()
+
+        vm.onSkipSnackbarDismissed()
+        vm.onUndoSkip()
+        await settleMain()
+        XCTAssertEqual(plan.meals.value.first?.day, today + 1)
+    }
+
+    func testASecondSkipOrARemovalSettlesTheFirstOneUndoAtATime() async {
+        await plan.addRecipe(recipeId: 7, day: today, mealTypeId: dinner, servings: nil)
+        await plan.addRecipe(recipeId: 8, day: today + 4, mealTypeId: dinner, servings: nil)
+        await plan.addRecipe(recipeId: 9, day: today + 6, mealTypeId: dinner, servings: nil)
+        let vm = viewModel()
+        await settleMain()
+        let meals = plan.meals.value
+
+        vm.onSkipStart(meals[0])
+        vm.onSkip(.nextFreeDay)
+        await settleMain()
+        vm.onSkipStart(meals[1])
+        vm.onSkip(.nextFreeDay)
+        await settleMain()
+        vm.onUndoSkip() // undoes the second only
+        await settleMain()
+        XCTAssertEqual(plan.meals.value.map { [$0.id, $0.day] }, [[meals[0].id, today + 1], [meals[1].id, today + 4], [meals[2].id, today + 6]])
+
+        vm.onSkipStart(meals[0])
+        vm.onSkip(.nextFreeDay)
+        await settleMain()
+        vm.onRemove(meals[2])
+        await settleMain()
+        XCTAssertNil(vm.uiState.skipped) // the removal's snackbar replaced the skip's
+        XCTAssertEqual(vm.uiState.removed?.label, "Recipe 9")
+        vm.onUndoSkip() // nothing pending: nothing happens
+        await settleMain()
+        XCTAssertEqual(plan.meals.value.first { $0.id == meals[0].id }?.day, today + 2)
+    }
+
+    func testAFailedSkipChangesNothingAndShowsNothing() async {
+        await plan.addRecipe(recipeId: 7, day: today, mealTypeId: dinner, servings: nil)
+        plan.failSkips = true
+        let vm = viewModel()
+        await settleMain()
+
+        vm.onSkipStart(plan.meals.value[0])
+        vm.onSkip(.pushWeek)
+        await settleMain()
+
+        XCTAssertNil(vm.uiState.skipped)
+        XCTAssertEqual(plan.meals.value.first?.day, today)
+    }
+
+    func testWithTheSkipTonightFlagOffNothingIsOffered() async {
+        await plan.addRecipe(recipeId: 7, day: today, mealTypeId: dinner, servings: nil)
+        let vm = WeekViewModel(plan: plan, recipes: recipes, calendar: calendar, skipOn: { false }, sleep: immediateSleep)
+        await settleMain()
+        let meal = plan.meals.value[0]
+
+        XCTAssertFalse(vm.uiState.canSkip(meal))
+        vm.onSkipStart(meal)
+        XCTAssertNil(vm.uiState.skipping)
+    }
+
+    func testAPushThatLeavesAMealPastTheLastDayShownIsFlaggedForTheSnackbar() async {
+        await plan.addRecipe(recipeId: 7, day: today, mealTypeId: dinner, servings: nil)
+        await plan.addRecipe(recipeId: 8, day: today + 730, mealTypeId: dinner, servings: nil)
+        let vm = viewModel()
+        await settleMain()
+
+        vm.onSkipStart(plan.meals.value[0])
+        vm.onSkip(.pushWeek)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.skipped?.pastEnd, true)
+    }
 }

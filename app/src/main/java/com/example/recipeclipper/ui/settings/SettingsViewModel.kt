@@ -32,6 +32,8 @@ import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
+import com.example.recipeclipper.data.model.MealReminderKind
+import com.example.recipeclipper.data.model.MealReminders
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -62,6 +64,18 @@ data class SettingsUiState(
     /** Turning reminders on was refused (notifications not allowed): the switch stays off and
      *  says why, until it is turned on successfully. */
     val expiryRemindersDenied: Boolean = false,
+    /** The Week section (#397): only with the `eveningReminders` flag. */
+    val showsWeekReminders: Boolean = false,
+    /** The evening-before reminder of tomorrow's meals, and its time (minutes since midnight). */
+    val eveningReminder: Boolean = true,
+    val eveningReminderMinute: Int = MealReminders.EVENING_MINUTE,
+    /** The optional afternoon Tonight reminder, and its time. */
+    val tonightReminder: Boolean = false,
+    val tonightReminderMinute: Int = MealReminders.TONIGHT_MINUTE,
+    /** What the screen last found: whether the phone lets the app post notifications at all. */
+    val notificationsAllowed: Boolean = true,
+    /** Turning a Week reminder on was refused: the switch stays off and says why, until one is turned on. */
+    val weekRemindersDenied: Boolean = false,
     /** e.g. "1.0 (1)", shown at the foot; tapping it [SettingsViewModel.DEVELOPER_TAPS] times
      *  opens Developer settings (#87). */
     val appVersion: String = "",
@@ -90,7 +104,13 @@ data class SettingsUiState(
 
     /** The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag. */
     val sections: List<SettingsSection>
-        get() = SettingsSection.entries.filter { it != SettingsSection.UNLIMITED || unlock != null }
+        get() = SettingsSection.entries.filter {
+            (it != SettingsSection.UNLIMITED || unlock != null) && (it != SettingsSection.WEEK || showsWeekReminders)
+        }
+
+    /** The Week page says notifications are off: refused just now, or on with the phone not allowing them. */
+    val weekRemindersBlocked: Boolean
+        get() = weekRemindersDenied || (!notificationsAllowed && (eveningReminder || tonightReminder))
 }
 
 /**
@@ -238,7 +258,8 @@ class SettingsViewModel @Inject constructor(
                             showsChefMode = values.isOn(Flag.CHEF_MODE),
                             showsPaprikaImport = paprika != null && values.isOn(Flag.PAPRIKA_IMPORT),
                             showsRecipeKeeperImport = paprika != null && values.isOn(Flag.RECIPE_KEEPER_IMPORT),
-                            showsMealieImport = mealie != null && values.isOn(Flag.MEALIE_IMPORT)
+                            showsMealieImport = mealie != null && values.isOn(Flag.MEALIE_IMPORT),
+                            showsWeekReminders = values.isOn(Flag.EVENING_REMINDERS)
                         )
                     }
                     if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
@@ -303,6 +324,13 @@ class SettingsViewModel @Inject constructor(
         amountsInSteps = amountsInSteps,
         expiryReminders = expiryReminders,
         expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,
+        showsWeekReminders = previous?.showsWeekReminders ?: (featureFlags?.isOn(Flag.EVENING_REMINDERS) ?: false),
+        eveningReminder = eveningReminder,
+        eveningReminderMinute = eveningReminderMinute,
+        tonightReminder = tonightReminder,
+        tonightReminderMinute = tonightReminderMinute,
+        notificationsAllowed = previous?.notificationsAllowed ?: true,
+        weekRemindersDenied = previous?.weekRemindersDenied ?: false,
         appVersion = appInfo.appVersion,
         showsChefMode = previous?.showsChefMode ?: (featureFlags?.isOn(Flag.CHEF_MODE) ?: false),
         chefMode = chefMode,
@@ -372,6 +400,59 @@ class SettingsViewModel @Inject constructor(
     fun onExpiryRemindersPermission(granted: Boolean) {
         preferences.expiryReminders = granted
         _uiState.update { it.copy(expiryReminders = granted, expiryRemindersDenied = !granted) }
+    }
+
+    /**
+     * A Week reminder's switch (#397), like the expiry reminders': turning one on is the screen's
+     * job first (it asks for notification permission, never on launch, and calls
+     * [onWeekReminderPermission] with the answer); off needs no asking.
+     */
+    fun onWeekReminderOff(kind: MealReminderKind) {
+        when (kind) {
+            MealReminderKind.EVENING -> preferences.eveningReminder = false
+            MealReminderKind.TONIGHT -> preferences.tonightReminder = false
+        }
+        _uiState.update {
+            when (kind) {
+                MealReminderKind.EVENING -> it.copy(eveningReminder = false)
+                MealReminderKind.TONIGHT -> it.copy(tonightReminder = false)
+            }
+        }
+    }
+
+    /** Notifications are allowed (the reminder goes on) or refused (it stays off, and the page says why). */
+    fun onWeekReminderPermission(kind: MealReminderKind, granted: Boolean) {
+        when (kind) {
+            MealReminderKind.EVENING -> preferences.eveningReminder = granted
+            MealReminderKind.TONIGHT -> preferences.tonightReminder = granted
+        }
+        _uiState.update {
+            val changed = when (kind) {
+                MealReminderKind.EVENING -> it.copy(eveningReminder = granted)
+                MealReminderKind.TONIGHT -> it.copy(tonightReminder = granted)
+            }
+            changed.copy(notificationsAllowed = granted, weekRemindersDenied = !granted)
+        }
+    }
+
+    /** The time of a Week reminder, as minutes since local midnight. */
+    fun onWeekReminderTime(kind: MealReminderKind, minute: Int) {
+        val at = minute.coerceIn(0, 24 * 60 - 1)
+        when (kind) {
+            MealReminderKind.EVENING -> preferences.eveningReminderMinute = at
+            MealReminderKind.TONIGHT -> preferences.tonightReminderMinute = at
+        }
+        _uiState.update {
+            when (kind) {
+                MealReminderKind.EVENING -> it.copy(eveningReminderMinute = at)
+                MealReminderKind.TONIGHT -> it.copy(tonightReminderMinute = at)
+            }
+        }
+    }
+
+    /** The screen's finding, each time it comes back to the front: whether notifications are allowed for the app. */
+    fun onNotificationsAllowed(allowed: Boolean) {
+        _uiState.update { it.copy(notificationsAllowed = allowed, weekRemindersDenied = it.weekRemindersDenied && !allowed) }
     }
 
     /** Export: read everything out, write the file, then hand it to the screen to share. */

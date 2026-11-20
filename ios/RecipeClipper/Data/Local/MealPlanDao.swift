@@ -110,6 +110,65 @@ struct MealPlanDao {
         try db.run("DELETE FROM meal_plan_entries WHERE id = ?", id)
     }
 
+    // MARK: - Skip tonight (#398)
+
+    /// Every entry from `from` on, in plan order: `days`' order, without its end.
+    func entriesFrom(_ from: Int64) throws -> [MealPlanEntryRecord] {
+        try db.query(
+            """
+            SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, e.sortOrder, e.updatedAt, e.uid
+            FROM meal_plan_entries e
+            JOIN meal_types t ON t.id = e.mealTypeId
+            WHERE e.day >= ?
+            ORDER BY e.day ASC, t.sortOrder ASC, t.id ASC, e.sortOrder ASC, e.id ASC
+            """,
+            from, map: MealPlanEntryRecord.init(row:)
+        )
+    }
+
+    /// Changes only the day: the meal type and the place in its slot stay.
+    private func setDay(_ id: Int64, day: Int64, now: Int64) throws {
+        try db.run("UPDATE meal_plan_entries SET day = ?, updatedAt = ? WHERE id = ?", day, now, id)
+    }
+
+    /// Puts a row back as it was.
+    private func updateEntry(_ e: MealPlanEntryRecord) throws {
+        try db.run(
+            """
+            UPDATE meal_plan_entries
+            SET day = ?, mealTypeId = ?, recipeId = ?, servings = ?, note = ?, sortOrder = ?, updatedAt = ?, uid = ?
+            WHERE id = ?
+            """,
+            e.day, e.mealTypeId, e.recipeId, e.servings, e.note, e.sortOrder, e.updatedAt, e.uid, e.id
+        )
+    }
+
+    /// Skips the meal `id` (see `PlanShift`). Call inside a write, so every move and removal lands
+    /// or none. Nil when the meal is gone or is in the past.
+    func skip(_ id: Int64, choice: PlanShift.Choice, today: Int64, lastDay: Int64, now: Int64) throws -> SkippedMeals? {
+        guard let skipped = try entry(id) else { return nil }
+        let entries = try entriesFrom(skipped.day)
+        let planned = entries.map {
+            PlannedMeal(
+                id: $0.id, day: $0.day, mealTypeId: $0.mealTypeId, recipeId: $0.recipeId, title: nil,
+                imageUrl: nil, servings: $0.servings, note: $0.note, uid: $0.uid
+            )
+        }
+        guard let result = PlanShift.plan(planned, skippedId: id, choice: choice, today: today, lastDay: lastDay) else { return nil }
+        let byId = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let before = (result.moved.map(\.mealId) + result.removed).compactMap { byId[$0] }
+        for move in result.moved { try setDay(move.mealId, day: move.toDay, now: now) }
+        for removed in result.removed { try deleteEntry(removed) }
+        return SkippedMeals(result: result, before: before)
+    }
+
+    /// Undoes `skip`: each row as it was, a removed one inserted again. Call inside a write.
+    func undoSkip(_ before: [MealPlanEntryRecord]) throws {
+        for entry in before {
+            if try self.entry(entry.id) != nil { try updateEntry(entry) } else { try restore(entry) }
+        }
+    }
+
     // MARK: - Meal types
 
     /// A user's own meal type, last in the order.

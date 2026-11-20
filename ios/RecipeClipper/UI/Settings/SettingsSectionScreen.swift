@@ -100,6 +100,7 @@ struct SettingsSectionScreen: View {
                 isOn: Binding(get: { vm.uiState.darkWhileCooking }, set: vm.onDarkWhileCookingChange)
             )
         case .steps: stepsRows
+        case .week: weekRows
         case .pantry: pantryRows
         case .yourRecipes: yourRecipesRows
         case .help:
@@ -145,6 +146,64 @@ private extension SettingsSectionScreen {
                     .accessibilityIdentifier("settings.chefModeNote")
             }
         }
+    }
+
+    /// The Week section (#397): the evening-before reminder and the optional Tonight reminder, each a
+    /// switch and, while it is on, its time; a line saying so when notifications are off.
+    @ViewBuilder
+    var weekRows: some View {
+        let state = vm.uiState
+        reminderRows(
+            .evening, title: Strings.eveningReminderTitle, description: Strings.eveningReminderDescription,
+            on: state.eveningReminder, minute: state.eveningReminderMinute
+        )
+        reminderRows(
+            .tonight, title: Strings.tonightReminderTitle, description: Strings.tonightReminderDescription,
+            on: state.tonightReminder, minute: state.tonightReminderMinute
+        )
+        if state.weekRemindersBlocked {
+            Text(Strings.expiryRemindersDenied)
+                .textStyle(Typography.bodySmall)
+                .foregroundStyle(Palette.error)
+                .padding(.top, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("settings.weekRemindersDenied")
+        }
+        Color.clear.frame(height: 0).onAppear { vm.onWeekPageShown() }
+    }
+
+    @ViewBuilder
+    func reminderRows(_ kind: MealReminderKind, title: String, description: String, on: Bool, minute: Int) -> some View {
+        let id = kind == .evening ? "evening" : "tonight"
+        SwitchRow(
+            title: title, description: description,
+            isOn: Binding(get: { on }, set: { vm.onWeekReminderChange(kind, $0) })
+        )
+        .accessibilityIdentifier("settings.\(id)Reminder")
+        if on {
+            DatePicker(
+                Strings.reminderTimeTitle,
+                selection: Binding(
+                    get: { Self.date(minute: minute) },
+                    set: { vm.onWeekReminderTime(kind, Self.minute(of: $0)) }
+                ),
+                displayedComponents: .hourAndMinute
+            )
+            .textStyle(Typography.bodyLarge)
+            .padding(.vertical, 6)
+            .accessibilityIdentifier("settings.\(id)ReminderTime")
+        }
+    }
+
+    /// Today at `minute` minutes after midnight, in the phone's calendar: what the time picker shows.
+    static func date(minute: Int) -> Date {
+        Calendar.current.date(bySettingHour: minute / 60, minute: minute % 60, second: 0, of: Date()) ?? Date()
+    }
+
+    /// The minutes after midnight a picked time stands for.
+    static func minute(of date: Date) -> Int {
+        let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
     }
 
     @ViewBuilder

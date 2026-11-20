@@ -7,6 +7,7 @@ import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MealTypeEntity
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.Menu
+import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.PlannedMeal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -71,6 +72,14 @@ class DefaultMealPlanRepository @Inject constructor(
 
     override suspend fun restore(deleted: MealPlanRepository.DeletedMeal) =
         log.guard("restoreMeal", Unit) { dao.restore(deleted.entity) }
+
+    override suspend fun skip(mealId: Long, choice: PlanShift.Choice, today: Long, lastDay: Long): MealPlanRepository.SkippedMeals? =
+        log.guard("skipMeal", null) {
+            dao.skip(mealId, choice, today, lastDay, clock.now())?.let { MealPlanRepository.SkippedMeals(it.result, it.before) }
+        }
+
+    override suspend fun undoSkip(skipped: MealPlanRepository.SkippedMeals) =
+        log.guard("undoSkipMeal", Unit) { dao.undoSkip(skipped.before) }
 
     override suspend fun addMealType(name: String) {
         val text = name.trim()

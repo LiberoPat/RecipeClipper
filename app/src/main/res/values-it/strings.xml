@@ -440,6 +440,15 @@
     <string name="action_add_meal">+ Aggiungi</string>
     <string name="action_move">Sposta…</string>
     <string name="action_remove_from_plan">Rimuovi dal piano</string>
+    <string name="action_skip">Salta…</string>
+    <string name="action_skip_today">Salta</string>
+    <string name="skip_meal_title">Salta %1$s</string>
+    <string name="skip_push_week">Sposta il resto della settimana avanti di un giorno</string>
+    <string name="skip_next_free_day">Sposta al prossimo giorno libero</string>
+    <string name="skip_remove">Rimuovi dal piano</string>
+    <string name="snackbar_skip_pushed">Resto della settimana spostato avanti di un giorno</string>
+    <string name="snackbar_skip_pushed_past_end">Resto della settimana spostato avanti di un giorno. Alcuni pasti ora cadono oltre la fine del piano.</string>
+    <string name="snackbar_skip_moved">%1$s spostato a %2$s</string>
     <string name="add_to_day_title">Aggiungi a %1$s</string>
     <string name="label_search_or_note">Cerca le tue ricette o scrivi una nota</string>
     <string name="action_add_as_note">Aggiungi «%1$s» come nota</string>
@@ -644,6 +653,15 @@
     <string name="what_i_need_nothing_to_buy">Niente da comprare: tutti gli ingredienti sono nella tua dispensa.</string>
     <string name="what_i_need_you_have">Hai %1$s</string>
     <string name="what_i_need_added">Aggiunto alla spesa</string>
+    <string name="what_i_need_buy_now">Compra adesso</string>
+    <string name="what_i_need_buy_later">Compra più tardi nella settimana</string>
+    <string name="what_i_need_buy_later_note">Per pasti tra 3 giorni o più. Aggiungili quando rifai la spesa, o subito.</string>
+    <string name="what_i_need_nothing_to_buy_now">Niente da comprare adesso</string>
+    <string name="what_i_need_add_later">Aggiungi questi alla spesa</string>
+    <string name="what_i_need_later_for">Per %1$s</string>
+    <string name="fresh_keeps">Si conserva circa %1$s giorni dopo l\'acquisto</string>
+    <string name="fresh_nudge">%1$s: si conserva circa %2$s giorni dopo l\'acquisto. Cucinarlo prima?</string>
+    <string name="fresh_nudge_swap">Scambia con %1$s</string>
     <!-- What I need (#302): the pantry's amount beside the week's, never compared -->
     <string name="what_i_need_pantry_amount">Hai %1$s</string>
     <string name="what_i_need_pantry_and_week">Hai %1$s · le ricette di questa settimana ne usano %2$s</string>
@@ -959,4 +977,18 @@
         <item quantity="many">%1$d di ricette vanno nella nuova lista.</item>
         <item quantity="other">%1$d ricette vanno nella nuova lista.</item>
     </plurals>
+    <!-- Evening and Tonight reminders (#397) -->
+    <string name="meal_reminders_channel_name">Promemoria dei pasti</string>
+    <string name="meal_reminders_channel_description">I pasti pianificati per domani e stasera</string>
+    <string name="meal_reminder_tomorrow">Domani: %1$s</string>
+    <string name="meal_reminder_tonight">Stasera: %1$s</string>
+    <string name="meal_reminder_ahead_one">Da fare in anticipo: «%1$s»</string>
+    <string name="meal_reminder_ahead_header">Da fare in anticipo:</string>
+    <string name="meal_reminder_ahead_item">%1$s: «%2$s»</string>
+    <string name="evening_reminder_title">Promemoria della sera</string>
+    <string name="evening_reminder_description">La sera prima: i pasti pianificati per domani e ciò che va preparato in anticipo</string>
+    <string name="tonight_reminder_title">Promemoria di stasera</string>
+    <string name="tonight_reminder_description">Nel pomeriggio: i pasti pianificati per stasera</string>
+    <string name="reminder_time_title">Orario</string>
+    <string name="reminder_time_dialog_title">Orario del promemoria</string>
 </resources>

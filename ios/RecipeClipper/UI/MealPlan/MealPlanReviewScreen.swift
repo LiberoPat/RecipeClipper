@@ -62,7 +62,7 @@ struct MealPlanReviewScreen: View {
                     ProgressView().tint(Palette.primary)
                 } else {
                     ForEach(state.items) { item in
-                        row(item, days: state.days)
+                        row(item, days: state.days, nudge: state.nudges[item.index])
                         Divider().overlay(Palette.hairline)
                     }
                     Text(Strings.mealPlanKeeping(state.tickedCount, of: state.items.count))
@@ -110,7 +110,7 @@ struct MealPlanReviewScreen: View {
         .accessibilityIdentifier("mealplan.limit")
     }
 
-    private func row(_ item: ReviewItem, days: [Int64]) -> some View {
+    private func row(_ item: ReviewItem, days: [Int64], nudge: FreshNudge?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .center, spacing: 12) {
                 Button { vm.onTick(item.index) } label: {
@@ -152,6 +152,10 @@ struct MealPlanReviewScreen: View {
                     .foregroundStyle(Palette.error)
                     .padding(.leading, 40)
                     .accessibilityIdentifier("mealplan.wontfit.\(item.index)")
+            }
+            if let nudge {
+                FreshNudgeNote(nudge: nudge) { vm.onSwap(item.index) }
+                    .padding(.leading, 40)
             }
         }
         .padding(.vertical, 6)

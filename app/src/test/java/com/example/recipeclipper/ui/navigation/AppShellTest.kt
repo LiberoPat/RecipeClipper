@@ -68,6 +68,13 @@ class AppShellTest {
     /** The Week tab's real screens need Hilt too (#49). */
     private fun NavGraphBuilder.stubWeek() {
         composable(Routes.WEEK) { Text("stub:week") }
+        composable(
+            Routes.WEEK_RECIPE,
+            arguments = listOf(
+                navArgument(RecipeViewModel.RECIPE_ID_ARG) { type = NavType.LongType },
+                navArgument(RecipeViewModel.SERVINGS_ARG) { type = NavType.IntType; defaultValue = 0 }
+            )
+        ) { Text("stub:week recipe ${it.arguments?.getLong(RecipeViewModel.RECIPE_ID_ARG)}") }
     }
 
     /** And the Groceries tab's (#50). */
@@ -197,6 +204,25 @@ class AppShellTest {
         // Pantry kept its own place.
         tab("Pantry").performClick()
         compose.onNodeWithText("stub:pantry").assertIsDisplayed()
+    }
+
+    // #397: a reminder's tap opens the planned recipe on the Week's own stack, whichever tab is open.
+    @Test
+    fun aReminderTapLandsInTheWeekOnItsOwnStack() {
+        show()
+        tab("Pantry").performClick()
+        compose.onNodeWithText("stub:pantry").assertIsDisplayed()
+
+        onNav { openRoute(Routes.weekRecipe(5, null)) }
+
+        compose.onNodeWithText("stub:week recipe 5").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(Tab.WEEK, nav.currentDestination.tab()) }
+        bar().assertDoesNotExist()
+
+        // Back returns to the week.
+        onNav { popBackStack() }
+        compose.onNodeWithText("stub:week").assertIsDisplayed()
+        tab("Week").assertIsSelected()
     }
 
     @Test

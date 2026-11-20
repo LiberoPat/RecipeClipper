@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.Menu
 import com.example.recipeclipper.data.model.PlanDays
+import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.PlannedMeal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,6 +81,41 @@ class FakeMealPlanRepository : MealPlanRepository {
     }
 
     private val deleted = mutableMapOf<Long, PlannedMeal>()
+
+    /** Every [skip] asked for, in order: (meal, choice, today, lastDay). */
+    val skips = mutableListOf<List<Any>>()
+
+    /** When true, [skip] fails as a database error would: nothing written, null returned. */
+    var failSkips = false
+
+    /** The plan in plan order from [day] on, as the DAO lists it for [skip]. */
+    private fun inPlanOrder(): List<PlannedMeal> {
+        val rank = types.value.withIndex().associate { (i, t) -> t.id to i }
+        return meals.value.withIndex()
+            .sortedWith(compareBy({ it.value.day }, { rank[it.value.mealTypeId] ?: Int.MAX_VALUE }, { it.index }))
+            .map { it.value }
+    }
+
+    private val skippedBefore = mutableMapOf<MealPlanRepository.SkippedMeals, List<PlannedMeal>>() // the whole plan before
+
+    override suspend fun skip(mealId: Long, choice: PlanShift.Choice, today: Long, lastDay: Long): MealPlanRepository.SkippedMeals? {
+        skips += listOf(mealId, choice, today, lastDay)
+        if (failSkips) return null
+        val result = PlanShift.plan(inPlanOrder(), mealId, choice, today, lastDay) ?: return null
+        val before = meals.value
+        val toDay = result.moved.associate { it.mealId to it.toDay }
+        meals.value = meals.value.filterNot { it.id in result.removed }.map { meal -> toDay[meal.id]?.let { meal.copy(day = it) } ?: meal }
+        return MealPlanRepository.SkippedMeals(result, emptyList()).also { skippedBefore[it] = before }
+    }
+
+    override suspend fun undoSkip(skipped: MealPlanRepository.SkippedMeals) {
+        val before = skippedBefore.remove(skipped) ?: return
+        val ids = skipped.result.moved.map { it.mealId }.toSet() + skipped.result.removed
+        // The skipped meals back as they were, at their old place; whatever else changed since stays.
+        val now = meals.value.associateBy { it.id }
+        val restored = before.mapNotNull { old -> if (old.id in ids) old else now[old.id] }
+        meals.value = restored + meals.value.filter { current -> before.none { it.id == current.id } }
+    }
 
     override suspend fun restore(deleted: MealPlanRepository.DeletedMeal) {
         val meal = this.deleted.remove(deleted.entity.id) ?: return

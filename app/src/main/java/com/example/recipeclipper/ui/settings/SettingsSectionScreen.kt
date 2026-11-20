@@ -20,6 +20,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -32,6 +36,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.MealReminderKind
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.TooltipScreen
@@ -82,6 +87,18 @@ fun SettingsSectionScreen(
     val notificationPrompt = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         viewModel.onExpiryRemindersPermission(granted)
     }
+    // The Week reminders' (#397) permission prompt: which switch asked, kept over a rotation.
+    var askedFor by rememberSaveable { mutableStateOf<String?>(null) }
+    val weekNotificationPrompt = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        MealReminderKind.entries.firstOrNull { it.name == askedFor }?.let { viewModel.onWeekReminderPermission(it, granted) }
+        askedFor = null
+    }
+    // Whether notifications are allowed is the phone's, and the cook can change it in the system
+    // settings and come back: look again each time the page is in front.
+    LifecycleResumeEffect(Unit) {
+        viewModel.onNotificationsAllowed(NotificationManagerCompat.from(context).areNotificationsEnabled())
+        onPauseOrDispose {}
+    }
     val shareTitle = stringResource(R.string.backup_share_title)
     val backup = state.backup
     if (backup is BackupStatus.ReadyToShare) {
@@ -98,6 +115,23 @@ fun SettingsSectionScreen(
         onImportRecipeKeeper = { recipeKeeperPicker.launch(RECIPE_KEEPER_MIME_TYPES) },
         onImportMealie = { mealiePicker.launch(MEALIE_MIME_TYPES) },
         onChooseFolder = { folderPicker.launch(null) },
+        onWeekReminderChange = { kind, on ->
+            // Asking is a platform effect, so it lives here: only when the cook turns one on, never
+            // on launch (#397, as #52).
+            when {
+                !on -> viewModel.onWeekReminderOff(kind)
+                NotificationManagerCompat.from(context).areNotificationsEnabled() ->
+                    viewModel.onWeekReminderPermission(kind, true)
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED -> {
+                    askedFor = kind.name
+                    weekNotificationPrompt.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                // Allowed, but switched off for the app in system settings.
+                else -> viewModel.onWeekReminderPermission(kind, false)
+            }
+        },
         onExpiryRemindersChange = { on ->
             // Asking is a platform effect, so it lives here: only when the cook turns reminders
             // on, never on launch (#52).
@@ -149,6 +183,7 @@ private class SectionActions(
     val onImportRecipeKeeper: () -> Unit,
     val onImportMealie: () -> Unit,
     val onChooseFolder: () -> Unit,
+    val onWeekReminderChange: (MealReminderKind, Boolean) -> Unit,
     val onExpiryRemindersChange: (Boolean) -> Unit
 )
 
@@ -203,6 +238,9 @@ private fun LazyListScope.sectionRows(
                 onCheckedChange = viewModel::onAmountsInStepsChange
             )
             if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
+        }
+        SettingsSection.WEEK -> item(key = "week") {
+            WeekReminderRows(state, actions.onWeekReminderChange, viewModel::onWeekReminderTime)
         }
         SettingsSection.PANTRY -> item(key = "pantry") {
             SwitchRow(

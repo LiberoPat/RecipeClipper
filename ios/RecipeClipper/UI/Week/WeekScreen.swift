@@ -114,8 +114,8 @@ struct WeekScreen: View {
         }
         // The tooltips (#190); none over this screen's sheets, dialogs and snackbar. Outside
         // the toolbar, whose menu is an anchor too.
-        .tooltipHost(.week, blocked: state.adding != nil || state.moving != nil || groceriesSheet != nil
-            || state.removed != nil || calendarURL != nil || state.menus.saving || state.menus.picking
+        .tooltipHost(.week, blocked: state.adding != nil || state.moving != nil || state.skipping != nil
+            || groceriesSheet != nil || state.removed != nil || state.skipped != nil || calendarURL != nil || state.menus.saving || state.menus.picking
             || state.menus.renaming != nil || state.menus.deleting != nil)
         .overlay(alignment: .bottom) {
             if let removed = state.removed {
@@ -124,12 +124,24 @@ struct WeekScreen: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let skipped = state.skipped {
+                // What a skip did (#398): one snackbar, one Undo. The ViewModel clears the
+                // removal's when it sets this one, and the other way round.
+                Snackbar(message: skipMessage(skipped), actionLabel: Strings.undo, action: vm.onUndoSkip)
+                    .frame(maxWidth: ReadableWidth.column)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.easeOut(duration: 0.2), value: state.removed == nil)
+        .animation(.easeOut(duration: 0.2), value: state.removed == nil && state.skipped == nil)
         .task(id: state.removed) {
             guard let removed = state.removed else { return }
             await SnackbarTimeout.run(pending: [removed.label], onTimeout: vm.onSnackbarDismissed)
+        }
+        .task(id: state.skipped) {
+            guard let skipped = state.skipped else { return }
+            await SnackbarTimeout.run(pending: [skipped.label], onTimeout: vm.onSkipSnackbarDismissed)
         }
         .modifier(WeekMenusModifier(vm: vm))
         .sheet(item: $groceriesSheet) { groceries in
@@ -141,6 +153,13 @@ struct WeekScreen: View {
             AddToDaySheet(vm: vm)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: Binding(get: { state.skipping != nil }, set: { if !$0 { vm.onSkipDismissed() } })) {
+            if let skipping = vm.uiState.skipping {
+                SkipSheet(meal: skipping.meal, onChoose: vm.onSkip)
+                    .presentationDetents([.height(300), .medium])
+                    .presentationDragIndicator(.visible)
+            }
         }
         .sheet(isPresented: Binding(get: { state.moving != nil }, set: { if !$0 { vm.onMoveDismissed() } })) {
             if let moving = vm.uiState.moving {
@@ -160,6 +179,15 @@ struct WeekScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
+        }
+    }
+
+    /// The undo snackbar's words for what a skip did (#398).
+    private func skipMessage(_ notice: SkipNotice) -> String {
+        switch notice.choice {
+        case .pushWeek: notice.pastEnd ? Strings.skipPushedPastEnd : Strings.skipPushed
+        case .nextFreeDay: Strings.skipMoved(notice.label, notice.toDay.map(PlanDayFormat.title) ?? "")
+        case .remove: Strings.removedFromPlan(notice.label)
         }
     }
 
@@ -307,7 +335,9 @@ private struct DayList: View {
                     ForEach(state.allDays, id: \.self) { day in
                         DaySection(
                             vm: vm, day: day, isToday: day == state.today, meals: state.mealsOn(day),
-                            nothingPlanned: state.isNothingPlanned(day), typeNames: typeNames, onOpenRecipe: onOpenRecipe
+                            canSkip: state.canSkip,
+                            nothingPlanned: state.isNothingPlanned(day), typeNames: typeNames,
+                            freshNudges: state.freshNudges, onOpenRecipe: onOpenRecipe
                         )
                     }
                 }
@@ -352,8 +382,10 @@ private struct DaySection: View {
     let day: Int64
     let isToday: Bool
     let meals: [PlannedMeal]
+    let canSkip: (PlannedMeal) -> Bool
     let nothingPlanned: Bool
     let typeNames: [Int64: String]
+    let freshNudges: [Int64: FreshNudge]
     let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
 
     var body: some View {
@@ -368,14 +400,32 @@ private struct DaySection: View {
             .padding(.bottom, 4)
             .accessibilityAddTraits(.isHeader)
             ForEach(meals) { meal in
-                MealRow(meal: meal, mealTypeName: typeNames[meal.mealTypeId] ?? "") {
-                    if let recipeId = meal.recipeId { onOpenRecipe(recipeId, meal.servings) }
-                }
-                .contextMenu {
-                    Button { vm.onMoveStart(meal) } label: { Label(Strings.move, systemImage: "arrow.right") }
-                    Button(role: .destructive) { vm.onRemove(meal) } label: {
-                        Label(Strings.removeFromPlan, systemImage: "minus.circle")
+                HStack(spacing: 0) {
+                    MealRow(meal: meal, mealTypeName: typeNames[meal.mealTypeId] ?? "") {
+                        if let recipeId = meal.recipeId { onOpenRecipe(recipeId, meal.servings) }
                     }
+                    .contextMenu {
+                        Button { vm.onMoveStart(meal) } label: { Label(Strings.move, systemImage: "arrow.right") }
+                        // Skip is in the long-press menu of any meal that isn't in the past, and
+                        // visible on today's (#398).
+                        if canSkip(meal) {
+                            Button { vm.onSkipStart(meal) } label: { Label(Strings.skip, systemImage: "forward.end") }
+                                .accessibilityIdentifier("skipMenu-\(meal.id)")
+                        }
+                        Button(role: .destructive) { vm.onRemove(meal) } label: {
+                            Label(Strings.removeFromPlan, systemImage: "minus.circle")
+                        }
+                    }
+                    if isToday && canSkip(meal) {
+                        Button(Strings.skipToday) { vm.onSkipStart(meal) }
+                            .buttonStyle(TextActionStyle())
+                            .accessibilityIdentifier("skip-\(meal.id)")
+                    }
+                }
+                // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
+                if let nudge = freshNudges[meal.id] {
+                    FreshNudgeNote(nudge: nudge) { vm.onFreshSwap(meal.id) }
+                        .padding(.leading, 56)
                 }
             }
             // A day with no meals keeps the line's room until they've loaded: the days above
@@ -493,6 +543,43 @@ private struct MealRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("meal-\(meal.id)")
+    }
+}
+
+/// Skip (#398): a small sheet with the three things to do with a meal that isn't happening, each
+/// one tap that does it at once: push the rest of the week back a day, move this meal to the next
+/// free day, or remove it. One undo follows.
+private struct SkipSheet: View {
+    let meal: PlannedMeal
+    let onChoose: (PlanShift.Choice) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeading(Strings.skipMealTitle(meal.title ?? meal.note ?? "")).padding(.bottom, 8)
+            choice(Strings.skipPushWeek, id: "skipPush", .pushWeek)
+            choice(Strings.skipNextFreeDay, id: "skipNextFreeDay", .nextFreeDay)
+            choice(Strings.skipRemove, id: "skipRemove", .remove)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func choice(_ label: String, id: String, _ choice: PlanShift.Choice) -> some View {
+        VStack(spacing: 0) {
+            Button { onChoose(choice) } label: {
+                Text(label)
+                    .textStyle(Typography.bodyLarge)
+                    .foregroundStyle(Palette.onBackground)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 14)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(id)
+            Hairline()
+        }
     }
 }
 

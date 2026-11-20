@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "language": "es",
+  "about": "Perishables (#396), see en/perishables.json. Spanish puts the modifier after the noun ('salmón ahumado'), so the end-of-name rule already refuses it; 'filete de salmón' ends in 'salmón' and matches. A product made from the food ('caldo de pollo', 'mermelada de fresa') also ends in it, so skipPrefixes lists the openings that make a name a product, not the food. A draft for a native speaker to review (docs/translations.md). The same group keys and days as en.",
+  "skipPrefixes": [
+    "caldo de", "fondo de", "fumet de", "salsa de", "salsa con", "sopa de", "crema de", "pastel de", "empanada de",
+    "ensalada de", "mermelada de", "confitura de", "jalea de", "jugo de", "zumo de", "batido de", "helado de",
+    "yogur de", "aceite de", "extracto de", "pesto de", "sabor a", "esencia de", "polvo de", "pasta de",
+    "cubito de", "pastilla de", "tarta de", "bizcocho de", "mousse de", "puré de", "licor de", "sirope de", "almíbar de"
+  ],
+  "groups": [
+    { "key": "fish", "minDays": 1, "maxDays": 2, "aliases": [
+        "pescado", "pescado blanco", "pescado fresco", "salmón", "salmón fresco", "trucha", "bacalao fresco",
+        "merluza", "lubina", "dorada", "atún fresco", "rape", "lenguado", "caballa", "sardinas frescas",
+        "gamba", "gambas", "langostino", "langostinos", "camarón", "camarones", "vieira", "vieiras",
+        "mejillón", "mejillones", "almeja", "almejas", "ostra", "ostras", "calamar", "calamares", "pulpo",
+        "sepia", "langosta", "gambas frescas", "langostinos frescos"
+      ] },
+    { "key": "mince", "minDays": 1, "maxDays": 2, "aliases": [
+        "carne picada", "carne molida", "picada de ternera", "carne picada mixta", "carne picada de ternera",
+        "carne picada de cerdo", "carne picada de pollo", "carne molida de res", "carne molida de cerdo",
+        "carne de res molida", "carne de cerdo molida", "carne de ternera picada", "carne picada de vacuno",
+        "salchichas frescas", "salchicha fresca", "longaniza fresca", "chorizo fresco"
+      ] },
+    { "key": "poultry", "minDays": 1, "maxDays": 2, "aliases": [
+        "pollo", "pollo entero", "pechuga de pollo", "pechugas de pollo", "muslo de pollo", "muslos de pollo",
+        "contramuslo de pollo", "contramuslos de pollo", "alitas de pollo", "filete de pollo", "filetes de pollo",
+        "pavo", "pechuga de pavo", "pato", "pechuga de pato", "muslos", "pechugas", "pechuga"
+      ] },
+    { "key": "mushrooms", "minDays": 3, "maxDays": 5, "aliases": [
+        "champiñón", "champiñones", "champinón", "champiñones frescos", "seta", "setas", "setas frescas",
+        "hongo", "hongos", "hongos frescos", "portobello", "shiitake", "setas de ostra", "seta de ostra",
+        "níscalo", "níscalos", "boletus", "rebozuelo", "rebozuelos", "champiñones laminados"
+      ] },
+    { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["aguacate", "aguacates", "palta", "paltas"] },
+    { "key": "parsley", "minDays": 2, "maxDays": 3, "aliases": ["perejil", "perejil fresco"] },
+    { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
+        "lechuga", "lechuga romana", "lechuga iceberg", "lechuga francesa", "lechuga fresca", "espinaca",
+        "espinacas", "espinacas frescas", "espinacas baby", "rúcula", "arúgula", "canónigos", "berros",
+        "mezclum", "ensalada verde", "mezcla de lechugas", "brotes tiernos", "hojas verdes", "ensalada mixta"
+      ] },
+    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
+        "fresa", "fresas", "fresas frescas", "frutilla", "frutillas", "frambuesa", "frambuesas",
+        "frutos rojos", "frutos del bosque", "frutas del bosque", "bayas"
+      ] },
+    { "key": "blackberries", "minDays": 3, "maxDays": 5, "aliases": ["mora", "moras", "zarzamora", "zarzamoras"] }
+  ],
+  "skip": [
+    "salmón ahumado", "atún en lata", "pescado congelado", "gambas congeladas", "langostinos congelados",
+    "pollo cocido", "pollo asado", "pollo congelado", "pavo cocido", "pavo ahumado", "setas secas",
+    "hongos secos", "champiñones en lata", "champiñones congelados", "perejil seco", "espinacas congeladas",
+    "fresas congeladas", "frambuesas congeladas", "frutos rojos congelados", "frutos del bosque congelados",
+    "bayas de goji", "bayas de enebro"
+  ]
+}
