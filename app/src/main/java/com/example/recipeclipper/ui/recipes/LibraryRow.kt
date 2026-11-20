@@ -45,7 +45,7 @@ internal fun LibraryRow(
             .clickable(role = Role.Button, onClick = onClick)
             .padding(vertical = 10.dp)
     ) {
-        RecipeThumbnail(recipe.imageUrl)
+        RecipeThumbnail(recipe.imageUrl, recipe.noPhoto)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(
                 recipe.title,

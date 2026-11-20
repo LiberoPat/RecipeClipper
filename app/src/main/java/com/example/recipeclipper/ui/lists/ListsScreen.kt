@@ -76,6 +76,7 @@ fun ListsScreen(
                     ListCoverTile(
                         list = list,
                         photos = state.coverPhotos[list.id].orEmpty(),
+                        placeholders = state.coverPlaceholders[list.id].orEmpty(),
                         onClick = { onOpenList(list.id) }
                     )
                 }

@@ -62,7 +62,7 @@ internal fun RecentlyViewed(
                 Column(
                     Modifier.width(84.dp).clickable(role = Role.Button) { onOpenRecipe(recipe.id) }
                 ) {
-                    RecipeThumbnail(recipe.imageUrl, size = 84.dp)
+                    RecipeThumbnail(recipe.imageUrl, recipe.noPhoto, size = 84.dp)
                     Text(
                         recipe.title,
                         style = MaterialTheme.typography.labelMedium,

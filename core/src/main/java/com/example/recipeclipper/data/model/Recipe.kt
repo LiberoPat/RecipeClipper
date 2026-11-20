@@ -90,8 +90,14 @@ data class Recipe(
     /** Whose words the content is; see [ContentOrigin]. */
     val origin: ContentOrigin = ContentOrigin.PARSED,
     /** When the user last saved an edit, or null if never. */
-    val editedAt: Long? = null
+    val editedAt: Long? = null,
+    /** The stored row's stable uid (#403: its tint), or empty for a recipe not stored yet. */
+    val uid: String = ""
 ) {
+    /** What its no-photo image is drawn from (#403); a recipe not stored yet is tinted by its link. */
+    val noPhoto: NoPhotoSource
+        get() = NoPhotoSource(uid.ifEmpty { sourceUrl }, name, language, ingredients)
+
     /** "Update from source" applies: the user's version of a recipe that has a real link. */
     val canUpdateFromSource: Boolean
         get() = origin.isUsersVersion && origin != ContentOrigin.MANUAL && !ManualRecipe.isManual(sourceUrl)
@@ -119,8 +125,17 @@ data class RecipeSummary(
     /** Its link, for the site credited under the title (#286); `manual:` for a typed one. */
     val sourceUrl: String = "",
     /** Read from a chat's JSON (#355, origin CHAT): the row says "From a chat". */
-    val isFromChat: Boolean = false
+    val isFromChat: Boolean = false,
+    /** Its stable uid and stored language, for its image when it has no photo (#403). */
+    val uid: String = "",
+    val language: String? = null,
+    /** Its ingredient lines, only where an image shows them (Home's card, #403); else empty. */
+    val ingredients: List<String> = emptyList()
 ) {
+    /** What its no-photo image is drawn from (#403). */
+    val noPhoto: NoPhotoSource
+        get() = NoPhotoSource(uid.ifEmpty { "recipe-$id" }, title, language, ingredients)
+
     /** The site, as the reading view credits it; null for a typed or scanned recipe. */
     val sourceDomain: String?
         get() = if (ManualRecipe.isManual(sourceUrl)) null else SourceDomain.of(sourceUrl)

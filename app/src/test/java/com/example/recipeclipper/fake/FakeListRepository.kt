@@ -1,6 +1,7 @@
 package com.example.recipeclipper.fake
 
 import com.example.recipeclipper.data.ListRepository
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SavedRecipe
@@ -60,6 +61,11 @@ class FakeListRepository : ListRepository {
     }
 
     override fun observeCoverPhotos(): Flow<Map<Long, List<String>>> = coverPhotos
+
+    /** What [observeCoverPlaceholders] emits: list id to its no-photo recipes' image sources (#403). */
+    val coverPlaceholders = MutableStateFlow<Map<Long, List<NoPhotoSource>>>(emptyMap())
+
+    override fun observeCoverPlaceholders(): Flow<Map<Long, List<NoPhotoSource>>> = coverPlaceholders
 
     /** What [observeSavedRecipes] emits (#305). */
     val savedRecipes = MutableStateFlow<List<SavedRecipe>>(emptyList())

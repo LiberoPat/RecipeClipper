@@ -2,6 +2,7 @@ package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SavedRecipe
@@ -38,6 +39,12 @@ class DefaultListRepository @Inject constructor(
     override fun observeCoverPhotos(): Flow<Map<Long, List<String>>> =
         listDao.observeCoverPhotos().orEmptyOnError(log, "observeCoverPhotos")
             .map { rows -> rows.groupBy({ it.listId }, { it.imageUrl }) }
+
+    override fun observeCoverPlaceholders(): Flow<Map<Long, List<NoPhotoSource>>> =
+        listDao.observeCoverPlaceholders().orEmptyOnError(log, "observeCoverPlaceholders")
+            .map { rows ->
+                rows.groupBy({ it.listId }, { NoPhotoSource(it.uid, it.title, it.language, it.ingredients) })
+            }
 
     override fun observeSavedRecipes(): Flow<List<SavedRecipe>> =
         listDao.observeSavedRecipes().orEmptyOnError(log, "observeSavedRecipes")

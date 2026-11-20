@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,8 @@ data class ListsUiState(
     val loaded: Boolean = false,
     val lists: List<RecipeList> = emptyList(),
     val coverPhotos: Map<Long, List<String>> = emptyMap(),
+    /** A list with no photo shows its recipes' designed images (#403); an empty one the bookmark tile. */
+    val coverPlaceholders: Map<Long, List<NoPhotoSource>> = emptyMap(),
     val creatingList: Boolean = false,
     val newListName: String = ""
 )
@@ -45,13 +48,15 @@ class ListsViewModel @Inject constructor(
     val uiState: StateFlow<ListsUiState> = combine(
         repository.observeLists(),
         repository.observeCoverPhotos(),
+        repository.observeCoverPlaceholders(),
         creatingList,
         newListName
-    ) { lists, photos, creating, name ->
+    ) { lists, photos, placeholders, creating, name ->
         ListsUiState(
             loaded = true,
             lists = lists,
             coverPhotos = photos.mapValues { it.value.take(ListDao.COVER_PHOTOS) },
+            coverPlaceholders = placeholders.mapValues { it.value.take(ListDao.COVER_PHOTOS) },
             creatingList = creating,
             newListName = name
         )

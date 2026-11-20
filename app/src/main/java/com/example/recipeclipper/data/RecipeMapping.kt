@@ -54,7 +54,8 @@ internal fun RecipeEntity.toDomain() = Recipe(
     cook = CookStateJson.decode(cookState),
     servingsTarget = servingsTarget,
     origin = ContentOrigin.fromName(contentOrigin),
-    editedAt = editedAt
+    editedAt = editedAt,
+    uid = uid
 )
 
 internal fun ListRow.toDomain() = RecipeList(
@@ -76,5 +77,8 @@ internal fun RecipeSummaryRow.toDomain() = RecipeSummary(
     isClipped = isClipped,
     lastCookedDay = lastCookedDay,
     sourceUrl = sourceUrl,
-    isFromChat = isFromChat
+    isFromChat = isFromChat,
+    uid = uid.orEmpty(),
+    language = language,
+    ingredients = ingredients.orEmpty()
 )

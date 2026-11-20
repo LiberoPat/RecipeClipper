@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.lists
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -13,7 +14,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagValues
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.fake.FakeListRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -44,11 +49,71 @@ class ListsScreenTest {
 
     private var opened: Long? = null
 
-    private fun show() {
+    private fun show(flags: FlagValues = FlagValues.ALL_OFF) {
         val viewModel = ListsViewModel(repository)
         compose.setContent {
-            ListsScreen(onBack = {}, onOpenList = { opened = it }, viewModel = viewModel)
+            CompositionLocalProvider(LocalFlagValues provides flags) {
+                ListsScreen(onBack = {}, onOpenList = { opened = it }, viewModel = viewModel)
+            }
         }
+    }
+
+    // --- Covers of recipes with no photo (#403) ---
+
+    private val noPhotoOn = FlagValues(setOf(Flag.NO_PHOTO_IMAGE))
+
+    private fun placeholdersOn(listId: Long) = compose.onAllNodes(
+        hasTestTag("lists.coverPlaceholder") and hasAnyAncestor(hasTestTag("lists.cover.$listId")),
+        useUnmergedTree = true
+    ).fetchSemanticsNodes().size
+
+    private fun sources(n: Int) = (1..n).map { NoPhotoSource("uid-$it", "Recipe $it", "en", listOf("$it eggs")) }
+
+    /** Favorites has three recipes with no photo: their designed images fill the usual mosaic. */
+    @Test
+    fun aListWhoseRecipesHaveNoPhotoShowsTheirPlaceholders() {
+        repository.coverPlaceholders.value = mapOf(1L to sources(3))
+        show(noPhotoOn)
+
+        assertEquals(3, placeholdersOn(1))
+        assertEquals(0, plainTile(1))
+        assertEquals(0, photosOn(1))
+    }
+
+    @Test
+    fun fourPlaceholdersMakeTheTwoByTwo() {
+        repository.coverPlaceholders.value = mapOf(1L to sources(4))
+        show(noPhotoOn)
+
+        assertEquals(4, placeholdersOn(1))
+    }
+
+    /** A real photo wins: a list with one photo shows photos alone, never the others' placeholders. */
+    @Test
+    fun photosComeFirstAndHideThePlaceholders() {
+        repository.coverPlaceholders.value = mapOf(3L to sources(2))
+        show(noPhotoOn)
+
+        assertEquals(2, photosOn(3))
+        assertEquals(0, placeholdersOn(3))
+    }
+
+    /** An empty list keeps the outlined bookmark: nothing saved here yet. */
+    @Test
+    fun anEmptyListKeepsTheBookmarkTile() {
+        show(noPhotoOn)
+
+        assertEquals(1, plainTile(2))
+        assertEquals(0, placeholdersOn(2))
+    }
+
+    @Test
+    fun withTheFlagOffTheBookmarkTileIsBack() {
+        repository.coverPlaceholders.value = mapOf(1L to sources(3))
+        show()
+
+        assertEquals(0, placeholdersOn(1))
+        assertEquals(1, plainTile(1))
     }
 
     @Test

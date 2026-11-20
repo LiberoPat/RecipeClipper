@@ -29,7 +29,12 @@ data class RecipeSummaryRow(
     /** Its link, for the site the Recipes row credits (#286). */
     val sourceUrl: String = "",
     /** Read from a chat's JSON (#355, origin CHAT). */
-    val isFromChat: Boolean = false
+    val isFromChat: Boolean = false,
+    /** The recipe's stable uid and language, for its no-photo image (#403): its tint and its monogram. */
+    val uid: String? = null,
+    val language: String? = null,
+    /** Its ingredient lines, selected only where an image shows them (Home's card, #403). */
+    val ingredients: List<String>? = null
 )
 
 /** [RecipeDao.observeLibraryCounts]: every recipe, those in at least one list, cooked, typed in and from a chat (#345, #355). */
@@ -268,7 +273,7 @@ abstract class RecipeDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-               sourceUrl,
+               sourceUrl, uid, language,
                contentOrigin = 'CHAT' AS isFromChat
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC
@@ -305,7 +310,7 @@ abstract class RecipeDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-               sourceUrl,
+               sourceUrl, uid, language,
                contentOrigin = 'CHAT' AS isFromChat
         FROM recipes
         WHERE (:query = ''
@@ -343,7 +348,7 @@ abstract class RecipeDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
                contentOrigin = 'CLIPPED' AS isClipped,
                (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
-               sourceUrl,
+               sourceUrl, uid, language, ingredients,
                contentOrigin = 'CHAT' AS isFromChat
         FROM recipes
         ORDER BY lastViewedAt DESC, id DESC

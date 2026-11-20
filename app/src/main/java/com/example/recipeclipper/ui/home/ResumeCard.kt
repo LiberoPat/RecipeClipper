@@ -31,6 +31,9 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.StepTimers
+import com.example.recipeclipper.ui.common.NoPhotoStyle
+import com.example.recipeclipper.ui.common.RecipeImage
+import com.example.recipeclipper.ui.common.noPhotoImageOn
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 
@@ -47,7 +50,17 @@ internal fun ResumeCard(recipe: RecipeSummary, resume: CookResume?, onResume: ()
         Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(colors.surfaceContainer)
     ) {
         Column(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen)) {
-            if (recipe.imageUrl != null) {
+            if (noPhotoImageOn()) {
+                // A photo at 136 dp; with none (or one that fails to load) the recipe's designed
+                // image, its first ingredient names set low on its tint, at 112 dp (#403).
+                RecipeImage(
+                    model = recipe.imageUrl,
+                    recipe = recipe.noPhoto,
+                    contentDescription = null,
+                    style = NoPhotoStyle.Label,
+                    modifier = Modifier.fillMaxWidth().height(if (recipe.imageUrl != null) 136.dp else 112.dp)
+                )
+            } else if (recipe.imageUrl != null) {
                 AsyncImage(
                     model = recipe.imageUrl,
                     contentDescription = null,
