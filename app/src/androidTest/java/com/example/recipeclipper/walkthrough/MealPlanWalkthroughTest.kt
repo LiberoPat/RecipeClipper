@@ -101,7 +101,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
         listOf("soy sauce", "garlic", "bay leaves", "white vinegar").forEach { type("pantryDraft", it) }
         tap("Week")
         planToday("Chicken Adobo")
-        menu("What I need")
+        menu("Shop for this week")
         pause(1500)
         swipeUp()
         tapTag("addBuyToGroceries")

@@ -426,6 +426,7 @@
     <string name="action_add_to_groceries">Aggiungi alla spesa</string>
     <string name="add_to_groceries_title">Aggiungi alla spesa</string>
     <string name="action_add_week_to_groceries">Aggiungi gli ingredienti della settimana</string>
+    <string name="action_shop_for_week">Spesa per questa settimana</string>
     <string name="groceries_week_empty">Nessuna ricetta in programma questa settimana.</string>
     <string name="action_share_groceries">Invia la lista</string>
     <string name="action_paste_list">Incolla una lista</string>
@@ -756,6 +757,7 @@
     <string name="menu_desc_update_from_source">Sostituisce le tue modifiche con l\'ultima versione del sito</string>
     <string name="menu_desc_what_i_need">Ciò che serve alle ricette della settimana e manca in dispensa</string>
     <string name="menu_desc_add_week_to_groceries">Nella lista della spesa, tranne ciò che hai già</string>
+    <string name="menu_desc_shop_for_week">Cosa serve questa settimana e cosa hai già</string>
     <string name="menu_desc_save_week_as_menu">Conserva i pasti della settimana per riusarli</string>
     <string name="menu_desc_apply_menu">Aggiunge a questa settimana i pasti di un menu salvato</string>
     <string name="menu_desc_meal_types">Aggiunge, rinomina o riordina i pasti del giorno</string>

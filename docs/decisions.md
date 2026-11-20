@@ -2490,8 +2490,9 @@ The optional extras of #46, one PR each.
   block from today; before, it opened the day's locale week). Which month opens: today's for
   this week, otherwise the month holding most of the shown week (its fourth day), so Sep 30 –
   Oct 6 opens October.
-- The week's own menu actions (What I need, Add this week's ingredients) act on the week shown,
-  so they're hidden while the month shows; Meal types stays.
+- The week's own menu actions (Shop for this week, #384; before it, What I need and Add this
+  week's ingredients) act on the week shown, so they're hidden while the month shows; Meal types
+  stays.
 
 ### Calendar file (.ics)
 
@@ -3996,8 +3997,8 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   hold concepts that confuse first-time users). A muted second line sits under each ⋮ option
   that isn't self-explanatory, every time the menu opens: at most about eight words, saying what
   happens. Recipe: Send as file ("A copy someone can open in Recipe Clipper"), Update from
-  source ("Replace your edits with the website's latest"). Week: What I need, Add this week's
-  ingredients, Share as calendar file, Save week as menu, Apply a menu, Meal types. Groceries:
+  source ("Replace your edits with the website's latest"). Week: Shop for this week (#384; What I need and Add this week's
+  ingredients with `shopForWeek` off), Share as calendar file, Save week as menu, Apply a menu, Meal types. Groceries:
   Send as file, Paste a list, Clear ticked items ("Remove ticked items without restocking the
   pantry"). Pantry: Send list ("What's in stock, as text"), Send as file, Clear run-out items.
   The rest stay one line (Add to plan, Add to groceries, Edit, Delete, Rename, Send list on
@@ -5046,6 +5047,32 @@ it. Behind the `recipeVersions` flag (on by default in debug and release), on bo
   twins; `SharedTextTest`, `SharedTextJsonTests`, and the corpus's `Based("text")` rows (generated
   from the Kotlin) for `isBasedOn`; the editor's `addManual` claim in `EditRecipeTextViewModelTest`
   and `EditRecipeTextTests`; the recipe screen in `RecipeVersionsTest`.
+
+## Week menu: one "Shop for this week" (#384, 2026-11-19)
+
+The owner found the Week menu's "What I need" and "Add this week's ingredients" the same: both
+show the week's lines (`GrocerySources.fromPlan`, at the planned servings); What I need also splits
+them into To buy and In your pantry (#302's amounts beside the week's), and its "Add to groceries"
+adds only To buy, once. Behind the `shopForWeek` flag (on by default; off, the old pair returns
+exactly), on both platforms.
+
+- **One item**, "Shop for this week" (`action_shop_for_week`, muted line `menu_desc_shop_for_week`:
+  "What the week needs and what you have"), opens What I need for the week shown (Android
+  `week/need/{weekStart}`, iOS `.whatINeed`). "Add this week's ingredients" is not in the menu.
+  Both are still week-only: the month view has neither. With an empty pantry every line is under
+  To buy, so nothing is lost; sending a list stays Groceries' "Send list".
+- **The screen is unchanged but for its title** (owner, 2026-11-19): with the flag on it reads
+  "Shop for this week", as the menu item that opens it (the same string); off, it stays "What I
+  need". The sections (To buy, In your pantry) keep their names. `WhatINeedScreen` takes
+  `shopForWeek` as `WeekScreen` does. The old strings stay (flag off).
+- **No other entry** pointed at either item: the tour's tooltips, empty states and widgets don't
+  mention them. The grocery sheet itself (`AddToGroceriesSheet`) stays for the recipe's "Add to
+  groceries"; only the Week's way into it is gone with the flag on.
+- **Code.** Android `WeekScreen` takes `shopForWeek` (default `LocalFlagValues`); iOS `WeekScreen`
+  takes it from `RootView`, and `WeekShoppingMenu.items` chooses the items.
+- **Tests.** `WeekScreenTest` (Android: one item, opens the week shown, the old pair with the flag
+  off, none in the month view); `WeekShoppingMenuTests` and `WeekUITests` (iOS); the walkthroughs
+  tap "Shop for this week".
 
 ## Paste an AI's answer in the app (#372, 2026-11-19)
 

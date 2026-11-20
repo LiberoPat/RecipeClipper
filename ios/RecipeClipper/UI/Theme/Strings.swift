@@ -619,6 +619,7 @@ enum Strings {
     static var addToGroceries: String { String(localized: "action_add_to_groceries") }
     static var addToGroceriesTitle: String { String(localized: "add_to_groceries_title") }
     static var addWeekToGroceries: String { String(localized: "action_add_week_to_groceries") }
+    static var shopForWeek: String { String(localized: "action_shop_for_week") }
     static var groceriesWeekEmpty: String { String(localized: "groceries_week_empty") }
     static var shareGroceries: String { String(localized: "action_share_groceries") }
     // The ⋮ menus' second lines, under the options that aren't self-explanatory (#260).
@@ -626,6 +627,7 @@ enum Strings {
     static var menuDescUpdateFromSource: String { String(localized: "menu_desc_update_from_source") }
     static var menuDescWhatINeed: String { String(localized: "menu_desc_what_i_need") }
     static var menuDescAddWeekToGroceries: String { String(localized: "menu_desc_add_week_to_groceries") }
+    static var menuDescShopForWeek: String { String(localized: "menu_desc_shop_for_week") }
     static var menuDescShareCalendar: String { String(localized: "menu_desc_share_calendar") }
     static var menuDescSaveWeekAsMenu: String { String(localized: "menu_desc_save_week_as_menu") }
     static var menuDescApplyMenu: String { String(localized: "menu_desc_apply_menu") }

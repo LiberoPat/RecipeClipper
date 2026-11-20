@@ -82,6 +82,26 @@ final class WeekUITests: RecipeUITestCase {
         }
     }
 
+    /// Shop for this week (#384) is the menu's one shopping item: it opens What I need for the
+    /// week shown, and "What I need" and "Add this week's ingredients" are gone from the menu.
+    func testShopForThisWeekIsTheOneItemAndOpensWhatINeed() {
+        launch(.walkthroughPantry, flags: ["shopForWeek"])
+        require(tabBar.buttons["Week"], "the Week tab").tap()
+        require(app.staticTexts["weekRange"], "the Week")
+        planToday("Chicken Adobo")
+        require(app.buttons["More options"], "the Week menu").tap()
+        let shop = require(menuItem("Shop for this week"), "Shop for this week")
+        XCTAssertFalse(menuItem("What I need").exists)
+        XCTAssertFalse(menuItem("Add this week's ingredients").exists)
+        shop.tap()
+        // The screen's title follows the menu item (#384); its sections keep their names.
+        require(app.staticTexts["Shop for this week"], "the screen's title")
+        require(app.staticTexts["To buy"], "the To buy section")
+        require(app.staticTexts["garlic"], "the first row to buy")
+        require(app.staticTexts["You have 3 lb · this week's recipes use 2 lb"], "the pantry's amount, beside the week's")
+        require(app.buttons["Add to groceries"], "Add to groceries")
+    }
+
     /// "Add this week's ingredients" (#50) lists every planned recipe's lines, not only the
     /// first recipe's (#185: each recipe's lines were keyed by offset alone).
     func testTheWeeksGrocerySheetListsEveryRecipesLines() {

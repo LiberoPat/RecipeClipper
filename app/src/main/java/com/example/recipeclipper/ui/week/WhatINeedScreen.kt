@@ -26,8 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.NeedRow
 import com.example.recipeclipper.data.model.NeedStatus
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.plan.shortWeekday
 import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.ui.recipe.BackButton
@@ -43,7 +45,11 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  * the two side by side, never compared, so the cook judges.
  */
 @Composable
-fun WhatINeedScreen(onBack: () -> Unit, viewModel: WhatINeedViewModel = hiltViewModel()) {
+fun WhatINeedScreen(
+    onBack: () -> Unit,
+    viewModel: WhatINeedViewModel = hiltViewModel(),
+    shopForWeek: Boolean = LocalFlagValues.current.isOn(Flag.SHOP_FOR_WEEK)
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val needs = state.needs
 
@@ -56,7 +62,7 @@ fun WhatINeedScreen(onBack: () -> Unit, viewModel: WhatINeedViewModel = hiltView
                 item(key = "header") {
                     BackButton(onBack)
                     Spacer(Modifier.height(12.dp))
-                    Text(stringResource(R.string.what_i_need_title), style = MaterialTheme.typography.headlineMedium)
+                    Text(stringResource(if (shopForWeek) R.string.action_shop_for_week else R.string.what_i_need_title), style = MaterialTheme.typography.headlineMedium)
                     Text(
                         remember(state.weekStart) { weekRange(state.weekStart) },
                         style = MaterialTheme.typography.titleMedium,

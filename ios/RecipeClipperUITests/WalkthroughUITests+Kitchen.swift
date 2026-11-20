@@ -20,7 +20,7 @@ extension WalkthroughUITests {
         tab("Week")
         planToday("Chicken Adobo")
         plan(day: today + 1, "Chicken Adobo")
-        recipeMenu("What I need")
+        recipeMenu("Shop for this week")
         pause(2)
         scrollTo(textContaining("this week's recipes use"), "the pantry's amount beside the week's")
         pause(4)
