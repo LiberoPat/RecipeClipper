@@ -30,10 +30,8 @@
         "egerling", "egerlinge", "braune egerlinge"
       ] },
     { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["avocado", "avocados", "reife avocado"] },
-    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
-        "basilikum", "frisches basilikum", "thai basilikum", "koriander", "frischer koriander", "korianderblätter",
-        "petersilie", "glatte petersilie", "krause petersilie", "frische petersilie", "minze", "frische minze",
-        "dill", "frischer dill", "schnittlauch", "frischer schnittlauch", "estragon", "kerbel", "frische kräuter"
+    { "key": "parsley", "minDays": 2, "maxDays": 3, "aliases": [
+        "petersilie", "glatte petersilie", "krause petersilie", "frische petersilie"
       ] },
     { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
         "salat", "grüner salat", "kopfsalat", "eisbergsalat", "römersalat", "romanasalat", "romana", "feldsalat",
@@ -42,32 +40,26 @@
         "salatmischung", "brunnenkresse", "babyblattsalat", "babyleaf"
       ] },
     { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
-        "erdbeere", "erdbeeren", "heidelbeere", "heidelbeeren", "blaubeere", "blaubeeren"
+        "erdbeere", "erdbeeren", "himbeere", "himbeeren", "beeren", "gemischte beeren", "waldbeeren",
+        "frische beeren"
       ] },
-    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
-        "himbeere", "himbeeren", "brombeere", "brombeeren", "beeren", "gemischte beeren", "waldbeeren", "frische beeren"
-      ] }
+    { "key": "blackberries", "minDays": 3, "maxDays": 5, "aliases": ["brombeere", "brombeeren"] }
   ],
   "skip": [
-    "fischsauce", "fischfond", "getrocknete kräuter",
-    "geräucherter lachs", "geräucherte forelle", "geräucherte makrele", "geräucherter fisch", "gebeizter lachs",
-    "tiefgekühlter lachs", "tiefgekühlter fisch", "tiefgekühlte garnelen", "tiefgekühlte riesengarnelen",
-    "tk lachs", "tk fisch", "tk garnelen", "getrocknete garnelen", "gekochte garnelen", "tiefgekühlte muscheln",
-    "gekochtes hackfleisch", "tiefgekühltes hackfleisch", "tk hackfleisch",
-    "gekochtes hähnchen", "gegrilltes hähnchen", "geräuchertes hähnchen", "gebratenes hähnchen",
-    "tiefgekühltes hähnchen", "tk hähnchen", "gekochte pute", "geräucherte pute", "geräucherte putenbrust",
-    "gekochte ente", "geräucherte ente",
+    "fischsauce", "fischfond", "geräucherter lachs", "geräucherte forelle", "geräucherte makrele",
+    "geräucherter fisch", "gebeizter lachs", "tiefgekühlter lachs", "tiefgekühlter fisch",
+    "tiefgekühlte garnelen", "tiefgekühlte riesengarnelen", "tk lachs", "tk fisch", "tk garnelen",
+    "getrocknete garnelen", "gekochte garnelen", "tiefgekühlte muscheln", "gekochtes hackfleisch",
+    "tiefgekühltes hackfleisch", "tk hackfleisch", "gekochtes hähnchen", "gegrilltes hähnchen",
+    "geräuchertes hähnchen", "gebratenes hähnchen", "tiefgekühltes hähnchen", "tk hähnchen",
+    "gekochte pute", "geräucherte pute", "geräucherte putenbrust", "gekochte ente", "geräucherte ente",
     "getrocknete pilze", "getrocknete steinpilze", "getrocknete shiitake", "getrocknete shiitakepilze",
     "getrocknete morcheln", "getrocknete champignons", "tiefgekühlte pilze", "tk pilze", "eingelegte pilze",
-    "eingelegte champignons", "tiefgekühlte champignons",
-    "getrocknetes basilikum", "getrocknete petersilie", "getrocknete minze", "getrockneter dill",
-    "getrockneter schnittlauch", "getrockneter estragon", "getrockneter koriander", "gemahlener koriander",
-    "getrockneter kerbel", "tiefgekühlte kräuter", "tk kräuter", "tiefgekühlte petersilie",
-    "tiefgekühltes basilikum", "tiefgekühlter dill", "tiefgekühlter schnittlauch",
-    "tiefgekühlter spinat", "tk spinat", "tiefgekühlter blattspinat", "tk blattspinat", "tiefgekühlter rahmspinat",
-    "tiefgekühlte erdbeeren", "tk erdbeeren", "tiefgekühlte heidelbeeren", "tk heidelbeeren", "tiefgekühlte himbeeren",
-    "tk himbeeren", "tiefgekühlte brombeeren", "tk brombeeren", "tiefgekühlte beeren", "tk beeren",
-    "tiefgekühlte waldbeeren", "tk waldbeeren", "gefrorene beeren", "getrocknete erdbeeren", "getrocknete heidelbeeren",
-    "getrocknete himbeeren", "getrocknete beeren", "getrocknete waldbeeren", "wilde heidelbeeren"
+    "eingelegte champignons", "tiefgekühlte champignons", "getrocknete petersilie",
+    "tiefgekühlte petersilie", "tiefgekühlter spinat", "tk spinat", "tiefgekühlter blattspinat",
+    "tk blattspinat", "tiefgekühlter rahmspinat", "tiefgekühlte erdbeeren", "tk erdbeeren",
+    "tiefgekühlte himbeeren", "tk himbeeren", "tiefgekühlte brombeeren", "tk brombeeren",
+    "tiefgekühlte beeren", "tk beeren", "tiefgekühlte waldbeeren", "tk waldbeeren", "gefrorene beeren",
+    "getrocknete erdbeeren", "getrocknete himbeeren", "getrocknete beeren", "getrocknete waldbeeren"
   ]
 }

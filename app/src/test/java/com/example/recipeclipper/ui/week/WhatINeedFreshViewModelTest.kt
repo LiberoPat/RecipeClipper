@@ -39,7 +39,7 @@ class WhatINeedFreshViewModelTest {
             PlannedIngredients(2, day = today + 2, servings = null, recipeId = 8, title = "Fish tacos",
                 ingredients = listOf("1 lb cod fillets", "8 tortillas"), yield = null, language = "en"),
             PlannedIngredients(3, day = today + 5, servings = null, recipeId = 9, title = "Salmon bowls",
-                ingredients = listOf("2 salmon fillets", "1 bunch basil", "1 cup rice", "4 oz smoked salmon"), yield = null, language = "en"),
+                ingredients = listOf("2 salmon fillets", "1 bunch parsley", "1 cup rice", "4 oz smoked salmon"), yield = null, language = "en"),
             PlannedIngredients(4, day = today + 6, servings = null, recipeId = 10, title = "Spinach salad",
                 ingredients = listOf("1 bag baby spinach"), yield = null, language = "en")
         )
@@ -67,9 +67,9 @@ class WhatINeedFreshViewModelTest {
             advanceUntilIdle()
 
             val trips = vm.uiState.value.trips!!
-            assertEquals(listOf("salmon fillets", "basil"), trips.later.map { it.row.name })
+            assertEquals(listOf("salmon fillets", "parsley"), trips.later.map { it.row.name })
             assertEquals(listOf(today + 5, today + 5), trips.later.map { it.firstDay })
-            assertEquals(listOf("fish", "herbs"), trips.later.map { it.group.key })
+            assertEquals(listOf("fish", "parsley"), trips.later.map { it.group.key })
             // The spinach is also for tomorrow's pasta, the cod two days away, smoked salmon isn't fresh.
             assertEquals(
                 listOf("spaghetti", "olive oil", "baby spinach", "cod fillets", "tortillas", "rice", "smoked salmon"),
@@ -109,18 +109,18 @@ class WhatINeedFreshViewModelTest {
             vm.onAddLaterToGroceries()
             advanceUntilIdle()
             assertEquals(now.size + 2, groceries.items.value.size)
-            assertEquals(listOf("2 salmon fillets", "1 bunch basil"), groceries.items.value.map { it.text }.takeLast(2))
+            assertEquals(listOf("2 salmon fillets", "1 bunch parsley"), groceries.items.value.map { it.text }.takeLast(2))
             assertTrue(vm.uiState.value.addedLater)
         }
 
     @Test
     fun `an ingredient in the pantry is Have, not later`() = runTest(mainDispatcherRule.dispatcher) {
-        val vm = viewModel(FakePantryRepository(listOf(item(1, "basil"))))
+        val vm = viewModel(FakePantryRepository(listOf(item(1, "parsley"))))
         advanceUntilIdle()
 
         val state = vm.uiState.value
         assertEquals(listOf("salmon fillets"), state.trips!!.later.map { it.row.name })
-        assertTrue(state.needs!!.have.any { it.name == "basil" })
+        assertTrue(state.needs!!.have.any { it.name == "parsley" })
     }
 
     @Test
@@ -132,7 +132,7 @@ class WhatINeedFreshViewModelTest {
 
         pantry.add(com.example.recipeclipper.data.model.NewPantryItem("salmon fillets", "en"))
         advanceUntilIdle()
-        assertEquals(listOf("basil"), vm.uiState.value.trips!!.later.map { it.row.name })
+        assertEquals(listOf("parsley"), vm.uiState.value.trips!!.later.map { it.row.name })
     }
 
     @Test
@@ -148,7 +148,7 @@ class WhatINeedFreshViewModelTest {
             vm.onAddBuyToGroceries()
             advanceUntilIdle()
             assertTrue(groceries.items.value.any { it.text == "2 salmon fillets" })
-            assertTrue(groceries.items.value.any { it.text == "1 bunch basil" })
+            assertTrue(groceries.items.value.any { it.text == "1 bunch parsley" })
         }
 
     @Test

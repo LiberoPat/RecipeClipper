@@ -36,11 +36,7 @@
         "chanterelle", "chanterelle mushroom", "morel"
       ] },
     { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["avocado", "hass avocado"] },
-    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
-        "fresh herbs", "basil", "basil leaf", "thai basil", "cilantro", "cilantro leaf", "fresh coriander",
-        "coriander leaf", "parsley", "parsley leaf", "flat leaf parsley", "mint", "mint leaf", "dill",
-        "fresh dill", "chives", "tarragon", "chervil"
-      ] },
+    { "key": "parsley", "minDays": 2, "maxDays": 3, "aliases": ["parsley", "parsley leaf", "flat leaf parsley"] },
     { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
         "lettuce", "lettuce leaf", "romaine", "romaine heart", "cos lettuce", "little gem", "spinach",
         "baby spinach", "spinach leaf", "arugula", "rocket", "arugula leaf", "rocket leaf", "salad leaf",
@@ -48,36 +44,34 @@
         "mesclun", "spring mix", "watercress", "lambs lettuce", "mache", "baby leaf", "baby leaf salad",
         "baby salad leaf", "bagged salad"
       ] },
-    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": ["strawberry", "blueberry"] },
-    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
-        "raspberry", "blackberry", "berry", "mixed berry", "summer berry", "fresh berry"
-      ] }
+    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
+        "strawberry", "raspberry", "berry", "mixed berry", "summer berry", "fresh berry"
+      ] },
+    { "key": "blackberries", "minDays": 3, "maxDays": 5, "aliases": ["blackberry"] }
   ],
   "skip": [
-    "fish sauce", "fish stock", "dried herbs",
-    "smoked salmon", "canned salmon", "tinned salmon", "pink salmon", "cooked salmon", "flaked salmon", "hot smoked salmon",
-    "smoked trout", "smoked mackerel", "smoked haddock", "smoked cod", "canned tuna", "dried shrimp", "dried prawn",
-    "frozen fish", "frozen white fish", "frozen salmon", "frozen cod", "frozen shrimp", "frozen prawn", "frozen king prawn",
-    "frozen fish fillet", "frozen squid", "frozen scallop", "canned clam", "canned mussel", "smoked oyster", "canned oyster",
-    "cooked shrimp", "cooked prawn", "cooked ground beef", "cooked mince", "cooked ground turkey", "cooked ground chicken",
-    "smoked sausage", "cured sausage", "cooked sausage",
-    "rotisserie chicken", "cooked chicken", "shredded chicken", "smoked chicken", "fried chicken", "roast chicken",
-    "roasted chicken", "leftover chicken", "canned chicken", "frozen chicken", "deli chicken", "popcorn chicken",
-    "cooked turkey", "smoked turkey", "deli turkey", "roast turkey", "roasted turkey", "leftover turkey", "frozen turkey",
-    "smoked duck", "peking duck", "cooked duck", "frozen duck",
-    "cauliflower steak", "tofu steak", "frozen steak", "smoked brisket", "corned beef brisket", "smoked pork shoulder",
-    "smoked pork belly", "cooked pork belly", "smoked pork chop", "cured pork loin",
-    "dried mushroom", "dried wild mushroom", "dried mixed mushroom", "dried shiitake", "dried shiitake mushroom",
-    "dried porcini", "dried porcini mushroom", "dried oyster mushroom", "dried morel", "dried chanterelle",
+    "fish sauce", "fish stock", "smoked salmon", "canned salmon", "tinned salmon", "pink salmon",
+    "cooked salmon", "flaked salmon", "hot smoked salmon", "smoked trout", "smoked mackerel",
+    "smoked haddock", "smoked cod", "canned tuna", "dried shrimp", "dried prawn", "frozen fish",
+    "frozen white fish", "frozen salmon", "frozen cod", "frozen shrimp", "frozen prawn",
+    "frozen king prawn", "frozen fish fillet", "frozen squid", "frozen scallop", "canned clam",
+    "canned mussel", "smoked oyster", "canned oyster", "cooked shrimp", "cooked prawn",
+    "cooked ground beef", "cooked mince", "cooked ground turkey", "cooked ground chicken", "smoked sausage",
+    "cured sausage", "cooked sausage", "rotisserie chicken", "cooked chicken", "shredded chicken",
+    "smoked chicken", "fried chicken", "roast chicken", "roasted chicken", "leftover chicken",
+    "canned chicken", "frozen chicken", "deli chicken", "popcorn chicken", "cooked turkey", "smoked turkey",
+    "deli turkey", "roast turkey", "roasted turkey", "leftover turkey", "frozen turkey", "smoked duck",
+    "peking duck", "cooked duck", "frozen duck", "cauliflower steak", "tofu steak", "frozen steak",
+    "smoked brisket", "corned beef brisket", "smoked pork shoulder", "smoked pork belly",
+    "cooked pork belly", "smoked pork chop", "cured pork loin", "dried mushroom", "dried wild mushroom",
+    "dried mixed mushroom", "dried shiitake", "dried shiitake mushroom", "dried porcini",
+    "dried porcini mushroom", "dried oyster mushroom", "dried morel", "dried chanterelle",
     "canned mushroom", "tinned mushroom", "jarred mushroom", "pickled mushroom", "marinated mushroom",
-    "mushroom stock", "freeze dried mushroom", "frozen mushroom",
-    "dried basil", "dried parsley", "dried mint", "dried dill", "dried chives", "dried tarragon", "dried chervil",
-    "dried cilantro", "dill weed", "frozen basil", "frozen parsley", "frozen herbs", "frozen chives",
-    "frozen spinach", "frozen leaf spinach", "frozen chopped spinach", "frozen baby spinach", "canned spinach",
-    "creamed spinach", "dried spinach",
-    "frozen strawberry", "frozen blueberry", "frozen raspberry", "frozen blackberry", "frozen berry",
-    "frozen mixed berry", "frozen summer berry", "dried strawberry", "dried blueberry", "dried raspberry",
-    "dried berry", "dried mixed berry", "wild blueberry", "goji berry", "juniper berry", "canned blueberry",
+    "mushroom stock", "freeze dried mushroom", "frozen mushroom", "dried parsley", "frozen parsley",
+    "frozen spinach", "frozen leaf spinach", "frozen chopped spinach", "frozen baby spinach",
+    "canned spinach", "creamed spinach", "dried spinach", "frozen strawberry", "frozen raspberry",
+    "frozen blackberry", "frozen berry", "frozen mixed berry", "frozen summer berry", "dried strawberry",
+    "dried raspberry", "dried berry", "dried mixed berry", "goji berry", "juniper berry",
     "tinned strawberry", "canned strawberry"
   ]
 }

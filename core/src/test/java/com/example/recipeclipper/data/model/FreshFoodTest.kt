@@ -27,18 +27,18 @@ class FreshFoodTest {
 
     @Test fun `two days is still now, and the constant is three`() {
         assertEquals(3, Perishables.LATER_DAYS)
-        val trips = FreshShop.split(listOf(row("salmon", today + 2), row("basil", today + 3)), today)
+        val trips = FreshShop.split(listOf(row("salmon", today + 2), row("parsley", today + 3)), today)
         assertEquals(listOf("salmon"), trips.now.map { it.name })
-        assertEquals(listOf("basil"), trips.later.map { it.row.name })
+        assertEquals(listOf("parsley"), trips.later.map { it.row.name })
     }
 
     @Test fun `every meal it is for must be far enough, or the whole row is bought now`() {
         val trips = FreshShop.split(
-            listOf(row("salmon", today + 6, today + 2), row("basil", today + 6, today + 5), row("spinach", today + 4, null)),
+            listOf(row("salmon", today + 6, today + 2), row("parsley", today + 6, today + 5), row("spinach", today + 4, null)),
             today
         )
         assertEquals(listOf("salmon", "spinach"), trips.now.map { it.name })
-        assertEquals(listOf("basil"), trips.later.map { it.row.name })
+        assertEquals(listOf("parsley"), trips.later.map { it.row.name })
         assertEquals(today + 5, trips.later.single().firstDay)
     }
 
@@ -49,15 +49,15 @@ class FreshFoodTest {
     }
 
     @Test fun `a meal today or already passed is now`() {
-        val trips = FreshShop.split(listOf(row("salmon", today), row("basil", today - 2)), today)
+        val trips = FreshShop.split(listOf(row("salmon", today), row("parsley", today - 2)), today)
         assertEquals(2, trips.now.size)
     }
 
     @Test fun `the rows keep their order and their quantities untouched`() {
-        val rows = listOf(row("onions", today + 5), row("salmon", today + 5), row("garlic", today + 1), row("basil", today + 6))
+        val rows = listOf(row("onions", today + 5), row("salmon", today + 5), row("garlic", today + 1), row("parsley", today + 6))
         val trips = FreshShop.split(rows, today)
         assertEquals(listOf("onions", "garlic"), trips.now.map { it.name })
-        assertEquals(listOf("salmon", "basil"), trips.later.map { it.row.name })
+        assertEquals(listOf("salmon", "parsley"), trips.later.map { it.row.name })
         assertEquals(rows[1], trips.later[0].row)
     }
 

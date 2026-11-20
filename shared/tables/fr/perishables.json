@@ -38,11 +38,8 @@
         "portobello", "morille", "morilles", "morilles fraîches"
       ] },
     { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["avocat", "avocats", "avocat mûr"] },
-    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
-        "basilic", "basilic frais", "coriandre fraîche", "persil", "persil frais", "persil plat", "persil frisé",
-        "menthe", "menthe fraîche", "aneth", "aneth frais", "ciboulette", "ciboulette fraîche", "estragon",
-        "estragon frais", "cerfeuil", "cerfeuil frais", "herbes fraîches", "feuilles de basilic",
-        "feuilles de menthe", "feuilles de coriandre"
+    { "key": "parsley", "minDays": 2, "maxDays": 3, "aliases": [
+        "persil", "persil frais", "persil plat", "persil frisé"
       ] },
     { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
         "laitue", "salade", "salade verte", "romaine", "salade romaine", "laitue romaine", "mâche", "roquette",
@@ -51,19 +48,16 @@
         "mélange de jeunes pousses", "salade mélangée"
       ] },
     { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
-        "fraise", "fraises", "fraises fraîches", "myrtille", "myrtilles", "myrtilles fraîches", "bleuet", "bleuets"
+        "fraise", "fraises", "fraises fraîches", "framboise", "framboises", "framboises fraîches",
+        "fruits rouges", "fruits des bois", "baies", "fruits rouges frais"
       ] },
-    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
-        "framboise", "framboises", "framboises fraîches", "mûre", "mûres", "fruits rouges", "fruits des bois",
-        "baies", "fruits rouges frais"
-      ] }
+    { "key": "blackberries", "minDays": 3, "maxDays": 5, "aliases": ["mûre", "mûres"] }
   ],
   "skip": [
     "saumon fumé", "thon en boîte", "thon en conserve", "poisson surgelé", "crevettes surgelées",
     "poulet rôti", "poulet cuit", "poulet fumé", "poulet surgelé", "dinde fumée", "dinde cuite",
-    "champignons séchés", "champignons en conserve", "champignons surgelés", "cèpes séchés",
-    "basilic séché", "persil séché", "menthe séchée", "épinards surgelés", "fraises surgelées",
-    "myrtilles surgelées", "framboises surgelées", "fruits rouges surgelés", "fruits des bois surgelés",
-    "baies de goji", "baies de genièvre", "myrtilles séchées"
+    "champignons séchés", "champignons en conserve", "champignons surgelés", "cèpes séchés", "persil séché",
+    "épinards surgelés", "fraises surgelées", "framboises surgelées", "fruits rouges surgelés",
+    "fruits des bois surgelés", "baies de goji", "baies de genièvre"
   ]
 }

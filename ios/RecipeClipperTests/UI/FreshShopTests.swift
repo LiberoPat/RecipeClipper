@@ -17,7 +17,7 @@ final class FreshShopTests: XCTestCase {
             PlannedIngredients(entryId: 2, day: today + 2, servings: nil, recipeId: 8, title: "Fish tacos",
                                ingredients: ["1 lb cod fillets", "8 tortillas"], yield: nil, language: "en"),
             PlannedIngredients(entryId: 3, day: today + 5, servings: nil, recipeId: 9, title: "Salmon bowls",
-                               ingredients: ["2 salmon fillets", "1 bunch basil", "1 cup rice", "4 oz smoked salmon"], yield: nil, language: "en"),
+                               ingredients: ["2 salmon fillets", "1 bunch parsley", "1 cup rice", "4 oz smoked salmon"], yield: nil, language: "en"),
             PlannedIngredients(entryId: 4, day: today + 6, servings: nil, recipeId: 10, title: "Spinach salad",
                                ingredients: ["1 bag baby spinach"], yield: nil, language: "en"),
         ]
@@ -42,9 +42,9 @@ final class FreshShopTests: XCTestCase {
     func testAPerishableOnlyForMealsFourOrMoreDaysAwayGoesLaterEachWithTheDayItIsFor() async {
         let vm = await viewModel()
         let trips = vm.uiState.trips!
-        XCTAssertEqual(trips.later.map(\.row.name), ["salmon fillets", "basil"])
+        XCTAssertEqual(trips.later.map(\.row.name), ["salmon fillets", "parsley"])
         XCTAssertEqual(trips.later.map(\.firstDay), [today + 5, today + 5])
-        XCTAssertEqual(trips.later.map(\.group.key), ["fish", "herbs"])
+        XCTAssertEqual(trips.later.map(\.group.key), ["fish", "parsley"])
         // The spinach is also for tomorrow's pasta, the cod two days away, smoked salmon isn't fresh.
         XCTAssertEqual(
             trips.now.map(\.name),
@@ -79,14 +79,14 @@ final class FreshShopTests: XCTestCase {
         vm.onAddLaterToGroceries()
         await settleMain()
         XCTAssertEqual(groceries.items.value.count, now.count + 2)
-        XCTAssertEqual(Array(groceries.items.value.map(\.text).suffix(2)), ["2 salmon fillets", "1 bunch basil"])
+        XCTAssertEqual(Array(groceries.items.value.map(\.text).suffix(2)), ["2 salmon fillets", "1 bunch parsley"])
         XCTAssertTrue(vm.uiState.addedLater)
     }
 
     func testAnIngredientInThePantryIsHaveNotLater() async {
-        let vm = await viewModel(FakePantryRepository([item(1, "basil")]))
+        let vm = await viewModel(FakePantryRepository([item(1, "parsley")]))
         XCTAssertEqual(vm.uiState.trips!.later.map(\.row.name), ["salmon fillets"])
-        XCTAssertTrue(vm.uiState.needs!.have.contains { $0.name == "basil" })
+        XCTAssertTrue(vm.uiState.needs!.have.contains { $0.name == "parsley" })
     }
 
     func testTheSplitFollowsThePantryLive() async {
@@ -95,7 +95,7 @@ final class FreshShopTests: XCTestCase {
         XCTAssertEqual(vm.uiState.trips!.later.count, 2)
         _ = await pantry.add(NewPantryItem(name: "salmon fillets", language: "en"))
         await settleMain()
-        XCTAssertEqual(vm.uiState.trips!.later.map(\.row.name), ["basil"])
+        XCTAssertEqual(vm.uiState.trips!.later.map(\.row.name), ["parsley"])
     }
 
     func testWithTheFlagOffOrWithoutTodayToBuyIsOneListAndAddAddsAllOfIt() async {
@@ -107,7 +107,7 @@ final class FreshShopTests: XCTestCase {
         vm.onAddBuyToGroceries()
         await settleMain()
         XCTAssertTrue(groceries.items.value.contains { $0.text == "2 salmon fillets" })
-        XCTAssertTrue(groceries.items.value.contains { $0.text == "1 bunch basil" })
+        XCTAssertTrue(groceries.items.value.contains { $0.text == "1 bunch parsley" })
     }
 
     func testNothingIsLaterWhenEveryPerishableIsNeededSooner() async {

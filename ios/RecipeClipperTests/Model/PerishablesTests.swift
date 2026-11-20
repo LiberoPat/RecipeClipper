@@ -25,21 +25,25 @@ final class PerishablesTests: XCTestCase {
         XCTAssertEqual(group("8 oz button mushrooms, sliced"), "mushrooms")
         XCTAssertEqual(group("200 g shiitake"), "mushrooms")
         XCTAssertEqual(group("2 ripe avocados"), "avocado")
-        XCTAssertEqual(group("1/2 cup fresh basil leaves"), "herbs")
-        XCTAssertEqual(group("1 bunch cilantro, chopped"), "herbs")
-        XCTAssertEqual(group("2 tbsp chopped fresh parsley"), "herbs")
+        XCTAssertEqual(group("2 tbsp chopped fresh parsley"), "parsley")
+        // Foods that keep a week or more (FoodKeeper: basil 10 days, cilantro and mint 2-3 weeks, herbs 7-10 days) are off the table.
+        XCTAssertNil(group("1/2 cup fresh basil leaves"))
+        XCTAssertNil(group("1 bunch cilantro, chopped"))
+        XCTAssertNil(group("2 tbsp chopped fresh mint"))
+        XCTAssertNil(group("1 tbsp fresh herbs"))
         XCTAssertEqual(group("5 oz baby spinach"), "salad")
         XCTAssertEqual(group("1 head romaine lettuce"), "salad")
         XCTAssertEqual(group("2 handfuls rocket"), "salad")
         XCTAssertEqual(group("1 pint strawberries, hulled"), "berries")
-        XCTAssertEqual(group("1 cup blueberries"), "berries")
-        XCTAssertEqual(group("1 cup raspberries"), "softBerries")
-        XCTAssertEqual(group("2 cups mixed berries"), "softBerries")
+        XCTAssertNil(group("1 cup blueberries")) // FoodKeeper: 1-2 weeks, off the table
+        XCTAssertEqual(group("1 cup raspberries"), "berries")
+        XCTAssertEqual(group("2 cups mixed berries"), "berries")
+        XCTAssertEqual(group("1 cup blackberries"), "blackberries")
     }
 
     func testAGroupsKeepsHintIsItsRange() {
         XCTAssertEqual(Perishables.find("2 salmon fillets", words: en)?.group.keeps, "1-2")
-        XCTAssertEqual(Perishables.find("1 bunch basil", words: en)?.group.keeps, "2-3")
+        XCTAssertEqual(Perishables.find("1 bunch parsley", words: en)?.group.keeps, "2-3")
         XCTAssertEqual(Perishables.find("8 oz mushrooms", words: en)?.group.keeps, "3-5")
         XCTAssertEqual(Perishables.find("2 avocados", words: en)?.group.keeps, "3-4")
         XCTAssertEqual(PerishableGroup(key: "x", minDays: 3, maxDays: 3).keeps, "3")
@@ -74,19 +78,19 @@ final class PerishablesTests: XCTestCase {
     }
 
     func testAListedSingularAndPluralAreOneWord() {
-        XCTAssertEqual(Perishables.groupOf("raspberries", words: en)?.key, "softBerries")
-        XCTAssertEqual(Perishables.groupOf("raspberry", words: en)?.key, "softBerries")
+        XCTAssertEqual(Perishables.groupOf("raspberries", words: en)?.key, "berries")
+        XCTAssertEqual(Perishables.groupOf("raspberry", words: en)?.key, "berries")
         XCTAssertEqual(Perishables.groupOf("mussels", words: en)?.key, "fish")
         XCTAssertNil(Perishables.groupOf("frozen raspberries", words: en))
         XCTAssertNil(Perishables.groupOf("frozen raspberry", words: en))
     }
 
     func testTheMostDelicatePerishableOfARecipeIsTheShortestKeeping() {
-        let worst = Perishables.mostDelicate(["1 bunch basil", "2 salmon fillets", "8 oz mushrooms", "2 cups flour"], words: en)
+        let worst = Perishables.mostDelicate(["1 bunch parsley", "2 salmon fillets", "8 oz mushrooms", "2 cups flour"], words: en)
         XCTAssertEqual(worst?.group.key, "fish")
         XCTAssertEqual(worst?.name, "salmon fillets")
-        XCTAssertEqual(Perishables.mostDelicate(["2 cups flour", "1 bunch basil", "1 cup blueberries"], words: en)?.group.key, "herbs")
-        XCTAssertNil(Perishables.mostDelicate(["2 cups flour", "1 tsp dried basil"], words: en))
+        XCTAssertEqual(Perishables.mostDelicate(["2 cups flour", "1 bunch parsley", "1 cup blueberries"], words: en)?.group.key, "parsley")
+        XCTAssertNil(Perishables.mostDelicate(["2 cups flour", "1 tsp dried parsley"], words: en))
         XCTAssertNil(Perishables.mostDelicate([], words: en))
     }
 
@@ -96,7 +100,9 @@ final class PerishablesTests: XCTestCase {
         XCTAssertEqual(group("200 g Lachs", de), "fish")
         XCTAssertNil(group("100 g geräucherter Lachs", de))
         XCTAssertEqual(group("500 g Hackfleisch", de), "mince")
-        XCTAssertEqual(group("1 Bund Petersilie", de), "herbs")
+        XCTAssertEqual(group("1 Bund Petersilie", de), "parsley")
+        XCTAssertNil(group("1 Bund Basilikum", de))
+        XCTAssertNil(group("200 g Heidelbeeren", de))
         XCTAssertNil(group("1 TL getrocknetes Basilikum", de))
         XCTAssertNil(group("200 g tiefgekühlte Erdbeeren", de))
         XCTAssertNil(group("2 salmon fillets", de))
@@ -116,7 +122,8 @@ final class PerishablesTests: XCTestCase {
         XCTAssertNil(group("1 lata de crema de champiñones", es))
 
         let it = LanguageWords.forTag("it")
-        XCTAssertEqual(group("1 mazzetto di basilico", it), "herbs")
+        XCTAssertEqual(group("1 mazzetto di prezzemolo", it), "parsley")
+        XCTAssertNil(group("1 mazzetto di basilico", it))
         XCTAssertNil(group("2 cucchiai di pesto di basilico", it))
 
         let pt = LanguageWords.forTag("pt")
@@ -141,7 +148,7 @@ final class PerishablesTests: XCTestCase {
             for group in groups {
                 XCTAssertEqual(english[group.key], group, "\(language) \(group.key) days")
             }
-            for key in ["fish", "mince", "poultry", "mushrooms", "avocado", "herbs", "salad", "berries", "softBerries"] {
+            for key in ["fish", "mince", "poultry", "mushrooms", "avocado", "parsley", "salad", "berries", "blackberries"] {
                 XCTAssertTrue(groups.contains { $0.key == key }, "\(language) lists \(key)")
             }
         }

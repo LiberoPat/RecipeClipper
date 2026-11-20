@@ -33,31 +33,23 @@
         "níscalo", "níscalos", "boletus", "rebozuelo", "rebozuelos", "champiñones laminados"
       ] },
     { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["aguacate", "aguacates", "palta", "paltas"] },
-    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
-        "albahaca", "albahaca fresca", "cilantro", "cilantro fresco", "perejil", "perejil fresco", "menta",
-        "menta fresca", "hierbabuena", "eneldo", "eneldo fresco", "cebollino", "cebollino fresco", "estragón",
-        "perifollo", "hierbas frescas", "hojas de albahaca", "hojas de menta"
-      ] },
+    { "key": "parsley", "minDays": 2, "maxDays": 3, "aliases": ["perejil", "perejil fresco"] },
     { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
         "lechuga", "lechuga romana", "lechuga iceberg", "lechuga francesa", "lechuga fresca", "espinaca",
         "espinacas", "espinacas frescas", "espinacas baby", "rúcula", "arúgula", "canónigos", "berros",
         "mezclum", "ensalada verde", "mezcla de lechugas", "brotes tiernos", "hojas verdes", "ensalada mixta"
       ] },
     { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
-        "fresa", "fresas", "fresas frescas", "frutilla", "frutillas", "arándano", "arándanos", "arándanos frescos"
+        "fresa", "fresas", "fresas frescas", "frutilla", "frutillas", "frambuesa", "frambuesas",
+        "frutos rojos", "frutos del bosque", "frutas del bosque", "bayas"
       ] },
-    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
-        "frambuesa", "frambuesas", "mora", "moras", "zarzamora", "zarzamoras", "frutos rojos", "frutos del bosque",
-        "frutas del bosque", "bayas"
-      ] }
+    { "key": "blackberries", "minDays": 3, "maxDays": 5, "aliases": ["mora", "moras", "zarzamora", "zarzamoras"] }
   ],
   "skip": [
     "salmón ahumado", "atún en lata", "pescado congelado", "gambas congeladas", "langostinos congelados",
-    "pollo cocido", "pollo asado", "pollo congelado", "pavo cocido", "pavo ahumado",
-    "setas secas", "hongos secos", "champiñones en lata", "champiñones congelados",
-    "albahaca seca", "perejil seco", "menta seca", "eneldo seco", "cilantro molido",
-    "espinacas congeladas", "fresas congeladas", "arándanos congelados", "frambuesas congeladas",
-    "frutos rojos congelados", "frutos del bosque congelados", "bayas de goji", "bayas de enebro",
-    "arándanos secos", "arándanos deshidratados"
+    "pollo cocido", "pollo asado", "pollo congelado", "pavo cocido", "pavo ahumado", "setas secas",
+    "hongos secos", "champiñones en lata", "champiñones congelados", "perejil seco", "espinacas congeladas",
+    "fresas congeladas", "frambuesas congeladas", "frutos rojos congelados", "frutos del bosque congelados",
+    "bayas de goji", "bayas de enebro"
   ]
 }

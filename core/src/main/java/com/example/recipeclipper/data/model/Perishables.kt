@@ -28,7 +28,7 @@ object Perishables {
      * A meal at least this many days from today is far enough away for its perishable
      * ingredients to wait for a second shop (Shop for this week, #396). Three is at or past the
      * low end (`minDays`) of every group's range (the table's highest is 3: meat cuts,
-     * mushrooms, ripe avocado and salad leaves; `PerishablesTest` pins it), so a meal three or
+     * mushrooms, ripe avocado, salad leaves and blackberries; `PerishablesTest` pins it), so a meal three or
      * more days out is one a shop made today may
      * already have outlasted; a nearer one is bought now, with everything else. A fixed number,
      * never a date, and a hint like the table's own.

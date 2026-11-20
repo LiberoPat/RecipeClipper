@@ -40,7 +40,7 @@ class WhatINeedFreshScreenTest {
             PlannedIngredients(1, day = today + 1, servings = null, recipeId = 7, title = "Pasta",
                 ingredients = listOf("1 lb spaghetti"), yield = null, language = "en"),
             PlannedIngredients(2, day = today + 5, servings = null, recipeId = 9, title = "Salmon bowls",
-                ingredients = listOf("2 salmon fillets", "1 bunch basil"), yield = null, language = "en")
+                ingredients = listOf("2 salmon fillets", "1 bunch parsley"), yield = null, language = "en")
         )
     }
 
@@ -69,7 +69,7 @@ class WhatINeedFreshScreenTest {
         compose.onAllNodesWithText("Keeps about 1-2 days once bought").assertCountEquals(1)
         compose.onAllNodesWithText("Keeps about 2-3 days once bought").assertCountEquals(1)
         // The week's lines are unchanged: each still says its recipe.
-        compose.onAllNodesWithText("Salmon bowls", substring = true).assertCountEquals(2) // salmon's and basil's line
+        compose.onAllNodesWithText("Salmon bowls", substring = true).assertCountEquals(2) // salmon's and parsley's line
     }
 
     @Test
@@ -83,7 +83,7 @@ class WhatINeedFreshScreenTest {
         compose.onNodeWithTag("whatINeed").performScrollToNode(hasText("Add these to groceries"))
         compose.onNodeWithTag("addLaterToGroceries").performClick()
         compose.onNodeWithTag("addLaterToGroceries").assertIsNotEnabled()
-        compose.runOnIdle { assertEquals(listOf("1 lb spaghetti", "2 salmon fillets", "1 bunch basil"), groceries.items.value.map { it.text }) }
+        compose.runOnIdle { assertEquals(listOf("1 lb spaghetti", "2 salmon fillets", "1 bunch parsley"), groceries.items.value.map { it.text }) }
     }
 
     @Test

@@ -27,17 +27,17 @@ final class FreshFoodTests: XCTestCase {
 
     func testTwoDaysIsStillNowAndTheConstantIsThree() {
         XCTAssertEqual(Perishables.laterDays, 3)
-        let trips = FreshShop.split([row("salmon", today + 2), row("basil", today + 3)], today: today)
+        let trips = FreshShop.split([row("salmon", today + 2), row("parsley", today + 3)], today: today)
         XCTAssertEqual(trips.now.map(\.name), ["salmon"])
-        XCTAssertEqual(trips.later.map(\.row.name), ["basil"])
+        XCTAssertEqual(trips.later.map(\.row.name), ["parsley"])
     }
 
     func testEveryMealItIsForMustBeFarEnoughOrTheWholeRowIsBoughtNow() {
         let trips = FreshShop.split(
-            [row("salmon", today + 6, today + 2), row("basil", today + 6, today + 5), row("spinach", today + 4, nil)], today: today
+            [row("salmon", today + 6, today + 2), row("parsley", today + 6, today + 5), row("spinach", today + 4, nil)], today: today
         )
         XCTAssertEqual(trips.now.map(\.name), ["salmon", "spinach"])
-        XCTAssertEqual(trips.later.map(\.row.name), ["basil"])
+        XCTAssertEqual(trips.later.map(\.row.name), ["parsley"])
         XCTAssertEqual(trips.later.first?.firstDay, today + 5)
     }
 
@@ -48,15 +48,15 @@ final class FreshFoodTests: XCTestCase {
     }
 
     func testAMealTodayOrAlreadyPassedIsNow() {
-        let trips = FreshShop.split([row("salmon", today), row("basil", today - 2)], today: today)
+        let trips = FreshShop.split([row("salmon", today), row("parsley", today - 2)], today: today)
         XCTAssertEqual(trips.now.count, 2)
     }
 
     func testTheRowsKeepTheirOrderAndTheirLinesUntouched() {
-        let rows = [row("onions", today + 5), row("salmon", today + 5), row("garlic", today + 1), row("basil", today + 6)]
+        let rows = [row("onions", today + 5), row("salmon", today + 5), row("garlic", today + 1), row("parsley", today + 6)]
         let trips = FreshShop.split(rows, today: today)
         XCTAssertEqual(trips.now.map(\.name), ["onions", "garlic"])
-        XCTAssertEqual(trips.later.map(\.row.name), ["salmon", "basil"])
+        XCTAssertEqual(trips.later.map(\.row.name), ["salmon", "parsley"])
         XCTAssertEqual(trips.later[0].row, rows[1])
     }
 

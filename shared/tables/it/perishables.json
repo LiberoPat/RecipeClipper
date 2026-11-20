@@ -35,29 +35,22 @@
         "portobello", "cardoncelli", "funghi misti", "funghi prataioli", "funghi cardoncelli"
       ] },
     { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["avocado", "avocado maturo", "avocadi"] },
-    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
-        "basilico", "basilico fresco", "coriandolo fresco", "prezzemolo", "prezzemolo fresco", "menta",
-        "menta fresca", "aneto", "aneto fresco", "erba cipollina", "dragoncello", "dragoncello fresco",
-        "cerfoglio", "erbe fresche", "erbe aromatiche fresche", "foglie di basilico", "foglie di menta"
-      ] },
+    { "key": "parsley", "minDays": 2, "maxDays": 3, "aliases": ["prezzemolo", "prezzemolo fresco"] },
     { "key": "salad", "minDays": 3, "maxDays": 5, "aliases": [
         "lattuga", "lattuga romana", "lattuga iceberg", "insalata", "insalata verde", "insalata mista",
         "insalata mista in busta", "spinaci", "spinacio", "spinaci freschi", "baby spinaci", "rucola", "ruchetta",
         "songino", "crescione", "valeriana", "misticanza", "lattughino", "insalatina", "foglie di spinaci"
       ] },
     { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
-        "fragola", "fragole", "fragole fresche", "mirtillo", "mirtilli", "mirtilli neri", "mirtilli freschi"
+        "fragola", "fragole", "fragole fresche", "lampone", "lamponi", "frutti di bosco", "frutti rossi",
+        "bacche", "frutti di bosco freschi"
       ] },
-    { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
-        "lampone", "lamponi", "mora", "more", "frutti di bosco", "frutti rossi", "bacche", "frutti di bosco freschi"
-      ] }
+    { "key": "blackberries", "minDays": 3, "maxDays": 5, "aliases": ["mora", "more"] }
   ],
   "skip": [
-    "salmone affumicato", "tonno in scatola", "pesce surgelato", "gamberi surgelati",
-    "pollo arrosto", "pollo cotto", "pollo affumicato", "pollo surgelato",
-    "funghi secchi", "funghi in scatola", "funghi surgelati", "porcini secchi",
-    "basilico secco", "prezzemolo secco", "menta secca", "spinaci surgelati", "fragole surgelate",
-    "mirtilli surgelati", "lamponi surgelati", "frutti di bosco surgelati", "bacche di goji", "bacche di ginepro",
-    "mirtilli secchi", "mirtilli rossi"
+    "salmone affumicato", "tonno in scatola", "pesce surgelato", "gamberi surgelati", "pollo arrosto",
+    "pollo cotto", "pollo affumicato", "pollo surgelato", "funghi secchi", "funghi in scatola",
+    "funghi surgelati", "porcini secchi", "prezzemolo secco", "spinaci surgelati", "fragole surgelate",
+    "lamponi surgelati", "frutti di bosco surgelati", "bacche di goji", "bacche di ginepro"
   ]
 }

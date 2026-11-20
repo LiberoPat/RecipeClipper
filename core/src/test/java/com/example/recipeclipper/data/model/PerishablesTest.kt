@@ -28,21 +28,25 @@ class PerishablesTest {
         assertEquals("mushrooms", group("8 oz button mushrooms, sliced"))
         assertEquals("mushrooms", group("200 g shiitake"))
         assertEquals("avocado", group("2 ripe avocados"))
-        assertEquals("herbs", group("1/2 cup fresh basil leaves"))
-        assertEquals("herbs", group("1 bunch cilantro, chopped"))
-        assertEquals("herbs", group("2 tbsp chopped fresh parsley"))
+        assertEquals("parsley", group("2 tbsp chopped fresh parsley"))
+        // Foods that keep a week or more (FoodKeeper: basil 10 days, cilantro and mint 2-3 weeks, herbs 7-10 days) are off the table.
+        assertNull(group("1/2 cup fresh basil leaves"))
+        assertNull(group("1 bunch cilantro, chopped"))
+        assertNull(group("2 tbsp chopped fresh mint"))
+        assertNull(group("1 tbsp fresh herbs"))
         assertEquals("salad", group("5 oz baby spinach"))
         assertEquals("salad", group("1 head romaine lettuce"))
         assertEquals("salad", group("2 handfuls rocket"))
         assertEquals("berries", group("1 pint strawberries, hulled"))
-        assertEquals("berries", group("1 cup blueberries"))
-        assertEquals("softBerries", group("1 cup raspberries"))
-        assertEquals("softBerries", group("2 cups mixed berries"))
+        assertNull(group("1 cup blueberries")) // FoodKeeper: 1-2 weeks, off the table
+        assertEquals("berries", group("1 cup raspberries"))
+        assertEquals("berries", group("2 cups mixed berries"))
+        assertEquals("blackberries", group("1 cup blackberries"))
     }
 
     @Test fun `a group's keeps hint is its range`() {
         assertEquals("1-2", Perishables.find("2 salmon fillets", en)!!.group.keeps)
-        assertEquals("2-3", Perishables.find("1 bunch basil", en)!!.group.keeps)
+        assertEquals("2-3", Perishables.find("1 bunch parsley", en)!!.group.keeps)
         assertEquals("3-5", Perishables.find("8 oz mushrooms", en)!!.group.keeps)
         assertEquals("3-4", Perishables.find("2 avocados", en)!!.group.keeps)
         assertEquals("3", PerishableGroup("x", 3, 3).keeps)
@@ -99,20 +103,20 @@ class PerishablesTest {
     }
 
     @Test fun `a listed singular and plural are one word`() {
-        assertEquals("softBerries", Perishables.groupOf("raspberries", en)?.key)
-        assertEquals("softBerries", Perishables.groupOf("raspberry", en)?.key)
+        assertEquals("berries", Perishables.groupOf("raspberries", en)?.key)
+        assertEquals("berries", Perishables.groupOf("raspberry", en)?.key)
         assertEquals("fish", Perishables.groupOf("mussels", en)?.key)
         assertNull(Perishables.groupOf("frozen raspberries", en))
         assertNull(Perishables.groupOf("frozen raspberry", en))
     }
 
     @Test fun `the most delicate perishable of a recipe is the shortest-keeping`() {
-        val lines = listOf("1 bunch basil", "2 salmon fillets", "8 oz mushrooms", "2 cups flour")
+        val lines = listOf("1 bunch parsley", "2 salmon fillets", "8 oz mushrooms", "2 cups flour")
         val worst = Perishables.mostDelicate(lines, en)!!
         assertEquals("fish", worst.group.key)
         assertEquals("salmon fillets", worst.name)
-        assertEquals("herbs", Perishables.mostDelicate(listOf("2 cups flour", "1 bunch basil", "1 cup blueberries"), en)!!.group.key)
-        assertNull(Perishables.mostDelicate(listOf("2 cups flour", "1 tsp dried basil"), en))
+        assertEquals("parsley", Perishables.mostDelicate(listOf("2 cups flour", "1 bunch parsley", "1 cup blueberries"), en)!!.group.key)
+        assertNull(Perishables.mostDelicate(listOf("2 cups flour", "1 tsp dried parsley"), en))
         assertNull(Perishables.mostDelicate(emptyList(), en))
     }
 
@@ -122,7 +126,9 @@ class PerishablesTest {
         assertEquals("fish", group("200 g Lachs", de))
         assertNull(group("100 g geräucherter Lachs", de))
         assertEquals("mince", group("500 g Hackfleisch", de))
-        assertEquals("herbs", group("1 Bund Petersilie", de))
+        assertEquals("parsley", group("1 Bund Petersilie", de))
+        assertNull(group("1 Bund Basilikum", de))
+        assertNull(group("200 g Heidelbeeren", de))
         assertNull(group("1 TL getrocknetes Basilikum", de))
         assertNull(group("200 g tiefgekühlte Erdbeeren", de))
         // English words read as German mean nothing, and German words read as English too.
@@ -143,7 +149,8 @@ class PerishablesTest {
         assertNull(group("1 lata de crema de champiñones", es))
 
         val ital = LanguageWords.forTag("it")
-        assertEquals("herbs", group("1 mazzetto di basilico", ital))
+        assertEquals("parsley", group("1 mazzetto di prezzemolo", ital))
+        assertNull(group("1 mazzetto di basilico", ital))
         assertNull(group("2 cucchiai di pesto di basilico", ital))
 
         val pt = LanguageWords.forTag("pt")
@@ -171,7 +178,7 @@ class PerishablesTest {
                 assertEquals("$language ${group.key} days", base, group)
             }
             // The names of the groups every language must say.
-            for (key in listOf("fish", "mince", "poultry", "mushrooms", "avocado", "herbs", "salad", "berries", "softBerries")) {
+            for (key in listOf("fish", "mince", "poultry", "mushrooms", "avocado", "parsley", "salad", "berries", "blackberries")) {
                 assertTrue("$language lists $key", groups.any { it.key == key })
             }
         }
