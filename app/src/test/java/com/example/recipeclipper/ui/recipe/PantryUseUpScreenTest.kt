@@ -1,6 +1,11 @@
 package com.example.recipeclipper.ui.recipe
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -11,6 +16,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagValues
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.fake.FakeCookedPhotoRepository
@@ -90,6 +97,60 @@ class PantryUseUpScreenTest {
 
         assertEquals(listOf(milk, flour), pantry.items.value)
         compose.onNodeWithText("Pantry updated").assertDoesNotExist()
+    }
+
+    // #406: a "Select all" row tops the sheet when two rows have a checkbox; nothing is written
+    // before the button.
+    @Test
+    fun theSelectAllRowTicksAndClearsTheWorkedOutRows() {
+        val bag = item(2, "flour", "2 lb")
+        val twoPantry = FakePantryRepository(listOf(milk, bag))
+        RecipeScreenFixture(
+            recipe = RecipeScreenFixture.testRecipe().copy(checkedIngredients = setOf(0, 1)),
+            groceries = groceries,
+            pantry = twoPantry,
+            flags = FlagValues(setOf(Flag.PANTRY_SELECT_ALL))
+        ).show(compose)
+        compose.onNodeWithText("Start cooking").performClick()
+        repeat(3) { compose.onNodeWithText("Done — next step").performClick() }
+        compose.onNodeWithText("Done — finish").performClick()
+        compose.waitForIdle()
+
+        val all = compose.onNodeWithTag("useUpSelectAll")
+        all.assertIsOn() // both worked-out rows start ticked
+        compose.onNodeWithText("Clear all").assertIsDisplayed()
+
+        all.performClick()
+        all.assertIsOff()
+        compose.onNodeWithText("Select all").assertIsDisplayed()
+        compose.onNodeWithTag("useUp-1").assertIsOff()
+        compose.onNodeWithTag("useUp-2").assertIsOff()
+
+        compose.onNodeWithTag("useUp-1").performClick()
+        all.assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Indeterminate))
+        all.performClick()
+        compose.onNodeWithTag("useUp-1").assertIsOn()
+        compose.onNodeWithTag("useUp-2").assertIsOn()
+
+        // Nothing is written before the button.
+        assertEquals(listOf(milk, bag), twoPantry.items.value)
+    }
+
+    @Test
+    fun theSelectAllRowIsLeftOutWithOneCheckbox() {
+        // Milk has a checkbox and flour is asked: one checkbox.
+        RecipeScreenFixture(
+            recipe = RecipeScreenFixture.testRecipe().copy(checkedIngredients = setOf(0, 1)),
+            groceries = groceries,
+            pantry = pantry,
+            flags = FlagValues(setOf(Flag.PANTRY_SELECT_ALL))
+        ).show(compose)
+        compose.onNodeWithText("Start cooking").performClick()
+        repeat(3) { compose.onNodeWithText("Done — next step").performClick() }
+        compose.onNodeWithText("Done — finish").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Update the pantry").assertIsDisplayed()
+        compose.onNodeWithTag("useUpSelectAll").assertDoesNotExist()
     }
 
     /** "I made this" (#116): the photo just added opens for its note; closing it offers the sheet. */

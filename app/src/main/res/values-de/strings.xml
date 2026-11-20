@@ -746,6 +746,7 @@
     <string name="pantry_select_items">Artikel auswählen</string>
     <string name="pantry_select">Auswählen</string>
     <string name="action_select_all">Alle auswählen</string>
+    <string name="action_clear_all">Alle abwählen</string>
     <string name="pantry_mark_run_out">Als aufgebraucht markieren</string>
     <string name="cd_exit_selection">Auswahl beenden</string>
     <plurals name="pantry_selected_count">

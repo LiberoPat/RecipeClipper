@@ -703,6 +703,8 @@ enum Strings {
     static var pantrySelectItems: String { String(localized: "pantry_select_items") }
     static var pantrySelect: String { String(localized: "pantry_select") }
     static var selectAll: String { String(localized: "action_select_all") }
+    static var clearAll: String { String(localized: "action_clear_all") }
+    static var cdSelectAllSome: String { String(localized: "cd_select_all_some") }
     static var pantryMarkRunOut: String { String(localized: "pantry_mark_run_out") }
     static var exitSelection: String { String(localized: "cd_exit_selection") }
     static func pantrySelectedCount(_ n: Int) -> String { String(localized: "pantry_selected_count \(n)") }

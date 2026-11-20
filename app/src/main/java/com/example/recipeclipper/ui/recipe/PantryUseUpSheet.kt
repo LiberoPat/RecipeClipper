@@ -40,7 +40,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.recipeclipper.ui.common.LocalFlagValues
+import com.example.recipeclipper.ui.common.SelectAllRow
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.UseUpChange
 import com.example.recipeclipper.data.model.UseUpChoice
@@ -58,7 +61,7 @@ internal fun PantryUseUpUi(viewModel: PantryUseUpViewModel, snackbarHostState: S
     val updated = state.updated
     UndoSnackbarEffect(updated, message, undoLabel, snackbarHostState, viewModel::onUndo, viewModel::onUpdatedDismissed)
     state.sheet?.let { sheet ->
-        UseUpSheetView(sheet, viewModel::onToggle, viewModel::onChoice, viewModel::onConfirm, viewModel::onDismissed)
+        UseUpSheetView(sheet, viewModel::onToggle, viewModel::onSelectAll, viewModel::onChoice, viewModel::onConfirm, viewModel::onDismissed)
     }
 }
 
@@ -72,9 +75,11 @@ internal fun PantryUseUpUi(viewModel: PantryUseUpViewModel, snackbarHostState: S
 private fun UseUpSheetView(
     sheet: UseUpSheet,
     onToggle: (Long) -> Unit,
+    onSelectAll: () -> Unit,
     onChoice: (Long, UseUpChoice) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    selectAllEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PANTRY_SELECT_ALL)
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -91,6 +96,12 @@ private fun UseUpSheetView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
+            }
+            // #406: ticks or unticks every worked-out row; the asked rows keep their choice.
+            if (selectAllEnabled && sheet.canSelectAll) {
+                item(key = "selectAll") {
+                    SelectAllRow(sheet.selectAll, onSelectAll, Modifier.testTag("useUpSelectAll"))
+                }
             }
             items(sheet.rows, key = { "useUp-${it.item.id}" }) { row ->
                 when (val change = row.change) {

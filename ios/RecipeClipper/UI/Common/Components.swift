@@ -41,6 +41,8 @@ struct ScreenTitle: View {
 /// Draws a checkbox's state; the row around it is the tap target.
 struct CheckboxGlyph: View {
     let checked: Bool
+    /// A dash in place of the check: some of the rows it stands for are ticked (#406).
+    var mixed = false
     /// Grows with the text beside it, up to half again: a checkbox the size of an AX5 cap
     /// height would only crowd the text it marks.
     @ScaledMetric(relativeTo: .body) private var scaledSize: CGFloat = 20
@@ -51,7 +53,7 @@ struct CheckboxGlyph: View {
                 .strokeBorder(checked ? Palette.primary : Palette.muted, lineWidth: 2)
                 .background(RoundedRectangle(cornerRadius: 4).fill(checked ? Palette.primary : .clear))
             if checked {
-                Image(systemName: "checkmark")
+                Image(systemName: mixed ? "minus" : "checkmark")
                     .font(.system(size: size * 0.6, weight: .bold))
                     .foregroundStyle(Palette.onPrimary)
             }

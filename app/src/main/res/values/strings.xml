@@ -804,6 +804,7 @@
     <string name="pantry_select_items">Select items</string>
     <string name="pantry_select">Select</string>
     <string name="action_select_all">Select all</string>
+    <string name="action_clear_all">Clear all</string>
     <string name="pantry_mark_run_out">Mark run out</string>
     <string name="cd_exit_selection">Stop selecting</string>
     <plurals name="pantry_selected_count">

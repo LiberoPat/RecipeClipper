@@ -33,6 +33,8 @@ struct RecipeScreen: View {
     /// Makes the pantry's use-up sheet (#147), opened when cook mode is finished with
     /// ingredients ticked or "I made this" adds a photo; nil leaves it out.
     var makeUseUpVM: (() -> PantryUseUpViewModel)? = nil
+    /// The `pantrySelectAll` flag (#406): a Select all row tops the use-up sheet.
+    var pantrySelectAll = false
     /// Makes "Print or save as PDF" (#318); nil (the flag off, or tests) leaves it out.
     var makePrintVM: (() -> PrintViewModel)? = nil
     /// Makes "Change this recipe" (#353); nil (the askAi flag off, or tests) leaves it out.
@@ -216,7 +218,7 @@ struct RecipeScreen: View {
             get: { useUpVM?.uiState.sheet != nil }, set: { if !$0 { useUpVM?.onDismissed() } }
         )) {
             if let useUpVM, let sheet = useUpVM.uiState.sheet {
-                PantryUseUpSheet(sheet: sheet, vm: useUpVM)
+                PantryUseUpSheet(sheet: sheet, vm: useUpVM, selectAllEnabled: pantrySelectAll)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }

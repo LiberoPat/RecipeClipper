@@ -46,6 +46,8 @@ enum Flag: String, CaseIterable {
     case reorderLists
     /// Home's Today card (#402): today's next uncooked planned meal, when nothing is being cooked.
     case homeTonight
+    /// Select all / Clear all at the top of the put-away and Update the pantry checklists (#406).
+    case pantrySelectAll
 }
 
 /// One flag as `shared/flags.json` declares it.

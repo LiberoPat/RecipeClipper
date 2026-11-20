@@ -52,7 +52,9 @@ enum class Flag(val key: String) {
     /** Reorder lists (#381): drag the covers on the Lists screen into your own order, used wherever lists are shown. */
     REORDER_LISTS("reorderLists"),
     /** Home's Today card (#402): today's next uncooked planned meal, when nothing is being cooked. */
-    HOME_TONIGHT("homeTonight");
+    HOME_TONIGHT("homeTonight"),
+    /** Select all / Clear all at the top of the put-away and Update the pantry checklists (#406). */
+    PANTRY_SELECT_ALL("pantrySelectAll");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

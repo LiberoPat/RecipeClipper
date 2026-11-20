@@ -493,6 +493,57 @@ final class PantryViewModelTests: XCTestCase {
         XCTAssertNil(vm.uiState.removed)
     }
 
+    /// #406: one tri-state row over the put-away sheet. It only moves ticks: nothing is written
+    /// until the sheet's button (Android's `select all on the put-away sheet`).
+    func testSelectAllOnThePutAwaySheetNoneSomeAllAndBack() async {
+        let pantry = FakePantryRepository([item(1, "Butter", inStock: false)])
+        await groceries.add(["2 tbsp butter", "2 cups flour", "3 onions"].map { NewGroceryLine(text: $0, language: "en") })
+        let vm = await groceriesVM(pantry)
+        await tick(vm, ["2 tbsp butter", "2 cups flour", "3 onions"])
+        let before = groceries.items.value
+
+        vm.onDoneShopping()
+        // The tracked Butter starts ticked, the new ones not: some.
+        XCTAssertEqual(vm.uiState.putAway?.selectAll, .mixed)
+        XCTAssertEqual(vm.uiState.putAway?.canSelectAll, true)
+
+        vm.onPutAwaySelectAll() // not all ticked: ticks every row
+        XCTAssertEqual(Set(sheet(vm)), ["Butter true", "flour true", "onions true"])
+        XCTAssertEqual(vm.uiState.putAway?.selectAll, .on)
+
+        vm.onPutAwaySelectAll() // all ticked: unticks every row
+        XCTAssertEqual(Set(sheet(vm)), ["Butter false", "flour false", "onions false"])
+        XCTAssertEqual(vm.uiState.putAway?.selectAll, .off)
+
+        vm.onPutAwaySelectAll() // none: ticks every row
+        XCTAssertEqual(vm.uiState.putAway?.selectAll, .on)
+
+        // One row's tick afterwards makes it mixed again; select all then ticks the rest.
+        vm.onPutAwayToggle(vm.uiState.putAway!.items.first { $0.name == "onions" }!.key)
+        XCTAssertEqual(vm.uiState.putAway?.selectAll, .mixed)
+        vm.onPutAwaySelectAll()
+        XCTAssertEqual(vm.uiState.putAway?.selectAll, .on)
+
+        // Nothing written by any of it.
+        XCTAssertEqual(groceries.items.value, before)
+        XCTAssertEqual(pantry.items.value, [item(1, "Butter", inStock: false)])
+
+        // The button still does all the writing: with none ticked, only the list clears.
+        vm.onPutAwaySelectAll()
+        vm.onPutAwayConfirm()
+        await settleMain { vm.uiState.removed != nil }
+        XCTAssertTrue(groceries.items.value.isEmpty)
+        XCTAssertEqual(pantry.items.value, [item(1, "Butter", inStock: false)])
+    }
+
+    func testThePutAwaySheetsSelectAllRowIsForTwoOrMoreItems() async {
+        await groceries.add([NewGroceryLine(text: "2 cups flour", language: "en")])
+        let vm = await groceriesVM(FakePantryRepository())
+        await tick(vm, ["2 cups flour"])
+        vm.onDoneShopping()
+        XCTAssertEqual(vm.uiState.putAway?.canSelectAll, false)
+    }
+
     func testAnItemLeftUntickedInTheSheetStaysOutOfThePantryButLeavesTheList() async {
         let pantry = FakePantryRepository()
         await groceries.add([NewGroceryLine(text: "2 cups flour", language: "en")])

@@ -16,6 +16,8 @@ struct GroceriesScreen: View {
     /// A list pasted elsewhere in the app (#372), waiting for its sheet; taken once when this appears.
     var takePendingList: (() -> String?)? = nil
     var onOpenPantry: () -> Void = {}
+    /// The `pantrySelectAll` flag (#406): a Select all row tops the Done shopping sheet.
+    var selectAll = false
     /// Makes "Send as file" (#149, phase 2); nil leaves it out. Made on first use.
     var makeSendFileVM: (() -> SendFileViewModel)? = nil
     @State private var sendFileVM: SendFileViewModel?
@@ -148,7 +150,7 @@ struct GroceriesScreen: View {
         }
         .sheet(isPresented: Binding(get: { state.putAway != nil }, set: { if !$0 { vm.onPutAwayDismissed() } })) {
             if let sheet = vm.uiState.putAway {
-                PutAwaySheetView(sheet: sheet, vm: vm)
+                PutAwaySheetView(sheet: sheet, vm: vm, selectAllEnabled: selectAll)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
@@ -206,6 +208,8 @@ private struct ReceiveListSheet: ViewModifier {
 private struct PutAwaySheetView: View {
     let sheet: PutAwaySheet
     let vm: GroceriesViewModel
+    /// The `pantrySelectAll` flag (#406).
+    var selectAllEnabled = false
 
     var body: some View {
         ScrollView {
@@ -215,6 +219,11 @@ private struct PutAwaySheetView: View {
                     .textStyle(Typography.bodyMedium)
                     .foregroundStyle(Palette.muted)
                     .padding(.bottom, 8)
+                // #406: one tri-state row to tick or untick every item; nothing is written until the button.
+                if selectAllEnabled && sheet.canSelectAll {
+                    SelectAllRow(state: sheet.selectAll, action: vm.onPutAwaySelectAll)
+                        .accessibilityIdentifier("putAwaySelectAll")
+                }
                 ForEach(sheet.items) { item in
                     let ticked = sheet.ticked.contains(item.key)
                     Button { vm.onPutAwayToggle(item.key) } label: {

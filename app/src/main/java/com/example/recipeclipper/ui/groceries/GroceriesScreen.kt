@@ -88,7 +88,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.common.MenuItemText
+import com.example.recipeclipper.ui.common.SelectAllRow
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryCombiner
 import com.example.recipeclipper.data.model.GroceryCombiner.Row as GroceryRow
@@ -255,6 +258,7 @@ fun GroceriesScreen(
             PutAwaySheetView(
                 sheet = sheet,
                 onToggle = viewModel::onPutAwayToggle,
+                onSelectAll = viewModel::onPutAwaySelectAll,
                 onConfirm = viewModel::onPutAwayConfirm,
                 onDismiss = viewModel::onPutAwayDismissed
             )
@@ -565,7 +569,14 @@ private fun MoveToAisleSheet(current: Aisle, onSelect: (Aisle) -> Unit, onDismis
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PutAwaySheetView(sheet: PutAwaySheet, onToggle: (String) -> Unit, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+private fun PutAwaySheetView(
+    sheet: PutAwaySheet,
+    onToggle: (String) -> Unit,
+    onSelectAll: () -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    selectAllEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PANTRY_SELECT_ALL)
+) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         LazyColumn(
@@ -581,6 +592,12 @@ private fun PutAwaySheetView(sheet: PutAwaySheet, onToggle: (String) -> Unit, on
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
+            }
+            // #406: one tri-state row to tick or untick every item; nothing is written until the button.
+            if (selectAllEnabled && sheet.canSelectAll) {
+                item(key = "selectAll") {
+                    SelectAllRow(sheet.selectAll, onSelectAll, Modifier.testTag("putAwaySelectAll"))
+                }
             }
             items(sheet.items, key = { it.key }) { item ->
                 val ticked = item.key in sheet.ticked

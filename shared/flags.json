@@ -113,6 +113,12 @@
       "description": "Home's Today card: when nothing is being cooked, today's earliest planned meal not yet cooked (in the meal types' order) with Start cooking, the rest of today's meals on a line under it; a recipe cooked today (a cooking entry dated today, or a finished run) drops off, and so does a meal whose window has passed (breakfast 11:00, lunch 15:00), and with nothing left there is no card. Off, Home always shows the most recent recipe under Continue cooking, as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 402
+    },
+    {
+      "key": "pantrySelectAll",
+      "description": "A Select all / Clear all row at the top of both pantry checklists: Done shopping's put-away sheet and Update the pantry after cooking. A tri-state checkbox that ticks or unticks every row; the sheets' own button still does all the writing. Shown only with two or more tickable rows. Off, the sheets are as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 406
     }
   ]
 }

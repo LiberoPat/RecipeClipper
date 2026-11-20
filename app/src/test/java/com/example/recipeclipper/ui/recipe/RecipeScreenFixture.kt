@@ -58,7 +58,9 @@ class RecipeScreenFixture(
     val print: com.example.recipeclipper.ui.print.PrintViewModel? = null,
     val printer: com.example.recipeclipper.ui.print.Printer = com.example.recipeclipper.ui.print.SystemPrinter,
     /** Set to show "Change this recipe" (#353), as the navigation does with the askAi flag on. */
-    val askAi: com.example.recipeclipper.ui.askai.AskAiViewModel? = null
+    val askAi: com.example.recipeclipper.ui.askai.AskAiViewModel? = null,
+    /** The flags the screen sees (#87); all off, as a screen test without them. */
+    val flags: com.example.recipeclipper.data.flags.FlagValues = com.example.recipeclipper.data.flags.FlagValues.ALL_OFF
 ) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
@@ -117,7 +119,10 @@ class RecipeScreenFixture(
                 null
             }
         compose.setContent {
-          androidx.compose.runtime.CompositionLocalProvider(com.example.recipeclipper.ui.print.LocalPrinter provides printer) {
+          androidx.compose.runtime.CompositionLocalProvider(
+              com.example.recipeclipper.ui.print.LocalPrinter provides printer,
+              com.example.recipeclipper.ui.common.LocalFlagValues provides flags
+          ) {
             RecipeScreen(
                 onBack = { backs++ },
                 viewModel = viewModel,
