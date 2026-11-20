@@ -171,6 +171,9 @@ Decisions, not suggestions. Don't relitigate them in code.
   on-device model only picks text that's on the page (#103) and never writes
   a number the cook sees (#100, #104). Anything the app doesn't understand
   stays as written.
+- **Never claim a date or a fact about the cook's food** (#396, `freshFood`): fresh-food notes and
+  Shop for this week's "Buy later" say only "keeps about N days once bought", a range from
+  `shared/tables/<lang>/perishables.json`. A name the table doesn't list is not perishable: bought now.
 
 ## UI decisions
 

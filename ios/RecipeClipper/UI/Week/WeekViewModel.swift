@@ -120,6 +120,8 @@ struct WeekUiState: Equatable {
     var calendarFile: CalendarFile?
     /// Saved weekly menus and their prompts (#52).
     var menus = MenusUiState()
+    /// Fresh food (#396): the quiet note under a planned meal, by `PlannedMeal.id`; empty with the flag off.
+    var freshNudges: [Int64: FreshNudge] = [:]
 
     /// The first day of the block at the top.
     var weekStart: Int64 { PlanDays.blockStart(topDay, today: today) }
@@ -169,6 +171,9 @@ final class WeekViewModel {
     static let windowBefore: Int64 = 28
     static let windowDays: Int64 = 63
 
+    /// The days from today the fresh-food notes cover (#396): the first two weeks.
+    static let freshDays: Int64 = 14
+
     private(set) var uiState: WeekUiState
 
     @ObservationIgnored private let plan: MealPlanRepository
@@ -185,12 +190,24 @@ final class WeekViewModel {
     /// The first day of the window of meals held (see `WeekUiState.meals`).
     @ObservationIgnored private var window: Int64 = 0
     @ObservationIgnored private var scrollRequests = 0
+    /// Fresh food (#396): the planned recipes' ingredients, and whether the notes are on. Without both, no notes.
+    @ObservationIgnored private let groceries: GroceryRepository?
+    @ObservationIgnored private let freshFood: Bool
+    @ObservationIgnored private var freshSubscription: AnyCancellable?
+    @ObservationIgnored private var freshTask: Task<Void, Never>?
+    /// The meals the notes were worked out from, for a swap's meal types.
+    @ObservationIgnored private var freshMeals: [PlannedMeal] = []
 
-    init(plan: MealPlanRepository, recipes: RecipeRepository, calendar: PlanCalendar, sleep: @escaping Sleep = Sleeps.real) {
+    init(
+        plan: MealPlanRepository, recipes: RecipeRepository, calendar: PlanCalendar, sleep: @escaping Sleep = Sleeps.real,
+        groceries: GroceryRepository? = nil, freshFood: Bool = false
+    ) {
         self.plan = plan
         self.recipes = recipes
         self.calendar = calendar
         self.sleep = sleep
+        self.groceries = groceries
+        self.freshFood = freshFood
         let today = calendar.today()
         uiState = WeekUiState(
             today: today, firstDay: today - Self.daysBefore, lastDay: today + Self.daysAfter, topDay: today
@@ -202,6 +219,53 @@ final class WeekViewModel {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] menus in self?.uiState.menus.menus = menus }
         load(from: today - Self.windowBefore)
+        watchFresh(from: today)
+    }
+
+    // MARK: Fresh food (#396)
+
+    /// The quiet notes for today and the next `freshDays` - 1 days: each planned recipe's most
+    /// delicate perishable ingredient, against the plan's first day (`FreshPlan`). Worked out again
+    /// whenever the plan changes; nothing is moved here.
+    private func watchFresh(from: Int64) {
+        guard freshFood, let groceries else { return }
+        freshSubscription = plan.observeDays(start: from, end: from + Self.freshDays - 1)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] meals in
+                self?.freshTask?.cancel()
+                self?.freshTask = Task { [weak self] in
+                    let planned = await groceries.plannedIngredients(start: from, end: from + Self.freshDays - 1)
+                    guard let self, !Task.isCancelled else { return }
+                    let byEntry = Dictionary(planned.map { ($0.entryId, $0) }, uniquingKeysWith: { first, _ in first })
+                    let fresh = meals.map { meal in
+                        FreshMeal(
+                            key: meal.id, day: meal.day,
+                            perishable: byEntry[meal.id].flatMap {
+                                Perishables.mostDelicate(
+                                    $0.ingredients, words: LanguageWords.forRecipe(language: $0.language, title: $0.title, lines: $0.ingredients)
+                                )
+                            }
+                        )
+                    }
+                    self.freshMeals = meals
+                    self.uiState.freshNudges = Dictionary(
+                        uniqueKeysWithValues: FreshPlan.nudges(fresh, today: from).map { ($0.key, $0) }
+                    )
+                }
+            }
+    }
+
+    /// The cook tapped "Swap with ..." under a note: the two meals trade days, each keeping its meal
+    /// type. Only on the tap.
+    func onFreshSwap(_ mealId: Int64) {
+        guard let nudge = uiState.freshNudges[mealId],
+              let meal = freshMeals.first(where: { $0.id == nudge.key }),
+              let partner = freshMeals.first(where: { $0.id == nudge.swapKey })
+        else { return }
+        Task {
+            await plan.move(entryId: meal.id, day: nudge.swapDay, mealTypeId: meal.mealTypeId)
+            await plan.move(entryId: partner.id, day: nudge.day, mealTypeId: partner.mealTypeId)
+        }
     }
 
     // MARK: Scrolling and weeks (#232)
@@ -233,7 +297,9 @@ final class WeekViewModel {
 
     /// "Today": back to today at the top, which may have changed since the screen opened.
     func onToday() {
-        uiState.today = calendar.today()
+        let today = calendar.today()
+        if today != uiState.today { watchFresh(from: today) }
+        uiState.today = today
         jumpTo(uiState.today, animate: true)
     }
 
@@ -243,6 +309,7 @@ final class WeekViewModel {
         let today = calendar.today()
         guard today != uiState.today else { return }
         uiState.today = today
+        watchFresh(from: today)
         jumpTo(today, animate: false)
     }
 

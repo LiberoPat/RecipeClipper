@@ -325,7 +325,10 @@ final class AppContainer {
     }
 
     func makeWeekViewModel() -> WeekViewModel {
-        WeekViewModel(plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar)
+        WeekViewModel(
+            plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar,
+            groceries: groceryRepository, freshFood: featureFlags.isOn(.freshFood)
+        )
     }
 
     func makeAddToPlanViewModel() -> AddToPlanViewModel {
@@ -419,7 +422,7 @@ final class AppContainer {
     func makeWhatINeedViewModel(weekStart: Int64) -> WhatINeedViewModel {
         WhatINeedViewModel(
             weekStart: weekStart, groceries: groceryRepository, pantry: pantryRepository, preferences: preferences,
-            decisions: decisionRepository
+            decisions: decisionRepository, calendar: planCalendar, freshFood: featureFlags.isOn(.freshFood)
         )
     }
 
@@ -472,7 +475,8 @@ final class AppContainer {
     func makeMealPlanReviewViewModel(text: String) -> MealPlanReviewViewModel {
         MealPlanReviewViewModel(
             text: text, recipes: recipeRepository, plan: mealPlanRepository, calendar: planCalendar,
-            limit: { [libraryPolicy] in libraryPolicy.limit }, entitlements: entitlements
+            limit: { [libraryPolicy] in libraryPolicy.limit }, entitlements: entitlements,
+            freshFood: featureFlags.isOn(.freshFood)
         )
     }
 

@@ -777,6 +777,16 @@ enum Strings {
     static func whatINeedPantryAndWeek(_ have: String, _ use: String) -> String {
         String(localized: "what_i_need_pantry_and_week \(have) \(use)")
     }
+    // Fresh food (#396): Shop for this week in two trips, and the plan's note.
+    static var whatINeedBuyNow: String { String(localized: "what_i_need_buy_now") }
+    static var whatINeedBuyLater: String { String(localized: "what_i_need_buy_later") }
+    static var whatINeedBuyLaterNote: String { String(localized: "what_i_need_buy_later_note") }
+    static var whatINeedNothingToBuyNow: String { String(localized: "what_i_need_nothing_to_buy_now") }
+    static var whatINeedAddLater: String { String(localized: "what_i_need_add_later") }
+    static func whatINeedLaterFor(_ day: String) -> String { String(localized: "what_i_need_later_for \(day)") }
+    static func freshKeeps(_ days: String) -> String { String(localized: "fresh_keeps \(days)") }
+    static func freshNudge(_ name: String, _ days: String) -> String { String(localized: "fresh_nudge \(name) \(days)") }
+    static func freshNudgeSwap(_ day: String) -> String { String(localized: "fresh_nudge_swap \(day)") }
     static var addToPantry: String { String(localized: "action_add_to_pantry") }
 
     // "I made this" (#116)
