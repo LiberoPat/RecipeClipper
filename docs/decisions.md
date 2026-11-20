@@ -5367,7 +5367,7 @@ only claim anywhere is "keeps about N days once bought", a range from a table.
   `GroceryRepository.plannedIngredients`, and a swap is two `MealPlanRepository.move` calls. **Left out:**
   the Add to plan sheets and the Move sheet (they place one meal on a chosen day with no list of the others
   to swap with; the Week's note appears the moment the plan is late, so a Move or Skip that makes it late is
-  noticed there), the month view, and days beyond the first two weeks. The two shop trips and the note
+  noticed there: no extra code, because the note is worked out from the plan whenever it changes, and `WeekFreshNudgeTest`/`WeekFreshNudgeTests` pin a Skip to the next free day showing the note and its undo clearing it), the month view, and days beyond the first two weeks. The two shop trips and the note
   agree on purpose but are independent: the note is the "cook it earlier" answer for a cook who shops once,
   the split the answer for one who shops twice, and both read the same table.
 - **Strings.** Nine, `what_i_need_buy_now`, `_buy_later`, `_buy_later_note`, `_nothing_to_buy_now`,

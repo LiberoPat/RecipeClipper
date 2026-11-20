@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.week
 import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.FlagRegistry
+import com.example.recipeclipper.data.model.PlanShift.Choice
 import com.example.recipeclipper.data.model.PlannedIngredients
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeGroceryRepository
@@ -106,4 +107,53 @@ class WeekFreshNudgeTest {
             advanceUntilIdle()
             assertEquals(listOf(today, today + 5), plan.meals.value.map { it.day })
         }
+
+    // Skip tonight (#398) meets fresh food (#396): the notes are worked out from the plan whenever it
+    // changes, so a skip that leaves a perishable meal later than it keeps shows the same quiet note.
+    // Nothing moves by itself, and an undo takes the note away again.
+
+    @Test
+    fun `skipping a perishable meal to the next free day shows its note, nothing else moves, and undo clears it`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            planned(9, today, DINNER, "2 salmon fillets")
+            for (day in today + 1..today + 3) planned(7, day, DINNER, "1 lb spaghetti")
+            val salmon = plan.meals.value.first()
+            val vm = viewModel()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.freshNudges.isEmpty())
+
+            vm.onSkipStart(salmon)
+            vm.onSkip(Choice.NEXT_FREE_DAY)
+            advanceUntilIdle()
+
+            // The salmon is now three days after the plan's first meal (tomorrow), past the 1-2 it keeps.
+            assertEquals(today + 4, plan.meals.value.first { it.id == salmon.id }.day)
+            val nudge = vm.uiState.value.freshNudges.getValue(salmon.id)
+            assertEquals(today + 4, nudge.day)
+            assertEquals(today + 1, nudge.swapDay) // the earliest meal that can take the later day
+            assertEquals("1-2", nudge.keeps)
+            assertEquals(1, vm.uiState.value.freshNudges.size)
+            assertEquals(listOf(today + 1, today + 2, today + 3), plan.meals.value.filter { it.id != salmon.id }.map { it.day })
+
+            vm.onUndoSkip()
+            advanceUntilIdle()
+            assertEquals(today, plan.meals.value.first { it.id == salmon.id }.day)
+            assertTrue(vm.uiState.value.freshNudges.isEmpty())
+        }
+
+    @Test
+    fun `pushing the week back a day keeps every gap, so it adds no note`() = runTest(mainDispatcherRule.dispatcher) {
+        planned(7, today, DINNER, "1 lb spaghetti")
+        planned(9, today + 2, DINNER, "2 salmon fillets")
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.freshNudges.isEmpty())
+
+        vm.onSkipStart(plan.meals.value.first())
+        vm.onSkip(Choice.PUSH_WEEK)
+        advanceUntilIdle()
+
+        assertEquals(listOf(today + 1, today + 3), plan.meals.value.map { it.day })
+        assertTrue(vm.uiState.value.freshNudges.isEmpty())
+    }
 }

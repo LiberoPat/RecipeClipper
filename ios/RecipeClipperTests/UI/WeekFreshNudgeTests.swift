@@ -85,4 +85,50 @@ final class WeekFreshNudgeTests: XCTestCase {
         await settleMain()
         XCTAssertEqual(plan.meals.value.map(\.day), [today, today + 5])
     }
+
+    // Skip tonight (#398) meets fresh food (#396): the notes are worked out from the plan whenever it
+    // changes, so a skip that leaves a perishable meal later than it keeps shows the same quiet note.
+    // Nothing moves by itself, and an undo takes the note away again.
+
+    func testSkippingAPerishableMealToTheNextFreeDayShowsItsNoteNothingElseMovesAndUndoClearsIt() async {
+        await planned(9, today, dinner, "2 salmon fillets")
+        for day in (today + 1)...(today + 3) { await planned(7, day, dinner, "1 lb spaghetti") }
+        let salmon = plan.meals.value[0]
+        let vm = viewModel()
+        await settleMain()
+        XCTAssertTrue(vm.uiState.freshNudges.isEmpty)
+
+        vm.onSkipStart(salmon)
+        vm.onSkip(.nextFreeDay)
+        await settleMain()
+
+        // The salmon is now three days after the plan's first meal (tomorrow), past the 1-2 it keeps.
+        XCTAssertEqual(plan.meals.value.first { $0.id == salmon.id }?.day, today + 4)
+        let nudge = vm.uiState.freshNudges[salmon.id]
+        XCTAssertEqual(nudge?.day, today + 4)
+        XCTAssertEqual(nudge?.swapDay, today + 1) // the earliest meal that can take the later day
+        XCTAssertEqual(nudge?.keeps, "1-2")
+        XCTAssertEqual(vm.uiState.freshNudges.count, 1)
+        XCTAssertEqual(plan.meals.value.filter { $0.id != salmon.id }.map(\.day), [today + 1, today + 2, today + 3])
+
+        vm.onUndoSkip()
+        await settleMain()
+        XCTAssertEqual(plan.meals.value.first { $0.id == salmon.id }?.day, today)
+        XCTAssertTrue(vm.uiState.freshNudges.isEmpty)
+    }
+
+    func testPushingTheWeekBackADayKeepsEveryGapSoItAddsNoNote() async {
+        await planned(7, today, dinner, "1 lb spaghetti")
+        await planned(9, today + 2, dinner, "2 salmon fillets")
+        let vm = viewModel()
+        await settleMain()
+        XCTAssertTrue(vm.uiState.freshNudges.isEmpty)
+
+        vm.onSkipStart(plan.meals.value[0])
+        vm.onSkip(.pushWeek)
+        await settleMain()
+
+        XCTAssertEqual(plan.meals.value.map(\.day), [today + 1, today + 3])
+        XCTAssertTrue(vm.uiState.freshNudges.isEmpty)
+    }
 }
