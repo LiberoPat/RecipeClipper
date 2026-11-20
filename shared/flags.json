@@ -101,6 +101,12 @@
       "description": "Week's menu has one item, Shop for this week, which opens What I need for the week shown (To buy and In your pantry, Add to groceries adds To buy once). Off, the menu has the two items it had: What I need and Add this week's ingredients.",
       "defaults": { "debug": true, "release": true },
       "issue": 384
+    },
+    {
+      "key": "noPhotoImage",
+      "description": "A designed image for a recipe with no photo, or whose photo fails to load: the title's first letter on a small thumbnail, the recipe's first ingredient names in italic on a cover, Home's card and the reading view's banner, on one of five warm tints chosen by the recipe's uid. Lists covers show those recipes' images in the mosaic when no recipe in the list has a photo. Off, the blank tile and band as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 403
     }
   ]
 }

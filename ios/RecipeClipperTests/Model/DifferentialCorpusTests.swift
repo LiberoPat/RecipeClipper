@@ -28,6 +28,9 @@ import XCTest
 // Use-up rows (#147): a pantry item's quantity and name, the ticked lines, then PantryUseUp.rows
 // against that one item (.none, .ask, .usedUp or .subtract(new quantity)). Write only
 // `UseUp("2 lb", "chicken", ["1 lb chicken"]),`.
+// No-photo image rows (#403): a title, a uid and the ingredient lines, then NoPhoto's monogram
+// letter (nil: none), up to three ingredient names and the tint index. Write only
+// `NoPh("The Best Lasagna", "uid-1", ["1 lb noodles"]),` (optionally `, lang: "de"`).
 // Pantry-entry rows (#302): what was typed into "Add to the pantry", then PantryEntry.split's name
 // and quantity (nil: kept whole). Write only `Entry("3 onions"),` (optionally `, lang: "de"`).
 // What I need amount rows (#302): a pantry item's quantity and name, the week's lines (each its own
@@ -147,6 +150,15 @@ final class DifferentialCorpusTests: XCTestCase {
         let quantity: String; let name: String; let lines: [String]; let language: String; let result: UseUpResult
         init(_ quantity: String, _ name: String, _ lines: [String], lang: String = "en", _ result: UseUpResult) {
             self.quantity = quantity; self.name = name; self.lines = lines; self.language = lang; self.result = result
+        }
+    }
+
+    private struct NoPh {
+        let title: String; let uid: String; let lines: [String]; let language: String
+        let initial: String?; let labels: [String]; let tint: Int
+        init(_ title: String, _ uid: String, _ lines: [String], lang: String = "en", _ initial: String?, _ labels: [String], _ tint: Int) {
+            self.title = title; self.uid = uid; self.lines = lines; self.language = lang
+            self.initial = initial; self.labels = labels; self.tint = tint
         }
     }
 
@@ -1602,6 +1614,36 @@ final class DifferentialCorpusTests: XCTestCase {
         UseUp("3 Zwiebeln", "Zwiebeln", ["2 Zwiebeln"], lang: "de", .subtract("1 Zwiebel")),
     ]
 
+    private static let noPhotos: [NoPh] = [
+        NoPh("The Best Lasagna", "5b2f0a52-1c7e-4a8d-9d55-0f1b7a4c1e01", ["For the sauce:", "1 lb ground beef", "2 cups tomato sauce", "Salt and pepper", "1 tsp salt", "12 lasagna noodles"], "B", ["ground beef", "tomato sauce", "lasagna noodles"], 0),
+        NoPh("A Simple Roast Chicken", "uid-2", ["1 whole chicken (4 lb)", "2 tbsp olive oil", "Kosher salt", "1 lemon, halved", "4 cloves garlic, smashed"], "S", ["whole chicken", "lemon", "garlic"], 2),
+        NoPh("An Apple Pie", "uid-3", ["2 1/2 cups all-purpose flour", "1 cup unsalted butter, cold", "6 apples, peeled and sliced", "1/2 cup sugar"], "A", ["all-purpose flour", "unsalted butter", "apples"], 1),
+        NoPh("The", "uid-4", [], "T", [], 0),
+        NoPh("The A", "uid-5", [], "A", [], 4),
+        NoPh("Theory of Cake", "uid-6", ["2 eggs"], "T", ["eggs"], 3),
+        NoPh("5-Ingredient Pasta", "uid-7", ["200 g spaghetti", "water", "2 tbsp olive oil", "Pepper", "black pepper"], "I", ["spaghetti"], 2),
+        NoPh("12345", "uid-8", ["3 ripe bananas"], nil, ["ripe bananas"], 1),
+        NoPh("   ", "uid-9", [], nil, [], 0),
+        NoPh("\"Grandma's\" Lentil Soup", "uid-10", ["1 cup red lentils, rinsed", "2 carrots, diced", "1 onion, chopped", "2 tsp ground cumin"], "G", ["red lentils", "carrots", "onion"], 1),
+        NoPh("épinards à la crème", "uid-11", ["Juice of 1 lemon", "red lentils", "1 bell pepper", "Red lentils"], "É", ["red lentils", "bell pepper"], 2),
+        NoPh("ßtraße", "uid-12", ["1 egg"], "ß", ["egg"], 3),
+        NoPh("Spaghetti Carbonara", "5b2f0a52-1c7e-4a8d-9d55-0f1b7a4c1e01", ["400 g spaghetti", "4 egg yolks", "100 g pecorino", "150 g guanciale"], "S", ["spaghetti", "egg yolks", "pecorino"], 0),
+        NoPh("Der Apfelkuchen", "uid-14", ["2 EL Zucker", "250 g Mehl", "3 Äpfel", "1 Prise Salz", "Für den Teig:"], lang: "de", "A", ["Zucker", "Mehl", "Äpfel"], 2),
+        NoPh("Die Suppe", "uid-15", ["500 g Zwiebeln, gewürfelt", "Wasser", "Salz und Pfeffer", "1 Bund Petersilie"], lang: "de", "S", ["Zwiebeln", "Petersilie"], 3),
+        NoPh("El Gazpacho", "uid-16", ["1 kg tomates maduros", "1 pepino", "Aceite de oliva", "Sal"], lang: "es", "G", ["tomates maduros", "pepino"], 4),
+        NoPh("Las Croquetas de Jamón", "uid-17", ["100 g de jamón serrano", "2 cucharadas de harina", "Agua"], lang: "es", "C", ["jamón serrano", "harina"], 0),
+        NoPh("L'agneau aux olives", "uid-18", ["1 gigot d'agneau", "200 g d'olives vertes", "2 c. à soupe d'huile d'olive", "Sel"], lang: "fr", "A", ["gigot d'agneau", "d'olives vertes", "d'huile d'olive"], 3),
+        NoPh("La Tarte Tatin", "uid-19", ["6 pommes", "100 g de sucre", "Pour la pâte :", "250 g de farine"], lang: "fr", "T", ["pommes", "sucre", "farine"], 4),
+        NoPh("Le", "uid-20", [], lang: "fr", "L", [], 0),
+        NoPh("Il Tiramisù", "uid-21", ["500 g mascarpone", "6 uova", "Savoiardi", "Acqua"], lang: "it", "T", ["mascarpone", "uova", "Savoiardi"], 4),
+        NoPh("L'insalata Caprese", "uid-22", ["4 pomodori", "250 g mozzarella", "Olio d'oliva", "Basilico"], lang: "it", "I", ["pomodori", "mozzarella", "Basilico"], 2),
+        NoPh("O Bolo de Cenoura", "uid-23", ["3 cenouras", "4 ovos", "2 xícaras de açúcar", "Água"], lang: "pt", "B", ["cenouras", "ovos", "açúcar"], 1),
+        NoPh("唐揚げ", "uid-24", ["鶏もも肉 300g", "醤油 大さじ1", "塩 少々", "片栗粉 適量"], lang: "ja", "唐", ["鶏もも肉", "醤油", "片栗粉"], 4),
+        NoPh("カレー", "uid-25", ["玉ねぎ 2個", "水", "じゃがいも 1個"], lang: "ja", "カ", ["玉ねぎ", "じゃがいも"], 3),
+        NoPh("Éclair au chocolat", "uid-27", ["100 g chocolat noir", "3 œufs"], lang: "fr", "É", ["chocolat noir", "œufs"], 0),
+    ]
+
+
     private static let entries: [Entry] = [
         Entry("3 onions", "onions", "3"),
         Entry("2 cups rice", "rice", "2 cups"),
@@ -2752,6 +2794,16 @@ final class DifferentialCorpusTests: XCTestCase {
             case .subtract(_, nil): result = .usedUp
             }
             XCTAssertEqual(result, row.result, "\(row.quantity) \(row.name) / \(row.lines)")
+        }
+    }
+
+    func testNoPhotoImagesMatchKotlin() {
+        for row in Self.noPhotos {
+            let source = NoPhotoSource(uid: row.uid, title: row.title, language: row.language, ingredients: row.lines)
+            let art = NoPhoto.art(source, maxLabels: 3)
+            XCTAssertEqual(art.initial, row.initial, row.title)
+            XCTAssertEqual(art.labels, row.labels, row.title)
+            XCTAssertEqual(art.tint, row.tint, row.title)
         }
     }
 

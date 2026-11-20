@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "about": "Ingredient names that say nothing about a dish, skipped when the no-photo image picks the recipe's first ingredients (#403). Each is matched whole against the line's name as IngredientName reads it (apostrophes and hyphens dropped, listed plurals made singular), never at the end of a longer name: \"bell pepper\" is not \"pepper\".",
+  "staples": [
+    "salt",
+    "kosher salt",
+    "sea salt",
+    "flaky salt",
+    "fine salt",
+    "table salt",
+    "pepper",
+    "black pepper",
+    "ground black pepper",
+    "freshly ground black pepper",
+    "white pepper",
+    "oil",
+    "olive oil",
+    "extra virgin olive oil",
+    "vegetable oil",
+    "canola oil",
+    "cooking oil",
+    "neutral oil",
+    "cooking spray",
+    "water",
+    "cold water",
+    "warm water",
+    "hot water",
+    "boiling water",
+    "ice water",
+    "ice"
+  ]
+}

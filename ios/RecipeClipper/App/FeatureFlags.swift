@@ -42,6 +42,8 @@ enum Flag: String, CaseIterable {
     case recipeVersions
     /// Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients.
     case shopForWeek
+    /// A designed image for a recipe with no photo, or whose photo fails to load (#403): a monogram, an ingredient label, one of five tints.
+    case noPhotoImage
 }
 
 /// One flag as `shared/flags.json` declares it.

@@ -48,7 +48,9 @@ enum class Flag(val key: String) {
     /** Recipe versions (#354): an AI's change to a recipe is saved linked to its original. */
     RECIPE_VERSIONS("recipeVersions"),
     /** Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients. */
-    SHOP_FOR_WEEK("shopForWeek");
+    SHOP_FOR_WEEK("shopForWeek"),
+    /** A designed image for a recipe with no photo, or whose photo fails to load (#403): a monogram, an ingredient label, one of five tints. */
+    NO_PHOTO_IMAGE("noPhotoImage");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

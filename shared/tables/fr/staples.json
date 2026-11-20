@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "language": "fr",
+  "about": "Ingredient names that say nothing about a dish, skipped when the no-photo image picks the recipe's first ingredients (#403). Each is matched whole against the line's name as IngredientName reads it (apostrophes and hyphens dropped, listed plurals made singular), never at the end of a longer name: \"bell pepper\" is not \"pepper\".",
+  "staples": [
+    "sel",
+    "sel fin",
+    "gros sel",
+    "fleur de sel",
+    "poivre",
+    "poivre noir",
+    "poivre blanc",
+    "huile",
+    "huile d'olive",
+    "huile d'olive vierge extra",
+    "huile végétale",
+    "huile de tournesol",
+    "eau",
+    "eau froide",
+    "eau chaude",
+    "eau tiède",
+    "eau bouillante",
+    "glaçons"
+  ]
+}
