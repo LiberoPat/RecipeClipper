@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The share extension's card: a compact confirmation at the bottom of the screen, over the
 /// app that shared. Capture stays frictionless: nothing to confirm, and once saved the card
@@ -9,6 +10,8 @@ struct ShareImportView: View {
     let onDone: () -> Void
     /// Cancel or Close: the import (if still running) stops and writes nothing.
     let onCancel: () -> Void
+    /// The message for the AI was copied (#352): the card says to paste it into the chat.
+    @State private var copied = false
 
     /// How long the saved card stays up before dismissing itself.
     static let savedDismissDelay: Duration = .milliseconds(2500)
@@ -81,6 +84,28 @@ struct ShareImportView: View {
                 .textStyle(Typography.bodyMedium)
                 .foregroundStyle(Palette.muted)
             buttons { Button(Strings.done, action: onDone).buttonStyle(PrimaryButtonStyle()) }
+
+        case .failed(.cutOff):
+            // An AI's answer cut off before its recipe ended (#352): no Try again (the same text
+            // fails the same way); a message to ask the chat for it again, then the confirmation.
+            message(Strings.message(for: .cutOff))
+            if copied {
+                Text(Strings.cutOffCopied)
+                    .textStyle(Typography.bodyMedium)
+                    .foregroundStyle(Palette.muted)
+                    .accessibilityIdentifier("share.cutoff.copied")
+            }
+            buttons {
+                Button(Strings.close, action: onCancel).buttonStyle(TextActionStyle())
+                if !copied {
+                    Button(Strings.cutOffCopyAction) {
+                        UIPasteboard.general.string = CutOffMessage.forRecipe(Strings.cutOffWords)
+                        copied = true
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .accessibilityIdentifier("share.cutoff.copy")
+                }
+            }
 
         case .failed(let error):
             message(Strings.message(for: error))

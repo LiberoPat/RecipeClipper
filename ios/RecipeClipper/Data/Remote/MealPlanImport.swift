@@ -3,9 +3,11 @@ import Foundation
 /// A week of recipes shared in from an AI chat (#352): the answer to the "Plan my week" prompt
 /// (#353), one JSON array of schema.org Recipes, each with a `"day"` (`YYYY-MM-DD`). Ported line
 /// for line from Android's `MealPlanImport`; its doc comment has the rules. Shared text that
-/// holds one opens a review instead of the single-recipe editor: the first JSON value in the text
-/// that `JsonLdRecipeParser.parseEach` reads at least `minRecipes` recipes from, at least one of
-/// them with a day. At most `maxRecipes` are kept; a recipe's url and image are never used.
+/// holds one opens a review instead of the single-recipe editor. `read` gathers the recipes of
+/// every whole JSON value in the text (one array, several code blocks, a wrapper object, or an
+/// answer cut off mid-recipe, `Plan.cutOff`): at least `minRecipes`, and a day on one of them,
+/// or all in one value, no `isBasedOn` (the Kotlin's header has the rules). At most `maxRecipes`
+/// are kept; a recipe's url and image are never used.
 enum MealPlanImport {
 
     /// Fewer than this is a single recipe, for the editor.
@@ -14,8 +16,9 @@ enum MealPlanImport {
     /// A month's worth: more is cut off.
     static let maxRecipes = 31
 
-    /// How many places in the text that open a JSON value are tried before giving up.
-    private static let maxCandidates = 20
+    /// How many places in the text that open a JSON value are tried before giving up: room for
+    /// `maxRecipes` separate blocks, the prose braces between them, and the pieces of a cut-off one.
+    private static let maxCandidates = 100
 
     /// One recipe of the plan. `day` is the epoch day its `"day"` named, nil when it named none or
     /// something that isn't a real date ("Monday", "2026-02-30").
@@ -24,8 +27,11 @@ enum MealPlanImport {
         let day: Int64?
     }
 
+    /// `cutOff`: the text ended inside an unfinished JSON value, so recipes after the last whole
+    /// one are missing.
     struct Plan: Equatable {
         let items: [Item]
+        var cutOff = false
     }
 
     /// The plan in `text`, or nil when it holds none.
@@ -35,20 +41,39 @@ enum MealPlanImport {
               normalized.range(of: "recipe", options: .caseInsensitive) != nil else { return nil }
         let units = Array(normalized.utf16)
         let ns = normalized as NSString
+        var gathered: [(recipe: Recipe, day: String?)] = []
+        var oneValue = false // a single whole value held at least minRecipes recipes
+        var basedOn = false // a value names the recipe it changed (#354): a changed recipe, not a week
+        var cutAt = -1 // where the first unfinished JSON-looking value began
+        var afterCut = 0 // recipes read from whole values that began inside it
         var tried = 0
         var i = 0
-        while i < units.count && tried < maxCandidates {
+        while i < units.count && tried < maxCandidates && gathered.count < maxRecipes {
             if units[i] != UInt16(UInt8(ascii: "{")) && units[i] != UInt16(UInt8(ascii: "[")) { i += 1; continue }
             tried += 1
             let end = SharedText.jsonEnd(units, i)
-            if end < 0 { i += 1; continue }
-            let found = JsonLdRecipeParser.parseEach(ns.substring(with: NSRange(location: i, length: end - i)))
-            if found.count >= minRecipes && found.contains(where: { $0.day != nil }) {
-                return Plan(items: found.prefix(maxRecipes).map { Item(recipe: $0.recipe, day: parseDay($0.day)) })
+            if end < 0 {
+                // No closing bracket: a cut-off answer (or prose with a stray bracket). Step inside, so
+                // each whole recipe in it is still found; the unfinished one is not a value at all.
+                if cutAt < 0 && SharedText.looksLikeJson(units, i) { cutAt = i }
+                i += 1
+                continue
+            }
+            let value = ns.substring(with: NSRange(location: i, length: end - i))
+            let found = JsonLdRecipeParser.parseEach(value, deep: true)
+            if !found.isEmpty {
+                gathered += found
+                if found.count >= minRecipes { oneValue = true }
+                if JsonLdRecipeParser.isBasedOn([value]) != nil { basedOn = true }
+                if cutAt >= 0 { afterCut += found.count }
             }
             i = end
         }
-        return nil
+        if gathered.count < minRecipes { return nil }
+        // With no day anywhere, only one value holding the recipes (an array, a wrapper, or one
+        // that was cut off) is a plan, and never a changed recipe: separate blocks are not.
+        if !gathered.contains(where: { $0.day != nil }) && (basedOn || !(oneValue || afterCut >= minRecipes)) { return nil }
+        return Plan(items: gathered.prefix(maxRecipes).map { Item(recipe: $0.recipe, day: parseDay($0.day)) }, cutOff: cutAt >= 0)
     }
 
     private static let dayPattern = JRegex(#"^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$"#)

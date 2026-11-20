@@ -298,6 +298,13 @@
     <string name="mealplan_wont_fit">Aún no hay espacio para esta</string>
     <string name="mealplan_kept">Guardadas hasta ahora: %1$d</string>
     <string name="mealplan_open_week">Abrir Semana</string>
+    <string name="mealplan_cut_off">La respuesta se cortó, así que solo han llegado estas recetas. Pídele a la IA que continúe para el resto.</string>
+    <string name="error_cut_off">Esa respuesta se cortó antes de que terminara la receta. Pídele a la IA que la envíe de nuevo o que continúe.</string>
+    <string name="cutoff_copy_action">Copiar un mensaje para la IA</string>
+    <string name="cutoff_copied">Copiado. Pégalo en el chat y luego comparte o pega aquí la respuesta.</string>
+    <string name="cutoff_ask_plan">Tu respuesta se cortó. Envía el resto del plan, por favor: una receta para cada uno de estos días: %1$s. Usa el mismo formato JSON de antes, en un solo bloque de código ```json.</string>
+    <string name="cutoff_ask_plan_rest">Tu respuesta se cortó. Envía el resto del plan, por favor: una receta para cada uno de los días que faltan. Usa el mismo formato JSON de antes, en un solo bloque de código ```json.</string>
+    <string name="cutoff_ask_recipe">Tu respuesta se cortó. Envía la receta completa de nuevo como JSON de schema.org Recipe en un solo bloque de código ```json.</string>
     <string name="photo_failed">No se pudo cargar la foto. Comprueba la conexión y vuelve a intentarlo.</string>
     <string name="photo_not_ready">El lector de fotos aún no está listo en este teléfono: los servicios de Google Play lo descargan una vez, por internet. Vuelve a intentarlo en unos minutos o termina la receta a mano abajo.</string>
     <string name="photo_check_heading">Revisa estas líneas: ahí la foto se leía mal</string>

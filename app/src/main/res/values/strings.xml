@@ -394,6 +394,13 @@
     <string name="mealplan_wont_fit">No room for this one yet</string>
     <string name="mealplan_kept" tools:ignore="PluralsCandidate">Saved so far: %1$d</string>
     <string name="mealplan_open_week">Open Week</string>
+    <string name="mealplan_cut_off">The answer was cut off, so only these recipes came through. Ask the AI to continue for the rest.</string>
+    <string name="error_cut_off">That answer was cut off before the recipe ended. Ask the AI to send it again, or to continue.</string>
+    <string name="cutoff_copy_action">Copy a message for the AI</string>
+    <string name="cutoff_copied">Copied. Paste it into the chat, then share or paste the reply here.</string>
+    <string name="cutoff_ask_plan">Your answer was cut off. Please send the rest of the plan: one recipe for each of these days: %1$s. Use the same JSON format as before, in one ```json code block.</string>
+    <string name="cutoff_ask_plan_rest">Your answer was cut off. Please send the rest of the plan: one recipe for each of the remaining days. Use the same JSON format as before, in one ```json code block.</string>
+    <string name="cutoff_ask_recipe">Your answer was cut off. Please send the whole recipe again as schema.org Recipe JSON in one ```json code block.</string>
     <string name="photo_failed">Couldn\'t load the photo. Check your connection and try again.</string>
     <string name="photo_not_ready">The photo reader isn\'t ready on this phone yet: Google Play services downloads it once, over the internet. Try again in a few minutes, or finish the recipe by hand below.</string>
     <string name="photo_check_heading">Check these lines: the photo was hard to read there</string>

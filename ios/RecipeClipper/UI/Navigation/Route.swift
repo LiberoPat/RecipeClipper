@@ -47,6 +47,9 @@ enum Route: Hashable {
     /// A week of recipes shared in (#352): the meal-plan review, over the text (Android's
     /// `mealplan?key=`). Saving replaces it with Week when any recipe was planned.
     case mealPlan(String)
+    /// An AI's answer pasted in that was cut off before its recipe ended (#352): says so, and
+    /// offers a message to ask for it again (Android's `cutoff`).
+    case cutOff
 }
 
 /// `recipeclipper://import?url=<percent-encoded>` opens the import screen. The share extension

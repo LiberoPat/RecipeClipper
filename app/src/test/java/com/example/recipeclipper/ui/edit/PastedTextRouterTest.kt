@@ -57,6 +57,16 @@ class PastedTextRouterTest {
         assertEquals("- milk\n- eggs\n- flour", fixtures.lists.take())
     }
 
+    @Test fun `an answer cut off before its first recipe ended is a cut-off, nothing left in an inbox`() = runTest {
+        val cut = "```json\n[\n  {\n    \"@type\": \"Recipe\",\n    \"name\": \"Mon\",\n" +
+            "    \"day\": \"2026-11-19\",\n    \"recipeInstructions\": [\n      { \"@type\": \"HowToStep\","
+        assertEquals(PasteTarget.CutOff, open(cut))
+        // A whole recipe, a whole week and plain prose are not.
+        assertTrue(open(PastedTextFixtures.json) is PasteTarget.Review)
+        assertTrue(open(PastedTextFixtures.plan) is PasteTarget.Plan)
+        assertTrue(open("Hi Mum, the scones recipe [see the card") is PasteTarget.Review)
+    }
+
     @Test fun `numbers with a dot are not a link`() = runTest {
         val target = open("1.5 cups flour") as PasteTarget.Review
 

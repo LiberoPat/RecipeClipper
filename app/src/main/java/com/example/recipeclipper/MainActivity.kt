@@ -200,6 +200,7 @@ class MainActivity : ComponentActivity() {
             is PasteTarget.Plan -> return Routes.mealPlan(target.key)
             is PasteTarget.Link -> return Routes.import(target.url)
             PasteTarget.Groceries -> return Tab.GROCERIES.route
+            PasteTarget.CutOff -> return Routes.CUT_OFF
             null -> Unit
         }
         return pages?.takeIf { featureFlags.current.isOn(Flag.PHOTO_TEXT) }?.let { Routes.scan(it) }

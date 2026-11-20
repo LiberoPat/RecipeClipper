@@ -214,41 +214,60 @@ enum JsonLdRecipeParser {
     /// (#352: the meal-plan format), nil when it has none. Only what a list holds is walked: a
     /// top-level array, `@graph`, an ItemList's `itemListElement` and a ListItem's `item` (the day
     /// may sit on either). See the Kotlin's `parseEach`.
-    static func parseEach(_ block: String, sourceUrl: String = "", pageLanguage: String? = nil) -> [(recipe: Recipe, day: String?)] {
+    ///
+    /// With `deep` (the meal-plan reader only, never a page): an object that is not a Recipe is
+    /// walked through every array and object it holds, under any key, in the keys' sorted order;
+    /// a wrapper's `day`, or its `date` when it reads as `YYYY-MM-DD`, is carried down to the
+    /// object directly under it (an array's elements start afresh), as is a key that is itself
+    /// such a date; an object with `recipeIngredient` or `recipeInstructions` counts as a Recipe
+    /// without its `@type`.
+    static func parseEach(
+        _ block: String, sourceUrl: String = "", pageLanguage: String? = nil, deep: Bool = false
+    ) -> [(recipe: Recipe, day: String?)] {
         guard let root = parseJson(block) else { return [] }
         var found: [(recipe: Recipe, day: String?)] = []
-        collectRecipes(root, depth: 0, outerDay: nil, into: &found, sourceUrl: sourceUrl, pageLanguage: pageLanguage)
+        collectRecipes(root, depth: 0, outerDay: nil, into: &found, sourceUrl: sourceUrl, pageLanguage: pageLanguage, deep: deep)
         return found
     }
 
     private static func collectRecipes(
         _ node: Any, depth: Int, outerDay: String?, into found: inout [(recipe: Recipe, day: String?)],
-        sourceUrl: String, pageLanguage: String?
+        sourceUrl: String, pageLanguage: String?, deep: Bool
     ) {
         if depth > maxDepth { return }
         if let array = node as? [Any] {
             for element in array {
-                collectRecipes(element, depth: depth + 1, outerDay: nil, into: &found, sourceUrl: sourceUrl, pageLanguage: pageLanguage)
+                collectRecipes(element, depth: depth + 1, outerDay: nil, into: &found, sourceUrl: sourceUrl, pageLanguage: pageLanguage, deep: deep)
             }
         } else if let object = node as? [String: Any] {
-            if isRecipeType(object["@type"]) {
+            if isRecipeType(object["@type"]) || (deep && (object["recipeIngredient"] != nil || object["recipeInstructions"] != nil)) {
                 if let recipe = parseRecipeJson(object, sourceUrl: sourceUrl, pageLanguage: pageLanguage) {
-                    found.append((recipe, dayOf(object) ?? outerDay))
+                    found.append((recipe, dayOf(object, deep: deep) ?? outerDay))
                 }
             } else {
-                let day = dayOf(object) ?? outerDay
-                for key in ["@graph", "itemListElement", "item"] {
-                    if let child = object[key], !(child is NSNull) {
-                        collectRecipes(child, depth: depth + 1, outerDay: day, into: &found, sourceUrl: sourceUrl, pageLanguage: pageLanguage)
+                let day = dayOf(object, deep: deep) ?? outerDay
+                if deep {
+                    for key in object.keys.sorted(by: { $0.utf16.lexicographicallyPrecedes($1.utf16) }) {
+                        let child = object[key]!
+                        guard child is [String: Any] || child is [Any] else { continue }
+                        let keyDay = MealPlanImport.parseDay(key) != nil ? key : nil
+                        collectRecipes(child, depth: depth + 1, outerDay: keyDay ?? day, into: &found, sourceUrl: sourceUrl, pageLanguage: pageLanguage, deep: true)
+                    }
+                } else {
+                    for key in ["@graph", "itemListElement", "item"] {
+                        if let child = object[key], !(child is NSNull) {
+                            collectRecipes(child, depth: depth + 1, outerDay: day, into: &found, sourceUrl: sourceUrl, pageLanguage: pageLanguage, deep: false)
+                        }
                     }
                 }
             }
         }
     }
 
-    private static func dayOf(_ object: [String: Any]) -> String? {
-        guard let text = (object["day"] as? String)?.kTrimmed, !text.isEmpty else { return nil }
-        return text
+    private static func dayOf(_ object: [String: Any], deep: Bool) -> String? {
+        if let text = (object["day"] as? String)?.kTrimmed, !text.isEmpty { return text }
+        if deep, let text = (object["date"] as? String)?.kTrimmed, MealPlanImport.parseDay(text) != nil { return text }
+        return nil
     }
 
     // MARK: - Locating the Recipe object inside arbitrarily nested JSON-LD

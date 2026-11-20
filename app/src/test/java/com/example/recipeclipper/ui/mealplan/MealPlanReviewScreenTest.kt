@@ -115,6 +115,26 @@ class MealPlanReviewScreenTest {
     }
 
     @Test
+    fun aCutOffAnswerSaysSoAndOffersAMessageForTheAI() {
+        show(MealPlanImport.Plan(plan("Omelette", "Soup").items, cutOff = true))
+
+        compose.onNodeWithTag("mealplan_cut_off").assertIsDisplayed()
+        compose.onNodeWithTag("cutoff_copy").assertIsDisplayed()
+        compose.onNodeWithTag("cutoff_copy").performClick()
+        compose.waitForIdle()
+
+        // The confirmation takes the button's place; nothing was saved.
+        compose.onNodeWithTag("cutoff_copied").assertIsDisplayed()
+        assertTrue(recipes.addManualCalls.isEmpty())
+    }
+
+    @Test
+    fun aWholeAnswerHasNoCutOffNote() {
+        show(plan("Omelette", "Soup"))
+        compose.onNodeWithTag("mealplan_cut_off").assertDoesNotExist()
+    }
+
+    @Test
     fun theFreeLimitSaysHowManyFitAndOffersUnlock() {
         policy.limit = LibraryLimit.Capped(50)
         recipes.count.value = 49

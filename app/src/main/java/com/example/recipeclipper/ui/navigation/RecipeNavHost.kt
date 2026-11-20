@@ -14,6 +14,7 @@ import com.example.recipeclipper.ui.clip.ClipScreen
 import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.edit.EditRecipeScreen
 import com.example.recipeclipper.ui.edit.EditRecipeViewModel
+import com.example.recipeclipper.ui.mealplan.CutOffScreen
 import com.example.recipeclipper.ui.mealplan.MealPlanReviewScreen
 import com.example.recipeclipper.ui.mealplan.MealPlanReviewViewModel
 import com.example.recipeclipper.data.model.RecipeFilter
@@ -116,6 +117,9 @@ object Routes {
     const val MEAL_PLAN = "mealplan?${MealPlanReviewViewModel.PLAN_ARG}={${MealPlanReviewViewModel.PLAN_ARG}}"
 
     fun mealPlan(key: String) = "mealplan?${MealPlanReviewViewModel.PLAN_ARG}=${Uri.encode(key)}"
+
+    // An AI's answer shared in that was cut off before its recipe ended (#352): says so, and offers a message to ask for it again.
+    const val CUT_OFF = "cutoff"
     fun list(id: Long) = "lists/$id"
     fun import(url: String) = "recipe/import?${RecipeViewModel.URL_ARG}=${Uri.encode(url)}"
 }
@@ -168,6 +172,13 @@ fun NavGraphBuilder.mealPlanDestination(
             },
             viewModel = viewModel(entry)
         )
+    }
+}
+
+/** A shared AI answer cut off before its recipe ended (#352): the cause on screen, Back to where it came from. */
+fun NavGraphBuilder.cutOffDestination(navController: NavHostController) {
+    composable(Routes.CUT_OFF) {
+        CutOffScreen(onBack = { navController.popBackStack() })
     }
 }
 
@@ -379,6 +390,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
 
     editTextDestination(navController)
     mealPlanDestination(navController)
+    cutOffDestination(navController)
 
     composable(
         route = Routes.CLIP,

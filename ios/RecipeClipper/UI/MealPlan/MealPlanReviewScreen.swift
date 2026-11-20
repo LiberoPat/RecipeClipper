@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The review of a week of recipes shared in (#352; Android's `MealPlanReviewScreen`): each recipe
 /// ticked, with the day it will be planned on to change. Save keeps the ticked ones; `onFinished`
@@ -16,6 +17,28 @@ struct MealPlanReviewScreen: View {
                 Text(Strings.mealPlanIntro)
                     .textStyle(Typography.bodyMedium)
                     .foregroundStyle(Palette.muted)
+                if state.cutOff {
+                    // The answer stopped mid-recipe (#352): say so, and offer a message to ask for the rest.
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(Strings.mealPlanCutOff)
+                            .textStyle(Typography.bodyMedium)
+                            .foregroundStyle(Palette.muted)
+                            .accessibilityIdentifier("mealplan.cutoff")
+                        if state.copied {
+                            Text(Strings.cutOffCopied)
+                                .textStyle(Typography.bodyMedium)
+                                .foregroundStyle(Palette.muted)
+                                .accessibilityIdentifier("mealplan.cutoff.copied")
+                        } else {
+                            Button(Strings.cutOffCopyAction) {
+                                UIPasteboard.general.string = vm.followUp(Strings.cutOffWords)
+                                vm.onCopied()
+                            }
+                            .buttonStyle(TextActionStyle())
+                            .accessibilityIdentifier("mealplan.cutoff.copy")
+                        }
+                    }
+                }
                 if state.kept > 0 {
                     HStack {
                         Text(Strings.mealPlanKept(state.kept))

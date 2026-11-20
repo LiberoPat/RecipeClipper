@@ -112,8 +112,18 @@ internal object JsonLdRecipeParser {
      * list holds is walked: a top-level array, `@graph`, an ItemList's `itemListElement` and a
      * ListItem's `item` (the day may sit on either). Each Recipe is read by [parseRecipeJson], as
      * [parse] reads the first. The depth cap and the one `Throwable` catch are [parse]'s.
+     *
+     * With [deep] (the meal-plan reader only, never a page): an object that is not a Recipe is
+     * walked through every array and object it holds, under any key, in the keys' sorted order
+     * (a wrapper like `{"mealPlan": [...]}` or `{"days": [{"day": ..., "recipe": {...}}]}`). A
+     * wrapper's `day`, or its `date` when it reads as `YYYY-MM-DD`, is carried down to the object
+     * directly under it (an array's elements start afresh), as is a key that is itself such a
+     * date. An object with `recipeIngredient` or `recipeInstructions` counts as a Recipe without
+     * its `@type`, and a Recipe's `date` (as a date) stands for a missing `day`.
      */
-    fun parseEach(block: String, sourceUrl: String = "", pageLanguage: String? = null): List<Pair<Recipe, String?>> {
+    fun parseEach(
+        block: String, sourceUrl: String = "", pageLanguage: String? = null, deep: Boolean = false
+    ): List<Pair<Recipe, String?>> {
         val root = try {
             JSONTokener(block).nextValue()
         } catch (e: Throwable) {
@@ -121,32 +131,43 @@ internal object JsonLdRecipeParser {
             return emptyList()
         }
         val found = mutableListOf<Pair<Recipe, String?>>()
-        collectRecipes(root, 0, null, found, sourceUrl, pageLanguage)
+        collectRecipes(root, 0, null, found, sourceUrl, pageLanguage, deep)
         return found
     }
 
     private fun collectRecipes(
         node: Any?, depth: Int, outerDay: String?, into: MutableList<Pair<Recipe, String?>>,
-        sourceUrl: String, pageLanguage: String?
+        sourceUrl: String, pageLanguage: String?, deep: Boolean
     ) {
         if (depth > MAX_DEPTH) return
         when (node) {
             is JSONArray -> for (i in 0 until node.length()) {
-                collectRecipes(node.opt(i), depth + 1, null, into, sourceUrl, pageLanguage)
+                collectRecipes(node.opt(i), depth + 1, null, into, sourceUrl, pageLanguage, deep)
             }
             is JSONObject ->
-                if (isRecipeType(node.opt("@type"))) {
-                    parseRecipeJson(node, sourceUrl, pageLanguage)?.let { into += it to (dayOf(node) ?: outerDay) }
+                if (isRecipeType(node.opt("@type")) || deep && (node.has("recipeIngredient") || node.has("recipeInstructions"))) {
+                    parseRecipeJson(node, sourceUrl, pageLanguage)?.let { into += it to (dayOf(node, deep) ?: outerDay) }
                 } else {
-                    val day = dayOf(node) ?: outerDay
-                    for (key in listOf("@graph", "itemListElement", "item")) {
-                        if (node.has(key)) collectRecipes(node.opt(key), depth + 1, day, into, sourceUrl, pageLanguage)
+                    val day = dayOf(node, deep) ?: outerDay
+                    if (deep) {
+                        for (key in node.keys().asSequence().toList().sorted()) {
+                            val child = node.opt(key)
+                            if (child !is JSONObject && child !is JSONArray) continue
+                            val keyDay = key.takeIf { MealPlanImport.parseDay(it) != null }
+                            collectRecipes(child, depth + 1, keyDay ?: day, into, sourceUrl, pageLanguage, true)
+                        }
+                    } else {
+                        for (key in listOf("@graph", "itemListElement", "item")) {
+                            if (node.has(key)) collectRecipes(node.opt(key), depth + 1, day, into, sourceUrl, pageLanguage, false)
+                        }
                     }
                 }
         }
     }
 
-    private fun dayOf(node: JSONObject): String? = (node.opt("day") as? String)?.trim()?.ifEmpty { null }
+    private fun dayOf(node: JSONObject, deep: Boolean): String? =
+        (node.opt("day") as? String)?.trim()?.ifEmpty { null }
+            ?: if (deep) (node.opt("date") as? String)?.trim()?.takeIf { MealPlanImport.parseDay(it) != null } else null
 
     /**
      * The `isBasedOn` of the first Recipe in [jsonLdBlocks] (#354): what an AI's reply names as

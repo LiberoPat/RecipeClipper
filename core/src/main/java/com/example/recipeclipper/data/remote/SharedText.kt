@@ -190,6 +190,37 @@ object SharedText {
         return null
     }
 
+    /** The bracket at [start] opens something that reads as JSON: a value, a key or a nested bracket comes next. */
+    internal fun looksLikeJson(text: String, start: Int): Boolean {
+        var j = start + 1
+        while (j < text.length && (text[j] == ' ' || text[j] == '\n' || text[j] == '\t' || text[j] == '\r')) j++
+        return j < text.length && (text[j] == '{' || text[j] == '[' || text[j] == '"')
+    }
+
+    private val RECIPE_TYPE = Regex(""""@type"\s*:\s*(?:\[\s*)?"Recipe"""", RegexOption.IGNORE_CASE)
+
+    /**
+     * An AI's answer that stopped inside its recipe JSON (#352): a `{` or `[` that reads as JSON
+     * ([looksLikeJson]) and never closes, with a schema.org Recipe's `"@type": "Recipe"` somewhere
+     * after it. The caller asks this only of text that gave no recipe or plan: a whole recipe in
+     * the text wins. Whole values are skipped whole, so a closed recipe before it isn't the answer.
+     */
+    fun isCutOff(text: String): Boolean {
+        val normalized = normalize(text)
+        if (normalized.length > MAX_LENGTH) return false
+        var tried = 0
+        var i = 0
+        while (i < normalized.length && tried < MAX_JSON_CANDIDATES * 5) {
+            if (normalized[i] != '{' && normalized[i] != '[') { i++; continue }
+            tried++
+            val end = jsonEnd(normalized, i)
+            if (end >= 0) { i = end; continue }
+            if (looksLikeJson(normalized, i) && RECIPE_TYPE.containsMatchIn(normalized.substring(i))) return true
+            i++
+        }
+        return false
+    }
+
     /** The index after the bracket that closes the one at [start], or -1. Strings are skipped. */
     internal fun jsonEnd(text: String, start: Int): Int {
         var depth = 0

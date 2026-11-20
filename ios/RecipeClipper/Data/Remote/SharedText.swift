@@ -167,6 +167,37 @@ enum SharedText {
         return nil
     }
 
+    /// The bracket at `start` opens something that reads as JSON: a value, a key or a nested
+    /// bracket comes next.
+    static func looksLikeJson(_ units: [UInt16], _ start: Int) -> Bool {
+        var j = start + 1
+        while j < units.count && (units[j] == u(" ") || units[j] == u("\n") || units[j] == u("\t") || units[j] == u("\r")) { j += 1 }
+        return j < units.count && (units[j] == u("{") || units[j] == u("[") || units[j] == u("\""))
+    }
+
+    private static let recipeType = JRegex(#""@type"\s*:\s*(?:\[\s*)?"Recipe""#, ignoreCase: true)
+
+    /// An AI's answer that stopped inside its recipe JSON (#352): a `{` or `[` that reads as JSON
+    /// and never closes, with a schema.org Recipe's `"@type": "Recipe"` somewhere after it. See the
+    /// Kotlin's `isCutOff`.
+    static func isCutOff(_ text: String) -> Bool {
+        let normalized = normalize(text)
+        if normalized.u16Count > maxLength { return false }
+        let units = Array(normalized.utf16)
+        let ns = normalized as NSString
+        var tried = 0
+        var i = 0
+        while i < units.count && tried < maxJsonCandidates * 5 {
+            if units[i] != u("{") && units[i] != u("[") { i += 1; continue }
+            tried += 1
+            let end = jsonEnd(units, i)
+            if end >= 0 { i = end; continue }
+            if looksLikeJson(units, i) && recipeType.containsMatch(in: ns.substring(from: i)) { return true }
+            i += 1
+        }
+        return false
+    }
+
     /// The index after the bracket that closes the one at `start`, or -1. Strings are skipped.
     static func jsonEnd(_ units: [UInt16], _ start: Int) -> Int {
         var depth = 0

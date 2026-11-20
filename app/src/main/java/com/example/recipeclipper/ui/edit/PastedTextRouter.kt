@@ -25,6 +25,9 @@ sealed interface PasteTarget {
 
     /** A bulleted list (#149): offered on Groceries' "Add this list" sheet. */
     data object Groceries : PasteTarget
+
+    /** An AI's answer cut off before its recipe ended (#352): the cut-off screen, nothing left in an inbox. */
+    data object CutOff : PasteTarget
 }
 
 /**
@@ -59,6 +62,7 @@ class PastedTextRouter @Inject constructor(
                 receivedLists.offer(target.text)
                 PasteTarget.Groceries
             }
+            is TextIntent.Target.Failed -> PasteTarget.CutOff
             null -> null
         }
     }

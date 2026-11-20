@@ -104,6 +104,20 @@ final class PasteTextViewModelsTests: XCTestCase {
         }
     }
 
+    func testAnAnswerCutOffBeforeItsFirstRecipeEndedOpensTheCutOffScreen() async {
+        let cut = "```json\n[\n  {\n    \"@type\": \"Recipe\",\n    \"name\": \"Mon\",\n"
+            + "    \"day\": \"2026-11-19\",\n    \"recipeInstructions\": [\n      { \"@type\": \"HowToStep\","
+        await forEachPaster { paste in
+            let target = await paste(cut)
+            XCTAssertEqual(target, .cutOff)
+        }
+        // The router itself: a whole recipe, a whole week and plain prose are not a cut-off.
+        XCTAssertEqual(router.open(cut), .cutOff)
+        if case .review = router.open(json) {} else { XCTFail("a whole recipe is the editor's") }
+        if case .plan = router.open(plan) {} else { XCTFail("a whole week is the review's") }
+        if case .review = router.open("Hi Mum, the scones recipe [see the card") {} else { XCTFail("prose is the editor's") }
+    }
+
     func testEmptyTextGoesNowhere() async {
         await forEachPaster { paste in
             let none = await paste("")

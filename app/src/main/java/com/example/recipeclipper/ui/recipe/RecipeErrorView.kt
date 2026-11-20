@@ -125,6 +125,7 @@ internal fun ParseError.toMessage(): String = when (this) {
     ParseError.NotSaved -> stringResource(R.string.error_not_saved)
     ParseError.NothingToShow -> stringResource(R.string.error_nothing_to_show)
     ParseError.HumanCheck -> stringResource(R.string.error_human_check)
+    ParseError.CutOff -> stringResource(R.string.error_cut_off)
 }
 
 /**

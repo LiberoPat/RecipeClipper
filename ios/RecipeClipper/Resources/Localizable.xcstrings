@@ -5771,6 +5771,211 @@
         }
       }
     },
+    "cutoff_ask_plan %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Antwort wurde abgeschnitten. Bitte sende den Rest des Plans: ein Rezept für jeden dieser Tage: %@. Verwende dasselbe JSON-Format wie zuvor, in einem einzigen ```json-Codeblock."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your answer was cut off. Please send the rest of the plan: one recipe for each of these days: %@. Use the same JSON format as before, in one ```json code block."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu respuesta se cortó. Envía el resto del plan, por favor: una receta para cada uno de estos días: %@. Usa el mismo formato JSON de antes, en un solo bloque de código ```json."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre réponse a été coupée. Envoyez la suite du plan, s'il vous plaît : une recette pour chacun de ces jours : %@. Utilisez le même format JSON qu'avant, dans un seul bloc de code ```json."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tua risposta è stata interrotta. Invia il resto del piano, per favore: una ricetta per ciascuno di questi giorni: %@. Usa lo stesso formato JSON di prima, in un unico blocco di codice ```json."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua resposta foi cortada. Envie o resto do plano, por favor: uma receita para cada um destes dias: %@. Use o mesmo formato JSON de antes, em um único bloco de código ```json."
+          }
+        }
+      }
+    },
+    "cutoff_ask_plan_rest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Antwort wurde abgeschnitten. Bitte sende den Rest des Plans: ein Rezept für jeden der übrigen Tage. Verwende dasselbe JSON-Format wie zuvor, in einem einzigen ```json-Codeblock."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your answer was cut off. Please send the rest of the plan: one recipe for each of the remaining days. Use the same JSON format as before, in one ```json code block."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu respuesta se cortó. Envía el resto del plan, por favor: una receta para cada uno de los días que faltan. Usa el mismo formato JSON de antes, en un solo bloque de código ```json."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre réponse a été coupée. Envoyez la suite du plan, s'il vous plaît : une recette pour chacun des jours restants. Utilisez le même format JSON qu'avant, dans un seul bloc de code ```json."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tua risposta è stata interrotta. Invia il resto del piano, per favore: una ricetta per ciascuno dei giorni rimanenti. Usa lo stesso formato JSON di prima, in un unico blocco di codice ```json."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua resposta foi cortada. Envie o resto do plano, por favor: uma receita para cada um dos dias restantes. Use o mesmo formato JSON de antes, em um único bloco de código ```json."
+          }
+        }
+      }
+    },
+    "cutoff_ask_recipe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Antwort wurde abgeschnitten. Bitte sende das ganze Rezept noch einmal als schema.org-Recipe-JSON in einem einzigen ```json-Codeblock."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your answer was cut off. Please send the whole recipe again as schema.org Recipe JSON in one ```json code block."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu respuesta se cortó. Envía la receta completa de nuevo como JSON de schema.org Recipe en un solo bloque de código ```json."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre réponse a été coupée. Renvoyez la recette complète en JSON schema.org Recipe, dans un seul bloc de code ```json."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tua risposta è stata interrotta. Invia di nuovo la ricetta completa come JSON schema.org Recipe in un unico blocco di codice ```json."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua resposta foi cortada. Envie a receita completa de novo como JSON schema.org Recipe em um único bloco de código ```json."
+          }
+        }
+      }
+    },
+    "cutoff_copied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopiert. Füge sie in den Chat ein und teile die Antwort dann hier oder füge sie hier ein."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied. Paste it into the chat, then share or paste the reply here."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado. Pégalo en el chat y luego comparte o pega aquí la respuesta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copié. Collez-le dans le chat, puis partagez ou collez ici la réponse."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiato. Incollalo nella chat, poi condividi o incolla qui la risposta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado. Cole no chat e depois compartilhe ou cole a resposta aqui."
+          }
+        }
+      }
+    },
+    "cutoff_copy_action" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nachricht für die KI kopieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy a message for the AI"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar un mensaje para la IA"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier un message pour l'IA"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia un messaggio per l'IA"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar uma mensagem para a IA"
+          }
+        }
+      }
+    },
     "done_shopping_ticked %lld" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5904,6 +6109,47 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "error_cut_off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Antwort wurde abgeschnitten, bevor das Rezept zu Ende war. Bitte die KI, sie noch einmal zu senden oder weiterzumachen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That answer was cut off before the recipe ended. Ask the AI to send it again, or to continue."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa respuesta se cortó antes de que terminara la receta. Pídele a la IA que la envíe de nuevo o que continúe."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette réponse a été coupée avant la fin de la recette. Demandez à l'IA de la renvoyer, ou de continuer."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quella risposta è stata interrotta prima della fine della ricetta. Chiedi all'IA di inviarla di nuovo o di continuare."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Essa resposta foi cortada antes de a receita terminar. Peça à IA para enviá-la de novo ou continuar."
           }
         }
       }
@@ -8133,6 +8379,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nova lista"
+          }
+        }
+      }
+    },
+    "mealplan_cut_off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Antwort wurde abgeschnitten, deshalb sind nur diese Rezepte angekommen. Bitte die KI, für den Rest weiterzumachen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The answer was cut off, so only these recipes came through. Ask the AI to continue for the rest."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La respuesta se cortó, así que solo han llegado estas recetas. Pídele a la IA que continúe para el resto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La réponse a été coupée, donc seules ces recettes sont arrivées. Demandez à l'IA de continuer pour le reste."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La risposta è stata interrotta, quindi sono arrivate solo queste ricette. Chiedi all'IA di continuare per il resto."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A resposta foi cortada, então só estas receitas chegaram. Peça à IA para continuar com o resto."
           }
         }
       }

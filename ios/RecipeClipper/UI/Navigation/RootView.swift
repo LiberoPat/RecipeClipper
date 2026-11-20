@@ -309,6 +309,9 @@ struct RootView: View {
                 })
             }
             .toolbar(.hidden, for: .tabBar)
+        case .cutOff:
+            CutOffScreen()
+                .toolbar(.hidden, for: .tabBar)
         }
     }
 
@@ -323,6 +326,7 @@ struct RootView: View {
         case .list(let text):
             container.pendingListText = text
             router.select(.groceries)
+        case .cutOff: push(.cutOff)
         }
     }
 

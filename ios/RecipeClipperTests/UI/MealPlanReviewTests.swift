@@ -49,6 +49,29 @@ final class MealPlanReviewTests: XCTestCase {
         })
     }
 
+    func testACutOffAnswerIsFlaggedAndItsFollowUpNamesTheDaysThatAreMissing() async {
+        let whole = text(("A", 0), ("B", 1), ("C", 3)).dropLast() + ",{\"@type\": \"Recipe\", \"name\": \"X\", \"recipeInstr"
+        let vm = viewModel(String(whole))
+        await settleMain()
+        XCTAssertTrue(vm.uiState.cutOff)
+        XCTAssertFalse(vm.uiState.copied)
+
+        let words = CutOffMessage.Words(plan: { "plan:\($0)" }, planRest: "rest", recipe: "recipe")
+        // The week is a block of seven from the first day: days 2, 4, 5 and 6 have no recipe.
+        let missing = [2, 4, 5, 6].map { CutOffMessage.iso(today + Int64($0)) }.joined(separator: ", ")
+        XCTAssertEqual(vm.followUp(words), "plan:\(missing)")
+
+        vm.onCopied()
+        XCTAssertTrue(vm.uiState.copied)
+        XCTAssertTrue(recipes.addManualCalls.isEmpty, "nothing is saved by it")
+    }
+
+    func testAWholeAnswerIsNotFlagged() async {
+        let vm = viewModel(text(("A", 0), ("B", 1)))
+        await settleMain()
+        XCTAssertFalse(vm.uiState.cutOff)
+    }
+
     func testEveryRecipeIsTickedWithItsDayAndNothingIsSavedBeforeSave() async {
         let vm = viewModel(text(("Omelette", 0), ("Soup", 3), ("Stew", 40)))
         await settleMain()

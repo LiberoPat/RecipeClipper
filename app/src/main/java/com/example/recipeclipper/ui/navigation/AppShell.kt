@@ -212,5 +212,6 @@ fun NavHostController.openPasted(target: PasteTarget) = openRoute(
         is PasteTarget.Review -> Routes.editText(target.key)
         is PasteTarget.Plan -> Routes.mealPlan(target.key)
         PasteTarget.Groceries -> Tab.GROCERIES.route
+        PasteTarget.CutOff -> Routes.CUT_OFF
     }
 )

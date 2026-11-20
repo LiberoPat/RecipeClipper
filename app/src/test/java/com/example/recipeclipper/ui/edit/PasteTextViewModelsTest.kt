@@ -115,6 +115,12 @@ class PasteTextViewModelsTest {
         assertTrue(fixtures.inbox.take(target.key)!!.reading.sorted)
     }
 
+    @Test fun `an answer cut off before its first recipe ended opens the cut-off screen`() = forEachPaster { paster ->
+        val cut = "```json\n[\n  {\n    \"@type\": \"Recipe\",\n    \"name\": \"Mon\",\n" +
+            "    \"day\": \"2026-11-19\",\n    \"recipeInstructions\": [\n      { \"@type\": \"HowToStep\","
+        assertEquals(PasteTarget.CutOff, paste(paster, cut))
+    }
+
     @Test fun `empty text goes nowhere`() = forEachPaster { paster ->
         assertNull(paste(paster, ""))
         assertNull(paste(paster, "   \n"))

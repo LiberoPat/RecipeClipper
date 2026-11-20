@@ -285,6 +285,13 @@
     <string name="mealplan_wont_fit">Noch kein Platz dafür</string>
     <string name="mealplan_kept">Bisher gespeichert: %1$d</string>
     <string name="mealplan_open_week">Woche öffnen</string>
+    <string name="mealplan_cut_off">Die Antwort wurde abgeschnitten, deshalb sind nur diese Rezepte angekommen. Bitte die KI, für den Rest weiterzumachen.</string>
+    <string name="error_cut_off">Diese Antwort wurde abgeschnitten, bevor das Rezept zu Ende war. Bitte die KI, sie noch einmal zu senden oder weiterzumachen.</string>
+    <string name="cutoff_copy_action">Nachricht für die KI kopieren</string>
+    <string name="cutoff_copied">Kopiert. Füge sie in den Chat ein und teile die Antwort dann hier oder füge sie hier ein.</string>
+    <string name="cutoff_ask_plan">Deine Antwort wurde abgeschnitten. Bitte sende den Rest des Plans: ein Rezept für jeden dieser Tage: %1$s. Verwende dasselbe JSON-Format wie zuvor, in einem einzigen ```json-Codeblock.</string>
+    <string name="cutoff_ask_plan_rest">Deine Antwort wurde abgeschnitten. Bitte sende den Rest des Plans: ein Rezept für jeden der übrigen Tage. Verwende dasselbe JSON-Format wie zuvor, in einem einzigen ```json-Codeblock.</string>
+    <string name="cutoff_ask_recipe">Deine Antwort wurde abgeschnitten. Bitte sende das ganze Rezept noch einmal als schema.org-Recipe-JSON in einem einzigen ```json-Codeblock.</string>
     <string name="photo_failed">Das Foto konnte nicht geladen werden. Prüfe die Verbindung und versuche es erneut.</string>
     <string name="photo_not_ready">Die Texterkennung ist auf diesem Gerät noch nicht bereit: Die Google Play-Dienste laden sie einmalig über das Internet herunter. Versuche es in ein paar Minuten erneut oder vervollständige das Rezept unten von Hand.</string>
     <string name="photo_check_heading">Prüfe diese Zeilen: Dort war das Foto schwer zu lesen</string>

@@ -51,6 +51,7 @@ internal object SiteReport {
         ParseError.NotSaved -> "NotSaved"
         ParseError.NothingToShow -> "NothingToShow"
         ParseError.HumanCheck -> "HumanCheck"
+        ParseError.CutOff -> "CutOff"
     }
 
     fun site(url: String): String =

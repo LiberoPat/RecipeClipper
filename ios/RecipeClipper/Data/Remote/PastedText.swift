@@ -10,6 +10,8 @@ enum PasteTarget: Equatable {
     case plan(String)
     /// A bulleted list (#149): offered on Groceries' "Add this list" sheet.
     case list(String)
+    /// An AI's answer cut off before its recipe ended (#352): the cut-off screen.
+    case cutOff
 }
 
 /// Where text goes when it is pasted (#372) into "Paste a link" or "Paste the answer": one
@@ -35,7 +37,10 @@ struct PastedTextRouter {
         if shareTextOn() {
             if mealPlanOn(), MealPlanImport.read(text) != nil { return .plan(text) }
             switch SharedText.route(text) {
-            case .editor(let reading): return .review(reading)
+            case .editor(let reading):
+                // An AI's answer that stopped inside its first recipe (#352): a fragment is no recipe.
+                if !reading.fromChat && SharedText.isCutOff(text) { return .cutOff }
+                return .review(reading)
             case .link(let url): return .link(url)
             case .list: return .list(text)
             case .none: return nil
