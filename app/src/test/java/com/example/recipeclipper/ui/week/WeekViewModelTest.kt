@@ -733,7 +733,7 @@ class WeekViewModelTest {
     fun `with the skipTonight flag off nothing is offered`() = runTest(mainDispatcherRule.dispatcher) {
         plan.addRecipe(7, today, DINNER, servings = null)
         val flags = FeatureFlags(FakeFeatureFlagStore(mapOf(Flag.SKIP_TONIGHT.key to false)), FlagRegistry.definitions, true)
-        val vm = WeekViewModel(plan, recipes, calendar, flags)
+        val vm = WeekViewModel(plan, recipes, calendar, flags = flags)
         advanceUntilIdle()
         val meal = plan.meals.value.single()
 

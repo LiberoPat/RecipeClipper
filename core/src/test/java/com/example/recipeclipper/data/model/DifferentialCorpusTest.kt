@@ -41,6 +41,10 @@ import java.io.File
  * one in-stock pantry item with that quantity and name, as not listed, asked, used up or the new
  * quantity; write only those (optionally `, lang: "de"`).
  *
+ * `Fresh("line")` rows (#396) pin [Perishables.find]: an ingredient line as the perishables table reads
+ * it (the recipe's language's, optionally `, lang: "de"`), as the ingredient's name, its group's key and its
+ * keeps hint ("1-2"), each nil when the line isn't a perishable; write only the line.
+ *
  * `Entry("text")` rows (#302) pin [PantryEntry.split]: what was typed into "Add to the pantry",
  * as the item's name and its quantity (nil: kept whole); write only the text (optionally
  * `, lang: "de"`).
@@ -185,6 +189,8 @@ class DifferentialCorpusTest {
     )
     // A pantry-entry row (#302): the text typed into "Add to the pantry", optionally its language.
     private val entryRow = Regex("""^(\s*)Entry\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A perishables row (#396): an ingredient line, optionally its language.
+    private val freshRow = Regex("""^(\s*)Fresh\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A What I need amounts row (#302): a pantry item's quantity and name, the week's lines, optionally their language.
     private val needRow = Regex(
         """^(\s*)Need\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
@@ -319,6 +325,7 @@ class DifferentialCorpusTest {
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         useUpRow.find(line)?.let { m -> return useUpRow(m) }
         entryRow.find(line)?.let { m -> return entryRow(m) }
+        freshRow.find(line)?.let { m -> return freshRow(m) }
         needRow.find(line)?.let { m -> return needRow(m) }
         useItRow.find(line)?.let { m -> return useItRow(m) }
         tonightRow.find(line)?.let { m -> return tonightRow(m) }
@@ -582,6 +589,16 @@ class DifferentialCorpusTest {
             is UseUpChange.Subtract -> change.after?.let { ".subtract(${q(it)})" } ?: ".usedUp"
         }
         return m.groupValues[1] + "UseUp(${q(quantity)}, ${q(name)}, ${list(lines)}$lang, $result),"
+    }
+
+    /** `Fresh(line, lang:, name, group, keeps)` (#396): [Perishables.find] of the line, each nil for none. */
+    private fun freshRow(m: MatchResult): String {
+        val text = unescape(m.groupValues[2])
+        val language = m.groupValues[3].ifEmpty { "en" }
+        val lang = if (m.groupValues[3].isEmpty()) "" else ", lang: ${q(language)}"
+        val found = Perishables.find(text, LanguageWords.forTag(language))
+        fun opt(value: String?) = value?.let(::q) ?: "nil"
+        return m.groupValues[1] + "Fresh(${q(text)}$lang, ${opt(found?.name)}, ${opt(found?.group?.key)}, ${opt(found?.group?.keeps)}),"
     }
 
     /** `Entry(text, lang:, name, quantity)`: [PantryEntry.split] of what was typed, nil for no quantity. */

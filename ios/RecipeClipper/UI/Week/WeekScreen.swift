@@ -336,7 +336,8 @@ private struct DayList: View {
                         DaySection(
                             vm: vm, day: day, isToday: day == state.today, meals: state.mealsOn(day),
                             canSkip: state.canSkip,
-                            nothingPlanned: state.isNothingPlanned(day), typeNames: typeNames, onOpenRecipe: onOpenRecipe
+                            nothingPlanned: state.isNothingPlanned(day), typeNames: typeNames,
+                            freshNudges: state.freshNudges, onOpenRecipe: onOpenRecipe
                         )
                     }
                 }
@@ -384,6 +385,7 @@ private struct DaySection: View {
     let canSkip: (PlannedMeal) -> Bool
     let nothingPlanned: Bool
     let typeNames: [Int64: String]
+    let freshNudges: [Int64: FreshNudge]
     let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
 
     var body: some View {
@@ -419,6 +421,11 @@ private struct DaySection: View {
                             .buttonStyle(TextActionStyle())
                             .accessibilityIdentifier("skip-\(meal.id)")
                     }
+                }
+                // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
+                if let nudge = freshNudges[meal.id] {
+                    FreshNudgeNote(nudge: nudge) { vm.onFreshSwap(meal.id) }
+                        .padding(.leading, 56)
                 }
             }
             // A day with no meals keeps the line's room until they've loaded: the days above

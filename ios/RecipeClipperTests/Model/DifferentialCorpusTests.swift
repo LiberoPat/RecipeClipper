@@ -30,6 +30,9 @@ import XCTest
 // `UseUp("2 lb", "chicken", ["1 lb chicken"]),`.
 // Pantry-entry rows (#302): what was typed into "Add to the pantry", then PantryEntry.split's name
 // and quantity (nil: kept whole). Write only `Entry("3 onions"),` (optionally `, lang: "de"`).
+// Perishable rows (#396): an ingredient line, then Perishables.find: the ingredient's name, its group's
+// key and its keeps hint (nil each: not a perishable). Write only `Fresh("2 salmon fillets"),`
+// (optionally `, lang: "de"`).
 // What I need amount rows (#302): a pantry item's quantity and name, the week's lines (each its own
 // recipe), then PantryMatch.weekNeeds' Have row: the pantry's amount and the week's total (nil:
 // none). Write only `Need("2 lb", "chicken", ["1 lb chicken", "8 oz chicken"]),`.
@@ -164,6 +167,13 @@ final class DifferentialCorpusTests: XCTestCase {
         let text: String; let language: String; let name: String; let quantity: String?
         init(_ text: String, lang: String = "en", _ name: String, _ quantity: String?) {
             self.text = text; self.language = lang; self.name = name; self.quantity = quantity
+        }
+    }
+
+    private struct Fresh {
+        let line: String; let language: String; let name: String?; let group: String?; let keeps: String?
+        init(_ line: String, lang: String = "en", _ name: String?, _ group: String?, _ keeps: String?) {
+            self.line = line; self.language = lang; self.name = name; self.group = group; self.keeps = keeps
         }
     }
 
@@ -1668,6 +1678,88 @@ final class DifferentialCorpusTests: XCTestCase {
         Entry("3 玉ねぎ", lang: "ja", "3 玉ねぎ", nil),
     ]
 
+    private static let fresh: [Fresh] = [
+        Fresh("2 salmon fillets (about 6 oz each), skin on", "salmon fillets", "fish", "1-2"),
+        Fresh("1 lb large shrimp, peeled and deveined", "shrimp", "fish", "1-2"),
+        Fresh("4 cod fillets", "cod fillets", "fish", "1-2"),
+        Fresh("1 lb ground beef", "ground beef", "mince", "1-2"),
+        Fresh("500 g pork mince", "pork mince", "mince", "1-2"),
+        Fresh("1 lb Italian sausage", "italian sausage", "mince", "1-2"),
+        Fresh("2 boneless skinless chicken breasts", "chicken breasts", "poultry", "1-2"),
+        Fresh("6 chicken thighs", "chicken thighs", "poultry", "1-2"),
+        Fresh("2 ribeye steaks", "ribeye steaks", "meatCuts", "3-5"),
+        Fresh("8 oz button mushrooms, sliced", "button mushrooms", "mushrooms", "3-5"),
+        Fresh("2 ripe avocados", "ripe avocados", "avocado", "3-4"),
+        Fresh("1/2 cup fresh basil leaves", nil, nil, nil),
+        Fresh("1 bunch cilantro, chopped", nil, nil, nil),
+        Fresh("2 tbsp chopped fresh parsley", "chopped fresh parsley", "parsley", "2-3"),
+        Fresh("2 tbsp chopped fresh mint", nil, nil, nil),
+        Fresh("1 tbsp fresh herbs", nil, nil, nil),
+        Fresh("5 oz baby spinach", "baby spinach", "salad", "3-5"),
+        Fresh("1 head romaine lettuce", "romaine lettuce", "salad", "3-5"),
+        Fresh("1 pint strawberries, hulled", "strawberries", "berries", "2-3"),
+        Fresh("1 cup raspberries", "raspberries", "berries", "2-3"),
+        Fresh("2 cups mixed berries", "mixed berries", "berries", "2-3"),
+        Fresh("1 cup blueberries", nil, nil, nil),
+        Fresh("1 cup blackberries", "blackberries", "blackberries", "3-5"),
+        Fresh("2 tuna steaks", "tuna steaks", "fish", "1-2"),
+        Fresh("4 oz smoked salmon", nil, nil, nil),
+        Fresh("1 can (6 oz) canned salmon", nil, nil, nil),
+        Fresh("2 tsp dried basil", nil, nil, nil),
+        Fresh("1 cup frozen strawberries", nil, nil, nil),
+        Fresh("1 oz dried porcini mushrooms", nil, nil, nil),
+        Fresh("10 oz frozen chopped spinach", nil, nil, nil),
+        Fresh("1 lb frozen shrimp", nil, nil, nil),
+        Fresh("2 cups shredded chicken", nil, nil, nil),
+        Fresh("1 cup cauliflower steak", nil, nil, nil),
+        Fresh("1/4 cup goji berries", nil, nil, nil),
+        Fresh("2 tbsp fish sauce", nil, nil, nil),
+        Fresh("1 cup mushroom stock", nil, nil, nil),
+        Fresh("1/2 cup strawberry jam", nil, nil, nil),
+        Fresh("2 tsp dried herbs", nil, nil, nil),
+        Fresh("1 can cream of mushroom soup", nil, nil, nil),
+        Fresh("1/2 cup avocado oil", nil, nil, nil),
+        Fresh("1 can tuna", nil, nil, nil),
+        Fresh("salt and pepper", nil, nil, nil),
+        Fresh("Salmon and potatoes:", nil, nil, nil),
+        Fresh("2 cups flour", nil, nil, nil),
+        Fresh("2 Lachsfilets", lang: "de", "lachsfilets", "fish", "1-2"),
+        Fresh("100 g geräucherter Lachs", lang: "de", nil, nil, nil),
+        Fresh("500 g Hackfleisch", lang: "de", "hackfleisch", "mince", "1-2"),
+        Fresh("1 Bund Petersilie", lang: "de", "petersilie", "parsley", "2-3"),
+        Fresh("1 Bund Basilikum", lang: "de", nil, nil, nil),
+        Fresh("200 g Heidelbeeren", lang: "de", nil, nil, nil),
+        Fresh("1 TL getrocknetes Basilikum", lang: "de", nil, nil, nil),
+        Fresh("200 g tiefgekühlte Erdbeeren", lang: "de", nil, nil, nil),
+        Fresh("200 g Champignons", lang: "de", "champignons", "mushrooms", "3-5"),
+        Fresh("2 filets de saumon", lang: "fr", "filets de saumon", "fish", "1-2"),
+        Fresh("2 tranches de saumon fumé", lang: "fr", nil, nil, nil),
+        Fresh("1 l de bouillon de poulet", lang: "fr", nil, nil, nil),
+        Fresh("1 pot de confiture de fraises", lang: "fr", nil, nil, nil),
+        Fresh("200 g de myrtilles", lang: "fr", nil, nil, nil),
+        Fresh("200 g de mûres", lang: "fr", "mûres", "blackberries", "3-5"),
+        Fresh("250 g de fraises", lang: "fr", "fraises", "berries", "2-3"),
+        Fresh("1 bouquet de persil plat", lang: "fr", "persil plat", "parsley", "2-3"),
+        Fresh("2 pechugas de pollo", lang: "es", "pechugas de pollo", "poultry", "1-2"),
+        Fresh("1 l de caldo de pollo", lang: "es", nil, nil, nil),
+        Fresh("200 g de champiñones", lang: "es", "champiñones", "mushrooms", "3-5"),
+        Fresh("1 lata de crema de champiñones", lang: "es", nil, nil, nil),
+        Fresh("2 aguacates", lang: "es", "aguacates", "avocado", "3-4"),
+        Fresh("1 mazzetto di prezzemolo", lang: "it", "prezzemolo", "parsley", "2-3"),
+        Fresh("200 g di more", lang: "it", "more", "blackberries", "3-5"),
+        Fresh("1 mazzetto di basilico", lang: "it", nil, nil, nil),
+        Fresh("2 cucchiai di pesto di basilico", lang: "it", nil, nil, nil),
+        Fresh("300 g di gamberi", lang: "it", "gamberi", "fish", "1-2"),
+        Fresh("2 filés de salmão", lang: "pt", "filés de salmão", "fish", "1-2"),
+        Fresh("1 xícara de caldo de frango", lang: "pt", nil, nil, nil),
+        Fresh("200 g de carne moída", lang: "pt", "carne moída", "mince", "1-2"),
+        Fresh("鮭 2切れ", lang: "ja", "鮭", "fish", "1-2"),
+        Fresh("塩鮭 2切れ", lang: "ja", nil, nil, nil),
+        Fresh("豚ひき肉 200g", lang: "ja", "豚ひき肉", "mince", "1-2"),
+        Fresh("しいたけ 4枚", lang: "ja", "しいたけ", "mushrooms", "3-5"),
+        Fresh("干ししいたけ 3枚", lang: "ja", nil, nil, nil),
+    ]
+
     private static let needs: [Need] = [
         Need("2 lb", "chicken thighs", ["1 lb chicken thighs", "24 oz chicken thighs"], "2 lb", "2 1/2 lb"),
         Need("3 lb", "chicken", ["2 lb chicken"], "3 lb", "2 lb"),
@@ -2894,6 +2986,15 @@ final class DifferentialCorpusTests: XCTestCase {
             case .subtract(_, nil): result = .usedUp
             }
             XCTAssertEqual(result, row.result, "\(row.quantity) \(row.name) / \(row.lines)")
+        }
+    }
+
+    func testPerishablesMatchKotlin() {
+        for row in Self.fresh {
+            let found = Perishables.find(row.line, words: LanguageWords.forTag(row.language))
+            XCTAssertEqual(found?.name, row.name, row.line)
+            XCTAssertEqual(found?.group.key, row.group, row.line)
+            XCTAssertEqual(found?.group.keeps, row.keeps, row.line)
         }
     }
 

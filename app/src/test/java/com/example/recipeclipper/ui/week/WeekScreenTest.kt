@@ -60,7 +60,7 @@ class WeekScreenTest {
     private var openedWhatINeed: Long? = null
 
     private fun show(shopForWeek: Boolean = false, flags: FeatureFlags? = null) {
-        val viewModel = WeekViewModel(plan, recipes, FakePlanCalendar(), flags)
+        val viewModel = WeekViewModel(plan, recipes, FakePlanCalendar(), flags = flags)
         val groceriesViewModel = AddToGroceriesViewModel(groceries, FakeAppPreferences(), FakePantryRepository())
         compose.setContent {
             WeekScreen(

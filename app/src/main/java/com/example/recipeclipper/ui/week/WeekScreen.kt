@@ -84,11 +84,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.FreshNudge
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.TooltipScreen
+import com.example.recipeclipper.ui.common.FreshNudgeNote
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
@@ -622,7 +624,9 @@ private fun DayList(
                 onMove = viewModel::onMoveStart,
                 onRemove = viewModel::onRemove,
                 canSkip = state::canSkip,
-                onSkip = viewModel::onSkipStart
+                onSkip = viewModel::onSkipStart,
+                freshNudges = state.freshNudges,
+                onFreshSwap = viewModel::onFreshSwap
             )
         }
     }
@@ -641,7 +645,9 @@ private fun DaySection(
     onMove: (PlannedMeal) -> Unit,
     onRemove: (PlannedMeal) -> Unit,
     canSkip: (PlannedMeal) -> Boolean,
-    onSkip: (PlannedMeal) -> Unit
+    onSkip: (PlannedMeal) -> Unit,
+    freshNudges: Map<Long, FreshNudge>,
+    onFreshSwap: (Long) -> Unit
 ) {
     Column(Modifier.fillMaxWidth()) {
         DayHeader(day = day, isToday = isToday)
@@ -658,6 +664,10 @@ private fun DaySection(
                     onSkip = if (canSkip(meal)) ({ onSkip(meal) }) else null,
                     skipVisible = isToday
                 )
+                // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
+                freshNudges[meal.id]?.let { nudge ->
+                    FreshNudgeNote(nudge, { onFreshSwap(meal.id) }, Modifier.padding(start = 56.dp).testTag("fresh-${meal.id}"))
+                }
             }
         }
         if (nothingPlanned) {

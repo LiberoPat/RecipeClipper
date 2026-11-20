@@ -5260,6 +5260,130 @@ exactly), on both platforms.
   off, none in the month view); `WeekShoppingMenuTests` and `WeekUITests` (iOS); the walkthroughs
   tap "Shop for this week".
 
+## Fresh food: shop in two trips, and cook the delicate meals first (#396, 2026-11-19)
+
+The owner named shopping and then cooking through the week as the hardest part of the app, and fresh
+food going off its first half. Behind the `freshFood` flag (on by default; off, To buy is one list and
+there is no note), on both platforms. Never a date and never a fact about the cook's own food: the
+only claim anywhere is "keeps about N days once bought", a range from a table.
+
+- **The table, `shared/tables/<lang>/perishables.json`** (`Perishables`, `:core` and Swift, pinned by
+  the corpus's `Fresh(...)` rows): groups with `key`, `minDays`, `maxDays` and `aliases`, then a `skip` list,
+  and for fr, es, it and pt a `skipPrefixes` list. **Matching is the density table's:** the ingredient's
+  name (`IngredientName.of`, so amounts, sizes and preparation are gone) ends in an alias at a word
+  boundary, longest first, with a listed singular and plural one word (`IngredientName.key`). A skip is a
+  name that would otherwise end in an alias but isn't fresh ("smoked salmon", "dried parsley", "frozen
+  strawberries", "canned salmon", "dried porcini mushrooms", "rotisserie chicken", "cauliflower steak",
+  "goji berries"); it wins by being longer. "Fish sauce" and "mushroom stock" never end in "fish" or
+  "mushroom", so end-of-name matching already refuses them; they are pinned by tests. **Smoked salmon is
+  a skip** (decided): it keeps longer than the fresh-fish range says, and a wrong "1-2 days" is worse
+  than buying it now. A name the table doesn't list, or a line the app can't name ("salmon and
+  potatoes:", "juice of 1 lemon"), is **not perishable as far as the app says**, so it is bought now: the
+  failure is buying early, never an unsure claim.
+- **Each language has its own file; the recipe's language picks it** (`LanguageWords`, never the phone's,
+  never merged). The groups and their days are the same in every file (a test pins that, and that
+  `Perishables.LATER_DAYS` is at or past every group's `minDays`). **en is the solid one**; de, es, fr, it, pt
+  and ja are best-effort drafts for a native speaker (`docs/translations.md`). German compounds are
+  matched whole as in the density table ("Lachsfilet" is listed itself; "Räucherlachs", one word, matches
+  nothing). French, Spanish, Italian and Portuguese put the modifier after the noun, so "saumon fumé" is
+  refused by the rule itself, but "bouillon de poulet" or "confiture de fraises" ends in the food, so
+  `skipPrefixes` lists the openings that make a name a product ("bouillon de", "caldo de", "mermelada de",
+  "pesto di"…). Japanese is unspaced, so "塩鮭" ends in "鮭" and is a skip. **Meat cuts** (3-5 days) are in
+  the English table only.
+- **The groups and where their ranges come from** (refrigerator, after purchase; checked against the
+  sources below on 2026-11-19). The rule: **inside the sources' range, at the short end**, because too
+  short only makes the app suggest buying later or cooking sooner, and too long is a wrong number. Where
+  one group holds foods the sources rate differently, the **shortest** of them sets it. **Every food listed
+  shows its own source figure, never another member's:** a food that keeps a week or more (blueberries,
+  basil, cilantro, mint, dill, chives, tarragon, chervil, generic "fresh herbs") is **off the table**, because
+  it never needs the later trip; it is bought now, with everything else. Only "berries" / "mixed berries"
+  (a mix that holds raspberries) take the shortest member's range.
+
+  | Group | App | Source figure | Source |
+  |---|---|---|---|
+  | fish and seafood | 1-2 | FSIS chart: fin fish 1-3, squid 1-3, shrimp 3-5, shucked shellfish 3-10; FoodKeeper: fish 1-2, shrimp/squid/scallops 1-3; Nebraska: 1-2 | FSIS/FoodSafety.gov chart, FoodKeeper, Nebraska |
+  | raw mince, fresh sausage | 1-2 | FSIS: ground meats 1-2, raw sausage 1-2; FoodKeeper: ground and raw sausage 1-2 | FSIS chart, FoodKeeper |
+  | fresh poultry | 1-2 | FSIS: whole and pieces 1-2; FoodKeeper: 1-2 | FSIS chart, FoodKeeper |
+  | meat cuts (en only) | 3-5 | FSIS: steaks, chops, roasts 3-5; FoodKeeper: 3-5 | FSIS chart, FoodKeeper |
+  | mushrooms | 3-5 | FoodKeeper: 3-7 (was 4-6: its low end was past the source's) | FoodKeeper |
+  | ripe avocado | 3-4 | FoodKeeper: 3-4, "applies to ripe fruit"; Nebraska 3-4 (was 2-3, under the source: kept short, now equal) | FoodKeeper, Nebraska |
+  | parsley | 2-3 | FoodKeeper: parsley 2-3 days (its own row). Off the table: basil 10 days, "Herbs" 7-10 days, cilantro and mint 2-3 weeks | FoodKeeper |
+  | salad leaves, spinach | 3-5 | FoodKeeper: leaf lettuce/spinach 3-7, arugula 3-7, bagged greens 3-5 unopened; Nebraska: spinach 3-7, bagged greens 3-5 | FoodKeeper, Nebraska |
+  | strawberries, raspberries, "berries", "mixed berries" | 2-3 | FoodKeeper: strawberries 2-3, raspberries 2-3 (a mix holds raspberries, so it takes the short end); Nebraska: strawberries 2-3 | FoodKeeper, Nebraska |
+  | blackberries | 3-5 | FoodKeeper: blackberries 3-6 (its own group: 2-3 would sit outside the range) | FoodKeeper |
+  | blueberries | off the table | FoodKeeper: 1-2 **weeks** | FoodKeeper |
+
+  - **FSIS / FoodSafety.gov "Cold Food Storage Chart"**, refrigerator (40 °F or below) column, reviewed
+    2021-09-20: https://www.foodsafety.gov/food-safety-charts/cold-food-storage-charts. The live page
+    refuses automated fetches (403); the chart was read as the identical PDF
+    https://www.vdh.virginia.gov/content/uploads/sites/6/2023/07/Cold_Food_Storage_Chart.pdf. Note the chart
+    now gives fin fish 1-3 days (older FSIS charts said 1-2) and shrimp 3-5; 1-2 stays, inside both.
+  - **USDA FoodKeeper** (the data behind the FoodKeeper app, "from date of purchase" figures):
+    https://www.fsis.usda.gov/shared/data/EN/foodkeeper.json (catalogued at
+    https://catalog.data.gov/dataset/fsis-foodkeeper-data). It also refuses automated fetches, so the
+    figures above were read from an older, third-party copy of the same dataset,
+    https://raw.githubusercontent.com/jelera/food-shelflife-db/master/lib/seeds/ingredients.csv. **Re-check
+    the produce rows (mushrooms, herbs, avocado, berries, greens) against the current file in a browser**
+    before release; the meat and fish rows agree with the current FSIS chart.
+  - **Nebraska Extension, "Home Food Storage Chart"** (cites the FSIS chart and FoodKeeper):
+    https://food.unl.edu/food-storage. Not covered there: mushrooms, fresh herbs, raspberries, blackberries.
+  - Other extension guides read and **not** used for a number, because they measure at 32 °F or give one
+    blanket figure: UMass (strawberries 7 days, raspberries 2-5, blueberries 2 weeks,
+    https://www.umass.edu/agriculture-food-environment/fruit/ne-small-fruit-management-guide/general-information/post-harvest-handling-storage)
+    and Montana State (mushrooms, berries and greens 1-3 days,
+    http://www.montana.edu/extension/buyeatlivebetter/other_nep_resources/fact_sheets/howshouldistoremyfruitsandvegetables/).
+    Woody herbs, cherries, cranberries, asparagus and the rest are not listed: bought now.
+- **Shop for this week splits To buy** (`FreshShop.split`, pure): a row goes to **Buy later in the week**
+  only if its ingredient is in the table **and every planned line of it is for a meal at least 3 days from
+  today** (`Perishables.LATER_DAYS`); otherwise **Buy now**. A row with a meal sooner, a line with no day or
+  a name the app can't read stays now whole. **Why 3:** it is the first day count at or past the low end of
+  every group's range (the highest low end is 3: meat cuts, mushrooms, ripe avocado, salad leaves, blackberries), so a
+  meal three or more days out is one a shop made today may already have outlasted; at 2 those groups
+  would split on a meal the table says they last for. (It was 4 while mushrooms were 4-6.) A fixed number, a hint like the table. Quantities, "You have…" and #302's amounts are
+  exactly as before (the rows are the same objects, in the same order); In your pantry is unchanged, and a
+  pantry item still makes the row Have, never later. Each later row says **"For {day}"** (its earliest meal)
+  and **"Keeps about 1-2 days once bought"**, under its name, above the lines that already say each recipe
+  and day.
+- **The flow: two buttons, no third action.** "Add to groceries" adds **Buy now** only; the **Buy later**
+  group has its own "Add these to groceries". A cook who shops once taps both, one who shops twice taps
+  the second on the second trip, and neither is a mode to choose or remember. Each button is used once and
+  reads "Added to groceries" (the later one keeps working after the first). With nothing to buy later (or the
+  flag off) the screen is exactly as before: one "To buy" with its one button. With only later rows, Buy now
+  says "Nothing to buy now".
+- **The plan nudge** (`FreshPlan.nudges`, pure): "**{Salmon fillets}: keeps about 1-2 days once bought.
+  Cook it earlier?**" with one button, **"Swap with {day}"**. The first day is the plan's earliest planned
+  day not before today (the cook shops once before the plan starts); a meal is late when its day is more
+  than its group's `maxDays` after it (the long end: the note speaks only when even the generous reading
+  says it will have gone). The partner is the earliest-day other meal (a note counts) within the group's
+  `maxDays` of the first day that can itself take the later day (a partner with a perishable of its own must
+  keep that long). **No partner, no note** (nothing to tap). Only the meal's most delicate perishable is
+  named (a recipe holds many). The ingredient's name is capitalised from `IngredientName.of`; the sentence
+  has no verb to agree with it ("Name: keeps…"), so it reads in every language and number. **It never
+  moves anything by itself:** a tap swaps the two meals' days, each keeping its meal type.
+- **Where the nudge is: the meal-plan review (#352) and the Week's meal rows.** The review counts the ticked
+  rows with a day, so a day picked, a recipe unticked or a swap re-works the notes, and the swap trades two
+  rows' days in the review (still unsaved until Save). The Week covers today and the next 13 days
+  (`WeekViewModel.FRESH_DAYS`), reading each planned recipe's ingredient lines through
+  `GroceryRepository.plannedIngredients`, and a swap is two `MealPlanRepository.move` calls. **Left out:**
+  the Add to plan sheets and the Move sheet (they place one meal on a chosen day with no list of the others
+  to swap with; the Week's note appears the moment the plan is late, so a Move or Skip that makes it late is
+  noticed there), the month view, and days beyond the first two weeks. The two shop trips and the note
+  agree on purpose but are independent: the note is the "cook it earlier" answer for a cook who shops once,
+  the split the answer for one who shops twice, and both read the same table.
+- **Strings.** Nine, `what_i_need_buy_now`, `_buy_later`, `_buy_later_note`, `_nothing_to_buy_now`,
+  `_add_later`, `_later_for`, `fresh_keeps`, `fresh_nudge`, `fresh_nudge_swap`, in six languages on both
+  platforms. None states a date or a fact about the food: "keeps about N days once bought" is the table's
+  range, and "For meals 3 or more days away" is the rule.
+- **Code.** `Perishables.kt`/`.swift` and `FreshFood.kt`/`.swift` (`FreshShop`, `FreshPlan`, `LaterRow`,
+  `ShopTrips`, `FreshMeal`, `FreshNudge`) in `:core` and `Data/Model`; `WhatINeedViewModel` takes the
+  calendar and the flag (state `trips`), `MealPlanReviewViewModel` and `WeekViewModel` the flag (and the
+  grocery repository); `FreshNudgeNote` is the shared note view.
+- **Tests.** `PerishablesTest` (each group, each skip, the languages, the table's own invariants),
+  `FreshFoodTest`, `WhatINeedFreshViewModelTest`/`WhatINeedFreshScreenTest`, `MealPlanReviewFreshTest`, a
+  case in `MealPlanReviewScreenTest`, `WeekFreshNudgeTest`/`WeekFreshNudgeScreenTest`; iOS `PerishablesTests`,
+  `FreshFoodTests`, `FreshShopTests`, `MealPlanReviewFreshTests`, `WeekFreshNudgeTests`, the corpus's `Fresh`
+  rows, and `FreshFoodUITests`.
+
 ## Paste an AI's answer in the app (#372, 2026-11-19)
 
 An AI's answer used to come in only by Share (or Android's text-selection menu). Most chat apps
@@ -5738,7 +5862,8 @@ data/          RecipeRepository, ListRepository, MealPlanRepository, GroceryRepo
                PlanDays (the plan's epoch-day calendar), MealPlan (MealType, PlannedMeal), LibraryLimit (#107),
                Groceries (Aisle, Aisles, GroceryCombiner, GroceryShareText, GrocerySources),
                Pantry (PantryList: sort, search, expiry badge; PantryMatch: Have/Buy),
-               PantryUseUp (what a finished cook takes from the pantry, #147)
+               PantryUseUp (what a finished cook takes from the pantry, #147),
+               Perishables and FreshFood (the perishables table, Shop for this week's split, the plan's note, #396)
 ui/            navigation, home, recipes (the library), recipe, clip, edit, savetolist, lists, listdetail,
                settings, week (with What I need), plan (Add to plan sheet), mealtypes,
                groceries (the tab and the Add to groceries sheet), pantry, sharefile (Send as file,

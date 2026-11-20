@@ -26,19 +26,31 @@ struct WhatINeedScreen: View {
                     if needs.isEmpty {
                         muted(Strings.groceriesWeekEmpty).padding(.top, 16)
                     } else {
+                        // Fresh food (#396): with perishables for meals 4+ days away, To buy is two trips.
+                        let trips = state.trips.flatMap { $0.later.isEmpty ? nil : $0 }
+                        let buyRows = trips?.now ?? needs.buy
                         VStack(alignment: .leading, spacing: 8) {
-                            SectionHeading(Strings.whatINeedBuy).accessibilityAddTraits(.isHeader)
-                            if needs.buy.isEmpty {
-                                muted(Strings.whatINeedNothingToBuy)
+                            SectionHeading(trips != nil ? Strings.whatINeedBuyNow : Strings.whatINeedBuy).accessibilityAddTraits(.isHeader)
+                            if buyRows.isEmpty {
+                                muted(trips != nil ? Strings.whatINeedNothingToBuyNow : Strings.whatINeedNothingToBuy)
                             } else {
-                                Button(state.added ? Strings.whatINeedAdded : Strings.addToGroceries, action: vm.onAddBuyToGroceries)
-                                    .buttonStyle(PrimaryButtonStyle())
-                                    .disabled(state.added)
-                                    .accessibilityIdentifier("addBuyToGroceries")
+                                addButton(added: state.added, label: Strings.addToGroceries, id: "addBuyToGroceries", action: vm.onAddBuyToGroceries)
                             }
                         }
                         .padding(.top, 18)
-                        ForEach(keyed(needs.buy, "buy"), id: \.id) { NeedRowView(row: $0.row) }
+                        ForEach(keyed(buyRows, "buy"), id: \.id) { NeedRowView(row: $0.row) }
+                        if let trips {
+                            VStack(alignment: .leading, spacing: 8) {
+                                SectionHeading(Strings.whatINeedBuyLater).accessibilityAddTraits(.isHeader)
+                                muted(Strings.whatINeedBuyLaterNote)
+                                addButton(added: state.addedLater, label: Strings.whatINeedAddLater, id: "addLaterToGroceries", action: vm.onAddLaterToGroceries)
+                            }
+                            .padding(.top, 24)
+                            // Ids unique across the whole stack ("later-0"), as the other sections' (#185).
+                            ForEach(trips.later.enumerated().map { (id: "later-\($0.offset)", later: $0.element) }, id: \.id) {
+                                NeedRowView(row: $0.later.row, later: $0.later)
+                            }
+                        }
                         if !needs.have.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
                                 SectionHeading(Strings.whatINeedHave).accessibilityAddTraits(.isHeader)
@@ -64,6 +76,13 @@ struct WhatINeedScreen: View {
         Text(text).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
     }
 
+    private func addButton(added: Bool, label: String, id: String, action: @escaping () -> Void) -> some View {
+        Button(added ? Strings.whatINeedAdded : label, action: action)
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(added)
+            .accessibilityIdentifier(id)
+    }
+
     /// Ids unique across the whole stack, as Android keys them ("buy-0", "have-0"): a lazy stack
     /// pools every ForEach's ids, so bare offsets in both sections hid the first pantry rows (#185).
     private func keyed(_ rows: [NeedRow], _ section: String) -> [(id: String, row: NeedRow)] {
@@ -71,12 +90,18 @@ struct WhatINeedScreen: View {
     }
 }
 
+/// One ingredient of the week; `later` (#396) adds the day it is first needed and what its group keeps.
 private struct NeedRowView: View {
     let row: NeedRow
+    var later: LaterRow?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(row.name ?? row.lines[0].text).textStyle(Typography.bodyLargeBold).foregroundStyle(Palette.onBackground)
+            if let later {
+                muted(Strings.whatINeedLaterFor(PlanDayFormat.title(later.firstDay))).accessibilityIdentifier("laterFor")
+                muted(Strings.freshKeeps(later.group.keeps))
+            }
             switch row.status {
             case .have:
                 muted(Strings.whatINeedYouHave(row.pantryName ?? ""))

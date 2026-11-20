@@ -11,7 +11,13 @@ import com.example.recipeclipper.data.model.PantryItem
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import com.example.recipeclipper.data.PantryRepository
+import com.example.recipeclipper.data.PlanCalendar
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.model.FreshShop
+import com.example.recipeclipper.data.model.NeedRow
+import com.example.recipeclipper.data.model.ShopTrips
 import com.example.recipeclipper.data.model.GrocerySources
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryMatch
@@ -24,12 +30,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** [needs] is null while loading. [added] is set once the Buy lines are on the grocery list. */
+/**
+ * [needs] is null while loading. [added] is set once the Buy lines (with Fresh food, #396, the Buy
+ * now ones) are on the grocery list, [addedLater] once the later ones are. [trips] is the Buy
+ * lines split in two (null with the `freshFood` flag off); the screen shows two groups only when
+ * [ShopTrips.later] holds something.
+ */
 data class WhatINeedUiState(
     val weekStart: Long,
     val needs: WeekNeeds? = null,
-    val added: Boolean = false
-)
+    val added: Boolean = false,
+    val trips: ShopTrips? = null,
+    val addedLater: Boolean = false
+) {
+    /** The Buy rows that "Add to groceries" adds: Buy now's with two trips, else all of them. */
+    val buyNow: List<NeedRow> get() = trips?.now ?: needs?.buy.orEmpty()
+}
 
 /**
  * The week's "What I need" (#51): every planned recipe's lines, rendered at the planned
@@ -44,7 +60,10 @@ class WhatINeedViewModel @Inject constructor(
     private val pantry: PantryRepository,
     private val preferences: AppPreferences,
     // The model's "same ingredient?" answers (#104); none without it.
-    private val decisions: DecisionRepository? = null
+    private val decisions: DecisionRepository? = null,
+    // Fresh food (#396): today and the flag. Without both, To buy stays one list.
+    private val calendar: PlanCalendar? = null,
+    private val flags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val start: Long = checkNotNull(savedStateHandle.get<Long>(WEEK_START_ARG))
@@ -62,7 +81,8 @@ class WhatINeedViewModel @Inject constructor(
             val decided = decisions?.observe() ?: flowOf(Decisions.NONE)
             pantry.observeItems().combine(decided) { items, d -> items to d }.collect { (items, d) ->
                 val needs = PantryMatch.weekNeeds(sources, items, d)
-                _uiState.update { it.copy(needs = needs) }
+                val trips = if (flags?.isOn(Flag.FRESH_FOOD) == true && calendar != null) FreshShop.split(needs.buy, calendar.today()) else null
+                _uiState.update { it.copy(needs = needs, trips = trips) }
                 askSame(needs, items)
             }
         }
@@ -79,16 +99,33 @@ class WhatINeedViewModel @Inject constructor(
         if (questions.isNotEmpty()) viewModelScope.launch { repo.decide(questions) }
     }
 
-    /** Every Buy line onto the grocery list, through the same path as the grocery sheet (#50). */
+    /**
+     * Every Buy line onto the grocery list, through the same path as the grocery sheet (#50). With
+     * two trips (#396) it is Buy now's lines only: the later ones have their own button
+     * ([onAddLaterToGroceries]), so a cook who shops once adds both and one who shops twice adds
+     * the second group on the second trip.
+     */
     fun onAddBuyToGroceries() {
         val state = _uiState.value
         if (state.added) return
-        val lines = state.needs?.buy.orEmpty().flatMap { row ->
-            row.lines.map { NewGroceryLine(it.text, it.language, it.recipeId, it.day) }
-        }
+        val lines = linesOf(state.buyNow)
         if (lines.isEmpty()) return
         _uiState.update { it.copy(added = true) }
         viewModelScope.launch { groceries.add(lines) }
+    }
+
+    /** Buy later in the week's lines onto the grocery list (#396), once. */
+    fun onAddLaterToGroceries() {
+        val state = _uiState.value
+        if (state.addedLater) return
+        val lines = linesOf(state.trips?.later.orEmpty().map { it.row })
+        if (lines.isEmpty()) return
+        _uiState.update { it.copy(addedLater = true) }
+        viewModelScope.launch { groceries.add(lines) }
+    }
+
+    private fun linesOf(rows: List<NeedRow>) = rows.flatMap { row ->
+        row.lines.map { NewGroceryLine(it.text, it.language, it.recipeId, it.day) }
     }
 
     companion object {
