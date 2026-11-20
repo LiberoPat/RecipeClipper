@@ -348,6 +348,15 @@
     <string name="action_add_meal">+ Aggiungi</string>
     <string name="action_move">Sposta…</string>
     <string name="action_remove_from_plan">Rimuovi dal piano</string>
+    <string name="action_skip">Salta…</string>
+    <string name="action_skip_today">Salta</string>
+    <string name="skip_meal_title">Salta %1$s</string>
+    <string name="skip_push_week">Sposta il resto della settimana avanti di un giorno</string>
+    <string name="skip_next_free_day">Sposta al prossimo giorno libero</string>
+    <string name="skip_remove">Rimuovi dal piano</string>
+    <string name="snackbar_skip_pushed">Resto della settimana spostato avanti di un giorno</string>
+    <string name="snackbar_skip_pushed_past_end">Resto della settimana spostato avanti di un giorno. Alcuni pasti ora cadono oltre la fine del piano.</string>
+    <string name="snackbar_skip_moved">%1$s spostato a %2$s</string>
     <string name="add_to_day_title">Aggiungi a %1$s</string>
     <string name="label_search_or_note">Cerca le tue ricette o scrivi una nota</string>
     <string name="action_add_as_note">Aggiungi «%1$s» come nota</string>

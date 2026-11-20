@@ -1724,6 +1724,27 @@ The first real tab of #46, still behind the #47 flag.
   and the next 13 days, #232) and meal types as "Add to plan". Drag and drop
   across day sections was left out, because it needs experimental Compose
   APIs and gives no parity with iOS for the same result.
+- **Skip tonight** (#398, `skipTonight` flag, both platforms). A planned meal's long-press menu
+  gains **Skip…** beside Move, and today's planned meals show a visible **Skip** button; neither is
+  offered for a meal planned in the past (`PlanShift.canSkip`: day before today). It opens a small
+  sheet with three one-tap choices, each followed by one undo snackbar that restores exactly what
+  was there (the rows as they were, `updatedAt` and order included):
+  - **Push the rest of the week back a day**: the skipped meal and every later planned meal in the
+    whole plan (not just the week shown) go one day later, meal types kept, gaps kept, notes
+    included. "Later" is the plan's order (day, then meal type order, then added order): on the
+    skipped meal's own day, only the meals after it in that order move (skipping lunch carries
+    that day's dinner, not its breakfast). Nothing before the skipped meal ever moves.
+  - **Move to the next free day**: only the skipped meal moves, to the first later day with no
+    meal of its meal type (a note counts as a meal; a lunch never blocks a dinner).
+  - **Remove from the plan**: the same as Remove, through the same undo (the recipe stays).
+  `PlanShift.plan` (core; iOS line for line, pinned by `Skip(...)` corpus rows) is pure and returns
+  the moves, the removals and the moved meals that landed past the last day the list shows; the
+  repository applies them in one transaction (`MealPlanDao.skip`: every move lands or none) and
+  returns what moved (`SkippedMeals.result`: id, from day, to day), the seam for #396's "a
+  perishable meal now sits too late" note, which this does not build: after a move, nothing else
+  changes. The snackbar names the choice ("Pushed the rest of the week back a day", "Moved X to
+  Fri 25", "Removed X from the plan"); a push that leaves a meal past the list's last day (two
+  years ahead) says so. A second skip or a removal settles the first (one undo at a time).
 - **Opening a planned recipe uses the planned servings for that visit only.**
   It isn't saved as the recipe's chosen servings unless the cook changes
   them there. A planned recipe opens on the Week's own stack
@@ -1744,7 +1765,7 @@ The first real tab of #46, still behind the #47 flag.
   to two ahead; ‹ › snap to the previous or next block. Meal rows (type,
   thumbnail, title, servings, or a note) or "Nothing planned", "+ Add" per day (a meal type, then a
   recipe from history or the typed text as a note). Long-press: Move (the day
-  strip and meal types) or Remove (undo snackbar). A tapped recipe opens at its
+  strip and meal types), Skip (#398: push the week, next free day, remove) or Remove (undo snackbar). A tapped recipe opens at its
   planned servings, for that visit only. "Month" beside the title swaps in a
   month grid (locale weeks, a dot on planned days; a tapped day goes to the top
   of the days). "Save week as menu…" / "Apply a menu…" (Week menu): a named copy

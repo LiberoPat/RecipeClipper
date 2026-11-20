@@ -348,6 +348,15 @@
     <string name="action_add_meal">+ Adicionar</string>
     <string name="action_move">Mover…</string>
     <string name="action_remove_from_plan">Remover do plano</string>
+    <string name="action_skip">Pular…</string>
+    <string name="action_skip_today">Pular</string>
+    <string name="skip_meal_title">Pular %1$s</string>
+    <string name="skip_push_week">Adiar o resto da semana em um dia</string>
+    <string name="skip_next_free_day">Mover para o próximo dia livre</string>
+    <string name="skip_remove">Remover do plano</string>
+    <string name="snackbar_skip_pushed">Resto da semana adiado em um dia</string>
+    <string name="snackbar_skip_pushed_past_end">Resto da semana adiado em um dia. Algumas refeições agora ficam além do fim do plano.</string>
+    <string name="snackbar_skip_moved">%1$s movido para %2$s</string>
     <string name="add_to_day_title">Adicionar para %1$s</string>
     <string name="label_search_or_note">Busque suas receitas ou escreva uma nota</string>
     <string name="action_add_as_note">Adicionar “%1$s” como nota</string>

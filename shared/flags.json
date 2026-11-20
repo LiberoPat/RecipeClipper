@@ -101,6 +101,12 @@
       "description": "Week's menu has one item, Shop for this week, which opens What I need for the week shown (To buy and In your pantry, Add to groceries adds To buy once). Off, the menu has the two items it had: What I need and Add this week's ingredients.",
       "defaults": { "debug": true, "release": true },
       "issue": 384
+    },
+    {
+      "key": "skipTonight",
+      "description": "Skip tonight: a planned meal's long-press menu on Week, and today's planned meals, gain Skip, which asks: push the rest of the week back a day (this meal and every later planned meal, meal types kept), move this meal to the next day with no meal of its type, or remove it from the plan. One undo restores exactly what was there. Off, Week offers Move and Remove only.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 398
     }
   ]
 }

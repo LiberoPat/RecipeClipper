@@ -572,6 +572,14 @@ protocol MealPlanRepository: AnyObject {
     /// Undoes `delete`: the same meal, in the same place.
     func restore(_ deleted: DeletedMeal) async
 
+    /// Skip tonight (#398): skips the planned meal `mealId` with `choice`, every move in one
+    /// transaction (see `PlanShift`); `today` and `lastDay` (the last day the plan shows) are the
+    /// caller's. Nil when nothing was skipped: the meal is gone, is in the past, or the write failed.
+    func skip(mealId: Int64, choice: PlanShift.Choice, today: Int64, lastDay: Int64) async -> SkippedMeals?
+
+    /// Undoes `skip`: every meal it moved or removed back as it was.
+    func undoSkip(_ skipped: SkippedMeals) async
+
     /// A user's own meal type, last in the order. A blank name is ignored.
     func addMealType(name: String) async
 
@@ -603,6 +611,13 @@ protocol MealPlanRepository: AnyObject {
 
     /// Deletes a menu; the plan and the recipes are untouched.
     func deleteMenu(id: Int64) async
+}
+
+/// What `skip` did: its `result` (which meals moved, where from and to: the seam for #396), and
+/// what `undoSkip` needs. Opaque to callers beyond `result`.
+struct SkippedMeals: Equatable {
+    let result: PlanShift.Result
+    let before: [MealPlanEntryRecord]
 }
 
 /// What a meal-plan delete removed, for `restore`. Opaque to callers.

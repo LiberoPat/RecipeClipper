@@ -594,6 +594,16 @@ enum Strings {
     static var addMeal: String { String(localized: "action_add_meal") }
     static var move: String { String(localized: "action_move") }
     static var removeFromPlan: String { String(localized: "action_remove_from_plan") }
+    // Skip tonight (#398)
+    static var skip: String { String(localized: "action_skip") }
+    static var skipToday: String { String(localized: "action_skip_today") }
+    static func skipMealTitle(_ label: String) -> String { String(localized: "skip_meal_title \(label)") }
+    static var skipPushWeek: String { String(localized: "skip_push_week") }
+    static var skipNextFreeDay: String { String(localized: "skip_next_free_day") }
+    static var skipRemove: String { String(localized: "skip_remove") }
+    static var skipPushed: String { String(localized: "snackbar_skip_pushed") }
+    static var skipPushedPastEnd: String { String(localized: "snackbar_skip_pushed_past_end") }
+    static func skipMoved(_ label: String, _ day: String) -> String { String(localized: "snackbar_skip_moved \(label) \(day)") }
     static func addToDayTitle(_ day: String) -> String { String(localized: "add_to_day_title \(day)") }
     static var searchOrNote: String { String(localized: "label_search_or_note") }
     static func addAsNote(_ text: String) -> String { String(localized: "action_add_as_note \(text)") }

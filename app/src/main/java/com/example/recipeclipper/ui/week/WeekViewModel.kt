@@ -5,10 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.Menu
 import com.example.recipeclipper.data.model.PlanDays
+import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.RecipeSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +50,22 @@ data class MoveState(
     val days: List<Long>,
     val day: Long,
     val mealTypeId: Long
+)
+
+/** Skipping [meal] (#398): the sheet offering to push the week, move it or remove it. */
+data class SkipState(val meal: PlannedMeal)
+
+/**
+ * What a skip did, for the undo snackbar (#398): [label] is the meal's title or note, [toDay]
+ * where it went for [PlanShift.Choice.NEXT_FREE_DAY], and [pastEnd] whether a push left a meal
+ * beyond the last day the plan shows. [serial] tells two identical skips apart.
+ */
+data class SkipNotice(
+    val serial: Int,
+    val choice: PlanShift.Choice,
+    val label: String,
+    val toDay: Long?,
+    val pastEnd: Boolean
 )
 
 /** A meal just removed: its id keeps two removals of the same title apart. */
@@ -125,6 +144,12 @@ data class WeekUiState(
     val adding: AddToDayState? = null,
     val moving: MoveState? = null,
     val removed: RemovedMeal? = null,
+    /** The Skip sheet (#398), or null. */
+    val skipping: SkipState? = null,
+    /** What the last skip did, until its undo snackbar is settled (#398). */
+    val skipped: SkipNotice? = null,
+    /** The `skipTonight` flag (#398): off, no Skip is offered anywhere. */
+    val skipEnabled: Boolean = true,
     /** The month view, or null while the days are shown. */
     val month: MonthUiState? = null,
     /** A day the list is to bring to the top, once. */
@@ -142,6 +167,9 @@ data class WeekUiState(
 
     /** How many day sections the list holds. */
     val dayCount: Int get() = (lastDay - firstDay + 1).toInt().coerceAtLeast(0)
+
+    /** Whether Skip is offered for [meal] (#398): the flag is on and it isn't planned in the past. */
+    fun canSkip(meal: PlannedMeal): Boolean = skipEnabled && PlanShift.canSkip(meal, today)
 
     fun isLoaded(day: Long): Boolean = day in loadedFrom..loadedTo
 
@@ -179,7 +207,8 @@ data class WeekUiState(
 class WeekViewModel @Inject constructor(
     private val plan: MealPlanRepository,
     private val recipes: RecipeRepository,
-    private val calendar: PlanCalendar
+    private val calendar: PlanCalendar,
+    private val featureFlags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val _uiState: MutableStateFlow<WeekUiState>
@@ -189,13 +218,18 @@ class WeekViewModel @Inject constructor(
     private val window: MutableStateFlow<Long>
     private val monthStart = MutableStateFlow<Long?>(null)
     private var removedMeal: MealPlanRepository.DeletedMeal? = null
+    private var skippedMeals: MealPlanRepository.SkippedMeals? = null
+    private var skipSerial = 0
     private var scrollRequests = 0
 
     init {
         val today = calendar.today()
         window = MutableStateFlow(today - WINDOW_BEFORE)
         _uiState = MutableStateFlow(
-            WeekUiState(today = today, firstDay = today - DAYS_BEFORE, lastDay = today + DAYS_AFTER, topDay = today)
+            WeekUiState(
+                today = today, firstDay = today - DAYS_BEFORE, lastDay = today + DAYS_AFTER, topDay = today,
+                skipEnabled = featureFlags?.isOn(Flag.SKIP_TONIGHT) != false
+            )
         )
         uiState = _uiState.asStateFlow()
 
@@ -463,7 +497,8 @@ class WeekViewModel @Inject constructor(
         viewModelScope.launch {
             val deleted = plan.delete(meal.id) ?: return@launch
             removedMeal = deleted
-            _uiState.update { it.copy(removed = RemovedMeal(meal.id, meal.title ?: meal.note.orEmpty())) }
+            skippedMeals = null // the earlier skip stands: one undo at a time
+            _uiState.update { it.copy(removed = RemovedMeal(meal.id, meal.title ?: meal.note.orEmpty()), skipped = null) }
         }
     }
 
@@ -478,6 +513,52 @@ class WeekViewModel @Inject constructor(
     fun onSnackbarDismissed() {
         removedMeal = null
         _uiState.update { it.copy(removed = null) }
+    }
+
+    // --- Skip tonight (#398)
+
+    /** Opens the Skip sheet for [meal], if Skip is offered for it (flag on, not in the past). */
+    fun onSkipStart(meal: PlannedMeal) {
+        if (!_uiState.value.canSkip(meal)) return
+        _uiState.update { it.copy(skipping = SkipState(meal)) }
+    }
+
+    fun onSkipDismissed() = _uiState.update { it.copy(skipping = null) }
+
+    /**
+     * Skips the meal in the sheet as [choice] says, in one write, and offers one undo for all of
+     * it. A second skip (or a removal) settles the first: its changes stand.
+     */
+    fun onSkip(choice: PlanShift.Choice) {
+        val state = _uiState.value
+        val meal = state.skipping?.meal ?: return
+        _uiState.update { it.copy(skipping = null) }
+        viewModelScope.launch {
+            val done = plan.skip(meal.id, choice, state.today, state.lastDay) ?: return@launch
+            skippedMeals = done
+            removedMeal = null // the earlier removal stands: one undo at a time
+            val notice = SkipNotice(
+                serial = ++skipSerial,
+                choice = choice,
+                label = meal.title ?: meal.note.orEmpty(),
+                toDay = done.result.moved.firstOrNull { it.mealId == meal.id }?.toDay.takeIf { choice == PlanShift.Choice.NEXT_FREE_DAY },
+                pastEnd = done.result.pastEnd.isNotEmpty()
+            )
+            _uiState.update { it.copy(skipped = notice, removed = null) }
+        }
+    }
+
+    fun onUndoSkip() {
+        val done = skippedMeals ?: return
+        skippedMeals = null
+        _uiState.update { it.copy(skipped = null) }
+        viewModelScope.launch { plan.undoSkip(done) }
+    }
+
+    /** The snackbar timed out or was dismissed: the skip stands. */
+    fun onSkipSnackbarDismissed() {
+        skippedMeals = null
+        _uiState.update { it.copy(skipped = null) }
     }
 
     // --- Menus (#52)

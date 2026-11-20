@@ -42,6 +42,50 @@ final class WeekUITests: RecipeUITestCase {
         requireGone(back, "the removed meal")
     }
 
+    /// Skip tonight (#398): today's meal has a visible Skip; "Push the rest of the week back a day"
+    /// moves it and every later meal on by a day, one Undo gives them back. The meals' places are
+    /// read off the screen: each sits between its day's "+ Add" and the one before.
+    func testSkipTonightPushesTheWeekBackADayAndUndoGivesItBack() {
+        launch(.weekPlan, flags: ["skipTonight"])
+        require(tabBar.buttons["Week"], "the Week tab").tap()
+        require(app.staticTexts["weekRange"], "the Week")
+
+        func meal(_ title: String) -> XCUIElement {
+            app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-' AND label CONTAINS %@", title)).firstMatch
+        }
+        func top(_ element: XCUIElement) -> CGFloat { element.frame.minY }
+        let todayAdd = require(app.buttons["addToDay-\(today)"], "today's + Add")
+        let tomorrowAdd = require(app.buttons["addToDay-\(today + 1)"], "tomorrow's + Add")
+        let thirdAdd = require(app.buttons["addToDay-\(today + 2)"], "the third day's + Add")
+        let miso = require(meal("Miso Soup"), "tonight's meal")
+        let banana = require(meal("Banana Bread"), "tomorrow's meal")
+        let carbonara = require(meal("Spaghetti Carbonara"), "the third day's meal")
+        XCTAssertLessThan(top(miso), top(todayAdd))
+        XCTAssertLessThan(top(todayAdd), top(banana))
+
+        // Only today's meal shows Skip; it opens the three choices.
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'skip-'")).count, 1)
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'skip-'")).firstMatch.tap()
+        require(app.staticTexts["Skip Miso Soup"], "the Skip sheet")
+        require(app.buttons["skipNextFreeDay"], "Move to the next free day")
+        require(app.buttons["skipRemove"], "Remove from the plan")
+        require(app.buttons["skipPush"], "Push the rest of the week back a day").tap()
+
+        // Everything has moved on a day: today is empty, each meal sits one section lower.
+        require(app.staticTexts["nothingPlanned-\(today)"], "an empty today")
+        require(app.staticTexts["Pushed the rest of the week back a day"], "the snackbar")
+        XCTAssertTrue(top(todayAdd) < top(miso) && top(miso) < top(tomorrowAdd), "Miso Soup is tomorrow")
+        XCTAssertTrue(top(tomorrowAdd) < top(banana) && top(banana) < top(thirdAdd), "Banana Bread is the day after")
+        XCTAssertLessThan(top(thirdAdd), top(carbonara), "Carbonara is a day later")
+
+        // One Undo, tapped as soon as the snackbar shows, gives all three back.
+        require(app.buttons["Undo"], "Undo").tap()
+        requireGone(app.staticTexts["nothingPlanned-\(today)"], "the empty today")
+        XCTAssertLessThan(top(meal("Miso Soup")), top(todayAdd))
+        XCTAssertTrue(top(todayAdd) < top(meal("Banana Bread")) && top(meal("Banana Bread")) < top(tomorrowAdd))
+        XCTAssertTrue(top(tomorrowAdd) < top(meal("Spaghetti Carbonara")) && top(meal("Spaghetti Carbonara")) < top(thirdAdd))
+    }
+
     func testAddToPlanFromTheRecipeMenu() {
         launch(.standard)
         require(app.staticTexts["Chicken Adobo"], "Continue cooking").tap()
