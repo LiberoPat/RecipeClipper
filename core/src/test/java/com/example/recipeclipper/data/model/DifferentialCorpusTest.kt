@@ -138,7 +138,8 @@ import java.io.File
  *
  * `PlanText("text")` rows (#352) pin [MealPlanImport.read]: shared text as a week of recipes, then
  * whether the answer was cut off, each `Meal("name", epochDay or nil, [ingredients], [steps])` in
- * order, or `[]` when it holds no plan; write only the text.
+ * order (and, when it named them, the `"meal"` and the link of a saved recipe, #392, #367), or `[]`
+ * when it holds no plan; write only the text.
  * `CutOffText("text")` rows (#352) pin [SharedText.isCutOff] (an AI's answer that stopped inside
  * its recipe JSON) and whether [SharedText.read] read a whole recipe from it; write only the text.
  * `Based("text")` rows (#354) pin [SharedText.Reading.basedOn]: text shared into the app, then the
@@ -430,7 +431,9 @@ class DifferentialCorpusTest {
             val text = unescape(m.groupValues[2])
             val plan = MealPlanImport.read(text)
             val meals = plan?.items.orEmpty().joinToString(", ", "[", "]") {
-                "Meal(${q(it.recipe.name)}, ${it.day?.toString() ?: "nil"}, ${list(it.recipe.ingredients)}, ${list(it.recipe.instructions)})"
+                // The meal it named and the link it named a saved recipe by (#392, #367): only when it has either.
+                val named = if (it.meal != null || it.link != null) ", ${it.meal?.let(::q) ?: "nil"}, ${it.link?.let(::q) ?: "nil"}" else ""
+                "Meal(${q(it.recipe.name)}, ${it.day?.toString() ?: "nil"}, ${list(it.recipe.ingredients)}, ${list(it.recipe.instructions)}$named)"
             }
             return m.groupValues[1] + "PlanText(${q(text)}, ${plan?.cutOff == true}, $meals),"
         }
