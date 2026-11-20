@@ -10,7 +10,7 @@ import Observation
 struct ListsUiState: Equatable {
     var loaded = false
     var lists: [RecipeList] = []
-    var coverPhotos: [Int64: [String]] = [:]
+    var coverPhotos: [Int64: [CoverPhoto]] = [:]
     /// A list with no photo shows its recipes' designed images (#403); an empty one the bookmark tile.
     var coverPlaceholders: [Int64: [NoPhotoSource]] = [:]
     var creatingList = false

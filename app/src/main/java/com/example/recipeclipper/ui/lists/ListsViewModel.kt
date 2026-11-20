@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.model.CoverPhoto
 import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +26,7 @@ import javax.inject.Inject
 data class ListsUiState(
     val loaded: Boolean = false,
     val lists: List<RecipeList> = emptyList(),
-    val coverPhotos: Map<Long, List<String>> = emptyMap(),
+    val coverPhotos: Map<Long, List<CoverPhoto>> = emptyMap(),
     /** A list with no photo shows its recipes' designed images (#403); an empty one the bookmark tile. */
     val coverPlaceholders: Map<Long, List<NoPhotoSource>> = emptyMap(),
     val creatingList: Boolean = false,

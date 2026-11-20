@@ -129,9 +129,10 @@ struct RecipeImagePlaceholder: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: band ? .bottomLeading : .center)
     }
 
-    /// Fraunces has no italic file here, so the upright is slanted the way the design's italic
-    /// leans (12 degrees).
+    /// The bundled Fraunces Italic (`fraunces-italic.ttf`, one instance: weight 400, Latin; #403).
+    /// Should the font not register, the upright slanted the way the design's italic leans.
     private func italicFraunces(_ size: CGFloat) -> UIFont {
+        if let italic = UIFont(name: "Fraunces-Italic", size: size) { return italic }
         let upright = AppFont.fraunces(size, weight: 400)
         let slant = CGAffineTransform(a: 1, b: 0, c: CGFloat(tan(12.0 * .pi / 180)), d: 1, tx: 0, ty: 0)
         return UIFont(descriptor: upright.fontDescriptor.withMatrix(slant), size: size)

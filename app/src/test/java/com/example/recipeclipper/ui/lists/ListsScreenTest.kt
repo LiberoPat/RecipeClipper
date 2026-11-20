@@ -20,6 +20,7 @@ import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.fake.FakeListRepository
+import com.example.recipeclipper.fake.coverPhoto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -44,7 +45,7 @@ class ListsScreenTest {
             RecipeList(3, "Weeknights", isBuiltIn = false, isFavorites = false, recipeCount = 0)
         )
         membership.value = setOf(7L to 1L, 7L to 3L, 8L to 3L)
-        coverPhotos.value = mapOf(3L to listOf("https://img/8.jpg", "https://img/7.jpg"))
+        coverPhotos.value = mapOf(3L to listOf(coverPhoto("https://img/8.jpg"), coverPhoto("https://img/7.jpg")))
     }
 
     private var opened: Long? = null
@@ -78,6 +79,41 @@ class ListsScreenTest {
         assertEquals(3, placeholdersOn(1))
         assertEquals(0, plainTile(1))
         assertEquals(0, photosOn(1))
+    }
+
+    /**
+     * A cover photo that fails to load shows its recipe's designed image, not a blank tile (#403):
+     * the address here is a file that does not exist, so Coil reports an error.
+     */
+    @Test
+    fun aCoverPhotoThatFailsToLoadFallsBackToItsRecipesPlaceholder() {
+        repository.coverPhotos.value = mapOf(
+            1L to listOf(coverPhoto("file:///no/such/photo.jpg", ingredients = listOf("1 cup red lentils")))
+        )
+        show(noPhotoOn)
+
+        assertEquals(1, photosOn(1))
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodes(
+                hasTestTag("noPhoto.label") and hasAnyAncestor(hasTestTag("lists.cover.1")),
+                useUnmergedTree = true
+            ).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    /** With the flag off a failed cover photo is blank as before. */
+    @Test
+    fun withTheFlagOffAFailedCoverPhotoStaysBlank() {
+        repository.coverPhotos.value = mapOf(1L to listOf(coverPhoto("file:///no/such/photo.jpg")))
+        show()
+        compose.waitForIdle()
+
+        assertEquals(1, photosOn(1))
+        assertEquals(
+            0,
+            compose.onAllNodes(hasTestTag("noPhoto.label") or hasTestTag("noPhoto.monogram"), useUnmergedTree = true)
+                .fetchSemanticsNodes().size
+        )
     }
 
     @Test
@@ -152,8 +188,8 @@ class ListsScreenTest {
     @Test
     fun aCoverShowsItsListsPhotos() {
         repository.coverPhotos.value = mapOf(
-            1L to (1..4).map { "https://img/$it.jpg" },
-            3L to listOf("https://img/8.jpg", "https://img/7.jpg")
+            1L to (1..4).map { coverPhoto("https://img/$it.jpg") },
+            3L to listOf(coverPhoto("https://img/8.jpg"), coverPhoto("https://img/7.jpg"))
         )
         show()
 

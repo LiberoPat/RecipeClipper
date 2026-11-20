@@ -1,6 +1,7 @@
 package com.example.recipeclipper.fake
 
 import com.example.recipeclipper.data.ListRepository
+import com.example.recipeclipper.data.model.CoverPhoto
 import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -33,7 +34,7 @@ class FakeListRepository : ListRepository {
     val recipesIn = MutableStateFlow<List<RecipeSummary>>(emptyList())
 
     /** What [observeCoverPhotos] emits: list id to its cover photos, as the SQL groups them. */
-    val coverPhotos = MutableStateFlow<Map<Long, List<String>>>(emptyMap())
+    val coverPhotos = MutableStateFlow<Map<Long, List<CoverPhoto>>>(emptyMap())
 
     /** Name and the recipe to add (or null), for every [createList] call, in order. */
     val createCalls = mutableListOf<Pair<String, Long?>>()
@@ -60,7 +61,7 @@ class FakeListRepository : ListRepository {
         return recipesIn.map { it }
     }
 
-    override fun observeCoverPhotos(): Flow<Map<Long, List<String>>> = coverPhotos
+    override fun observeCoverPhotos(): Flow<Map<Long, List<CoverPhoto>>> = coverPhotos
 
     /** What [observeCoverPlaceholders] emits: list id to its no-photo recipes' image sources (#403). */
     val coverPlaceholders = MutableStateFlow<Map<Long, List<NoPhotoSource>>>(emptyMap())
@@ -112,3 +113,7 @@ class FakeListRepository : ListRepository {
         containsRecipe = recipeId != null && (recipeId to id) in rows
     )
 }
+
+/** A cover photo of a recipe named after its address, for a test that stages covers (#403). */
+fun coverPhoto(url: String, ingredients: List<String> = listOf("2 eggs")) =
+    CoverPhoto(url, NoPhotoSource("uid-$url", "Recipe $url", "en", ingredients))

@@ -5541,9 +5541,13 @@ is the blank tile or band it was).
   joined by a half-faded dot. No ingredient lines gives the monogram; no letter either, a plain
   tint tile. The five tints (paprika, saffron, sage, cocoa, rose) are theme tokens, light and
   on ink (`NoPhotoTint`, `LocalNoPhotoTints`; iOS `Tokens.noPhotoLight/OnInk`,
-  `Palette.noPhotoTint`), the mockup's values. Fraunces is bundled upright only, so the italic is
-  the platform's slant (Android synthesizes it; iOS slants the upright 12 degrees): swap in
-  Fraunces Italic if the owner wants the true cut.
+  `Palette.noPhotoTint`), the mockup's values. The italic is the real Fraunces Italic
+  (`res/font/fraunces_italic.ttf`, iOS `Resources/Fonts/fraunces-italic.ttf`, in `UIAppFonts`,
+  PostScript name `Fraunces-Italic`): one instance of the published variable font (weight 400,
+  optical size 36, no soft or wonky forms) subset to Latin, 55 KB, under the same OFL as the
+  upright (`OFL-Fraunces.txt` says so). Android registers it in the `Fraunces` family as its
+  italic; iOS falls back to the slanted upright only if the font did not register. The upright
+  is the published file, unsubset.
 - **Where it shows:** Recipes and list rows, Home's Recently viewed (84), Week rows (44), the
   Lists covers, Home's Continue cooking band (112 with no photo, 136 with one) and the reading
   view's banner (150 with no photo, 200 with one). A photo that fails to load shows the same
@@ -5551,7 +5555,8 @@ is the blank tile or band it was).
   bytes do not decode). Not changed: the Reddit post's pictures, the clip view and the scan
   and photo reviews (they are the page's, not a recipe's image), print (the PDF keeps its
   photo or none), and the widgets, which draw no recipe images. A Lists cover's own photo that
-  fails to load stays the hairline tile: the cover rows carry only the address.
+  fails to load shows its recipe's image too: the cover rows carry the recipe's uid, title,
+  language and ingredient lines beside the address (`CoverPhoto`, `ListDao.observeCoverPhotos`).
 - **Lists covers (changes #286's rule, the owner's OK):** a list with any photo shows photos
   alone, as before; a list whose recipes all lack one shows up to four of their images in the
   usual 2×2/1/2/3 layout, newest added first (`ListDao.observeCoverPlaceholders`, iOS

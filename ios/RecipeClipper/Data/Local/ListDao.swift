@@ -53,7 +53,7 @@ struct ListDao {
     func coverPhotos() throws -> [ListCoverPhotoRecord] {
         try db.query(
             """
-            SELECT c.listId, r.imageUrl
+            SELECT c.listId, r.imageUrl, r.uid, r.title, r.language, r.ingredients
             FROM recipe_list_cross_ref c
             JOIN recipes r ON r.id = c.recipeId
             WHERE r.imageUrl IS NOT NULL AND r.imageUrl != ''

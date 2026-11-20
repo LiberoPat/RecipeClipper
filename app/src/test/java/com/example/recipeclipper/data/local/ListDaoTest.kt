@@ -274,6 +274,25 @@ class ListDaoTest {
         )
     }
 
+    /** A cover photo carries what its recipe's designed image is drawn from, for a photo that fails (#403). */
+    @Test
+    fun coverPhotosCarryTheirRecipesSource() = runBlocking {
+        val favorites = favoritesId()
+        val id = recipes.upsert(
+            recipe("https://example.com/a", "Lentil Soup")
+                .copy(imageUrl = "https://img/a.jpg", ingredients = listOf("1 cup red lentils"), language = "en"),
+            historyLimit = 50
+        )
+        lists.addToList(RecipeListCrossRef(id, favorites, addedAt = 10))
+
+        val row = lists.observeCoverPhotos().first().single()
+        assertEquals("https://img/a.jpg", row.imageUrl)
+        assertEquals(recipes.get(id)!!.uid, row.uid)
+        assertEquals("Lentil Soup", row.title)
+        assertEquals("en", row.language)
+        assertEquals(listOf("1 cup red lentils"), row.ingredients)
+    }
+
     // --- Covers of recipes with no photo (#403) ---
 
     private suspend fun placeholders() =

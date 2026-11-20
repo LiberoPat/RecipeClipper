@@ -12,6 +12,12 @@ data class NoPhotoSource(
     val ingredients: List<String> = emptyList()
 )
 
+/**
+ * One photo on a list's cover (#286): its [url], and [source], what the recipe's designed image
+ * is drawn from when the photo fails to load (#403).
+ */
+data class CoverPhoto(val url: String, val source: NoPhotoSource)
+
 /** What [NoPhoto.art] picked: the monogram's letter, the label's names, and the tint. */
 data class NoPhotoArt(val initial: String?, val labels: List<String>, val tint: Int)
 

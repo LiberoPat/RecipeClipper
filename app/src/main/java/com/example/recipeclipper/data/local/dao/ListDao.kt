@@ -28,7 +28,12 @@ data class ListRow(
 /** One photo on a list's cover (#286): a recipe in [listId] that has an [imageUrl]. */
 data class ListCoverPhotoRow(
     val listId: Long,
-    val imageUrl: String
+    val imageUrl: String,
+    /** What the recipe's designed image is drawn from if the photo fails to load (#403). */
+    val uid: String,
+    val title: String,
+    val language: String?,
+    val ingredients: List<String>
 )
 
 /** One recipe with no photo on a list's cover (#403): what its designed image is drawn from. */
@@ -100,7 +105,7 @@ abstract class ListDao {
      */
     @Query(
         """
-        SELECT c.listId, r.imageUrl
+        SELECT c.listId, r.imageUrl, r.uid, r.title, r.language, r.ingredients
         FROM recipe_list_cross_ref c
         JOIN recipes r ON r.id = c.recipeId
         WHERE r.imageUrl IS NOT NULL AND r.imageUrl != ''

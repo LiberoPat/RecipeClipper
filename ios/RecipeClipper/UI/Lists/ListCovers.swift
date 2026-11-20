@@ -7,7 +7,7 @@ private let mosaicGap: CGFloat = 2
 /// button, so VoiceOver (and the UI tests) read "Weeknights, 2 recipes".
 struct ListCoverTile: View {
     let list: RecipeList
-    let photos: [String]
+    let photos: [CoverPhoto]
     /// The list's recipes with no photo, for a list with no photo at all (#403).
     var placeholders: [NoPhotoSource] = []
     let action: () -> Void
@@ -42,7 +42,7 @@ struct ListCoverTile: View {
 /// list with any photo shows photos alone). An empty list gets a plain tile with an outlined
 /// bookmark: nothing saved here yet. With `noPhotoImage` off, no photo at all is that tile too.
 private struct CoverMosaic: View {
-    let photos: [String]
+    let photos: [CoverPhoto]
     let placeholders: [NoPhotoSource]
     @Environment(\.noPhotoImage) private var noPhotoImage
 
@@ -68,7 +68,7 @@ private struct CoverMosaic: View {
                     .foregroundStyle(Palette.muted)
             }
         } else {
-            Cells(items: photos) { CoverPhoto(url: $0) }
+            Cells(items: photos) { CoverPhotoCell(photo: $0) }
         }
     }
 }
@@ -99,21 +99,13 @@ private struct Cells<Item, Cell: View>: View {
 }
 
 /// One cell, cropped to fill; the hairline tint shows until it loads. `CachedAsyncImage`
-/// goes through ImageLoader's cache, so a cover shows offline too.
-private struct CoverPhoto: View {
-    let url: String
+/// goes through ImageLoader's cache, so a cover shows offline too. A photo that fails to load shows
+/// its recipe's designed image instead of the blank tile (#403).
+private struct CoverPhotoCell: View {
+    let photo: CoverPhoto
 
     var body: some View {
-        Palette.hairline
-            .overlay {
-                if let parsed = URL(string: url) {
-                    CachedAsyncImage(url: parsed) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
-                        Color.clear
-                    }
-                }
-            }
+        RecipeImage(url: photo.url, recipe: photo.source)
             .clipped()
     }
 }

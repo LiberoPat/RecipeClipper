@@ -76,6 +76,7 @@ targets:
           UIColorName: LaunchBackground
         UIAppFonts:
           - fraunces.ttf
+          - fraunces-italic.ttf
           - karla.ttf
         CFBundleURLTypes:
           - CFBundleURLName: com.liberopat.recipeclipper

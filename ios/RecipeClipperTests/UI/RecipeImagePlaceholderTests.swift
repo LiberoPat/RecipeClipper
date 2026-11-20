@@ -68,6 +68,35 @@ final class RecipeImagePlaceholderTests: XCTestCase {
         }
     }
 
+    /// The label's italic is the bundled Fraunces Italic (registered through `UIAppFonts`), not a
+    /// slanted upright.
+    func testTheBundledFrauncesItalicIsRegistered() throws {
+        let font = try XCTUnwrap(UIFont(name: "Fraunces-Italic", size: 20))
+        XCTAssertEqual(font.fontName, "Fraunces-Italic")
+        XCTAssertEqual(font.familyName, "Fraunces")
+    }
+
+    /// A photo that cannot be loaded, or whose bytes are no image, reports its failure: that is what
+    /// puts a recipe's designed image in its place (#403), on a row, a cover cell or the banner.
+    func testAPhotoThatFailsReportsItsFailure() async throws {
+        let missing = URL(fileURLWithPath: "/no/such/photo.jpg")
+        let garbage = FileManager.default.temporaryDirectory.appendingPathComponent("not-an-image-\(UUID().uuidString).jpg")
+        try Data("not an image".utf8).write(to: garbage)
+        defer { try? FileManager.default.removeItem(at: garbage) }
+
+        for url in [missing, garbage] {
+            let failed = expectation(description: "failure of \(url.lastPathComponent)")
+            let view = CachedAsyncImage(url: url) { $0.resizable() } placeholder: { Color.clear }
+                .onFailure { failed.fulfill() }
+                .frame(width: 64, height: 64)
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+            window.rootViewController = UIHostingController(rootView: view)
+            window.makeKeyAndVisible()
+            await fulfillment(of: [failed], timeout: 5)
+            window.isHidden = true
+        }
+    }
+
     /// Each layout draws, light and dark, with the flag on; with it off the slot is the hairline.
     func testEachLayoutRenders() {
         for scheme in [ColorScheme.light, .dark] {

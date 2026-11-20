@@ -37,8 +37,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.CoverPhoto
 import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
+import com.example.recipeclipper.ui.common.RecipeImage
 import com.example.recipeclipper.ui.common.RecipeImagePlaceholder
 import com.example.recipeclipper.ui.common.noPhotoImageOn
 import com.example.recipeclipper.ui.savetolist.countLabel
@@ -50,7 +52,7 @@ private val MosaicGap = 2.dp
 @Composable
 internal fun ListCoverTile(
     list: RecipeList,
-    photos: List<String>,
+    photos: List<CoverPhoto>,
     onClick: () -> Unit,
     /** The list's recipes with no photo, for a list with no photo at all (#403). */
     placeholders: List<NoPhotoSource> = emptyList()
@@ -82,7 +84,7 @@ internal fun ListCoverTile(
  * bookmark: nothing saved here yet. With `noPhotoImage` off, no photo at all is that tile too.
  */
 @Composable
-private fun CoverMosaic(photos: List<String>, placeholders: List<NoPhotoSource>, modifier: Modifier) {
+private fun CoverMosaic(photos: List<CoverPhoto>, placeholders: List<NoPhotoSource>, modifier: Modifier) {
     val gap = Arrangement.spacedBy(MosaicGap)
     val designed = if (photos.isEmpty() && noPhotoImageOn()) placeholders else emptyList()
     // The gaps show the screen's ground; each photo carries its own placeholder fill.
@@ -102,7 +104,7 @@ private fun CoverMosaic(photos: List<String>, placeholders: List<NoPhotoSource>,
                 modifier = Modifier.align(Alignment.Center).size(28.dp).testTag("lists.coverPlain")
             )
         } else {
-            Cells(photos, gap) { url, cell -> CoverPhoto(url, cell) }
+            Cells(photos, gap) { photo, cell -> CoverPhotoCell(photo, cell) }
         }
     }
 }
@@ -131,16 +133,17 @@ private fun <T> Cells(items: List<T>, gap: Arrangement.HorizontalOrVertical, cel
     }
 }
 
-/** Decorative: the tile's name and count say what it is. Coil's cache shows it offline. */
+/**
+ * Decorative: the tile's name and count say what it is. Coil's cache shows it offline. A photo
+ * that fails to load shows its recipe's designed image instead of a blank tile (#403).
+ */
 @Composable
-private fun CoverPhoto(url: String, modifier: Modifier) {
-    AsyncImage(
-        model = url,
+private fun CoverPhotoCell(photo: CoverPhoto, modifier: Modifier) {
+    RecipeImage(
+        model = photo.url,
+        recipe = photo.source,
         contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.outlineVariant)
-            .testTag("lists.coverPhoto")
+        modifier = modifier.background(MaterialTheme.colorScheme.outlineVariant).testTag("lists.coverPhoto")
     )
 }
 

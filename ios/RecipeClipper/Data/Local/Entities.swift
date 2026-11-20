@@ -361,15 +361,22 @@ struct ListRecord: Equatable {
 struct ListCoverPhotoRecord: Equatable {
     let listId: Int64
     let imageUrl: String
+    /// What the recipe's designed image is drawn from if the photo fails to load (#403).
+    let source: NoPhotoSource
 
-    init(listId: Int64, imageUrl: String) {
+    init(listId: Int64, imageUrl: String, source: NoPhotoSource) {
         self.listId = listId
         self.imageUrl = imageUrl
+        self.source = source
     }
 
     init(row: SQLiteRow) {
         listId = row.int64(0)
         imageUrl = row.string(1)
+        source = NoPhotoSource(
+            uid: row.string(2), title: row.string(3), language: row.optionalString(4),
+            ingredients: JSONColumns.decodeStrings(row.string(5))
+        )
     }
 }
 

@@ -17,6 +17,7 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -77,7 +78,10 @@ private fun variable(resId: Int, weight: FontWeight) = Font(
 val Fraunces = FontFamily(
     variable(R.font.fraunces, FontWeight.Normal),
     variable(R.font.fraunces, FontWeight.SemiBold),
-    variable(R.font.fraunces, FontWeight.Bold)
+    variable(R.font.fraunces, FontWeight.Bold),
+    // The no-photo label's italic (#403): the real Fraunces Italic, one subset instance (weight 400,
+    // Latin), not a slanted upright.
+    Font(R.font.fraunces_italic, FontWeight.Normal, FontStyle.Italic)
 )
 
 val Karla = FontFamily(
