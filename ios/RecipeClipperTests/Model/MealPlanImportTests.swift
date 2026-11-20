@@ -96,8 +96,8 @@ final class MealPlanImportTests: XCTestCase {
         XCTAssertTrue(plan.cutOff)
     }
 
-    func testAMonthOfSeparateBlocksIsReadAndNoMoreThanAMonthIsKept() {
-        let many = (1...40).map { "```json\n\(recipe("R\($0)", "2026-11-23"))\n```" }.joined(separator: "\n")
+    func testAWeekOfSeparateBlocksIsReadAndNoMoreThanTheCeilingIsKept() {
+        let many = (1...90).map { "```json\n\(recipe("R\($0)", "2026-11-23"))\n```" }.joined(separator: "\n")
         XCTAssertEqual(MealPlanImport.read(many)?.items.count, MealPlanImport.maxRecipes)
     }
 
@@ -230,8 +230,8 @@ final class MealPlanImportTests: XCTestCase {
         XCTAssertEqual(MealPlanImport.read(text)?.items.map(\.recipe.name), ["A", "B"])
     }
 
-    func testNoMoreThanAMonthOfRecipesAreKept() {
-        let many = "[" + (1...40).map { recipe("R\($0)", "2026-11-23") }.joined(separator: ",") + "]"
+    func testNoMoreThanTheCeilingOfRecipesAreKept() {
+        let many = "[" + (1...90).map { recipe("R\($0)", "2026-11-23") }.joined(separator: ",") + "]"
         XCTAssertEqual(MealPlanImport.read(many)?.items.count, MealPlanImport.maxRecipes)
     }
 

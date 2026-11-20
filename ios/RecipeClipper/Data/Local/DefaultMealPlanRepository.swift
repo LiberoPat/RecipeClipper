@@ -15,7 +15,7 @@ final class DefaultMealPlanRepository: MealPlanRepository {
     func observeMealTypes() -> AnyPublisher<[MealType], Never> {
         db.observe { conn in
             try MealPlanDao(db: conn).mealTypes().map {
-                MealType(id: $0.id, name: $0.name, builtInKey: $0.builtInKey, sortOrder: $0.sortOrder)
+                MealType(id: $0.id, name: $0.name, builtInKey: $0.builtInKey, sortOrder: $0.sortOrder, uid: $0.uid)
             }
         }
     }

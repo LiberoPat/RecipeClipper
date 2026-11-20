@@ -69,6 +69,8 @@ final class AppContainer {
     let tooltips: TooltipsViewModel
     /// When each recipe's pantry use-up sheet was last settled (#147).
     let useUpLog: UseUpLog
+    /// The meal types "Plan my week" last had ticked (#392).
+    let planChoices: PlanChoices
     /// Reads a Reddit post's photos on the device (#198).
     let photoTextReader: PhotoTextReader
 
@@ -100,10 +102,12 @@ final class AppContainer {
         // Unless given, every tooltip is seen: a unit test sees none it didn't ask for.
         tourPreferences: TourPreferences = MemoryTourPreferences(),
         useUpLog: UseUpLog = MemoryUseUpLog(),
+        planChoices: PlanChoices = MemoryPlanChoices(),
         photoTextReader: PhotoTextReader = UnavailablePhotoTextReader()
     ) {
         self.photoTextReader = photoTextReader
         self.useUpLog = useUpLog
+        self.planChoices = planChoices
         self.shareFileRepository = shareFileRepository
         self.autoBackup = autoBackup
         self.cookedPhotoRepository = cookedPhotoRepository
@@ -265,6 +269,7 @@ final class AppContainer {
             // Under XCTest (the unit tests' host) every tooltip is seen, as for any test container.
             tourPreferences: testing ? MemoryTourPreferences() : preferences,
             useUpLog: testing ? MemoryUseUpLog() : preferences,
+            planChoices: testing ? MemoryPlanChoices() : preferences,
             photoTextReader: VisionPhotoTextReader()
         )
         // Files no photo names any more (a delete whose Undo never came, an import's unused
@@ -392,7 +397,13 @@ final class AppContainer {
         let pantry = pantryRepository, lists = listRepository, recipes = recipeRepository
         let preferences = preferences, clock = clock
         let pasted = pastedTextRouter
-        return { AskAiViewModel(pantry: pantry, lists: lists, recipes: recipes, preferences: preferences, clock: clock, pasted: pasted) }
+        let mealPlan = mealPlanRepository, choices = planChoices
+        return { [featureFlags] in
+            AskAiViewModel(
+                pantry: pantry, lists: lists, recipes: recipes, preferences: preferences, clock: clock, pasted: pasted,
+                mealPlan: mealPlan, choices: choices, planPlus: { featureFlags.isOn(.planMyWeekPlus) }
+            )
+        }
     }
 
     /// Makes "Send as file"'s ViewModel (#149); nil without a share file repository.
@@ -492,7 +503,7 @@ final class AppContainer {
         MealPlanReviewViewModel(
             text: text, recipes: recipeRepository, plan: mealPlanRepository, calendar: planCalendar,
             limit: { [libraryPolicy] in libraryPolicy.limit }, entitlements: entitlements,
-            freshFood: featureFlags.isOn(.freshFood)
+            freshFood: featureFlags.isOn(.freshFood), planPlus: featureFlags.isOn(.planMyWeekPlus)
         )
     }
 

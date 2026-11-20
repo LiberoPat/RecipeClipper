@@ -151,19 +151,19 @@ final class FakeMealPlanRepository: MealPlanRepository {
         let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         nextId += 1
-        types.value.append(MealType(id: nextId, name: text, builtInKey: nil, sortOrder: types.value.count))
+        types.value.append(MealType(id: nextId, name: text, builtInKey: nil, sortOrder: types.value.count, uid: "uid-\(nextId)"))
     }
 
     func renameMealType(id: Int64, name: String) async {
         types.value = types.value.map {
-            $0.id == id ? MealType(id: $0.id, name: name, builtInKey: $0.builtInKey, sortOrder: $0.sortOrder) : $0
+            $0.id == id ? MealType(id: $0.id, name: name, builtInKey: $0.builtInKey, sortOrder: $0.sortOrder, uid: $0.uid) : $0
         }
     }
 
     func reorderMealTypes(_ orderedIds: [Int64]) async {
         let byId = Dictionary(uniqueKeysWithValues: types.value.map { ($0.id, $0) })
         types.value = orderedIds.enumerated().compactMap { index, id in
-            byId[id].map { MealType(id: $0.id, name: $0.name, builtInKey: $0.builtInKey, sortOrder: index) }
+            byId[id].map { MealType(id: $0.id, name: $0.name, builtInKey: $0.builtInKey, sortOrder: index, uid: $0.uid) }
         }
     }
 

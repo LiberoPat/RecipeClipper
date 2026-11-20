@@ -67,7 +67,7 @@ struct WidgetData: Sendable {
             let (meals, types) = try await db.read { conn -> ([PlannedMeal], [MealType]) in
                 let dao = MealPlanDao(db: conn)
                 let types = try dao.mealTypes().map {
-                    MealType(id: $0.id, name: $0.name, builtInKey: $0.builtInKey, sortOrder: $0.sortOrder)
+                    MealType(id: $0.id, name: $0.name, builtInKey: $0.builtInKey, sortOrder: $0.sortOrder, uid: $0.uid)
                 }
                 return (try dao.days(start: days[0], end: days[1]), types)
             }
