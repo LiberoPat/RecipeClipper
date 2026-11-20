@@ -91,9 +91,9 @@ class RecipesQuickFiltersViewModelTest {
         advanceUntilIdle()
         assertEquals(listOf(2L, 3L, 5L, 4L, 1L), vm.uiState.value.recipes!!.map { it.id })
 
-        vm.onQuickFilterToggle(RecipeQuickFilter.UNDER_30)
+        vm.onQuickFilterToggle(RecipeQuickFilter.THIRTY_OR_LESS)
         advanceUntilIdle()
-        // Under 30 reads the stored time; "Overnight" never matches; the sort still applies.
+        // 30 min or less reads the stored time; "Overnight" never matches; the sort still applies.
         assertEquals(listOf("Apple Tart", "Miso Soup", "Zucchini Fritters"), vm.uiState.value.recipes!!.map { it.title })
 
         vm.onQuickFilterToggle(RecipeQuickFilter.NOT_COOKED)
@@ -101,7 +101,7 @@ class RecipesQuickFiltersViewModelTest {
         assertEquals(listOf("Miso Soup", "Zucchini Fritters"), vm.uiState.value.recipes!!.map { it.title })
         assertEquals(2, vm.uiState.value.listed)
 
-        vm.onQuickFilterToggle(RecipeQuickFilter.UNDER_30)
+        vm.onQuickFilterToggle(RecipeQuickFilter.THIRTY_OR_LESS)
         vm.onQuickFilterToggle(RecipeQuickFilter.NOT_COOKED)
         advanceUntilIdle()
         assertEquals(5, vm.uiState.value.recipes!!.size)
@@ -114,7 +114,7 @@ class RecipesQuickFiltersViewModelTest {
         collectEagerly(vm.uiState)
         advanceUntilIdle()
 
-        vm.onQuickFilterToggle(RecipeQuickFilter.UNDER_30)
+        vm.onQuickFilterToggle(RecipeQuickFilter.THIRTY_OR_LESS)
         advanceUntilIdle()
         assertEquals(emptyList<RecipeSummary>(), vm.uiState.value.recipes)
         assertTrue("the count and the toggle stay while a chip is on", vm.uiState.value.showsSortLine)
@@ -126,7 +126,7 @@ class RecipesQuickFiltersViewModelTest {
         val vm = viewModel(repository)
         collectEagerly(vm.uiState)
         advanceUntilIdle()
-        vm.onQuickFilterToggle(RecipeQuickFilter.UNDER_30)
+        vm.onQuickFilterToggle(RecipeQuickFilter.THIRTY_OR_LESS)
 
         vm.onQueryChange("soup")
         repository.history.value = listOf(summary(2, total = "3h"), summary(3, total = "15m"))
@@ -139,7 +139,7 @@ class RecipesQuickFiltersViewModelTest {
         val inCooked = viewModel(FakeRecipeRepository(), handle = SavedStateHandle(mapOf(RecipesViewModel.VIEW_ARG to RecipeFilter.COOKED.name)))
         collectEagerly(inCooked.uiState)
         advanceUntilIdle()
-        assertEquals(listOf(RecipeQuickFilter.UNDER_30, RecipeQuickFilter.USES_PANTRY), inCooked.uiState.value.quickFilters)
+        assertEquals(listOf(RecipeQuickFilter.THIRTY_OR_LESS, RecipeQuickFilter.USES_PANTRY), inCooked.uiState.value.quickFilters)
 
         val whole = viewModel(FakeRecipeRepository())
         collectEagerly(whole.uiState)

@@ -4,8 +4,8 @@ import Foundation
 /// the search and the sort apply as before. Questions about what is stored, never a filing step,
 /// like the views (#345). Not remembered: Recipes opens with none on. Android's `RecipeQuickFilter`.
 enum RecipeQuickFilter: String, CaseIterable, Identifiable {
-    /// Total time under `RecipeQuickFilters.quickMinutes`.
-    case under30 = "UNDER_30"
+    /// Total time of `RecipeQuickFilters.quickMinutes` or less.
+    case thirtyOrLess = "THIRTY_OR_LESS"
     /// No cooking entry yet: the Cooked view's complement.
     case notCooked = "NOT_COOKED"
     /// At least half of its nameable ingredients are in the pantry.
@@ -27,10 +27,10 @@ struct PantryCoverage: Equatable {
 /// The quick filters of Recipes (#378), pure; Android's `RecipeQuickFilters`, pinned by the
 /// corpus's `Mins`, `Quick` and `Cover` rows.
 ///
-/// Under 30 min reads the recipe's total time as stored; with none, prep plus cook, and only when
+/// 30 min or less reads the recipe's total time as stored; with none, prep plus cook, and only when
 /// both are present and readable (`Durations.minutes`). A time that can't be read ("Overnight",
 /// "20 to 25 minutes", a zero) never matches: nothing is guessed. A total that is present but
-/// unreadable doesn't fall back to prep plus cook. Strictly under: 30 min is not.
+/// unreadable doesn't fall back to prep plus cook. 30 min or less: 30 min itself counts.
 /// Not cooked yet is `lastCookedDay == nil`: the Cooked view's own `EXISTS` turned round.
 /// Uses what's in my pantry: of the recipe's nameable ingredient lines (a heading or a line with no
 /// name aside), those the pantry has by `PantryMatch`, in stock or a staple, presence only:
@@ -47,8 +47,8 @@ enum RecipeQuickFilters {
         return prep + cook
     }
 
-    static func underThirty(_ recipe: RecipeSummary) -> Bool {
-        minutes(recipe).map { $0 < quickMinutes } ?? false
+    static func thirtyOrLess(_ recipe: RecipeSummary) -> Bool {
+        minutes(recipe).map { $0 <= quickMinutes } ?? false
     }
 
     static func notCooked(_ recipe: RecipeSummary) -> Bool { recipe.lastCookedDay == nil }
@@ -83,7 +83,7 @@ enum RecipeQuickFilters {
     ) -> [RecipeSummary] {
         if filters.isEmpty { return recipes }
         return recipes.filter { r in
-            (!filters.contains(.under30) || underThirty(r))
+            (!filters.contains(.thirtyOrLess) || thirtyOrLess(r))
                 && (!filters.contains(.notCooked) || notCooked(r))
                 && (!filters.contains(.usesPantry) || coverage[r.id]?.matches == true)
         }

@@ -55,9 +55,9 @@ import java.io.File
  *
  * `Mins("time")` rows (#378) pin [Durations.minutes]: a stored prep, cook or total time as the
  * minutes it says, or nil (unreadable, zero or too large); write only the time (optionally
- * `, lang: "de"`). `Quick(total, prep, cook)` rows pin [RecipeQuickFilters] ("Under 30 min"): a
+ * `, lang: "de"`). `Quick(total, prep, cook)` rows pin [RecipeQuickFilters] ("30 min or less"): a
  * recipe's total, prep and cook times (a string or nil each; optionally `, lang: "de"`), as the
- * minutes read ([RecipeQuickFilters.minutes]) and whether it is under 30; write only the three times.
+ * minutes read ([RecipeQuickFilters.minutes]) and whether it is 30 min or less; write only the three times.
  * `Cover([pantry], [lines])` rows pin [RecipeQuickFilters.coverage] ("Uses what's in my pantry"):
  * pantry items by name ("*salt" a staple, "-butter" out of stock) against one recipe's lines
  * (optionally `, lang: "de"`), as how many nameable lines the pantry has, how many there are, and
@@ -634,7 +634,7 @@ class DifferentialCorpusTest {
         return m.groupValues[1] + "Mins(${q(text)}$lang, $minutes),"
     }
 
-    /** `Quick(total, prep, cook, lang:, minutes, under30)` (#378): [RecipeQuickFilters] on a recipe with those times. */
+    /** `Quick(total, prep, cook, lang:, minutes, thirtyOrLess)` (#378): [RecipeQuickFilters] on a recipe with those times. */
     private fun quickRow(m: MatchResult): String {
         val (total, prep, cook) = (2..4).map { g -> optionalLiteral.find(m.groupValues[g])!!.groups[1]?.value?.let(::unescape) }
         val language = m.groupValues[5].ifEmpty { "en" }
@@ -642,7 +642,7 @@ class DifferentialCorpusTest {
         val recipe = RecipeSummary(1, "r", null, total, 0, false, prepTime = prep, cookTime = cook, language = language)
         val minutes = RecipeQuickFilters.minutes(recipe)?.toString() ?: "nil"
         fun lit(v: String?) = v?.let(::q) ?: "nil"
-        return m.groupValues[1] + "Quick(${lit(total)}, ${lit(prep)}, ${lit(cook)}$lang, $minutes, ${RecipeQuickFilters.underThirty(recipe)}),"
+        return m.groupValues[1] + "Quick(${lit(total)}, ${lit(prep)}, ${lit(cook)}$lang, $minutes, ${RecipeQuickFilters.thirtyOrLess(recipe)}),"
     }
 
     /**

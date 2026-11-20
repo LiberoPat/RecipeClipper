@@ -3556,43 +3556,43 @@
         }
       }
     },
-    "recipes_quick_under_30" : {
+    "recipes_quick_30_or_less" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Under 30 min"
+            "value" : "30 min or less"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Menos de 30 min"
+            "value" : "30 min o menos"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moins de 30 min"
+            "value" : "30 min ou moins"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unter 30 Min."
+            "value" : "Bis 30 Min."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Meno di 30 min"
+            "value" : "30 min o meno"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Menos de 30 min"
+            "value" : "30 min ou menos"
           }
         }
       }

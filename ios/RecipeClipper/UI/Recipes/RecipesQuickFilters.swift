@@ -53,7 +53,7 @@ struct QuickFilterChips: View {
 
     static func name(_ filter: RecipeQuickFilter) -> String {
         switch filter {
-        case .under30: Strings.recipesQuickUnder30
+        case .thirtyOrLess: Strings.recipesQuickThirtyOrLess
         case .notCooked: Strings.recipesQuickNotCooked
         case .usesPantry: Strings.recipesQuickPantry
         }

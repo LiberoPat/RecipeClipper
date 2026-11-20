@@ -62,35 +62,37 @@ class RecipeQuickFiltersTest {
         assertNull(Durations.minutes("20 minutes", null))
     }
 
-    // --- Under 30 min ---
+    // --- 30 min or less ---
 
-    @Test fun `under 30 reads the total, strictly under`() {
-        assertTrue(RecipeQuickFilters.underThirty(recipe(total = "25m")))
-        assertTrue(RecipeQuickFilters.underThirty(recipe(total = "29m")))
-        assertFalse(RecipeQuickFilters.underThirty(recipe(total = "30m")))
-        assertFalse(RecipeQuickFilters.underThirty(recipe(total = "1h")))
+    @Test fun `30 min or less reads the total, and 30 itself counts`() {
+        assertTrue(RecipeQuickFilters.thirtyOrLess(recipe(total = "25m")))
+        assertTrue(RecipeQuickFilters.thirtyOrLess(recipe(total = "29m")))
+        assertTrue(RecipeQuickFilters.thirtyOrLess(recipe(total = "30m")))
+        assertFalse(RecipeQuickFilters.thirtyOrLess(recipe(total = "31m")))
+        assertFalse(RecipeQuickFilters.thirtyOrLess(recipe(total = "1h")))
     }
 
     @Test fun `without a total it adds prep and cook, only when both read`() {
-        assertTrue(RecipeQuickFilters.underThirty(recipe(prep = "10m", cook = "15m")))
-        assertFalse(RecipeQuickFilters.underThirty(recipe(prep = "10m", cook = "20m")))
-        assertFalse(RecipeQuickFilters.underThirty(recipe(prep = "10m")))
-        assertFalse(RecipeQuickFilters.underThirty(recipe(cook = "10m")))
-        assertFalse(RecipeQuickFilters.underThirty(recipe(prep = "5m", cook = "Overnight")))
+        assertTrue(RecipeQuickFilters.thirtyOrLess(recipe(prep = "10m", cook = "15m")))
+        assertTrue(RecipeQuickFilters.thirtyOrLess(recipe(prep = "10m", cook = "20m")))
+        assertFalse(RecipeQuickFilters.thirtyOrLess(recipe(prep = "10m", cook = "21m")))
+        assertFalse(RecipeQuickFilters.thirtyOrLess(recipe(prep = "10m")))
+        assertFalse(RecipeQuickFilters.thirtyOrLess(recipe(cook = "10m")))
+        assertFalse(RecipeQuickFilters.thirtyOrLess(recipe(prep = "5m", cook = "Overnight")))
         assertEquals(25, RecipeQuickFilters.minutes(recipe(prep = "10m", cook = "15m")))
     }
 
     @Test fun `a total that is present but unreadable never matches, and never falls back`() {
-        assertFalse(RecipeQuickFilters.underThirty(recipe(total = "Overnight", prep = "5m", cook = "5m")))
-        assertFalse(RecipeQuickFilters.underThirty(recipe(total = "20 to 25 minutes")))
+        assertFalse(RecipeQuickFilters.thirtyOrLess(recipe(total = "Overnight", prep = "5m", cook = "5m")))
+        assertFalse(RecipeQuickFilters.thirtyOrLess(recipe(total = "20 to 25 minutes")))
         assertNull(RecipeQuickFilters.minutes(recipe()))
     }
 
     @Test fun `a time is read in the recipe's own language`() {
-        assertTrue(RecipeQuickFilters.underThirty(recipe(total = "25min", language = "de")))
-        assertTrue(RecipeQuickFilters.underThirty(recipe(total = "25m", language = null)))
-        assertTrue(RecipeQuickFilters.underThirty(recipe(total = "25m", language = "xx")))
-        assertFalse(RecipeQuickFilters.underThirty(recipe(total = "25 minutes", language = "xx")))
+        assertTrue(RecipeQuickFilters.thirtyOrLess(recipe(total = "25min", language = "de")))
+        assertTrue(RecipeQuickFilters.thirtyOrLess(recipe(total = "25m", language = null)))
+        assertTrue(RecipeQuickFilters.thirtyOrLess(recipe(total = "25m", language = "xx")))
+        assertFalse(RecipeQuickFilters.thirtyOrLess(recipe(total = "25 minutes", language = "xx")))
     }
 
     // --- Not cooked yet ---
@@ -145,9 +147,9 @@ class RecipeQuickFiltersTest {
         val covers = mapOf(1L to PantryCoverage(2, 3), 2L to PantryCoverage(2, 3), 3L to PantryCoverage(3, 3), 4L to PantryCoverage(0, 3))
 
         assertEquals(all, RecipeQuickFilters.apply(all, emptySet()))
-        assertEquals(listOf(quickAndNew, quickAndCooked), RecipeQuickFilters.apply(all, setOf(RecipeQuickFilter.UNDER_30)))
+        assertEquals(listOf(quickAndNew, quickAndCooked), RecipeQuickFilters.apply(all, setOf(RecipeQuickFilter.THIRTY_OR_LESS)))
         assertEquals(listOf(quickAndNew, slowAndNew, unreadable), RecipeQuickFilters.apply(all, setOf(RecipeQuickFilter.NOT_COOKED)))
-        assertEquals(listOf(quickAndNew), RecipeQuickFilters.apply(all, setOf(RecipeQuickFilter.UNDER_30, RecipeQuickFilter.NOT_COOKED)))
+        assertEquals(listOf(quickAndNew), RecipeQuickFilters.apply(all, setOf(RecipeQuickFilter.THIRTY_OR_LESS, RecipeQuickFilter.NOT_COOKED)))
         assertEquals(
             listOf(quickAndNew, slowAndNew),
             RecipeQuickFilters.apply(all, setOf(RecipeQuickFilter.NOT_COOKED, RecipeQuickFilter.USES_PANTRY), covers)

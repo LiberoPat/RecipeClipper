@@ -42,7 +42,7 @@ final class RecipesFiltersGridUITests: RecipeUITestCase {
         assertAbsent(text("You have 1 of 2"), "no pantry line with the chip off")
     }
 
-    /// "Not cooked yet" keeps every recipe here (nothing is cooked); "Under 30 min" never
+    /// "Not cooked yet" keeps every recipe here (nothing is cooked); "30 min or less" never
     /// matches a recipe with no time, so the two together are an empty list with its own line.
     func testChipsCombineAndNeverGuessATime() {
         launch(.standard, flags: ["recipeFilters"])
@@ -51,9 +51,9 @@ final class RecipesFiltersGridUITests: RecipeUITestCase {
         chip("NOT_COOKED").tap()
         requireState(chip("NOT_COOKED"), "isSelected == true")
         require(row("Banana Bread"), "nothing is cooked yet")
-        chip("UNDER_30").tap()
+        chip("THIRTY_OR_LESS").tap()
         require(text("No recipes match these filters."), "no recipe states a time")
-        chip("UNDER_30").tap()
+        chip("THIRTY_OR_LESS").tap()
         chip("NOT_COOKED").tap()
         require(row("Miso Soup"))
     }

@@ -374,7 +374,7 @@ enum Strings {
     static func recipesListed(_ n: Int) -> String { String(localized: "recipes_listed \(n)") }
     static var sort: String { String(localized: "cd_sort") }
     // Recipes: quick filter chips (#378) and the rows / grid toggle (#380).
-    static var recipesQuickUnder30: String { String(localized: "recipes_quick_under_30") }
+    static var recipesQuickThirtyOrLess: String { String(localized: "recipes_quick_30_or_less") }
     static var recipesQuickNotCooked: String { String(localized: "recipes_quick_not_cooked") }
     static var recipesQuickPantry: String { String(localized: "recipes_quick_pantry") }
     static var recipesQuickPantryNote: String { String(localized: "recipes_quick_pantry_note") }

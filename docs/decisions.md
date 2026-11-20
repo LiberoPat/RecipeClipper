@@ -3125,7 +3125,7 @@ default in debug and release, on both platforms: `recipeFilters` (#378) and `rec
 Off, Recipes is exactly the screen of "One cookbook" above.
 
 **Quick filter chips (#378).** Under the search field, three plain text pills (the old filter
-pills' look, ink-filled when on): **Under 30 min**, **Not cooked yet**, **Uses what's in my
+pills' look, ink-filled when on): **30 min or less**, **Not cooked yet**, **Uses what's in my
 pantry**. They sit between search and the views strip, on Recipes and on each view's screen (a
 view is the same screen; **Not cooked yet is not offered inside the Cooked view**, where it could
 only empty the list). They are on/off switches, not a radio group (a checkbox for TalkBack, the selected
@@ -3145,7 +3145,7 @@ the search's own).
   view's `EXISTS` turned round (`RecipeQuickFiltersDaoTest` proves the two partition the library).
   So no `observeHistory` signature, query parameter or migration changed. The summary rows gained
   `prepTime`, `cookTime` and `language` (a query change only).
-- **Under 30 min** (`RecipeQuickFilters.minutes`, `:core`; Swift port; corpus rows `Mins` and
+- **30 min or less** (`RecipeQuickFilters.minutes`, `:core`; Swift port; corpus rows `Mins` and
   `Quick`): the recipe's **total time if it has one, else prep plus cook, and only when both are
   present and readable**. Readable is `Durations.minutes`: ISO, a phrase in the recipe's own words
   and what the app stores back ("1h 30m", "1h 30min", "1時間 30分"), read with the **recipe's**
@@ -3154,8 +3154,8 @@ the search's own).
   "Overnight", "20 to 25 minutes", "1-2 hours", a zero ("PT0S" is absent anyway), a figure past ten
   million, a time in another language's words. A total that is present but unreadable does **not**
   fall back to prep plus cook (the site said a total; if we can't read it we don't pretend we can).
-  **Strictly under**: 30 min is not "under 30 min" (owner may prefer "30 or less": change
-  `QUICK_MINUTES`' comparison in one place, `underThirty`, and the label). Prep plus cook is a
+  **30 min or less**: 30 min itself counts (the owner's call, 2026-11-19, over a first draft that
+  was strictly under; the chip says "30 min or less", the code `thirtyOrLess` / `THIRTY_OR_LESS`). Prep plus cook is a
   floor (resting time isn't in it), which is why a stated total always wins.
 - **Not cooked yet**: no cooking entry, a photo of it (#116) or "Mark as cooked" (#173): the
   Cooked view's definition, reused (`RecipeSummary.lastCookedDay`, itself `MAX(cooked_photos.day)`).
@@ -3214,7 +3214,7 @@ placeholder swapped for it (one place per platform: `LibraryGridCell`).
   have their own keys, unique across the whole grid, as the LazyColumn rule says); iOS's
   `ForEach` ids are the recipe ids inside one `LazyVGrid`. Rows keep their keys.
 
-**Tests.** `:core` `RecipeQuickFiltersTest` (minutes, under 30, coverage, combining); the corpus's
+**Tests.** `:core` `RecipeQuickFiltersTest` (minutes, 30 min or less, coverage, combining); the corpus's
 `Mins`, `Quick` and `Cover` rows (Swift generated from the Kotlin); Android `RecipeQuickFiltersDaoTest`
 (real SQLite: times and language in the rows, Not cooked as the Cooked view's complement, the
 `%` search under a chip, the lines query), `RecipesQuickFiltersViewModelTest` (combining with the

@@ -85,7 +85,7 @@ enum Durations {
     /// What `format` writes for a language with no tables: English's symbols, "1h 30m", "1h", "20m".
     private static let englishShape = JRegex(#"^(?:(\d+)h(?: (\d+)m)?|(\d+)m)$"#)
 
-    /// How many minutes `raw` says, read the way `format` reads it (#378: "Under 30 min"), or nil
+    /// How many minutes `raw` says, read the way `format` reads it (#378: "30 min or less"), or nil
     /// when it isn't a time the app can read: blank, a zero total ("PT0S", which `format` hides), a
     /// range ("20 to 25 minutes"), a word ("Overnight") or a figure too large. Never a guess. Reads
     /// ISO, a phrase in the recipe's words and what `format` writes back ("1h 30m", "1h 30min"). With

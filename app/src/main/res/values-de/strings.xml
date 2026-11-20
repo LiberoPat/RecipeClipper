@@ -130,7 +130,7 @@
         <item quantity="other">%1$d Rezepte</item>
     </plurals>
     <string name="cd_sort">Sortieren</string>
-    <string name="recipes_quick_under_30">Unter 30 Min.</string>
+    <string name="recipes_quick_30_or_less">Bis 30 Min.</string>
     <string name="recipes_quick_not_cooked">Noch nicht gekocht</string>
     <string name="recipes_quick_pantry">Mit meinem Vorrat</string>
     <string name="recipes_quick_pantry_note">Zeigt Rezepte, bei denen mindestens die Hälfte der Zutaten in deinem Vorrat ist, nach Name, nicht nach Menge.</string>

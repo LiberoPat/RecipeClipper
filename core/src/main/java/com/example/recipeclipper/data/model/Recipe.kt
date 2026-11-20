@@ -120,7 +120,7 @@ data class RecipeSummary(
     val sourceUrl: String = "",
     /** Read from a chat's JSON (#355, origin CHAT): the row says "From a chat". */
     val isFromChat: Boolean = false,
-    /** The prep and cook times as stored, and the language they were written in: what "Under 30 min" reads (#378). */
+    /** The prep and cook times as stored, and the language they were written in: what "30 min or less" reads (#378). */
     val prepTime: String? = null,
     val cookTime: String? = null,
     val language: String? = null

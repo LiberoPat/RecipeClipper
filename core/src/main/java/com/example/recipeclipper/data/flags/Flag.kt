@@ -49,7 +49,7 @@ enum class Flag(val key: String) {
     RECIPE_VERSIONS("recipeVersions"),
     /** Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients. */
     SHOP_FOR_WEEK("shopForWeek"),
-    /** Recipes' quick filter chips under search (#378): Under 30 min, Not cooked yet, Uses what's in my pantry. */
+    /** Recipes' quick filter chips under search (#378): 30 min or less, Not cooked yet, Uses what's in my pantry. */
     RECIPE_FILTERS("recipeFilters"),
     /** A toggle on Recipes between the rows and a photo grid (#380). */
     RECIPES_GRID("recipesGrid");

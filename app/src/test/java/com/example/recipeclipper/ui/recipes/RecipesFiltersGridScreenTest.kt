@@ -95,19 +95,19 @@ class RecipesFiltersGridScreenTest {
     fun theChipsAreUnderSearchAndEachOneNarrowsTheRows() {
         show()
         waitForText("Chicken Adobo")
-        compose.onNodeWithText("Under 30 min").assertIsDisplayed()
+        compose.onNodeWithText("30 min or less").assertIsDisplayed()
         compose.onNodeWithText("Not cooked yet").assertIsDisplayed()
         compose.onNodeWithText("Uses what's in my pantry").assertIsDisplayed()
 
-        compose.onNodeWithTag("recipeQuick-UNDER_30").assertIsOff().performClick()
+        compose.onNodeWithTag("recipeQuick-THIRTY_OR_LESS").assertIsOff().performClick()
         waitGone("Chicken Adobo")
-        compose.onNodeWithTag("recipeQuick-UNDER_30").assertIsOn()
+        compose.onNodeWithTag("recipeQuick-THIRTY_OR_LESS").assertIsOn()
         compose.onNodeWithText("Quick Salad").assertIsDisplayed()
         compose.onAllNodesWithText("Banana Bread").assertCountEquals(0)
         compose.onNodeWithText("1 recipe").assertIsDisplayed()
 
         // Off again, every recipe is back.
-        compose.onNodeWithTag("recipeQuick-UNDER_30").performClick()
+        compose.onNodeWithTag("recipeQuick-THIRTY_OR_LESS").performClick()
         waitForText("Chicken Adobo")
         compose.onNodeWithText("3 recipes").assertIsDisplayed()
     }
@@ -117,7 +117,7 @@ class RecipesFiltersGridScreenTest {
         show(recipes = listOf(adobo, salad.copy(lastCookedDay = 20_000), bread.copy(totalTime = "20m"), summary(4, "Tuna Melt", total = "10m")))
         waitForText("Chicken Adobo")
 
-        compose.onNodeWithTag("recipeQuick-UNDER_30").performClick()
+        compose.onNodeWithTag("recipeQuick-THIRTY_OR_LESS").performClick()
         compose.onNodeWithTag("recipeQuick-NOT_COOKED").performClick()
         waitGone("Chicken Adobo") // 45m
         waitGone("Quick Salad") // cooked
@@ -137,9 +137,9 @@ class RecipesFiltersGridScreenTest {
     fun aChipThatLeavesNothingSaysSoAndKeepsTheChipsToTurnItOff() {
         show(recipes = listOf(bread))
         waitForText("Banana Bread")
-        compose.onNodeWithTag("recipeQuick-UNDER_30").performClick()
+        compose.onNodeWithTag("recipeQuick-THIRTY_OR_LESS").performClick()
         waitForText("No recipes match these filters.")
-        compose.onNodeWithTag("recipeQuick-UNDER_30").assertIsOn()
+        compose.onNodeWithTag("recipeQuick-THIRTY_OR_LESS").assertIsOn()
     }
 
     @Test
@@ -147,7 +147,7 @@ class RecipesFiltersGridScreenTest {
         preferences.recipesLayout = RecipesLayout.GRID // stored, but the flag is off: rows
         show(quickFilters = false, gridEnabled = false)
         waitForText("Chicken Adobo")
-        compose.onAllNodesWithTag("recipeQuick-UNDER_30").assertCountEquals(0)
+        compose.onAllNodesWithTag("recipeQuick-THIRTY_OR_LESS").assertCountEquals(0)
         compose.onAllNodesWithTag("recipes.layout").assertCountEquals(0)
         compose.onAllNodesWithTag("recipesGrid").assertCountEquals(0)
     }
@@ -196,7 +196,7 @@ class RecipesFiltersGridScreenTest {
         compose.onNodeWithText("45m").assertIsDisplayed() // the time under the title, as a row has it
         // The search, the chips and the sort are still above it.
         compose.onNodeWithTag("recipes.sort").assertIsDisplayed()
-        compose.onNodeWithText("Under 30 min").assertIsDisplayed()
+        compose.onNodeWithText("30 min or less").assertIsDisplayed()
 
         compose.onNodeWithText("Quick Salad").performClick()
         assertEquals(2L, opened)
@@ -213,7 +213,7 @@ class RecipesFiltersGridScreenTest {
         show()
         compose.waitUntil(timeoutMillis = 5_000) { compose.onAllNodesWithTag("recipesGrid").fetchSemanticsNodes().isNotEmpty() }
         waitForText("Chicken Adobo")
-        compose.onNodeWithTag("recipeQuick-UNDER_30").performClick()
+        compose.onNodeWithTag("recipeQuick-THIRTY_OR_LESS").performClick()
         waitGone("Chicken Adobo")
         compose.onNodeWithText("Quick Salad").assertIsDisplayed()
         compose.onNodeWithTag("recipesGrid").assertIsDisplayed()

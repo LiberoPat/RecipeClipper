@@ -214,7 +214,7 @@
     </plurals>
     <string name="cd_sort">Sort</string>
     <!-- Recipes: quick filter chips (#378) and the rows / grid toggle (#380) -->
-    <string name="recipes_quick_under_30">Under 30 min</string>
+    <string name="recipes_quick_30_or_less">30 min or less</string>
     <string name="recipes_quick_not_cooked">Not cooked yet</string>
     <string name="recipes_quick_pantry">Uses what\'s in my pantry</string>
     <string name="recipes_quick_pantry_note">Shows recipes where at least half of the ingredients are in your pantry, by name, not by amount.</string>

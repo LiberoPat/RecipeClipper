@@ -73,10 +73,10 @@ class RecipeQuickFiltersDaoTest {
         assertEquals("en", quick.language)
         assertEquals("1h 5m", byUrl.getValue("Recipe https://a.com/b").totalTime)
         assertEquals("de", byUrl.getValue("Recipe https://a.com/b").language)
-        // And the filter reads them as the stored text says: 25 minutes is under 30, 1h 5m isn't.
+        // And the filter reads them as the stored text says: 25 minutes is 30 or less, 1h 5m isn't.
         assertEquals(
             listOf("Recipe https://a.com/a"),
-            RecipeQuickFilters.apply(all(), setOf(RecipeQuickFilter.UNDER_30)).map { it.title }
+            RecipeQuickFilters.apply(all(), setOf(RecipeQuickFilter.THIRTY_OR_LESS)).map { it.title }
         )
     }
 
@@ -101,7 +101,7 @@ class RecipeQuickFiltersDaoTest {
         recipes.upsert(recipe("https://a.com/pct", title = "100% Whole Wheat", total = "20m"), LibraryLimit.Unlimited)
         recipes.upsert(recipe("https://a.com/other", title = "1000 Layer Cake", total = "20m"), LibraryLimit.Unlimited)
 
-        val found = RecipeQuickFilters.apply(all("100%"), setOf(RecipeQuickFilter.UNDER_30))
+        val found = RecipeQuickFilters.apply(all("100%"), setOf(RecipeQuickFilter.THIRTY_OR_LESS))
         assertEquals(listOf("100% Whole Wheat"), found.map { it.title })
     }
 

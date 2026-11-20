@@ -217,7 +217,7 @@ native ear; the reason is the later passes'.
 |---|---|---|
 | `recipes_quick_pantry` | es "Con lo que hay en mi despensa", fr "Avec mon garde-manger", de "Mit meinem Vorrat", it "Con la mia dispensa", pt "Com o que tenho na despensa" | The English "Uses what's in my pantry" is a chip, so short; do these read as "recipes I can mostly make from it"? |
 | `recipes_quick_not_cooked` | es "Aún sin cocinar", fr "Pas encore cuisinée", de "Noch nicht gekocht", it "Non ancora cucinata", pt "Ainda não feita" | Agrees with the library view's "cooked" word (`recipes_view_cooked`: Cocinadas, Cuisinées, Gekocht, Cucinate, Feitas); follows it if that changes. |
-| `recipes_quick_under_30` | "Menos de 30 min", "Moins de 30 min", "Unter 30 Min.", "Meno di 30 min", "Menos de 30 min" | Strictly under, as the English. |
+| `recipes_quick_30_or_less` | "30 min o menos", "30 min ou moins", "Bis 30 Min.", "30 min o meno", "30 min ou menos" | 30 minutes itself counts, as the English "30 min or less" (German "Bis 30 Min." is the idiomatic chip form). |
 | `recipes_quick_pantry_note` | "…al menos la mitad de los ingredientes… por nombre, no por cantidad" and its equivalents | The honest statement of the rule (half, by name, not by amount): check it stays that plain. |
 | `recipes_pantry_have` | "Tienes 6 de 8", "Vous avez 6 sur 8", "Du hast 6 von 8", "Hai 6 su 8", "Você tem 6 de 8" | The count says "of" the ingredients without the noun, as the English "You have 6 of 8". |
 

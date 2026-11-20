@@ -44,15 +44,15 @@ final class RecipesQuickFiltersViewModelTests: XCTestCase {
         await settleMain()
         XCTAssertEqual(vm.uiState.recipes?.map(\.id), [2, 3, 5, 4, 1], "all five, A to Z")
 
-        vm.onQuickFilterToggle(.under30)
+        vm.onQuickFilterToggle(.thirtyOrLess)
         XCTAssertEqual(vm.uiState.recipes?.map(\.title), ["Apple Tart", "Miso Soup", "Zucchini Fritters"],
-                       "under 30 reads the stored time; Overnight never matches; the sort still applies")
+                       "30 min or less reads the stored time; Overnight never matches; the sort still applies")
 
         vm.onQuickFilterToggle(.notCooked)
         XCTAssertEqual(vm.uiState.recipes?.map(\.title), ["Miso Soup", "Zucchini Fritters"], "the chips combine")
         XCTAssertEqual(vm.uiState.listed, 2, "the count is of what is shown")
 
-        vm.onQuickFilterToggle(.under30)
+        vm.onQuickFilterToggle(.thirtyOrLess)
         vm.onQuickFilterToggle(.notCooked)
         XCTAssertEqual(vm.uiState.recipes?.count, 5)
         XCTAssertTrue(vm.uiState.quick.isEmpty)
@@ -64,7 +64,7 @@ final class RecipesQuickFiltersViewModelTests: XCTestCase {
         let vm = makeVM(repository)
         await settleMain()
 
-        vm.onQuickFilterToggle(.under30)
+        vm.onQuickFilterToggle(.thirtyOrLess)
         XCTAssertEqual(vm.uiState.recipes, [])
         XCTAssertTrue(vm.showsSortLine, "the count and the toggle stay while a chip is on")
         XCTAssertTrue(vm.uiState.showsFilter, "so do the chips, to turn it off")
@@ -75,7 +75,7 @@ final class RecipesQuickFiltersViewModelTests: XCTestCase {
         repository.history.send([summary(1, total: "20m"), summary(2, total: "3h")])
         let vm = makeVM(repository)
         await settleMain()
-        vm.onQuickFilterToggle(.under30)
+        vm.onQuickFilterToggle(.thirtyOrLess)
 
         // What the database answers for a search is narrowed by the chip as well.
         vm.onQueryChange("soup")
@@ -87,9 +87,9 @@ final class RecipesQuickFiltersViewModelTests: XCTestCase {
 
     func testNotCookedIsOfferedNowhereInsideTheCookedView() {
         let inCooked = makeVM(FakeRecipeRepository(), view: .cooked)
-        XCTAssertEqual(inCooked.uiState.quickFilters, [.under30, .usesPantry])
+        XCTAssertEqual(inCooked.uiState.quickFilters, [.thirtyOrLess, .usesPantry])
         let whole = makeVM(FakeRecipeRepository())
-        XCTAssertEqual(whole.uiState.quickFilters, [.under30, .notCooked, .usesPantry])
+        XCTAssertEqual(whole.uiState.quickFilters, [.thirtyOrLess, .notCooked, .usesPantry])
     }
 
     // MARK: - Uses what's in my pantry

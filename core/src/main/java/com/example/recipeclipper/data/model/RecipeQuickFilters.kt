@@ -6,8 +6,8 @@ package com.example.recipeclipper.data.model
  * like the views (#345). Not remembered: Recipes opens with none on.
  */
 enum class RecipeQuickFilter {
-    /** Total time under [RecipeQuickFilters.QUICK_MINUTES]. */
-    UNDER_30,
+    /** Total time of [RecipeQuickFilters.QUICK_MINUTES] or less. */
+    THIRTY_OR_LESS,
 
     /** No cooking entry yet: the Cooked view's complement. */
     NOT_COOKED,
@@ -29,10 +29,10 @@ data class PantryCoverage(val have: Int, val total: Int) {
  * The quick filters of Recipes (#378), pure and pinned for iOS by the corpus's `Mins`, `Quick`
  * and `Cover` rows.
  *
- * - **Under 30 min** reads the recipe's total time as stored; with none, prep plus cook, and
+ * - **30 min or less** reads the recipe's total time as stored; with none, prep plus cook, and
  *   only when both are present and readable ([Durations.minutes]). A time that can't be read
  *   ("Overnight", "20 to 25 minutes", a zero) never matches: nothing is guessed. A total that is
- *   present but unreadable doesn't fall back to prep plus cook. Strictly under: 30 min is not.
+ *   present but unreadable doesn't fall back to prep plus cook. 30 min or less: 30 min itself counts.
  * - **Not cooked yet** is `lastCookedDay == null`: no cooking entry (a photo of it, or "Mark as
  *   cooked"), the Cooked view's own `EXISTS` turned round.
  * - **Uses what's in my pantry**: of the recipe's nameable ingredient lines (a heading or a line
@@ -52,7 +52,7 @@ object RecipeQuickFilters {
         return (prep.toLong() + cook).takeIf { it <= Int.MAX_VALUE }?.toInt()
     }
 
-    fun underThirty(recipe: RecipeSummary): Boolean = minutes(recipe)?.let { it < QUICK_MINUTES } ?: false
+    fun thirtyOrLess(recipe: RecipeSummary): Boolean = minutes(recipe)?.let { it <= QUICK_MINUTES } ?: false
 
     fun notCooked(recipe: RecipeSummary): Boolean = recipe.lastCookedDay == null
 
@@ -82,7 +82,7 @@ object RecipeQuickFilters {
     ): List<RecipeSummary> {
         if (filters.isEmpty()) return recipes
         return recipes.filter { r ->
-            (RecipeQuickFilter.UNDER_30 !in filters || underThirty(r)) &&
+            (RecipeQuickFilter.THIRTY_OR_LESS !in filters || thirtyOrLess(r)) &&
                 (RecipeQuickFilter.NOT_COOKED !in filters || notCooked(r)) &&
                 (RecipeQuickFilter.USES_PANTRY !in filters || coverage[r.id]?.matches == true)
         }

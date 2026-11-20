@@ -11,7 +11,7 @@ import Observation
 /// the search; `counts` are the library's, whatever the filter or search, nil until the
 /// database answers. `view` is the automatic view the screen was opened on (V4: Not in a list,
 /// Cooked, Typed by you), nil for the whole cookbook; `lists` are the lists the strip shows
-/// after the views (#345). `quick` are the chips on under search (#378: Under 30 min, Not cooked yet,
+/// after the views (#345). `quick` are the chips on under search (#378: 30 min or less, Not cooked yet,
 /// Uses what's in my pantry), combined with each other, the search and the sort; not remembered.
 /// `coverage` is, with the pantry chip on, how many of each recipe's nameable ingredients the pantry
 /// has ("You have 6 of 8"), by recipe id. `layout` is the stored choice of rows or a photo grid (#380).

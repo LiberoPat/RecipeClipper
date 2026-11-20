@@ -69,7 +69,7 @@ import XCTest
 // Minutes rows (#378): a stored prep, cook or total time, then Durations.minutes (nil: unreadable,
 // zero or too large). Write only `Mins("1h 30m"),` (optionally `, lang: "de"`).
 // Quick-filter rows (#378): a recipe's total, prep and cook times (nil or a string each), then the
-// minutes RecipeQuickFilters reads and whether it is under 30 min. Write only
+// minutes RecipeQuickFilters reads and whether it is 30 min or less. Write only
 // `Quick(nil, "10m", "15m"),` (optionally `, lang: "de"`).
 // Pantry-coverage rows (#378): pantry items by name ("*salt" a staple, "-butter" out of stock), one
 // recipe's lines, then RecipeQuickFilters.coverage: how many nameable lines the pantry has, how
@@ -2063,7 +2063,7 @@ final class DifferentialCorpusTests: XCTestCase {
 
     private static let quicks: [Quick] = [
         Quick(nil, "10m", "15m", 25, true),
-        Quick(nil, "10m", "20m", 30, false),
+        Quick(nil, "10m", "20m", 30, true),
         Quick(nil, "10m", nil, nil, false),
         Quick(nil, nil, "10m", nil, false),
         Quick(nil, nil, nil, nil, false),
@@ -2071,7 +2071,9 @@ final class DifferentialCorpusTests: XCTestCase {
         Quick(nil, "5m", "Overnight", nil, false),
         Quick("25m", nil, nil, 25, true),
         Quick("29m", nil, nil, 29, true),
-        Quick("30m", nil, nil, 30, false),
+        Quick("30m", nil, nil, 30, true),
+        Quick("31m", nil, nil, 31, false),
+        Quick(nil, "10m", "21m", 31, false),
         Quick("1h 5m", nil, nil, 65, false),
         Quick("PT25M", nil, nil, 25, true),
         Quick("Overnight", "5m", "5m", nil, false),
@@ -2843,7 +2845,7 @@ final class DifferentialCorpusTests: XCTestCase {
             )
             let label = "\(row.total ?? "nil") / \(row.prep ?? "nil") / \(row.cook ?? "nil") \(row.language)"
             XCTAssertEqual(RecipeQuickFilters.minutes(recipe), row.minutes, label)
-            XCTAssertEqual(RecipeQuickFilters.underThirty(recipe), row.under, label)
+            XCTAssertEqual(RecipeQuickFilters.thirtyOrLess(recipe), row.under, label)
         }
     }
 

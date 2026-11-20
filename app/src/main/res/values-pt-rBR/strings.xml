@@ -134,7 +134,7 @@
         <item quantity="other">%1$d receitas</item>
     </plurals>
     <string name="cd_sort">Ordenar</string>
-    <string name="recipes_quick_under_30">Menos de 30 min</string>
+    <string name="recipes_quick_30_or_less">30 min ou menos</string>
     <string name="recipes_quick_not_cooked">Ainda não feita</string>
     <string name="recipes_quick_pantry">Com o que tenho na despensa</string>
     <string name="recipes_quick_pantry_note">Mostra as receitas em que pelo menos metade dos ingredientes está na sua despensa, pelo nome, não pela quantidade.</string>

@@ -104,7 +104,7 @@
     },
     {
       "key": "recipeFilters",
-      "description": "Recipes: quick filter chips under search (Under 30 min, Not cooked yet, Uses what's in my pantry) that combine with each other, the search and the sort; the pantry chip shows how many of a recipe's ingredients you have on each row it keeps. Off, Recipes has no chips.",
+      "description": "Recipes: quick filter chips under search (30 min or less, Not cooked yet, Uses what's in my pantry) that combine with each other, the search and the sort; the pantry chip shows how many of a recipe's ingredients you have on each row it keeps. Off, Recipes has no chips.",
       "defaults": { "debug": true, "release": true },
       "issue": 378
     },

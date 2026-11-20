@@ -30,7 +30,7 @@ data class RecipeSummaryRow(
     val sourceUrl: String = "",
     /** Read from a chat's JSON (#355, origin CHAT). */
     val isFromChat: Boolean = false,
-    /** The times as stored and the language they're in, for "Under 30 min" (#378); only the Recipes query reads them. */
+    /** The times as stored and the language they're in, for "30 min or less" (#378); only the Recipes query reads them. */
     val prepTime: String? = null,
     val cookTime: String? = null,
     val language: String? = null

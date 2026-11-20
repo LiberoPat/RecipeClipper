@@ -116,7 +116,7 @@ struct RecipeSummary: Equatable, Identifiable {
     var sourceUrl: String = ""
     /// Read from a chat's JSON (#355, origin CHAT): the row says "From a chat".
     var isFromChat: Bool = false
-    /// The prep and cook times as stored, and the language they were written in: what "Under 30 min" reads (#378).
+    /// The prep and cook times as stored, and the language they were written in: what "30 min or less" reads (#378).
     var prepTime: String? = nil
     var cookTime: String? = nil
     var language: String? = nil

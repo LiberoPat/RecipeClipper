@@ -63,7 +63,7 @@ internal fun QuickFilterChips(
 }
 
 internal fun quickFilterLabel(filter: RecipeQuickFilter): Int = when (filter) {
-    RecipeQuickFilter.UNDER_30 -> R.string.recipes_quick_under_30
+    RecipeQuickFilter.THIRTY_OR_LESS -> R.string.recipes_quick_30_or_less
     RecipeQuickFilter.NOT_COOKED -> R.string.recipes_quick_not_cooked
     RecipeQuickFilter.USES_PANTRY -> R.string.recipes_quick_pantry
 }

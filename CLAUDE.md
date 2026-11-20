@@ -204,7 +204,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   you, From a chat; each its own screen), in place of V1's All / In a list / Not in a list pills
   (those stay with `oneCookbook` off). Views are questions about stored data, never filing.
   Recently viewed is a sort, not a place. Under search, chips that combine with the search and the
-  sort (#378: Under 30 min, Not cooked yet, Uses what's in my pantry: half the nameable lines Have,
+  sort (#378: 30 min or less, Not cooked yet, Uses what's in my pantry: half the nameable lines Have,
   by name, each row saying "You have 6 of 8"), and a rows / photo-grid toggle beside the sort
   (`recipes_layout`, #380).
 - **Home** (#286): "Continue cooking" (the most recent) as a resume card;

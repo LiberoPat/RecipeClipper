@@ -78,7 +78,7 @@ object Durations {
     private val ENGLISH_SHAPE = Regex("^(?:(\\d+)h(?: (\\d+)m)?|(\\d+)m)$")
 
     /**
-     * How many minutes [raw] says, read the way [format] reads it (#378: "Under 30 min"), or null
+     * How many minutes [raw] says, read the way [format] reads it (#378: "30 min or less"), or null
      * when it isn't a time the app can read: blank, a zero total ("PT0S", which [format] hides),
      * a range ("20 to 25 minutes"), a word ("Overnight") or a figure too large for an Int. Never
      * a guess. Reads ISO, a phrase in the recipe's words and what [format] writes back ("1h 30m",
