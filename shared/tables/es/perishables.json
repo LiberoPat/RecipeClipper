@@ -27,13 +27,13 @@
         "contramuslo de pollo", "contramuslos de pollo", "alitas de pollo", "filete de pollo", "filetes de pollo",
         "pavo", "pechuga de pavo", "pato", "pechuga de pato", "muslos", "pechugas", "pechuga"
       ] },
-    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+    { "key": "mushrooms", "minDays": 3, "maxDays": 5, "aliases": [
         "champiñón", "champiñones", "champinón", "champiñones frescos", "seta", "setas", "setas frescas",
         "hongo", "hongos", "hongos frescos", "portobello", "shiitake", "setas de ostra", "seta de ostra",
         "níscalo", "níscalos", "boletus", "rebozuelo", "rebozuelos", "champiñones laminados"
       ] },
-    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["aguacate", "aguacates", "palta", "paltas"] },
-    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["aguacate", "aguacates", "palta", "paltas"] },
+    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
         "albahaca", "albahaca fresca", "cilantro", "cilantro fresco", "perejil", "perejil fresco", "menta",
         "menta fresca", "hierbabuena", "eneldo", "eneldo fresco", "cebollino", "cebollino fresco", "estragón",
         "perifollo", "hierbas frescas", "hojas de albahaca", "hojas de menta"
@@ -43,7 +43,7 @@
         "espinacas", "espinacas frescas", "espinacas baby", "rúcula", "arúgula", "canónigos", "berros",
         "mezclum", "ensalada verde", "mezcla de lechugas", "brotes tiernos", "hojas verdes", "ensalada mixta"
       ] },
-    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
         "fresa", "fresas", "fresas frescas", "frutilla", "frutillas", "arándano", "arándanos", "arándanos frescos"
       ] },
     { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [

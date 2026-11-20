@@ -17,7 +17,7 @@ class FreshFoodTest {
 
     // --- The split
 
-    @Test fun `a perishable only for meals four or more days away goes later`() {
+    @Test fun `a perishable only for meals three or more days away goes later`() {
         val trips = FreshShop.split(listOf(row("salmon fillets", today + 4), row("onions", today + 5)), today)
         assertEquals(listOf("onions"), trips.now.map { it.name })
         assertEquals(listOf("salmon fillets"), trips.later.map { it.row.name })
@@ -25,9 +25,9 @@ class FreshFoodTest {
         assertEquals(today + 4, trips.later.single().firstDay)
     }
 
-    @Test fun `three days is still now, and the constant is four`() {
-        assertEquals(4, Perishables.LATER_DAYS)
-        val trips = FreshShop.split(listOf(row("salmon", today + 3), row("basil", today + 4)), today)
+    @Test fun `two days is still now, and the constant is three`() {
+        assertEquals(3, Perishables.LATER_DAYS)
+        val trips = FreshShop.split(listOf(row("salmon", today + 2), row("basil", today + 3)), today)
         assertEquals(listOf("salmon"), trips.now.map { it.name })
         assertEquals(listOf("basil"), trips.later.map { it.row.name })
     }

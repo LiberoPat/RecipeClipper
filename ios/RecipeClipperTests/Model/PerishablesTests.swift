@@ -39,9 +39,9 @@ final class PerishablesTests: XCTestCase {
 
     func testAGroupsKeepsHintIsItsRange() {
         XCTAssertEqual(Perishables.find("2 salmon fillets", words: en)?.group.keeps, "1-2")
-        XCTAssertEqual(Perishables.find("1 bunch basil", words: en)?.group.keeps, "3-5")
-        XCTAssertEqual(Perishables.find("8 oz mushrooms", words: en)?.group.keeps, "4-6")
-        XCTAssertEqual(Perishables.find("2 avocados", words: en)?.group.keeps, "2-3")
+        XCTAssertEqual(Perishables.find("1 bunch basil", words: en)?.group.keeps, "2-3")
+        XCTAssertEqual(Perishables.find("8 oz mushrooms", words: en)?.group.keeps, "3-5")
+        XCTAssertEqual(Perishables.find("2 avocados", words: en)?.group.keeps, "3-4")
         XCTAssertEqual(PerishableGroup(key: "x", minDays: 3, maxDays: 3).keeps, "3")
     }
 
@@ -148,7 +148,7 @@ final class PerishablesTests: XCTestCase {
     }
 
     func testLaterIsAtOrPastTheLowEndOfEveryGroupsRange() {
-        XCTAssertEqual(Perishables.laterDays, 4)
+        XCTAssertEqual(Perishables.laterDays, 3)
         for language in LanguageWords.shipped {
             for group in Perishables.groups(LanguageWords.forTag(language)!) {
                 XCTAssertLessThanOrEqual(group.minDays, Perishables.laterDays, "\(language) \(group.key)")

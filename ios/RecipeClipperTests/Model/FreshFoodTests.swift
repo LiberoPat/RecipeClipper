@@ -25,9 +25,9 @@ final class FreshFoodTests: XCTestCase {
         XCTAssertEqual(trips.later.first?.firstDay, today + 4)
     }
 
-    func testThreeDaysIsStillNowAndTheConstantIsFour() {
-        XCTAssertEqual(Perishables.laterDays, 4)
-        let trips = FreshShop.split([row("salmon", today + 3), row("basil", today + 4)], today: today)
+    func testTwoDaysIsStillNowAndTheConstantIsThree() {
+        XCTAssertEqual(Perishables.laterDays, 3)
+        let trips = FreshShop.split([row("salmon", today + 2), row("basil", today + 3)], today: today)
         XCTAssertEqual(trips.now.map(\.name), ["salmon"])
         XCTAssertEqual(trips.later.map(\.row.name), ["basil"])
     }

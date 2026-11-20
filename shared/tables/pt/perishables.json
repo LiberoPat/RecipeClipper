@@ -25,13 +25,13 @@
         "coxas de frango", "sobrecoxa de frango", "sobrecoxas de frango", "asa de frango", "asas de frango",
         "filé de frango", "filés de frango", "frango caipira", "peru", "peito de peru", "pato", "peito de pato"
       ] },
-    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+    { "key": "mushrooms", "minDays": 3, "maxDays": 5, "aliases": [
         "cogumelo", "cogumelos", "cogumelos frescos", "cogumelo paris", "cogumelos paris", "champignon",
         "champignons", "shiitake", "shimeji", "portobello", "cogumelo-de-paris", "cogumelos shiitake",
         "cogumelos shimeji"
       ] },
-    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["abacate", "abacates", "abacate maduro"] },
-    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["abacate", "abacates", "abacate maduro"] },
+    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
         "manjericão", "manjericão fresco", "coentro", "coentro fresco", "salsinha", "salsinha fresca", "salsa fresca",
         "hortelã", "hortelã fresca", "endro", "cebolinha", "cebolinha fresca", "estragão", "cerefólio",
         "ervas frescas", "folhas de manjericão", "folhas de hortelã", "folhas de coentro"
@@ -41,7 +41,7 @@
         "espinafre", "espinafres", "espinafre fresco", "folhas de espinafre", "mix de folhas", "mix de folhas verdes",
         "folhas verdes", "agrião", "salada verde", "mix de salada", "mix de alfaces", "baby leaf"
       ] },
-    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
         "morango", "morangos", "morangos frescos", "mirtilo", "mirtilos", "mirtilos frescos"
       ] },
     { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [

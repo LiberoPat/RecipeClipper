@@ -22,15 +22,15 @@
         "hähnchenkeulen", "hähnchenflügel", "hähnchenfilet", "hühnerkeule", "hühnerkeulen", "pute",
         "putenbrust", "putenbrustfilet", "putenschnitzel", "putenschenkel", "ente", "entenbrust", "entenkeule"
       ] },
-    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+    { "key": "mushrooms", "minDays": 3, "maxDays": 5, "aliases": [
         "pilz", "pilze", "champignon", "champignons", "braune champignons", "weiße champignons",
         "kräuterseitling", "kräuterseitlinge", "kräuterseitlinge", "shiitake", "shiitakepilze", "austernpilz",
         "austernpilze", "seitling", "seitlinge", "pfifferling", "pfifferlinge", "steinpilz", "steinpilze",
         "portobello", "frische pilze", "frische champignons", "frische steinpilze", "morchel", "morcheln",
         "egerling", "egerlinge", "braune egerlinge"
       ] },
-    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["avocado", "avocados", "reife avocado"] },
-    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["avocado", "avocados", "reife avocado"] },
+    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
         "basilikum", "frisches basilikum", "thai basilikum", "koriander", "frischer koriander", "korianderblätter",
         "petersilie", "glatte petersilie", "krause petersilie", "frische petersilie", "minze", "frische minze",
         "dill", "frischer dill", "schnittlauch", "frischer schnittlauch", "estragon", "kerbel", "frische kräuter"
@@ -41,7 +41,7 @@
         "eichblattsalat", "lollo rosso", "lollo biondo", "endiviensalat", "mischsalat", "gemischter salat",
         "salatmischung", "brunnenkresse", "babyblattsalat", "babyleaf"
       ] },
-    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
         "erdbeere", "erdbeeren", "heidelbeere", "heidelbeeren", "blaubeere", "blaubeeren"
       ] },
     { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [

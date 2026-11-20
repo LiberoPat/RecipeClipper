@@ -580,7 +580,7 @@
     <!-- Fresh food (#396): Shop for this week in two trips, and the plan's note -->
     <string name="what_i_need_buy_now">Buy now</string>
     <string name="what_i_need_buy_later">Buy later in the week</string>
-    <string name="what_i_need_buy_later_note">For meals 4 or more days away. Add these when you shop again, or now.</string>
+    <string name="what_i_need_buy_later_note">For meals 3 or more days away. Add these when you shop again, or now.</string>
     <string name="what_i_need_nothing_to_buy_now">Nothing to buy now</string>
     <string name="what_i_need_add_later">Add these to groceries</string>
     <string name="what_i_need_later_for">For %1$s</string>

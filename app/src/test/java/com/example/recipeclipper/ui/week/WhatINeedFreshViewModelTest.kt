@@ -61,7 +61,7 @@ class WhatINeedFreshViewModelTest {
         PantryItem(id, name, null, "en", Aisle.OTHER, inStock = true, alwaysHave = false, purchasedDay = null, expiresDay = null)
 
     @Test
-    fun `a perishable only for meals four or more days away goes later, each with the day it is for`() =
+    fun `a perishable only for meals three or more days away goes later, each with the day it is for`() =
         runTest(mainDispatcherRule.dispatcher) {
             val vm = viewModel()
             advanceUntilIdle()

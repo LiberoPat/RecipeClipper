@@ -549,7 +549,7 @@
     <string name="what_i_need_added">Adicionado às compras</string>
     <string name="what_i_need_buy_now">Comprar agora</string>
     <string name="what_i_need_buy_later">Comprar mais tarde na semana</string>
-    <string name="what_i_need_buy_later_note">Para refeições daqui a 4 dias ou mais. Adicione quando for às compras de novo, ou agora.</string>
+    <string name="what_i_need_buy_later_note">Para refeições daqui a 3 dias ou mais. Adicione quando for às compras de novo, ou agora.</string>
     <string name="what_i_need_nothing_to_buy_now">Nada para comprar agora</string>
     <string name="what_i_need_add_later">Adicionar estes às compras</string>
     <string name="what_i_need_later_for">Para %1$s</string>

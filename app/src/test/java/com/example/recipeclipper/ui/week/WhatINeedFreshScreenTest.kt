@@ -61,13 +61,13 @@ class WhatINeedFreshScreenTest {
         compose.onNodeWithText("1 lb spaghetti").assertIsDisplayed()
         compose.onNodeWithTag("whatINeed").performScrollToNode(hasText("Buy later in the week"))
         compose.onNodeWithText("Buy later in the week").assertIsDisplayed()
-        compose.onNodeWithText("For meals 4 or more days away", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("For meals 3 or more days away", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("whatINeed").performScrollToNode(hasText("2 salmon fillets"))
         compose.onNodeWithText("2 salmon fillets").assertIsDisplayed()
         // The day each later row is for, and what its group keeps: a range, never a date.
         compose.onAllNodesWithTag("laterFor").assertCountEquals(2)
         compose.onAllNodesWithText("Keeps about 1-2 days once bought").assertCountEquals(1)
-        compose.onAllNodesWithText("Keeps about 3-5 days once bought").assertCountEquals(1)
+        compose.onAllNodesWithText("Keeps about 2-3 days once bought").assertCountEquals(1)
         // The week's lines are unchanged: each still says its recipe.
         compose.onAllNodesWithText("Salmon bowls", substring = true).assertCountEquals(2) // salmon's and basil's line
     }

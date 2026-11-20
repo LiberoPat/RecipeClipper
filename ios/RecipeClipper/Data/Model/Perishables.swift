@@ -29,10 +29,10 @@ struct Perishable: Equatable {
 enum Perishables {
 
     /// A meal at least this many days from today is far enough away for its perishable
-    /// ingredients to wait for a second shop (Shop for this week, #396). Four is at or past the
-    /// low end (`minDays`) of every group's range, so a meal four or more days out is one a shop
+    /// ingredients to wait for a second shop (Shop for this week, #396). Three is at or past the
+    /// low end (`minDays`) of every group's range, so a meal three or more days out is one a shop
     /// made today may already have outlasted; a nearer one is bought now, with everything else.
-    static let laterDays = 4
+    static let laterDays = 3
 
     private final class Table {
         let groups: [PerishableGroup]

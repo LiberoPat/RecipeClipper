@@ -525,7 +525,7 @@
     <string name="what_i_need_added">Zum Einkauf hinzugefügt</string>
     <string name="what_i_need_buy_now">Jetzt kaufen</string>
     <string name="what_i_need_buy_later">Später in der Woche kaufen</string>
-    <string name="what_i_need_buy_later_note">Für Mahlzeiten in 4 oder mehr Tagen. Füge sie beim nächsten Einkauf hinzu oder gleich.</string>
+    <string name="what_i_need_buy_later_note">Für Mahlzeiten in 3 oder mehr Tagen. Füge sie beim nächsten Einkauf hinzu oder gleich.</string>
     <string name="what_i_need_nothing_to_buy_now">Jetzt ist nichts zu kaufen</string>
     <string name="what_i_need_add_later">Diese zum Einkauf hinzufügen</string>
     <string name="what_i_need_later_for">Für %1$s</string>

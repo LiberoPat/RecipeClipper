@@ -42,9 +42,9 @@ class PerishablesTest {
 
     @Test fun `a group's keeps hint is its range`() {
         assertEquals("1-2", Perishables.find("2 salmon fillets", en)!!.group.keeps)
-        assertEquals("3-5", Perishables.find("1 bunch basil", en)!!.group.keeps)
-        assertEquals("4-6", Perishables.find("8 oz mushrooms", en)!!.group.keeps)
-        assertEquals("2-3", Perishables.find("2 avocados", en)!!.group.keeps)
+        assertEquals("2-3", Perishables.find("1 bunch basil", en)!!.group.keeps)
+        assertEquals("3-5", Perishables.find("8 oz mushrooms", en)!!.group.keeps)
+        assertEquals("3-4", Perishables.find("2 avocados", en)!!.group.keeps)
         assertEquals("3", PerishableGroup("x", 3, 3).keeps)
     }
 

@@ -17810,37 +17810,37 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "For meals 4 or more days away. Add these when you shop again, or now."
+            "value" : "For meals 3 or more days away. Add these when you shop again, or now."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Para comidas dentro de 4 días o más. Añádelos cuando vuelvas a comprar, o ahora."
+            "value" : "Para comidas dentro de 3 días o más. Añádelos cuando vuelvas a comprar, o ahora."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pour des repas dans 4 jours ou plus. Ajoutez-les à votre prochain passage, ou maintenant."
+            "value" : "Pour des repas dans 3 jours ou plus. Ajoutez-les à votre prochain passage, ou maintenant."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Für Mahlzeiten in 4 oder mehr Tagen. Füge sie beim nächsten Einkauf hinzu oder gleich."
+            "value" : "Für Mahlzeiten in 3 oder mehr Tagen. Füge sie beim nächsten Einkauf hinzu oder gleich."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Per pasti tra 4 giorni o più. Aggiungili quando rifai la spesa, o subito."
+            "value" : "Per pasti tra 3 giorni o più. Aggiungili quando rifai la spesa, o subito."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Para refeições daqui a 4 dias ou mais. Adicione quando for às compras de novo, ou agora."
+            "value" : "Para refeições daqui a 3 dias ou mais. Adicione quando for às compras de novo, ou agora."
           }
         }
       }

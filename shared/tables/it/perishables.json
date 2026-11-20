@@ -29,13 +29,13 @@
         "filetto di pollo", "filetti di pollo", "fesa di tacchino", "petto di tacchino", "tacchino", "anatra",
         "petto di anatra", "cosce di anatra", "pollo ruspante"
       ] },
-    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+    { "key": "mushrooms", "minDays": 3, "maxDays": 5, "aliases": [
         "fungo", "funghi", "funghi freschi", "champignon", "funghi champignon", "porcini freschi",
         "funghi porcini freschi", "pleurotus", "funghi pleurotus", "shiitake", "finferli", "galletti",
         "portobello", "cardoncelli", "funghi misti", "funghi prataioli", "funghi cardoncelli"
       ] },
-    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["avocado", "avocado maturo", "avocadi"] },
-    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["avocado", "avocado maturo", "avocadi"] },
+    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
         "basilico", "basilico fresco", "coriandolo fresco", "prezzemolo", "prezzemolo fresco", "menta",
         "menta fresca", "aneto", "aneto fresco", "erba cipollina", "dragoncello", "dragoncello fresco",
         "cerfoglio", "erbe fresche", "erbe aromatiche fresche", "foglie di basilico", "foglie di menta"
@@ -45,7 +45,7 @@
         "insalata mista in busta", "spinaci", "spinacio", "spinaci freschi", "baby spinaci", "rucola", "ruchetta",
         "songino", "crescione", "valeriana", "misticanza", "lattughino", "insalatina", "foglie di spinaci"
       ] },
-    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
         "fragola", "fragole", "fragole fresche", "mirtillo", "mirtilli", "mirtilli neri", "mirtilli freschi"
       ] },
     { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [

@@ -28,15 +28,15 @@
         "pork shoulder", "pork belly", "lamb chop", "lamb shank", "leg of lamb", "beef roast", "chuck roast",
         "brisket", "beef brisket", "short rib", "pork rib", "spare rib", "baby back rib", "beef rib"
       ] },
-    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+    { "key": "mushrooms", "minDays": 3, "maxDays": 5, "aliases": [
         "mushroom", "button mushroom", "white mushroom", "brown mushroom", "chestnut mushroom", "field mushroom",
         "closed cup mushroom", "wild mushroom", "mixed mushroom", "cremini", "cremini mushroom", "crimini",
         "baby bella", "baby bella mushroom", "portobello", "portobello mushroom", "portabella",
         "shiitake", "shiitake mushroom", "oyster mushroom", "king oyster mushroom", "enoki", "enoki mushroom",
         "chanterelle", "chanterelle mushroom", "morel"
       ] },
-    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["avocado", "hass avocado"] },
-    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["avocado", "hass avocado"] },
+    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
         "fresh herbs", "basil", "basil leaf", "thai basil", "cilantro", "cilantro leaf", "fresh coriander",
         "coriander leaf", "parsley", "parsley leaf", "flat leaf parsley", "mint", "mint leaf", "dill",
         "fresh dill", "chives", "tarragon", "chervil"
@@ -48,7 +48,7 @@
         "mesclun", "spring mix", "watercress", "lambs lettuce", "mache", "baby leaf", "baby leaf salad",
         "baby salad leaf", "bagged salad"
       ] },
-    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": ["strawberry", "blueberry"] },
+    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": ["strawberry", "blueberry"] },
     { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
         "raspberry", "blackberry", "berry", "mixed berry", "summer berry", "fresh berry"
       ] }

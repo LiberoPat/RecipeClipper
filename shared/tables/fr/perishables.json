@@ -31,14 +31,14 @@
         "dinde", "escalope de dinde", "blanc de dinde", "filet de dinde", "canard", "magret de canard", "magrets de canard",
         "cuisse de canard", "cuisses de canard"
       ] },
-    { "key": "mushrooms", "minDays": 4, "maxDays": 6, "aliases": [
+    { "key": "mushrooms", "minDays": 3, "maxDays": 5, "aliases": [
         "champignon", "champignons", "champignon de paris", "champignons de paris", "champignons blancs",
         "champignons bruns", "champignons frais", "champignons des bois", "pleurote", "pleurotes", "shiitaké",
         "shiitake", "girolle", "girolles", "cèpe", "cèpes", "cèpes frais", "chanterelle", "chanterelles",
         "portobello", "morille", "morilles", "morilles fraîches"
       ] },
-    { "key": "avocado", "minDays": 2, "maxDays": 3, "aliases": ["avocat", "avocats", "avocat mûr"] },
-    { "key": "herbs", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "avocado", "minDays": 3, "maxDays": 4, "aliases": ["avocat", "avocats", "avocat mûr"] },
+    { "key": "herbs", "minDays": 2, "maxDays": 3, "aliases": [
         "basilic", "basilic frais", "coriandre fraîche", "persil", "persil frais", "persil plat", "persil frisé",
         "menthe", "menthe fraîche", "aneth", "aneth frais", "ciboulette", "ciboulette fraîche", "estragon",
         "estragon frais", "cerfeuil", "cerfeuil frais", "herbes fraîches", "feuilles de basilic",
@@ -50,7 +50,7 @@
         "mesclun", "cresson", "batavia", "feuille de chêne", "frisée", "scarole", "mélange de salades",
         "mélange de jeunes pousses", "salade mélangée"
       ] },
-    { "key": "berries", "minDays": 3, "maxDays": 5, "aliases": [
+    { "key": "berries", "minDays": 2, "maxDays": 3, "aliases": [
         "fraise", "fraises", "fraises fraîches", "myrtille", "myrtilles", "myrtilles fraîches", "bleuet", "bleuets"
       ] },
     { "key": "softBerries", "minDays": 2, "maxDays": 3, "aliases": [
