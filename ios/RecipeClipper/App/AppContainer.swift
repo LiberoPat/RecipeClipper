@@ -325,7 +325,10 @@ final class AppContainer {
     }
 
     func makeWeekViewModel() -> WeekViewModel {
-        WeekViewModel(plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar)
+        WeekViewModel(
+            plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar,
+            skipOn: { [featureFlags] in featureFlags.isOn(.skipTonight) }
+        )
     }
 
     func makeAddToPlanViewModel() -> AddToPlanViewModel {

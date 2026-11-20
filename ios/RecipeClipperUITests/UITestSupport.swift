@@ -37,6 +37,9 @@ class RecipeUITestCase: XCTestCase {
         /// The standard recipes, with "chicken thighs" (Chicken Adobo's, saved) expiring
         /// tomorrow and "flour" (Banana Bread's, in no list) today: Use it up (#305).
         case useItUp
+        /// The standard recipes, with Miso Soup planned tonight, Banana Bread tomorrow and Spaghetti
+        /// Carbonara the day after, all Dinner: Skip tonight (#398).
+        case weekPlan
     }
 
     override func setUp() {
