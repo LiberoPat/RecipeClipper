@@ -22,7 +22,8 @@ data class PlannedMealRow(
     val uid: String,
     /** The recipe's own uid and language, for its no-photo image (#403); null for a note. */
     val recipeUid: String? = null,
-    val language: String? = null
+    val language: String? = null,
+    val ingredients: List<String>? = null
 )
 
 /** The meal plan (#49): meal types and plan entries. */
@@ -39,7 +40,7 @@ abstract class MealPlanDao {
     @Query(
         """
         SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, ${RecipeImageSql.AS_R} AS imageUrl, e.uid,
-               r.uid AS recipeUid, r.language
+               r.uid AS recipeUid, r.language, r.ingredients
         FROM meal_plan_entries e
         JOIN meal_types t ON t.id = e.mealTypeId
         LEFT JOIN recipes r ON r.id = e.recipeId

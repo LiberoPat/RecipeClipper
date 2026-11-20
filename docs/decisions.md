@@ -6303,6 +6303,20 @@ is the blank tile or band it was).
   usual 2×2/1/2/3 layout, newest added first (`ListDao.observeCoverPlaceholders`, iOS
   `coverPlaceholders`, a second query like the photos', no migration); an empty list keeps the
   outlined-bookmark tile ("nothing saved here yet").
+- **Landing with the photo work (batch 2: #383's stored photos #386, #389's reorderable covers,
+  #402's Today card).** A recipe's own stored picture is a `photo://<file>[#<link>]` model; every
+  recipe image goes through `RecipeImage`, so a stored photo whose file is gone and whose link
+  fails falls back to the designed image like any other failed load (`RecipeImagePlaceholderTest`,
+  `testAStoredPhotoWhoseFileIsGoneReportsItsFailure`). The Lists cover rows carry the `photo://`
+  model with the recipe's uid, title, language and lines (`CoverPhoto`), and a recipe with a stored
+  photo is not a "no photo" recipe in the placeholder query (`photoFile IS NULL` and no link).
+  Dragging a cover (#381) is untouched: `ListCoverTile` takes the cover's photos and placeholders
+  beside the drag modifier and the move actions. **Home's Today card** shows the lead recipe's
+  photo at 136, else its designed image at 112 (the Continue cooking band; a planned note keeps
+  the plain band, and so does the flag off): `PlannedMeal` and `TodayMeal` carry the recipe's
+  uid, language and ingredient lines (`MealPlanDao.observeDays` / iOS `days` select `r.ingredients`
+  too). **The Recipes photo grid (#380)** cell is a `RecipeImage` square, the designed image in
+  place of the blank tile.
 - **Decorative:** no semantics of its own (Android `clearAndSetSemantics`, iOS hidden from
   VoiceOver), so what is announced is what was announced before; no new strings.
 - Android reads the flag through `LocalFlagValues` (`noPhotoImageOn()`), iOS through an

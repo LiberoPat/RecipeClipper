@@ -41,7 +41,9 @@ data class PlannedMeal(
     val uid: String = "",
     /** The recipe's own uid and language, for its no-photo image (#403); null for a note. */
     val recipeUid: String? = null,
-    val language: String? = null
+    val language: String? = null,
+    /** The recipe's ingredient lines, for the label of its no-photo image on Home's Today card (#403, #402); empty for a note. */
+    val ingredients: List<String> = emptyList()
 )
 
 /**

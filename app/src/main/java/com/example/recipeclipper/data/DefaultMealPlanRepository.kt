@@ -128,5 +128,6 @@ private fun PlannedMealRow.toDomain() = PlannedMeal(
     note = note,
     uid = uid,
     recipeUid = recipeUid,
-    language = language
+    language = language,
+    ingredients = ingredients.orEmpty()
 )

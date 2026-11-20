@@ -18,7 +18,7 @@ struct MealPlanDao {
         try db.query(
             """
             SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, \(RecipeImageSql.asR) AS imageUrl, e.uid,
-                   r.uid AS recipeUid, r.language
+                   r.uid AS recipeUid, r.language, r.ingredients
             FROM meal_plan_entries e
             JOIN meal_types t ON t.id = e.mealTypeId
             LEFT JOIN recipes r ON r.id = e.recipeId
@@ -38,7 +38,8 @@ struct MealPlanDao {
                 note: row.optionalString(5),
                 uid: row.string(8),
                 recipeUid: row.optionalString(9),
-                language: row.optionalString(10)
+                language: row.optionalString(10),
+                ingredients: row.isNull(11) ? [] : JSONColumns.decodeStrings(row.string(11))
             )
         }
     }

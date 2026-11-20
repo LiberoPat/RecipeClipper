@@ -165,4 +165,26 @@ class RecipeImagePlaceholderTest {
         }
         compose.onNodeWithTag("noPhoto.monogram").assertIsDisplayed()
     }
+
+    @Test
+    fun aStoredPhotoThatCannotBeReadFallsBackToThePlaceholder() {
+        // A recipe's own stored picture (#386) is a photo:// model: with its file gone and no link
+        // behind it, it fails like any other, and shows the designed image (#404).
+        compose.setContent {
+            CompositionLocalProvider(LocalFlagValues provides FlagValues(setOf(Flag.NO_PHOTO_IMAGE))) {
+                RecipeClipperTheme {
+                    RecipeImage(
+                        model = "photo://missing.jpg",
+                        recipe = lentils,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp)
+                    )
+                }
+            }
+        }
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithTag("noPhoto.monogram").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("noPhoto.monogram").assertIsDisplayed()
+    }
 }

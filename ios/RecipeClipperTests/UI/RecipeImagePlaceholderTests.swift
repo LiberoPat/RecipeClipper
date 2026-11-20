@@ -97,6 +97,28 @@ final class RecipeImagePlaceholderTests: XCTestCase {
         }
     }
 
+    /// A recipe's own stored picture (#386) reaches the loader as `photo://<name>`: with its file gone and
+    /// no link behind it, it fails like any other image, so the designed image shows (#404).
+    func testAStoredPhotoWhoseFileIsGoneReportsItsFailure() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("photos-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let saved = ImageLoader.photoDirectory
+        ImageLoader.photoDirectory = directory
+        defer {
+            ImageLoader.photoDirectory = saved
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let failed = expectation(description: "failure of a missing stored photo")
+        let view = CachedAsyncImage(url: URL(string: "photo://missing.jpg")) { $0.resizable() } placeholder: { Color.clear }
+            .onFailure { failed.fulfill() }
+            .frame(width: 64, height: 64)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        window.rootViewController = UIHostingController(rootView: view)
+        window.makeKeyAndVisible()
+        await fulfillment(of: [failed], timeout: 5)
+        window.isHidden = true
+    }
+
     /// Each layout draws, light and dark, with the flag on; with it off the slot is the hairline.
     func testEachLayoutRenders() {
         for scheme in [ColorScheme.light, .dark] {
