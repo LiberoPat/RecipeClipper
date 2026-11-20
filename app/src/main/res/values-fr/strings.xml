@@ -848,7 +848,7 @@
         <item quantity="other">%1$d sélectionnées</item>
     </plurals>
     <plurals name="delete_recipes_title">
-        <item quantity="one">Supprimer cette recette ?</item>
+        <item quantity="one">Supprimer %1$d recette ?</item>
         <item quantity="many">Supprimer %1$d de recettes ?</item>
         <item quantity="other">Supprimer %1$d recettes ?</item>
     </plurals>

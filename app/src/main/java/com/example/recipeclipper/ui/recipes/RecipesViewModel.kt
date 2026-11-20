@@ -3,6 +3,7 @@ package com.example.recipeclipper.ui.recipes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.TimerCountdownSync
@@ -12,6 +13,7 @@ import com.example.recipeclipper.ui.edit.PastedTextRouter
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeList
+import com.example.recipeclipper.data.model.RecipeShareText
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.home.UrlInput
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -48,6 +51,9 @@ import javax.inject.Inject
  * when nothing clears on its own (always, with `oneCookbook` on, #345).
  * [view] is the automatic view the screen was opened on (V4: Not in a list, Cooked, Typed by you),
  * null for the whole cookbook; [lists] are the lists the strip shows after the views.
+ * [selecting] and [selectedIds] are selecting several recipes (#377): the ticked ids that are among
+ * the rows listed, so what an action acts on is always in sight. [confirmingDelete] are the recipes
+ * a Delete is asking about, empty when no confirmation is open (#376, #377).
  */
 data class RecipesUiState(
     val query: String = "",
@@ -66,7 +72,10 @@ data class RecipesUiState(
     val view: RecipeFilter? = null,
     val lists: List<RecipeList> = emptyList(),
     /** An Undo was refused, the free library being full (#345): the screen says so once, then clears it. */
-    val restoreRefused: Boolean = false
+    val restoreRefused: Boolean = false,
+    val selecting: Boolean = false,
+    val selectedIds: Set<Long> = emptySet(),
+    val confirmingDelete: List<RecipeSummary> = emptyList()
 ) {
     /** The filter shows once there is a recipe to filter, and stays when a filter matches none. */
     val showsFilter: Boolean get() = (counts?.all ?: 0) > 0
@@ -81,6 +90,9 @@ data class RecipesUiState(
 
     /** The strip shows once there is a recipe or a list to show (V4), never inside a view. */
     val showsViewsStrip: Boolean get() = view == null && ((counts?.all ?: 0) > 0 || lists.isNotEmpty())
+
+    /** The rows a selection acts on, in the order listed. */
+    val selected: List<RecipeSummary> get() = recipes.orEmpty().filter { it.id in selectedIds }
 
     /** The dialog's Open is enabled only for what reads as a link (`UrlInput`). */
     val canOpenLink: Boolean get() = !linkInput.isNullOrBlank()
@@ -114,15 +126,22 @@ class RecipesViewModel @Inject constructor(
     /** The automatic view's route argument (V4), when opened on one. */
     savedStateHandle: SavedStateHandle? = null,
     /** "Paste a link" takes any text (#372): where it goes is the shared-text route's; null opens links only. */
-    private val pasted: PastedTextRouter? = null
+    private val pasted: PastedTextRouter? = null,
+    /** The typed decisions Share renders under, like the reading view (#376); none without it. */
+    decisions: DecisionRepository? = null
 ) : ViewModel() {
 
     private val view: RecipeFilter? = RecipeFilter.fromRouteName(savedStateHandle?.get<String>(VIEW_ARG))
 
     // The query box's live value. Kept in a StateFlow, not `remember`, so it survives rotation.
     private val query = MutableStateFlow("")
-    private val pendingDeletes = MutableStateFlow(PendingDeletes())
-    private var batches = 0
+    // Deleted and not yet settled, and the one Undo they share: a swipe, a row's menu and a selection (#377).
+    private val deletions = RecipeDeletions(repository, countdowns, viewModelScope)
+    private val selection = RecipeSelection()
+    private val confirmingDelete = MutableStateFlow<List<RecipeSummary>>(emptyList())
+    private val rowSupport = RecipeRowSupport(repository, preferences, decisions)
+    // The rows last listed: what an action reads, as an action may not wait for a collector.
+    private var listed: List<RecipeSummary>? = null
     // Remembered in AppPreferences, so it survives leaving the screen; the flow keeps the
     // screen in step with what is stored.
     private val sort = preferences.settings
@@ -130,15 +149,8 @@ class RecipesViewModel @Inject constructor(
         .distinctUntilChanged()
     private val linkInput = MutableStateFlow<String?>(null)
     private val linkNoRecipe = MutableStateFlow(false)
-    private val restoreRefused = MutableStateFlow(false)
     // In the ViewModel, not `remember`, so it survives rotation; not stored, so Recipes opens on All.
     private val filter = MutableStateFlow(view ?: RecipeFilter.ALL)
-
-    // What swipe-to-dismiss captured, keyed by recipe id so a second swipe within the
-    // snackbar's few seconds cannot overwrite the first and strand it. A plain field: the
-    // ViewModel already survives rotation, the same reason RecipeViewModel keeps its timer
-    // deadlines this way.
-    private val captured = LinkedHashMap<Long, RecipeRepository.DeletedRecipe>()
 
     // The debounce is the typing's alone: a tap on a filter answers at once.
     private val recipes: StateFlow<List<RecipeSummary>?> = combine(
@@ -146,6 +158,7 @@ class RecipesViewModel @Inject constructor(
         filter
     ) { q, f -> q to f }
         .flatMapLatest { (q, f) -> repository.observeHistory(q, f) }
+        .onEach { listed = it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // Only on the free tier: unlocked, or with the flag off, there is nothing to count against.
@@ -166,10 +179,17 @@ class RecipesViewModel @Inject constructor(
 
     val uiState: StateFlow<RecipesUiState> =
         combine(
-            combine(query, recipes, pendingDeletes, sort, linkInput) { q, found, pending, order, link ->
+            combine(query, recipes, deletions.pending, sort, linkInput) { q, found, pending, order, link ->
                 RecipesUiState(q, found?.let { sorted(it, order) }, pending.titles, pending.batch, order, link)
-            }.combine(restoreRefused) { state, refused -> state.copy(restoreRefused = refused) }
-                .combine(linkNoRecipe) { state, none -> state.copy(linkNoRecipe = none) },
+            }.combine(deletions.restoreRefused) { state, refused -> state.copy(restoreRefused = refused) }
+                .combine(linkNoRecipe) { state, none -> state.copy(linkNoRecipe = none) }
+                .combine(selection.chosen) { state, chosen ->
+                    state.copy(
+                        selecting = chosen != null,
+                        selectedIds = RecipeSelection.effective(chosen, state.recipes)
+                    )
+                }
+                .combine(confirmingDelete) { state, asking -> state.copy(confirmingDelete = asking) },
             count,
             filter,
             counts,
@@ -224,58 +244,62 @@ class RecipesViewModel @Inject constructor(
     }
 
     /** Swipe-to-dismiss: deletes immediately, keeping what it removed so [onUndoDelete] can restore it. */
-    fun onDelete(recipe: RecipeSummary) {
-        viewModelScope.launch {
-            val removed = repository.delete(recipe.id) ?: return@launch
-            // Its countdown goes with it; Undo brings the timer back when the recipe is opened.
-            countdowns?.reconcile()
-            captured[recipe.id] = removed
-            // The first of a burst starts a new batch; the rest join it.
-            pendingDeletes.update { pending ->
-                PendingDeletes(pending.batch ?: ++batches, pending.titles + recipe.title)
-            }
-        }
+    fun onDelete(recipe: RecipeSummary) = deletions.delete(listOf(recipe))
+
+    /** A row menu's Delete (#376) or a selection's (#377): asks first, naming what would go. */
+    fun onRequestDelete(recipes: List<RecipeSummary>) {
+        confirmingDelete.value = recipes
+    }
+
+    /** A selection's Delete: asks about the ticked rows still in sight. */
+    fun onRequestDeleteSelected() {
+        val chosen = RecipeSelection.effective(selection.chosen.value, listed)
+        onRequestDelete(listed.orEmpty().filter { it.id in chosen })
+    }
+
+    fun onCancelDelete() {
+        confirmingDelete.value = emptyList()
     }
 
     /**
-     * Restores everything still pending, oldest first so ids go back in the order they left.
-     * All or nothing: one snackbar covers the batch, so there is no way to pick one out of it.
-     * On the free tier at its limit (#345) none comes back: [RecipesUiState.restoreRefused].
+     * The confirmation's Delete: everything asked about goes in one transaction and shares one Undo
+     * snackbar (#377); a selection is over.
      */
-    fun onUndoDelete() {
-        if (captured.isEmpty()) return
-        val removed = captured.values.toList()
-        captured.clear()
-        pendingDeletes.value = PendingDeletes()
+    fun onConfirmDelete() {
+        val doomed = confirmingDelete.value
+        confirmingDelete.value = emptyList()
+        selection.exit()
+        deletions.delete(doomed)
+    }
+
+    /** Selecting several recipes (#377): from a row's menu with that row ticked, or the top bar's Select with none. */
+    fun onStartSelecting(recipe: RecipeSummary? = null) = selection.start(recipe?.id)
+
+    fun onToggleSelected(id: Long) = selection.toggle(id)
+
+    fun onExitSelection() = selection.exit()
+
+    /** A row's Share (#376): the recipe's text as the reading view sends it, handed to [onReady]. */
+    fun onShare(recipeId: Long, labels: RecipeShareText.Labels, onReady: (RowShare) -> Unit) {
+        viewModelScope.launch { rowSupport.share(recipeId, labels)?.let(onReady) }
+    }
+
+    /** A row's Add to plan (#376): the recipe's own yield, which the sheet starts on, handed to [onReady]. */
+    fun onAddToPlan(recipeId: Long, onReady: (Int?) -> Unit) {
         viewModelScope.launch {
-            // The free library's limit is checked in the repository's transaction (#345): a burst
-            // that wouldn't fit restores none, and the deletes stand, photo files included.
-            when (repository.restoreAll(removed)) {
-                RecipeRepository.RestoreOutcome.LIBRARY_FULL -> {
-                    restoreRefused.value = true
-                    removed.forEach { repository.forget(it) }
-                }
-                RecipeRepository.RestoreOutcome.RESTORED, RecipeRepository.RestoreOutcome.FAILED -> Unit
-            }
+            val base = rowSupport.yieldServings(recipeId)
+            onReady(base)
         }
     }
 
+    /** Restores everything still pending ([RecipeDeletions.undo]). */
+    fun onUndoDelete() = deletions.undo()
+
     /** The screen has said the Undo was refused. */
-    fun onRestoreRefusedShown() {
-        restoreRefused.value = false
-    }
+    fun onRestoreRefusedShown() = deletions.refusedShown()
 
     /** The snackbar timed out or was swiped away: the deletes stand. */
-    fun onSnackbarDismissed() {
-        val settled = captured.values.toList()
-        captured.clear()
-        pendingDeletes.value = PendingDeletes()
-        // Their photos (#116) were kept only for Undo.
-        if (settled.isNotEmpty()) viewModelScope.launch { settled.forEach { repository.forget(it) } }
-    }
-
-    /** The burst being deleted: its [batch], null when nothing is pending, and its titles. */
-    private data class PendingDeletes(val batch: Int? = null, val titles: List<String> = emptyList())
+    fun onSnackbarDismissed() = deletions.dismissed()
 
     companion object {
         /** The route argument naming an automatic view (V4): `NOT_IN_A_LIST`, `COOKED`, `TYPED` or `CHAT`. */

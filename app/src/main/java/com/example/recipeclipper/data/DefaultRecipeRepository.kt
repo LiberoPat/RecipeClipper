@@ -401,16 +401,14 @@ class DefaultRecipeRepository @Inject constructor(
         }
     }
 
-    override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? = log.guard("delete", null) {
-        val entity = recipeDao.get(id) ?: return@guard null
-        val crossRefs = recipeDao.crossRefsFor(id)
-        val planEntries = recipeDao.planEntriesFor(id)
-        val menuEntries = recipeDao.menuEntriesFor(id)
-        val cookedPhotos = recipeDao.cookedPhotosFor(id)
-        val versionIds = recipeDao.versionIdsOf(entity.uid)
-        recipeDao.deleteWithLinks(id)
-        RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries, menuEntries, cookedPhotos, versionIds)
-    }
+    override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? = deleteAll(listOf(id)).firstOrNull()
+
+    override suspend fun deleteAll(ids: List<Long>): List<RecipeRepository.DeletedRecipe> =
+        log.guard("delete", emptyList()) {
+            recipeDao.deleteAll(ids).map {
+                RecipeRepository.DeletedRecipe(it.recipe, it.crossRefs, it.planEntries, it.menuEntries, it.cookedPhotos, it.versionIds)
+            }
+        }
 
     override suspend fun restoreAll(deleted: List<RecipeRepository.DeletedRecipe>): RecipeRepository.RestoreOutcome =
         log.guard("restore", RecipeRepository.RestoreOutcome.FAILED) {

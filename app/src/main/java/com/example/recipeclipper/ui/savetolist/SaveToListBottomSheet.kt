@@ -12,10 +12,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.triStateToggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -30,6 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
@@ -47,6 +50,10 @@ import com.example.recipeclipper.ui.recipe.SectionHeading
  *
  * The [viewModel] is passed in rather than resolved here, because the recipe screen already
  * holds one for its bookmark icon and both must be the same instance.
+ *
+ * For several recipes (#377) a list holding all of them is ticked, one holding some is
+ * indeterminate and one holding none is not; a tap on a ticked one takes them all off, a tap on
+ * any other puts them all in.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +86,7 @@ fun SaveToListBottomSheet(viewModel: SaveToListViewModel, onDismiss: () -> Unit)
             state.lists.forEach { list ->
                 ListCheckRow(
                     list = list,
+                    partial = list.id in state.partialListIds,
                     onToggle = { viewModel.onListToggled(list.id, it) }
                 )
             }
@@ -88,7 +96,13 @@ fun SaveToListBottomSheet(viewModel: SaveToListViewModel, onDismiss: () -> Unit)
             if (state.creatingList) {
                 NewListField(
                     value = state.newListName,
-                    recipeTitle = state.recipeTitle,
+                    note = when {
+                        state.recipeCount > 1 ->
+                            pluralStringResource(R.plurals.save_to_list_new_list_note_many, state.recipeCount, state.recipeCount)
+                        state.recipeTitle.isNotEmpty() ->
+                            stringResource(R.string.save_to_list_new_list_note, state.recipeTitle)
+                        else -> null
+                    },
                     onValueChange = viewModel::onNewListNameChange,
                     onConfirm = viewModel::onCreateList,
                     onCancel = viewModel::onCancelCreating
@@ -110,15 +124,22 @@ fun SaveToListBottomSheet(viewModel: SaveToListViewModel, onDismiss: () -> Unit)
  * A clickable row with a Checkbox role looks identical on screen and says nothing.
  */
 @Composable
-private fun ListCheckRow(list: RecipeList, onToggle: (Boolean) -> Unit) {
+private fun ListCheckRow(list: RecipeList, partial: Boolean, onToggle: (Boolean) -> Unit) {
+    val state = when {
+        list.containsRecipe -> ToggleableState.On
+        partial -> ToggleableState.Indeterminate
+        else -> ToggleableState.Off
+    }
+    val partialWords = stringResource(R.string.save_to_list_partial)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .toggleable(value = list.containsRecipe, role = Role.Checkbox, onValueChange = onToggle)
+            .triStateToggleable(state = state, role = Role.Checkbox, onClick = { onToggle(state != ToggleableState.On) })
+            .semantics { if (partial) stateDescription = partialWords }
             .padding(vertical = 6.dp)
     ) {
-        Checkbox(checked = list.containsRecipe, onCheckedChange = null)
+        TriStateCheckbox(state = state, onClick = null)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(list.name, style = MaterialTheme.typography.bodyLarge)
@@ -131,11 +152,11 @@ private fun ListCheckRow(list: RecipeList, onToggle: (Boolean) -> Unit) {
     }
 }
 
-/** The open "+ New list" field, with a muted line under it naming the recipe it takes (#286). */
+/** The open "+ New list" field, with a muted line under it naming the recipe it takes, or counting them (#286, #377). */
 @Composable
 private fun NewListField(
     value: String,
-    recipeTitle: String,
+    note: String?,
     onValueChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
@@ -149,9 +170,9 @@ private fun NewListField(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         )
-        if (recipeTitle.isNotEmpty()) {
+        if (note != null) {
             Text(
-                stringResource(R.string.save_to_list_new_list_note, recipeTitle),
+                note,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp)

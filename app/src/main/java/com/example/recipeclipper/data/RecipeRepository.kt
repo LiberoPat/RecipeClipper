@@ -162,6 +162,13 @@ interface RecipeRepository {
      */
     suspend fun delete(id: Long): DeletedRecipe?
 
+    /**
+     * Deletes several recipes at once (#377: the Recipes selection), all or none in one transaction,
+     * those already gone left out. Each comes back as [delete]'s would, oldest first as given, for one
+     * [restoreAll] to put back together.
+     */
+    suspend fun deleteAll(ids: List<Long>): List<DeletedRecipe> = ids.mapNotNull { delete(it) }
+
     /** Undoes a [delete]: the recipe comes back with its original id and list membership. */
     suspend fun restore(deleted: DeletedRecipe): RestoreOutcome = restoreAll(listOf(deleted))
 

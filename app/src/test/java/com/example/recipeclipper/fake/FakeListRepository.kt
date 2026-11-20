@@ -74,6 +74,41 @@ class FakeListRepository : ListRepository {
         }
     }
 
+    /** Every [setMembershipAll] call (recipes, list, in), in order: one entry per transaction. */
+    val bulkCalls = mutableListOf<Triple<List<Long>, Long, Boolean>>()
+
+    override suspend fun setMembershipAll(recipeIds: List<Long>, listId: Long, inList: Boolean) {
+        bulkCalls += Triple(recipeIds, listId, inList)
+        membership.value = if (inList) {
+            membership.value + recipeIds.map { it to listId }
+        } else {
+            membership.value - recipeIds.map { it to listId }.toSet()
+        }
+    }
+
+    /** The recipe ids each [observeMemberCounts] was asked about, in order. */
+    val memberCountQueries = mutableListOf<List<Long>>()
+
+    override fun observeMemberCounts(recipeIds: List<Long>): Flow<Map<Long, Int>> {
+        memberCountQueries += recipeIds
+        return membership.map { rows ->
+            rows.filter { it.first in recipeIds }.groupingBy { it.second }.eachCount()
+        }
+    }
+
+    /** Every [createListWith] call, in order. */
+    val createWithCalls = mutableListOf<Pair<String, List<Long>>>()
+
+    override suspend fun createListWith(name: String, addRecipeIds: List<Long>): Long {
+        createWithCalls += name to addRecipeIds
+        val id = nextId++
+        lists.value = lists.value + RecipeList(
+            id = id, name = name, isBuiltIn = false, isFavorites = false, recipeCount = 0
+        )
+        membership.value = membership.value + addRecipeIds.map { it to id }
+        return id
+    }
+
     override suspend fun createList(name: String, addRecipeId: Long?): Long {
         createCalls += name to addRecipeId
         val id = nextId++

@@ -52,6 +52,20 @@ class DefaultListRepository @Inject constructor(
             }
         }
 
+    override suspend fun setMembershipAll(recipeIds: List<Long>, listId: Long, inList: Boolean) =
+        log.guard("setMembershipAll", Unit) {
+            if (recipeIds.isNotEmpty()) listDao.setMembers(recipeIds, listId, inList, clock.now())
+        }
+
+    override fun observeMemberCounts(recipeIds: List<Long>): Flow<Map<Long, Int>> =
+        listDao.observeMemberCounts(recipeIds).orEmptyOnError(log, "observeMemberCounts")
+            .map { rows -> rows.associate { it.listId to it.memberCount } }
+
+    override suspend fun createListWith(name: String, addRecipeIds: List<Long>): Long =
+        log.guard("createListWith", CREATE_FAILED) {
+            listDao.createWith(name.trim(), addRecipeIds, clock.now())
+        }
+
     override suspend fun createList(name: String, addRecipeId: Long?): Long =
         log.guard("createList", CREATE_FAILED) {
             listDao.create(name.trim(), addRecipeId ?: ListDao.NO_RECIPE, clock.now())

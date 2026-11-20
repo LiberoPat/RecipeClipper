@@ -5,7 +5,9 @@ import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.collectEagerly
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeListRepository
+import com.example.recipeclipper.fake.FakeRecipeRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -36,7 +38,10 @@ class ListDetailViewModelTest {
     }
 
     private fun viewModel(repository: FakeListRepository, listId: Long) =
-        ListDetailViewModel(repository, SavedStateHandle(mapOf(ListDetailViewModel.LIST_ID_ARG to listId)))
+        ListDetailViewModel(
+            repository, SavedStateHandle(mapOf(ListDetailViewModel.LIST_ID_ARG to listId)),
+            FakeRecipeRepository(), FakeAppPreferences()
+        )
 
     @Test
     fun `resolves the list named by the navigation argument`() =
