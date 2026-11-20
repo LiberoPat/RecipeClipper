@@ -32,15 +32,21 @@ final class ListsViewModel {
     /// The stored order, and the order a drag in flight has made of it (nil: no drag).
     @ObservationIgnored private var stored: [RecipeList] = []
     @ObservationIgnored private var dragOrder: [Int64]?
+    /// The drop is written but the database has not told us yet: the drag's order stays on
+    /// show until it does, so the covers don't snap back to the old order and then forward again.
+    @ObservationIgnored private var settling = false
 
     init(repository: ListRepository) {
         self.repository = repository
         repository.observeLists()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] lists in
-                self?.stored = lists
-                self?.uiState.loaded = true
-                self?.showCurrentOrder()
+                guard let self else { return }
+                stored = lists
+                uiState.loaded = true
+                // The write the drop made has come back: the stored order is the one on show.
+                if settling { settling = false; dragOrder = nil }
+                showCurrentOrder()
             }
             .store(in: &cancellables)
         repository.observeCoverPhotos()
@@ -76,6 +82,7 @@ final class ListsViewModel {
     /// The cook lifts a cover. Nothing is stored until `onDragEnd`.
     func onDragStart(_ listId: Int64) {
         guard stored.contains(where: { $0.id == listId }) else { return }
+        settling = false
         dragOrder = stored.map(\.id)
         uiState.draggingId = listId
         showCurrentOrder()
@@ -96,8 +103,21 @@ final class ListsViewModel {
         guard let order = dragOrder else { return }
         Task {
             if order != stored.map(\.id) { await repository.reorderLists(order) }
-            dragOrder = nil
             uiState.draggingId = nil
+            if stored.map(\.id) == order {
+                dragOrder = nil
+            } else {
+                // The write is done, its publication is on its way. If it never comes (the
+                // write failed) the stored order goes back on show after a moment.
+                settling = true
+                Task {
+                    try? await Task.sleep(for: .seconds(1))
+                    guard settling else { return }
+                    settling = false
+                    dragOrder = nil
+                    showCurrentOrder()
+                }
+            }
             showCurrentOrder()
         }
     }
@@ -105,6 +125,7 @@ final class ListsViewModel {
     /// The drag ended with no drop (the screen went away): the covers go back, nothing is stored.
     func onDragCancel() {
         guard dragOrder != nil else { return }
+        settling = false
         dragOrder = nil
         uiState.draggingId = nil
         showCurrentOrder()

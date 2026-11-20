@@ -63,14 +63,34 @@ final class ListsUITests: RecipeUITestCase {
         launch(flags: ["reorderLists"])
         openLists()
 
+        // Both covers there and on screen before anything is held: a slow runner may still be
+        // laying the grid out when the screen first appears.
         let lunch = require(row("Lunch"))
-        lunch.press(forDuration: 1.5, thenDragTo: require(row("Favorites")), withVelocity: .slow, thenHoldForDuration: 1.0)
+        let favorites = require(row("Favorites"))
+        requireState(lunch, "isHittable == true", "Lunch on screen")
+        requireState(favorites, "isHittable == true", "Favorites on screen")
+
+        // Hold long enough for the system's lift, drag slowly, and hold over the target so the
+        // drop registers before the finger lifts.
+        let from = lunch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+        let to = favorites.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+        from.press(forDuration: 1.5, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 1.5)
+
+        // The drop is stored and drawn a moment later (an animation, a write, a publication),
+        // so wait for the new order rather than reading it at once. If it never comes it failed.
+        let moved = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                lunch.exists && favorites.exists && lunch.frame.minX < favorites.frame.minX
+            },
+            object: nil
+        )
+        let result = XCTWaiter.wait(for: [moved], timeout: timeout)
 
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "lists-after-reorder"
         shot.lifetime = .keepAlways
         add(shot)
-        let favorites = require(row("Favorites"))
+        XCTAssertEqual(result, .completed, "Lunch before Favorites (Lunch x \(lunch.frame.minX), Favorites x \(favorites.frame.minX))")
         XCTAssertLessThan(lunch.frame.minX, favorites.frame.minX, "Lunch before Favorites")
         XCTAssertEqual(lunch.frame.minY, favorites.frame.minY, accuracy: 1, "still in the first row")
 

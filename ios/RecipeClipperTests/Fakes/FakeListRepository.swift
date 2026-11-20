@@ -30,6 +30,9 @@ final class FakeListRepository: ListRepository {
     private(set) var deleteCalls: [Int64] = []
     /// Every order `reorderLists` was given, in order.
     private(set) var reorderCalls: [[Int64]] = []
+    /// How long after `reorderLists` returns the new order is published, as the database's
+    /// observation does after a commit (it re-queries on its own queue). Zero: at once.
+    var reorderPublishDelay: Duration = .zero
     private(set) var recipesInQueries: [Int64] = []
 
     private var nextId: Int64 = 100
@@ -124,7 +127,16 @@ final class FakeListRepository: ListRepository {
         var seen = Set<Int64>()
         let named = orderedIds.filter { byId[$0] != nil && seen.insert($0).inserted }
         let rest = lists.value.map(\.id).filter { !seen.contains($0) }
-        lists.send((named + rest).compactMap { byId[$0] })
+        let reordered = (named + rest).compactMap { byId[$0] }
+        if reorderPublishDelay == .zero {
+            lists.send(reordered)
+        } else {
+            let delay = reorderPublishDelay
+            Task { @MainActor in
+                try? await Task.sleep(for: delay)
+                self.lists.send(reordered)
+            }
+        }
     }
 
     @MainActor func rename(listId: Int64, name: String) async {
