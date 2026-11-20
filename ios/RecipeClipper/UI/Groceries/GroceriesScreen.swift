@@ -10,12 +10,18 @@ import SwiftUI
 ///
 /// `receiveVM` backs "Add this list" for a pasted list; nil leaves "Paste a list" out.
 /// `onOpenPantry` shows the pantry once lines were added to it.
+///
+/// With `recipeTags` (#422, the `groceryRecipeTags` flag) a row's recipes are small tags on their
+/// own line, apart from its amount and note, and a tap opens the recipe through `onOpenRecipe` (at
+/// the planned servings when it came from the plan). Off, they are the muted line under the row.
 struct GroceriesScreen: View {
     let vm: GroceriesViewModel
     var receiveVM: ReceiveListViewModel? = nil
     /// A list pasted elsewhere in the app (#372), waiting for its sheet; taken once when this appears.
     var takePendingList: (() -> String?)? = nil
     var onOpenPantry: () -> Void = {}
+    var recipeTags = false
+    var onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void = { _, _ in }
     /// Makes "Send as file" (#149, phase 2); nil leaves it out. Made on first use.
     var makeSendFileVM: (() -> SendFileViewModel)? = nil
     @State private var sendFileVM: SendFileViewModel?
@@ -44,7 +50,9 @@ struct GroceriesScreen: View {
                     ForEach(section.rows) { row in
                         // The tick and long-press tooltips (#190) point at the list's first row.
                         GroceryRowView(
-                            row: row, recipes: state.recipeLines[row.id],
+                            row: row, recipes: recipeTags ? nil : state.recipeLines[row.id],
+                            tags: recipeTags ? state.recipeTags[row.id] ?? [] : [],
+                            onOpenTag: { tag in vm.onOpenRecipe(tag, open: onOpenRecipe) },
                             first: row.id == state.sections?.first?.rows.first?.id, vm: vm
                         )
                     }
@@ -246,10 +254,13 @@ private struct PutAwaySheetView: View {
 /// A row on the list, always one tick. An added-up total shows its lines under it; lines that
 /// can't be added up honestly sit under their ingredient's name, as written, without ticks of
 /// their own: ticking the row ticks them all. Under those, `recipes` names the recipes the row
-/// came from (#286); a row only typed in has none.
+/// came from (#286), or with the recipe tags (#422) `tags` show them, on a line of their own; a
+/// row only typed in has neither.
 private struct GroceryRowView: View {
     let row: GroceryCombiner.Row
     let recipes: String?
+    let tags: [RecipeTag]
+    let onOpenTag: (RecipeTag) -> Void
     let first: Bool
     let vm: GroceriesViewModel
 
@@ -257,18 +268,21 @@ private struct GroceryRowView: View {
         let recipeLine = recipes.map { [$0] } ?? []
         switch row {
         case .single(let item):
-            CheckLine(text: item.text, detail: recipeLine, checked: item.checked, row: row, label: item.text, first: first, vm: vm)
+            CheckLine(
+                text: item.text, detail: recipeLine, checked: item.checked, row: row, label: item.text,
+                tags: tags, onOpenTag: onOpenTag, first: first, vm: vm
+            )
         case .combined(_, let text, let items):
             // "2 corn × 3" under "6 corn"; nothing under a line that is its own detail.
             CheckLine(
                 text: text, detail: [GroceryCombiner.lines(row).joined(separator: " + ")].filter { $0 != text } + recipeLine,
-                checked: items.allSatisfy(\.checked), row: row, label: text, first: first, vm: vm
+                checked: items.allSatisfy(\.checked), row: row, label: text, tags: tags, onOpenTag: onOpenTag, first: first, vm: vm
             )
         case .together(let name, let items):
             // One tick for the ingredient; its lines, as written, have none of their own.
             CheckLine(
                 text: name, detail: GroceryCombiner.lines(row) + recipeLine,
-                checked: items.allSatisfy(\.checked), row: row, label: name, first: first, vm: vm
+                checked: items.allSatisfy(\.checked), row: row, label: name, tags: tags, onOpenTag: onOpenTag, first: first, vm: vm
             )
         }
     }
@@ -321,10 +335,26 @@ private struct CheckLine: View {
     let checked: Bool
     let row: GroceryCombiner.Row
     let label: String
+    /// The recipes it is for (#422): tags on a line of their own, buttons beside the row's tick,
+    /// not inside it, so a tap on one never ticks the row and a tap on the row never opens a recipe.
+    var tags: [RecipeTag] = []
+    var onOpenTag: (RecipeTag) -> Void = { _ in }
     let first: Bool
     let vm: GroceriesViewModel
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            tick
+            if !tags.isEmpty {
+                RecipeTagRow(tags: tags, onOpen: onOpenTag, idPrefix: "groceryTag-\(row.id)")
+                    // Clear of the tick's column.
+                    .padding(.trailing, 34)
+                    .padding(.bottom, 4)
+            }
+        }
+    }
+
+    private var tick: some View {
         Button { vm.onToggle(row) } label: {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -341,7 +371,8 @@ private struct CheckLine: View {
                 // On the right, level with the first line.
                 RoundTick(checked: checked).padding(.top, 2)
             }
-            .padding(.vertical, 7)
+            .padding(.top, 7)
+            .padding(.bottom, tags.isEmpty ? 7 : 1)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

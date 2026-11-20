@@ -26,9 +26,23 @@ final class GroceriesUITests: RecipeUITestCase {
         require(line("2 lb chicken thighs"), "the chicken")
         require(text("Oils, sauces & condiments"), "the condiments aisle")
         require(line("1/2 cup soy sauce"), "the soy sauce")
-        // Each row names its recipe on a line under it (#286).
+        // Each row names its recipe as a small tag under it (#422), a button of its own that reads
+        // "For <recipe>", apart from the row's amount and its tick.
+        let tag = app.buttons.matching(NSPredicate(format: "label == %@", "For Chicken Adobo")).firstMatch
+        require(tag, "the recipe tag")
         let named = NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "2 lb chicken thighs", "Chicken Adobo")
-        require(app.buttons.matching(named).firstMatch, "the chicken, naming its recipe")
+        XCTAssertFalse(app.buttons.matching(named).firstMatch.exists, "the recipe is not part of the row's own text")
+
+        // A tap on the tag opens the recipe on this tab's stack and ticks nothing; Back returns to the list.
+        tag.tap()
+        require(text("Chicken Adobo"), "the recipe, opened from its tag")
+        back()
+        require(line("2 lb chicken thighs"), "the list, back")
+        assertAbsent(app.buttons["doneShopping"], "Done shopping: the tag ticked nothing")
+
+        // The row itself still ticks.
+        line("2 lb chicken thighs").tap()
+        require(app.buttons["doneShopping"], "Done shopping, once a row is ticked")
     }
 
     func testATypedItemCanBeDeletedAndBroughtBack() {

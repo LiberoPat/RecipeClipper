@@ -190,6 +190,8 @@ struct NeedLine: Equatable {
     let title: String
     let day: Int64?
     let language: String?
+    /// The servings the week plans it at (#422): what a tap on its recipe tag opens it at; nil: its own yield.
+    var servings: Int? = nil
 }
 
 /// One ingredient of the week: every line naming it (exactly the same `IngredientName`, a listed
@@ -263,7 +265,10 @@ enum PantryMatch {
         for source in sources {
             let words = LanguageWords.forTag(source.language)
             for text in source.lines {
-                let line = NeedLine(text: text, recipeId: source.recipeId, title: source.title, day: source.day, language: source.language)
+                let line = NeedLine(
+                    text: text, recipeId: source.recipeId, title: source.title, day: source.day, language: source.language,
+                    servings: source.servings
+                )
                 let name = words.flatMap { IngredientName.of(text, words: $0) }
                 let key: String
                 if let name {

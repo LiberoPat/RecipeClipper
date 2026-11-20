@@ -35,7 +35,8 @@ struct PutAwaySheet: Equatable {
 /// `recipeTitles` names the recipes items came from, for "Send list" (#149). `confirmClearAll` is
 /// the number of rows "Clear the whole list" asks about (#219), while its dialog is open.
 /// `recipeLines` is the line under each row naming the recipes it came from (#286), by the row's
-/// id; a row only typed in has none.
+/// id; a row only typed in has none. `recipeTags` is the same as small tags (#422), each with the
+/// day it is planned on, for the `groceryRecipeTags` flag.
 struct GroceriesUiState: Equatable {
     var sections: [GroceryCombiner.Section]?
     var draft = ""
@@ -45,6 +46,7 @@ struct GroceriesUiState: Equatable {
     var recipeTitles: [Int64: String] = [:]
     var confirmClearAll: Int?
     var recipeLines: [Int64: String] = [:]
+    var recipeTags: [Int64: [RecipeTag]] = [:]
 
     var hasChecked: Bool { (sections ?? []).contains { $0.rows.contains { $0.items.contains(where: \.checked) } } }
     /// The rows ticked, for the "Done shopping" bar (#286): a combined row is one thing in the basket.
@@ -79,6 +81,8 @@ final class GroceriesViewModel {
     @ObservationIgnored private let repository: GroceryRepository
     @ObservationIgnored private let pantry: PantryRepository
     @ObservationIgnored private let calendar: PlanCalendar
+    // The servings a recipe is planned at, for a tag's tap (#422); none opens it at its own yield.
+    @ObservationIgnored private let mealPlan: MealPlanRepository?
     @ObservationIgnored private let phoneLanguage: () -> String?
     @ObservationIgnored private var subscription: AnyCancellable?
     @ObservationIgnored private var pantrySubscription: AnyCancellable?
@@ -91,12 +95,13 @@ final class GroceriesViewModel {
 
     init(
         repository: GroceryRepository, pantry: PantryRepository, calendar: PlanCalendar,
-        decisions: DecisionRepository? = nil,
+        decisions: DecisionRepository? = nil, mealPlan: MealPlanRepository? = nil,
         phoneLanguage: @escaping () -> String? = { Locale.current.language.languageCode?.identifier }
     ) {
         self.repository = repository
         self.pantry = pantry
         self.calendar = calendar
+        self.mealPlan = mealPlan
         self.phoneLanguage = phoneLanguage
         removals = GroceryRemovals(repository: repository, pantry: pantry)
         questions = decisions.map { GroceryQuestions(decisions: $0, repository: repository) }
@@ -110,6 +115,7 @@ final class GroceriesViewModel {
                 guard let self else { return }
                 self.uiState.recipeTitles = titles
                 self.uiState.recipeLines = Self.recipeLines(self.uiState.sections, titles: titles)
+                self.uiState.recipeTags = Self.recipeTags(self.uiState.sections, titles: titles)
             }
         let answers = decisions?.observe() ?? Just(Decisions.none).eraseToAnyPublisher()
         subscription = repository.observeItems().combineLatest(answers)
@@ -133,6 +139,7 @@ final class GroceriesViewModel {
         let items = latestItems
         uiState.sections = visitOrder.sections(items, decisions: latestDecisions)
         uiState.recipeLines = Self.recipeLines(uiState.sections, titles: uiState.recipeTitles)
+        uiState.recipeTags = Self.recipeTags(uiState.sections, titles: uiState.recipeTitles)
         // A row being moved that has since gone closes the aisle picker.
         if let moving = uiState.moving, !moving.items.allSatisfy({ i in items.contains { $0.id == i.id } }) {
             uiState.moving = nil
@@ -148,6 +155,30 @@ final class GroceriesViewModel {
             if !recipes.isEmpty { lines[row.id] = recipes.joined(separator: ", ") }
         }
         return lines
+    }
+
+    /// The small recipe tags under each row (#422), by the row's id; none for a row only typed in.
+    private static func recipeTags(_ sections: [GroceryCombiner.Section]?, titles: [Int64: String]) -> [Int64: [RecipeTag]] {
+        var tags: [Int64: [RecipeTag]] = [:]
+        for row in (sections ?? []).flatMap(\.rows) {
+            let found = GroceryRecipeTags.of(row.items, recipeTitles: titles)
+            if !found.isEmpty { tags[row.id] = found }
+        }
+        return tags
+    }
+
+    /// A tag was tapped (#422): `open` the recipe, at the servings the week plans it at when the
+    /// tag has a day and the plan still holds it, else at its own yield.
+    func onOpenRecipe(_ tag: RecipeTag, open: @escaping (_ recipeId: Int64, _ servings: Int?) -> Void) {
+        Task {
+            var servings: Int?
+            if let day = tag.day, let mealPlan {
+                var first: [PlannedMeal]?
+                for await meals in mealPlan.observeDays(start: day, end: day).values { first = meals; break }
+                servings = first?.first { $0.recipeId == tag.recipeId }?.servings
+            }
+            open(tag.recipeId, servings)
+        }
     }
 
     /// The screen was left (#219): the next visit tidies the list, ticked rows at the bottom of

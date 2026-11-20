@@ -158,16 +158,25 @@ struct RootView: View {
         .tint(Palette.accentText)
     }
 
-    /// The Groceries tab (#50): the list alone, for now. A pasted list (#149) that goes in the
-    /// pantry opens the Pantry tab.
+    /// The Groceries tab (#50), with its own stack (#422): a line's recipe tag opens the recipe
+    /// here, so Back returns to the list. A pasted list (#149) that goes in the pantry opens the
+    /// Pantry tab.
     private var groceriesStack: some View {
-        NavigationStack {
+        NavigationStack(path: $router.groceriesPath) {
             ScreenHost2(makeA: container.makeGroceriesViewModel, makeB: container.makeReceiveListViewModel) { vm, receiveVM in
                 GroceriesScreen(
                     vm: vm, receiveVM: receiveVM, takePendingList: container.takePendingList,
                     onOpenPantry: { router.select(.pantry) },
+                    recipeTags: container.featureFlags.isOn(.groceryRecipeTags),
+                    onOpenRecipe: { router.groceriesPath.append(.weekRecipe(id: $0, servings: $1)) },
                     makeSendFileVM: container.makeSendFileViewModel
                 )
+            }
+            .navigationDestination(for: Route.self) { route in
+                destination(route, push: { router.groceriesPath.append($0) }, replace: { count, route in
+                    router.groceriesPath.removeLast(min(count, router.groceriesPath.count))
+                    router.groceriesPath.append(route)
+                })
             }
         }
         .tint(Palette.accentText)
@@ -214,7 +223,13 @@ struct RootView: View {
         case .mealTypes:
             ScreenHost(container.makeMealTypesViewModel) { vm in MealTypesScreen(vm: vm) }
         case .whatINeed(let weekStart):
-            ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in WhatINeedScreen(vm: vm, shopForWeek: container.featureFlags.isOn(.shopForWeek)) }
+            ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in
+                WhatINeedScreen(
+                    vm: vm, shopForWeek: container.featureFlags.isOn(.shopForWeek),
+                    recipeTags: container.featureFlags.isOn(.groceryRecipeTags),
+                    onOpenRecipe: { push(.weekRecipe(id: $0, servings: $1)) }
+                )
+            }
         case .recipes:
             ScreenHost2(makeA: { container.makeRecipesViewModel() }, makeB: container.makeSaveToListViewModel) { vm, saveVM in
                 // The + menu: "Type a recipe" is Home's "+ New recipe"; "Paste a link" is Home's field.
