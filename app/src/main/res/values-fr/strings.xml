@@ -835,4 +835,28 @@
     <string name="ai_prompt_temperature_f">Donne les températures du four en °F.</string>
     <string name="ai_prompt_write_in">Écris-la en %1$s.</string>
     <string name="ai_prompt_note_outside">Mets tout ce que tu veux dire d\'autre en dehors du bloc de code.</string>
+    <!-- Long-press menu on a recipe row (#376) and selecting several recipes (#377). -->
+    <string name="action_select">Sélectionner</string>
+    <string name="row_action_add_to_list">Ajouter à une liste</string>
+    <string name="action_share">Partager</string>
+    <string name="row_action_remove_from_list">Retirer de cette liste</string>
+    <string name="cd_recipe_actions">Actions de la recette</string>
+    <string name="save_to_list_partial">Certaines</string>
+    <plurals name="recipes_selected_count">
+        <item quantity="one">%1$d sélectionnée</item>
+        <item quantity="many">%1$d sélectionnées</item>
+        <item quantity="other">%1$d sélectionnées</item>
+    </plurals>
+    <plurals name="delete_recipes_title">
+        <item quantity="one">Supprimer cette recette ?</item>
+        <item quantity="many">Supprimer %1$d de recettes ?</item>
+        <item quantity="other">Supprimer %1$d recettes ?</item>
+    </plurals>
+    <string name="delete_row_body">Elle sera retirée de vos recettes et de toutes les listes où elle figure, avec les photos que vous y avez ajoutées. Vous pouvez annuler pendant quelques secondes.</string>
+    <string name="delete_rows_body">Elles seront retirées de vos recettes et de toutes les listes où elles figurent, avec les photos que vous y avez ajoutées. Vous pouvez annuler pendant quelques secondes.</string>
+    <plurals name="save_to_list_new_list_note_many">
+        <item quantity="one">%1$d recette ira dans la nouvelle liste.</item>
+        <item quantity="many">%1$d de recettes iront dans la nouvelle liste.</item>
+        <item quantity="other">%1$d recettes iront dans la nouvelle liste.</item>
+    </plurals>
 </resources>

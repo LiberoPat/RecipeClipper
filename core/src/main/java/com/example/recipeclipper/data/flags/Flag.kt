@@ -48,7 +48,11 @@ enum class Flag(val key: String) {
     /** Recipe versions (#354): an AI's change to a recipe is saved linked to its original. */
     RECIPE_VERSIONS("recipeVersions"),
     /** Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients. */
-    SHOP_FOR_WEEK("shopForWeek");
+    SHOP_FOR_WEEK("shopForWeek"),
+    /** A long-press menu on a recipe row (#376): Add to list, Add to plan, Share, Delete, Remove from this list. */
+    ROW_ACTIONS("rowActions"),
+    /** Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo. */
+    MULTI_SELECT("multiSelect");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
