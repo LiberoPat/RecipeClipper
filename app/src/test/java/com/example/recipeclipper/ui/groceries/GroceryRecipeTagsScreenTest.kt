@@ -22,6 +22,10 @@ import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
+import com.example.recipeclipper.fake.FakeRecipeRepository
+import com.example.recipeclipper.data.model.RecipeSummary
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performTouchInput
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -41,11 +45,12 @@ class GroceryRecipeTagsScreenTest {
 
     private val repository = FakeGroceryRepository()
     private val plan = FakeMealPlanRepository()
+    private val library = FakeRecipeRepository()
     private val wednesday = FakePlanCalendar.WEDNESDAY
     private val opened = mutableListOf<Pair<Long, Int?>>()
 
     private fun show(tags: Boolean = true) {
-        val viewModel = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), null, plan)
+        val viewModel = GroceriesViewModel(repository, FakePantryRepository(), FakePlanCalendar(), null, plan, library)
         compose.setContent {
             CompositionLocalProvider(LocalFlagValues provides FlagValues(if (tags) setOf(Flag.GROCERY_RECIPE_TAGS) else emptySet())) {
                 GroceriesScreen(viewModel = viewModel, onOpenRecipe = { id, servings -> opened += id to servings })
@@ -188,5 +193,83 @@ class GroceryRecipeTagsScreenTest {
 
         compose.onNodeWithText("Chicken Adobo, Weeknight Chili").assertIsDisplayed()
         compose.onNodeWithContentDescription("For Chicken Adobo").assertDoesNotExist()
+    }
+
+    private fun summary(id: Long, title: String) = RecipeSummary(id, title, null, null, id, false)
+
+    private fun longPress(tag: String) = compose.onNodeWithTag(tag).performTouchInput { longClick() }
+
+    // #422 (the owner's addition): a typed item is linked to a recipe from its long-press menu.
+    @Test
+    fun aTypedItemIsLinkedToARecipeFromItsMenuAndTheTagOpensIt() {
+        library.history.value = listOf(summary(1, "Chicken Adobo"), summary(2, "Weeknight Chili"))
+        repository.recipeTitles.value = mapOf(2L to "Weeknight Chili")
+        add(NewGroceryLine("2 limes", "en"))
+        show()
+        val id = repository.items.value.single().id
+        compose.onNodeWithContentDescription("For Weeknight Chili").assertDoesNotExist()
+
+        longPress("grocery-$id")
+        compose.onNodeWithText("For a recipe…").performClick()
+        compose.onNodeWithText("Which recipe is it for?").assertIsDisplayed()
+        compose.onNodeWithTag("link-2").performClick()
+
+        // Linked with no day (not planned this week), tagged, and the tag opens it.
+        compose.runOnIdle { assertEquals(2L, repository.items.value.single().recipeId) }
+        compose.runOnIdle { assertEquals(null, repository.items.value.single().plannedDay) }
+        compose.onNodeWithContentDescription("For Weeknight Chili").performClick()
+        compose.runOnIdle { assertEquals(listOf<Pair<Long, Int?>>(2L to null), opened) }
+    }
+
+    @Test
+    fun aRecipePlannedThisWeekLinksOnItsNextPlannedDay() {
+        library.history.value = listOf(summary(1, "Mushroom omelette"))
+        repository.recipeTitles.value = mapOf(1L to "Mushroom omelette")
+        runBlocking {
+            plan.addRecipe(1, wednesday + 4, 1, 3)
+            plan.addRecipe(1, wednesday + 2, 1, 5)
+        }
+        add(NewGroceryLine("6 eggs", "en"))
+        show()
+        val id = repository.items.value.single().id
+
+        longPress("grocery-$id")
+        compose.onNodeWithText("For a recipe…").performClick()
+        compose.onNodeWithTag("link-1").performClick()
+
+        compose.runOnIdle { assertEquals(wednesday + 2, repository.items.value.single().plannedDay) }
+        compose.onNodeWithText("Mushroom omelette · Fri").assertIsDisplayed()
+    }
+
+    @Test
+    fun theLinkCanBeTakenOffAndAnAppAddedItemIsNeverRelinked() {
+        library.history.value = listOf(summary(1, "Chicken Adobo"))
+        repository.recipeTitles.value = mapOf(1L to "Chicken Adobo")
+        add(NewGroceryLine("2 limes", "en", recipeId = 1))
+        show()
+        val id = repository.items.value.single().id
+
+        // It has a recipe: "For a recipe…" is not offered, "Not for a recipe" is.
+        longPress("grocery-$id")
+        compose.onNodeWithText("For a recipe…").assertDoesNotExist()
+        compose.onNodeWithText("Not for a recipe").performClick()
+
+        compose.runOnIdle { assertEquals(null, repository.items.value.single().recipeId) }
+        compose.onNodeWithContentDescription("For Chicken Adobo").assertDoesNotExist()
+        // Unlinked, it can be linked again; and there is nothing to take off.
+        longPress("grocery-$id")
+        compose.onNodeWithText("Not for a recipe").assertDoesNotExist()
+        compose.onNodeWithText("For a recipe…").assertIsDisplayed()
+    }
+
+    @Test
+    fun withTheFlagOffTheMenuHasNoRecipeEntries() {
+        add(NewGroceryLine("2 limes", "en"))
+        show(tags = false)
+        val id = repository.items.value.single().id
+
+        longPress("grocery-$id")
+        compose.onNodeWithText("Move to aisle…").assertIsDisplayed()
+        compose.onNodeWithText("For a recipe…").assertDoesNotExist()
     }
 }

@@ -67,10 +67,12 @@ final class GroceryRecipeTagsTests: XCTestCase {
 final class GroceryRecipeTagsViewModelTests: XCTestCase {
     private let repository = FakeGroceryRepository()
     private let plan = FakeMealPlanRepository()
+    private let library = FakeRecipeRepository()
 
     private func viewModel() async -> GroceriesViewModel {
         let vm = GroceriesViewModel(
-            repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), mealPlan: plan
+            repository: repository, pantry: FakePantryRepository(), calendar: FakePlanCalendar(), mealPlan: plan,
+            recipes: library
         )
         await settleMain()
         return vm
@@ -125,5 +127,62 @@ final class GroceryRecipeTagsViewModelTests: XCTestCase {
         await fulfillment(of: [opened], timeout: 2)
         XCTAssertEqual(got?.0, 1)
         XCTAssertNil(got?.1)
+    }
+
+    // #422 (the owner's addition): a typed item is linked to a recipe from its long-press menu.
+
+    private func summary(_ id: Int64, _ title: String) -> RecipeSummary {
+        RecipeSummary(id: id, title: title, imageUrl: nil, totalTime: nil, lastViewedAt: id, isSaved: false)
+    }
+
+    func testATypedItemIsLinkedToARecipeWithNoDayWhenItIsNotPlannedThisWeek() async {
+        library.history.value = [summary(1, "Chicken Adobo"), summary(2, "Weeknight Chili")]
+        await repository.add([NewGroceryLine(text: "2 limes", language: "en")])
+        let vm = await viewModel()
+        let row = (vm.uiState.sections ?? []).flatMap(\.rows)[0]
+
+        vm.onLinkStart(row)
+        await settleMain()
+        XCTAssertEqual(vm.uiState.linking?.results?.map(\.title), ["Chicken Adobo", "Weeknight Chili"])
+        vm.onLinkPick(2)
+        await settleMain()
+
+        XCTAssertNil(vm.uiState.linking)
+        XCTAssertEqual(repository.items.value[0].recipeId, 2)
+        XCTAssertNil(repository.items.value[0].plannedDay)
+    }
+
+    func testARecipePlannedThisWeekLinksOnItsNextPlannedDay() async {
+        library.history.value = [summary(1, "Mushroom omelette")]
+        let today = FakePlanCalendar().today()
+        await plan.addRecipe(recipeId: 1, day: today + 4, mealTypeId: FakeMealPlanRepository.dinner, servings: 3)
+        await plan.addRecipe(recipeId: 1, day: today + 2, mealTypeId: FakeMealPlanRepository.dinner, servings: 5)
+        await repository.add([NewGroceryLine(text: "6 eggs", language: "en")])
+        let vm = await viewModel()
+
+        vm.onLinkStart((vm.uiState.sections ?? []).flatMap(\.rows)[0])
+        vm.onLinkPick(1)
+        await settleMain()
+
+        XCTAssertEqual(repository.items.value[0].plannedDay, today + 2)
+    }
+
+    func testTheLinkIsTakenOffAndAnAppAddedItemIsNeverRelinked() async {
+        library.history.value = [summary(1, "Chicken Adobo")]
+        repository.recipeTitles.value = [1: "Chicken Adobo"]
+        await repository.add([NewGroceryLine(text: "2 limes", language: "en", recipeId: 1)])
+        let vm = await viewModel()
+        let row = (vm.uiState.sections ?? []).flatMap(\.rows)[0]
+
+        vm.onLinkStart(row)
+        XCTAssertNil(vm.uiState.linking, "the app's own link is kept")
+
+        vm.onUnlink(row)
+        await settleMain()
+        XCTAssertNil(repository.items.value[0].recipeId)
+        XCTAssertNil(vm.uiState.recipeTags[row.id])
+
+        vm.onLinkStart((vm.uiState.sections ?? []).flatMap(\.rows)[0])
+        XCTAssertNotNil(vm.uiState.linking)
     }
 }

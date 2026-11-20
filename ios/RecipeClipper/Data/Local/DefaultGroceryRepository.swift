@@ -58,6 +58,13 @@ final class DefaultGroceryRepository: GroceryRepository {
         await perform("setGroceryAisle") { dao in try dao.setAisle(ids, aisle: aisle.key, now: now) }
     }
 
+    func setRecipe(_ ids: [Int64], recipeId: Int64?, plannedDay: Int64?) async {
+        let now = clock.now()
+        await perform("setGroceryRecipe") { dao in
+            try dao.setRecipe(ids, recipeId: recipeId, plannedDay: plannedDay, now: now)
+        }
+    }
+
     func fileFromOther(_ ids: [Int64], aisle: Aisle) async {
         let now = clock.now()
         await perform("fileGroceryAisle") { dao in try dao.fileFromOther(ids, aisle: aisle.key, now: now) }

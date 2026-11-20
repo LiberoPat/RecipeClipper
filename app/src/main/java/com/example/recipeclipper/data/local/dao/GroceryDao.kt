@@ -88,6 +88,10 @@ abstract class GroceryDao {
     @Query("UPDATE grocery_items SET aisle = :aisle, updatedAt = :now WHERE id IN (:ids) AND aisle = 'other'")
     abstract suspend fun fileFromOther(ids: List<Long>, aisle: String, now: Long)
 
+    /** Links items to a recipe (and the planned day it is for, or none), or with a null [recipeId] unlinks them (#422). */
+    @Query("UPDATE grocery_items SET recipeId = :recipeId, plannedDay = :plannedDay, updatedAt = :now WHERE id IN (:ids)")
+    abstract suspend fun setRecipe(ids: List<Long>, recipeId: Long?, plannedDay: Long?, now: Long)
+
     @Query("DELETE FROM grocery_items WHERE id IN (:ids)")
     abstract suspend fun delete(ids: List<Long>)
 

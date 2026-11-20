@@ -527,6 +527,10 @@
     <string name="grocery_tag_for">Para %1$s</string>
     <string name="grocery_tag_for_day">Para %1$s, %2$s</string>
     <string name="grocery_tag_more">Mais %1$d receitas</string>
+    <!-- Linking a typed grocery item to a recipe (#422): its long-press menu, and the picker's title -->
+    <string name="action_for_a_recipe">Para uma receita…</string>
+    <string name="action_not_for_a_recipe">Não é para uma receita</string>
+    <string name="link_recipe_title">Para qual receita?</string>
     <string name="pantry_ran_out">Acabou</string>
     <string name="pantry_restock">Repor</string>
     <string name="pantry_running_low">Acabando</string>

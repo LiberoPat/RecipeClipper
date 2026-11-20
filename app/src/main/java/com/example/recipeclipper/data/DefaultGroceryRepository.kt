@@ -71,6 +71,9 @@ class DefaultGroceryRepository @Inject constructor(
     override suspend fun setAisle(ids: List<Long>, aisle: Aisle) =
         log.guard("setGroceryAisle", Unit) { dao.setAisle(ids, aisle.key, clock.now()) }
 
+    override suspend fun setRecipe(ids: List<Long>, recipeId: Long?, plannedDay: Long?) =
+        log.guard("setGroceryRecipe", Unit) { dao.setRecipe(ids, recipeId, if (recipeId == null) null else plannedDay, clock.now()) }
+
     override suspend fun fileFromOther(ids: List<Long>, aisle: Aisle) =
         log.guard("fileGroceryAisle", Unit) { dao.fileFromOther(ids, aisle.key, clock.now()) }
 

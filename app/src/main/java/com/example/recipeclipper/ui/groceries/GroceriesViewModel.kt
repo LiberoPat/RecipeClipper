@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.model.Decisions
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
+import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryCombiner
 import com.example.recipeclipper.data.model.GroceryItem
@@ -18,12 +19,19 @@ import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryMatch
+import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.RecipeTag
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
@@ -50,6 +58,16 @@ data class PutAwayItem(val key: String, val name: String, val language: String, 
 data class PutAwaySheet(val items: List<PutAwayItem>, val ticked: Set<String>)
 
 /**
+ * "For a recipe…" (#422): the row being linked, what was typed to search the cook's recipes, and
+ * the [results] (most recently viewed first; null until the library has answered).
+ */
+data class LinkRecipeState(
+    val row: GroceryCombiner.Row,
+    val query: String = "",
+    val results: List<RecipeSummary>? = null
+)
+
+/**
  * [sections] is null until the list has loaded. [draft] is the "Add an item" field. [moving]
  * is the row whose aisle is being chosen. [putAway] is the open "Done shopping" sheet.
  * [recipeTitles] names the recipes items came from, for "Send list" (#149). [confirmClearAll] is
@@ -67,7 +85,8 @@ data class GroceriesUiState(
     val recipeTitles: Map<Long, String> = emptyMap(),
     val confirmClearAll: Int? = null,
     val recipeLines: Map<Long, String> = emptyMap(),
-    val recipeTags: Map<Long, List<RecipeTag>> = emptyMap()
+    val recipeTags: Map<Long, List<RecipeTag>> = emptyMap(),
+    val linking: LinkRecipeState? = null
 ) {
     val hasChecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { it.checked } } }
     /** The rows ticked, for the "Done shopping" bar (#286): a combined row is one thing in the basket. */
@@ -104,7 +123,9 @@ class GroceriesViewModel @Inject constructor(
     // The model's aisles for what the keyword table puts in Other (#104); none without it.
     private val decisions: DecisionRepository? = null,
     // The servings a recipe is planned at, for a tag's tap (#422); none opens it at its own yield.
-    private val mealPlan: MealPlanRepository? = null
+    private val mealPlan: MealPlanRepository? = null,
+    // The cook's recipes, for "For a recipe…" (#422); none leaves the item menu without it.
+    private val recipes: RecipeRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GroceriesUiState())
@@ -128,6 +149,9 @@ class GroceriesViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             pantry.observeItems().collect { pantryItems = it }
+        }
+        recipes?.let { library ->
+            viewModelScope.launch { observeLinkSearch(library) }
         }
         viewModelScope.launch {
             repository.observeRecipeTitles().collect { titles ->
@@ -167,6 +191,58 @@ class GroceriesViewModel @Inject constructor(
         sections.orEmpty().flatMap { it.rows }.mapNotNull { row ->
             GroceryShareText.recipes(row.items, titles).takeIf { it.isNotEmpty() }?.let { row.items.first().id to it.joinToString(", ") }
         }.toMap()
+
+    @OptIn(FlowPreview::class)
+    private suspend fun observeLinkSearch(library: RecipeRepository) {
+        _uiState.map { it.linking?.query }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .debounce { if (it.isBlank()) 0L else 250L }
+            .flatMapLatest { library.observeHistory(it) }
+            .collect { found -> _uiState.update { state -> state.copy(linking = state.linking?.copy(results = found)) } }
+    }
+
+    // --- Linking a typed item to a recipe (#422)
+
+    /** Whether "For a recipe…" can open a picker: there is a library to pick from. */
+    val canLink: Boolean get() = recipes != null
+
+    /**
+     * "For a recipe…" on [row]: opens the picker. Only a row with no recipe of its own can be
+     * linked: what the app added from a recipe keeps its link.
+     */
+    fun onLinkStart(row: GroceryCombiner.Row) {
+        if (recipes == null || row.items.any { it.recipeId != null }) return
+        _uiState.update { it.copy(linking = LinkRecipeState(row)) }
+    }
+
+    fun onLinkQueryChange(query: String) = _uiState.update { it.copy(linking = it.linking?.copy(query = query)) }
+
+    fun onLinkDismissed() = _uiState.update { it.copy(linking = null) }
+
+    /**
+     * The recipe chosen: every line of the row is for it, on the next day this week it is planned
+     * ([plannedDayThisWeek]) or with no day.
+     */
+    fun onLinkPick(recipeId: Long) {
+        val row = _uiState.value.linking?.row ?: return
+        _uiState.update { it.copy(linking = null) }
+        viewModelScope.launch {
+            repository.setRecipe(row.items.map { it.id }, recipeId, plannedDayThisWeek(recipeId))
+        }
+    }
+
+    /** "Not for a recipe": takes the link off every line of [row]. */
+    fun onUnlink(row: GroceryCombiner.Row) {
+        viewModelScope.launch { repository.setRecipe(row.items.map { it.id }, null, null) }
+    }
+
+    /** The first day from today through the next six that [recipeId] is planned, or null. */
+    private suspend fun plannedDayThisWeek(recipeId: Long): Long? {
+        val today = calendar.today()
+        return mealPlan?.observeDays(today, today + 6)?.first()
+            ?.filter { it.recipeId == recipeId }?.minOfOrNull { it.day }
+    }
 
     /** The small recipe tags under each row (#422), by the row's first item's id; none for a row only typed in. */
     private fun recipeTags(sections: List<GroceryCombiner.Section>?, titles: Map<Long, String>): Map<Long, List<RecipeTag>> =

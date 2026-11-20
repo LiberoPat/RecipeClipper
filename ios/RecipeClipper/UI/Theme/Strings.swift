@@ -808,6 +808,10 @@ enum Strings {
     static func groceryTagFor(_ recipe: String) -> String { String(localized: "grocery_tag_for \(recipe)") }
     static func groceryTagForDay(_ recipe: String, _ day: String) -> String { String(localized: "grocery_tag_for_day \(recipe) \(day)") }
     static func groceryTagMore(_ n: Int) -> String { String(localized: "grocery_tag_more \(n)") }
+    // Linking a typed grocery item to a recipe (#422): its long-press menu, and the picker's title
+    static var actionForARecipe: String { String(localized: "action_for_a_recipe") }
+    static var actionNotForARecipe: String { String(localized: "action_not_for_a_recipe") }
+    static var linkRecipeTitle: String { String(localized: "link_recipe_title") }
     static func freshKeeps(_ days: String) -> String { String(localized: "fresh_keeps \(days)") }
     static func freshNudge(_ name: String, _ days: String) -> String { String(localized: "fresh_nudge \(name) \(days)") }
     static func freshNudgeSwap(_ day: String) -> String { String(localized: "fresh_nudge_swap \(day)") }

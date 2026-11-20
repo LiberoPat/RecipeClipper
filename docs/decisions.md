@@ -5424,6 +5424,22 @@ platforms. Supersedes the "recipe line" bullet of #286 above while the flag is o
   tap on the row's own area ticks and a tap on a tag opens, and the row's accessibility label no longer
   holds the recipe. The tag's touch area is a few points taller than the pill; the tick, a long-press
   and the tooltip anchors are untouched.
+- **A typed item can be linked to a recipe** (owner's addition, 2026-11-20; same flag). Long-press a row
+  with no recipe of its own: **"For a recipe…"** opens a picker of the cook's recipes (the Week's "+ Add"
+  list without its meal types and notes: `observeHistory`, most recently viewed first, searchable by title
+  or ingredient, one tap links at once). The row's lines then carry that recipe: its tag, with **the next
+  day this week (today and the six after) it is planned**, else no day. A row that has a recipe offers
+  **"Not for a recipe"**, which takes the link off every line. **No new column and no migration:** a link
+  is the item's existing `recipeId` (and `plannedDay`), set by `GroceryRepository.setRecipe` (the DAO's
+  one `UPDATE`), so export/import already carry it and the schema is unchanged (Room 17, iOS
+  `user_version` 16). **The trade-off:** nothing records *who* made a link, so the app's own links (an
+  item added from a recipe or the plan) cannot be told from the cook's. The rule that keeps the app's
+  links safe is that **"For a recipe…" is offered only to a row none of whose lines has a recipe**, so a
+  link is never overwritten; "Not for a recipe" can take any link off (a cook who ate that recipe
+  elsewhere), which only loses a tag. A row mixing linked and unlinked lines is offered the second only.
+  If telling the two apart ever matters, a `linkedByUser` column is the migration to add. The item's
+  tap-to-tick, aisle and the rest of its menu are unchanged. Strings `action_for_a_recipe`,
+  `action_not_for_a_recipe`, `link_recipe_title` (six languages, both platforms).
 - **Shop for this week's rows** (Buy now, Buy later, In your pantry) use the same tag under each line:
   there each line already named one recipe and day, so a line is its text with its one tag below, in
   place of the muted "Recipe · Thu" line. The Week's stack opens the recipe at the planned servings.
@@ -5436,9 +5452,11 @@ platforms. Supersedes the "recipe line" bullet of #286 above while the flag is o
   `recipeTags` and `onOpenRecipe`, the flag from `LocalFlagValues` / `featureFlags`.
 - **Tests.** `GroceryRecipeTagsTest`, `GroceryRecipeTagsScreenTest` (tag shown with and without a day,
   hidden for typed and gone, "+N", a tap opens at the planned servings or the yield, the tick still
-  ticks, flag off), `WhatINeedRecipeTagsScreenTest` (all three sections); iOS `GroceryRecipeTagsTests`,
-  `GroceryRecipeTagsViewModelTests`, and `GroceriesUITests.testARecipesLinesGoOnTheListByAisle` (tag,
-  tap, Back, the row still ticks).
+  ticks, flag off, linking and unlinking from the menu, the planned day), `GroceryDaoTest.aTypedItemIsLinkedToARecipeAndUnlinked`,
+  `WhatINeedRecipeTagsScreenTest` (all three sections); iOS `GroceryRecipeTagsTests`,
+  `GroceryRecipeTagsViewModelTests` (including the link), `GroceryDaoTests`, and `GroceriesUITests`
+  (`testARecipesLinesGoOnTheListByAisle`: tag, tap, Back, the row still ticks;
+  `testATypedItemIsLinkedToARecipeAndUnlinked`).
 
 ## Paste an AI's answer in the app (#372, 2026-11-19)
 

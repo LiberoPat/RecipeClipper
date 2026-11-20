@@ -244,6 +244,9 @@ fun GroceriesScreen(
                                 recipes = if (recipeTags) null else state.recipeLines[row.items.first().id],
                                 tags = if (recipeTags) state.recipeTags[row.items.first().id].orEmpty() else emptyList(),
                                 onOpenTag = { tag -> viewModel.onOpenRecipe(tag, onOpenRecipe) },
+                                links = recipeTags && viewModel.canLink,
+                                onLink = viewModel::onLinkStart,
+                                onUnlink = viewModel::onUnlink,
                                 first = row == firstRow,
                                 onToggle = viewModel::onToggle,
                                 onMove = viewModel::onMoveStart,
@@ -261,6 +264,9 @@ fun GroceriesScreen(
                 onSelect = viewModel::onMoveTo,
                 onDismiss = viewModel::onMoveDismissed
             )
+        }
+        state.linking?.let { linking ->
+            LinkRecipeSheet(linking, viewModel::onLinkQueryChange, viewModel::onLinkPick, viewModel::onLinkDismissed)
         }
         state.putAway?.let { sheet ->
             PutAwaySheetView(
@@ -414,7 +420,8 @@ private fun AisleLabel(name: String) {
  * can't be added up honestly sit under their ingredient's name, as written, without ticks of
  * their own: ticking the row ticks them all. Under those, [recipes] names the recipes the row
  * came from (#286), or with the recipe tags (#422) [tags] show them, on a line of their own; a
- * row only typed in has neither.
+ * row only typed in has neither. With [links] (#422) the long-press menu also links a row with no
+ * recipe of its own to one of the cook's recipes ([onLink]), and takes a link off ([onUnlink]).
  */
 @Composable
 private fun GroceryRowView(
@@ -422,6 +429,9 @@ private fun GroceryRowView(
     recipes: String?,
     tags: List<RecipeTag>,
     onOpenTag: (RecipeTag) -> Unit,
+    links: Boolean,
+    onLink: (GroceryRow) -> Unit,
+    onUnlink: (GroceryRow) -> Unit,
     first: Boolean,
     onToggle: (GroceryRow) -> Unit,
     onMove: (GroceryRow) -> Unit,
@@ -435,6 +445,10 @@ private fun GroceryRowView(
             tag = "grocery-${row.item.id}",
             tags = tags,
             onOpenTag = onOpenTag,
+            canLink = links && row.items.none { it.recipeId != null },
+            canUnlink = links && row.items.any { it.recipeId != null },
+            onLink = { onLink(row) },
+            onUnlink = { onUnlink(row) },
             first = first,
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
@@ -447,6 +461,10 @@ private fun GroceryRowView(
             tag = "grocery-${row.items.first().id}",
             tags = tags,
             onOpenTag = onOpenTag,
+            canLink = links && row.items.none { it.recipeId != null },
+            canUnlink = links && row.items.any { it.recipeId != null },
+            onLink = { onLink(row) },
+            onUnlink = { onUnlink(row) },
             first = first,
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
@@ -459,6 +477,10 @@ private fun GroceryRowView(
             tag = "grocery-${row.items.first().id}",
             tags = tags,
             onOpenTag = onOpenTag,
+            canLink = links && row.items.none { it.recipeId != null },
+            canUnlink = links && row.items.any { it.recipeId != null },
+            onLink = { onLink(row) },
+            onUnlink = { onUnlink(row) },
             first = first,
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
@@ -476,6 +498,10 @@ private fun CheckLine(
     tag: String,
     tags: List<RecipeTag>,
     onOpenTag: (RecipeTag) -> Unit,
+    canLink: Boolean,
+    canUnlink: Boolean,
+    onLink: () -> Unit,
+    onUnlink: () -> Unit,
     first: Boolean,
     onToggle: () -> Unit,
     onMove: () -> Unit,
@@ -514,6 +540,25 @@ private fun CheckLine(
             RoundTick(checked, Modifier.padding(top = 2.dp))
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            // A typed or shared-list item can be linked to a recipe, and a link taken off (#422).
+            if (canLink) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_for_a_recipe)) },
+                    onClick = {
+                        menuOpen = false
+                        onLink()
+                    }
+                )
+            }
+            if (canUnlink) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_not_for_a_recipe)) },
+                    onClick = {
+                        menuOpen = false
+                        onUnlink()
+                    }
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_move_to_aisle)) },
                 onClick = {

@@ -55,6 +55,12 @@ class FakeGroceryRepository : GroceryRepository {
         items.value = items.value.map { if (it.id in ids) it.copy(aisle = aisle) else it }
     }
 
+    override suspend fun setRecipe(ids: List<Long>, recipeId: Long?, plannedDay: Long?) {
+        items.value = items.value.map {
+            if (it.id in ids) it.copy(recipeId = recipeId, plannedDay = if (recipeId == null) null else plannedDay) else it
+        }
+    }
+
     override suspend fun fileFromOther(ids: List<Long>, aisle: Aisle) {
         items.value = items.value.map { if (it.id in ids && it.aisle == Aisle.OTHER) it.copy(aisle = aisle) else it }
     }

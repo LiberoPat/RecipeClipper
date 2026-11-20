@@ -28,6 +28,12 @@ interface GroceryRepository {
     suspend fun setAisle(ids: List<Long>, aisle: Aisle)
 
     /**
+     * Links items to a recipe, with the planned day it is for when the recipe is planned (#422), or
+     * with a null [recipeId] takes the link off. The user's choice: a typed item has no recipe of its own.
+     */
+    suspend fun setRecipe(ids: List<Long>, recipeId: Long?, plannedDay: Long?)
+
+    /**
      * Files items the keyword table left in Other into the model's [aisle] (#104), only while
      * they are still in Other: a move the user made meanwhile stands.
      */

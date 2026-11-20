@@ -30,6 +30,14 @@ struct PutAwaySheet: Equatable {
     var ticked: Set<String>
 }
 
+/// "For a recipe…" (#422): the row being linked, what was typed to search the cook's recipes, and the
+/// `results` (most recently viewed first; nil until the library has answered).
+struct LinkRecipeState: Equatable {
+    let row: GroceryCombiner.Row
+    var query = ""
+    var results: [RecipeSummary]?
+}
+
 /// `sections` is nil until the list has loaded. `draft` is the "Add an item" field. `moving`
 /// is the row whose aisle is being chosen. `putAway` is the open "Done shopping" sheet.
 /// `recipeTitles` names the recipes items came from, for "Send list" (#149). `confirmClearAll` is
@@ -47,6 +55,7 @@ struct GroceriesUiState: Equatable {
     var confirmClearAll: Int?
     var recipeLines: [Int64: String] = [:]
     var recipeTags: [Int64: [RecipeTag]] = [:]
+    var linking: LinkRecipeState?
 
     var hasChecked: Bool { (sections ?? []).contains { $0.rows.contains { $0.items.contains(where: \.checked) } } }
     /// The rows ticked, for the "Done shopping" bar (#286): a combined row is one thing in the basket.
@@ -83,6 +92,10 @@ final class GroceriesViewModel {
     @ObservationIgnored private let calendar: PlanCalendar
     // The servings a recipe is planned at, for a tag's tap (#422); none opens it at its own yield.
     @ObservationIgnored private let mealPlan: MealPlanRepository?
+    // The cook's recipes, for "For a recipe…" (#422); none leaves the item menu without it.
+    @ObservationIgnored private let recipes: RecipeRepository?
+    @ObservationIgnored private var linkSubscription: AnyCancellable?
+    @ObservationIgnored private var linkTask: Task<Void, Never>?
     @ObservationIgnored private let phoneLanguage: () -> String?
     @ObservationIgnored private var subscription: AnyCancellable?
     @ObservationIgnored private var pantrySubscription: AnyCancellable?
@@ -95,13 +108,14 @@ final class GroceriesViewModel {
 
     init(
         repository: GroceryRepository, pantry: PantryRepository, calendar: PlanCalendar,
-        decisions: DecisionRepository? = nil, mealPlan: MealPlanRepository? = nil,
+        decisions: DecisionRepository? = nil, mealPlan: MealPlanRepository? = nil, recipes: RecipeRepository? = nil,
         phoneLanguage: @escaping () -> String? = { Locale.current.language.languageCode?.identifier }
     ) {
         self.repository = repository
         self.pantry = pantry
         self.calendar = calendar
         self.mealPlan = mealPlan
+        self.recipes = recipes
         self.phoneLanguage = phoneLanguage
         removals = GroceryRemovals(repository: repository, pantry: pantry)
         questions = decisions.map { GroceryQuestions(decisions: $0, repository: repository) }
@@ -155,6 +169,68 @@ final class GroceriesViewModel {
             if !recipes.isEmpty { lines[row.id] = recipes.joined(separator: ", ") }
         }
         return lines
+    }
+
+    // MARK: Linking a typed item to a recipe (#422)
+
+    /// Whether "For a recipe…" can open a picker: there is a library to pick from.
+    var canLink: Bool { recipes != nil }
+
+    /// "For a recipe…" on `row`: opens the picker. Only a row with no recipe of its own can be
+    /// linked: what the app added from a recipe keeps its link.
+    func onLinkStart(_ row: GroceryCombiner.Row) {
+        guard recipes != nil, row.items.allSatisfy({ $0.recipeId == nil }) else { return }
+        uiState.linking = LinkRecipeState(row: row)
+        searchLink("")
+    }
+
+    func onLinkQueryChange(_ query: String) {
+        uiState.linking?.query = query
+        searchLink(query)
+    }
+
+    /// Debounced when something is typed, then the latest query's history only.
+    private func searchLink(_ query: String) {
+        linkTask?.cancel()
+        let blank = query.kIsBlank
+        linkTask = Task { [weak self] in
+            if !blank { try? await Task.sleep(nanoseconds: 250_000_000) }
+            guard !Task.isCancelled, let self, let recipes = self.recipes else { return }
+            self.linkSubscription = recipes.observeHistory(query: query)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] found in self?.uiState.linking?.results = found }
+        }
+    }
+
+    func onLinkDismissed() {
+        linkTask?.cancel()
+        linkSubscription = nil
+        uiState.linking = nil
+    }
+
+    /// The recipe chosen: every line of the row is for it, on the next day this week it is planned
+    /// or with no day.
+    func onLinkPick(_ recipeId: Int64) {
+        guard let row = uiState.linking?.row else { return }
+        onLinkDismissed()
+        Task {
+            let day = await plannedDayThisWeek(recipeId)
+            await repository.setRecipe(row.items.map(\.id), recipeId: recipeId, plannedDay: day)
+        }
+    }
+
+    /// "Not for a recipe": takes the link off every line of `row`.
+    func onUnlink(_ row: GroceryCombiner.Row) {
+        Task { await repository.setRecipe(row.items.map(\.id), recipeId: nil, plannedDay: nil) }
+    }
+
+    /// The first day from today through the next six that `recipeId` is planned, or nil.
+    private func plannedDayThisWeek(_ recipeId: Int64) async -> Int64? {
+        guard let mealPlan else { return nil }
+        let today = calendar.today()
+        var found: [PlannedMeal] = []
+        for await meals in mealPlan.observeDays(start: today, end: today + 6).values { found = meals; break }
+        return found.filter { $0.recipeId == recipeId }.map(\.day).min()
     }
 
     /// The small recipe tags under each row (#422), by the row's id; none for a row only typed in.

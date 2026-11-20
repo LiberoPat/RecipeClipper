@@ -354,7 +354,7 @@ final class AppContainer {
     func makeGroceriesViewModel() -> GroceriesViewModel {
         GroceriesViewModel(
             repository: groceryRepository, pantry: pantryRepository, calendar: planCalendar, decisions: decisionRepository,
-            mealPlan: mealPlanRepository
+            mealPlan: mealPlanRepository, recipes: recipeRepository
         )
     }
 

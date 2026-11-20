@@ -661,6 +661,10 @@ protocol GroceryRepository: AnyObject {
 
     /// Moves items to another aisle: the user's choice, kept from then on.
     func setAisle(_ ids: [Int64], aisle: Aisle) async
+
+    /// Links items to a recipe, with the planned day it is for when the recipe is planned (#422), or
+    /// with a nil `recipeId` takes the link off. The user's choice: a typed item has no recipe of its own.
+    func setRecipe(_ ids: [Int64], recipeId: Int64?, plannedDay: Int64?) async
     /// Files items the keyword table left in Other into the model's `aisle` (#104), only while
     /// they are still in Other: a move the user made meanwhile stands.
     func fileFromOther(_ ids: [Int64], aisle: Aisle) async

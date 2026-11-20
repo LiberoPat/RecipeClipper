@@ -53,6 +53,7 @@ struct GroceriesScreen: View {
                             row: row, recipes: recipeTags ? nil : state.recipeLines[row.id],
                             tags: recipeTags ? state.recipeTags[row.id] ?? [] : [],
                             onOpenTag: { tag in vm.onOpenRecipe(tag, open: onOpenRecipe) },
+                            links: recipeTags && vm.canLink,
                             first: row.id == state.sections?.first?.rows.first?.id, vm: vm
                         )
                     }
@@ -153,6 +154,11 @@ struct GroceriesScreen: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
+        }
+        .sheet(isPresented: Binding(get: { state.linking != nil }, set: { if !$0 { vm.onLinkDismissed() } })) {
+            LinkRecipeSheet(vm: vm)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: Binding(get: { state.putAway != nil }, set: { if !$0 { vm.onPutAwayDismissed() } })) {
             if let sheet = vm.uiState.putAway {
@@ -261,6 +267,8 @@ private struct GroceryRowView: View {
     let recipes: String?
     let tags: [RecipeTag]
     let onOpenTag: (RecipeTag) -> Void
+    /// The long-press menu also links a row with no recipe of its own to one of the cook's recipes, and takes a link off (#422).
+    let links: Bool
     let first: Bool
     let vm: GroceriesViewModel
 
@@ -270,19 +278,19 @@ private struct GroceryRowView: View {
         case .single(let item):
             CheckLine(
                 text: item.text, detail: recipeLine, checked: item.checked, row: row, label: item.text,
-                tags: tags, onOpenTag: onOpenTag, first: first, vm: vm
+                tags: tags, onOpenTag: onOpenTag, links: links, first: first, vm: vm
             )
         case .combined(_, let text, let items):
             // "2 corn × 3" under "6 corn"; nothing under a line that is its own detail.
             CheckLine(
                 text: text, detail: [GroceryCombiner.lines(row).joined(separator: " + ")].filter { $0 != text } + recipeLine,
-                checked: items.allSatisfy(\.checked), row: row, label: text, tags: tags, onOpenTag: onOpenTag, first: first, vm: vm
+                checked: items.allSatisfy(\.checked), row: row, label: text, tags: tags, onOpenTag: onOpenTag, links: links, first: first, vm: vm
             )
         case .together(let name, let items):
             // One tick for the ingredient; its lines, as written, have none of their own.
             CheckLine(
                 text: name, detail: GroceryCombiner.lines(row) + recipeLine,
-                checked: items.allSatisfy(\.checked), row: row, label: name, tags: tags, onOpenTag: onOpenTag, first: first, vm: vm
+                checked: items.allSatisfy(\.checked), row: row, label: name, tags: tags, onOpenTag: onOpenTag, links: links, first: first, vm: vm
             )
         }
     }
@@ -339,6 +347,7 @@ private struct CheckLine: View {
     /// not inside it, so a tap on one never ticks the row and a tap on the row never opens a recipe.
     var tags: [RecipeTag] = []
     var onOpenTag: (RecipeTag) -> Void = { _ in }
+    var links = false
     let first: Bool
     let vm: GroceriesViewModel
 
@@ -379,10 +388,63 @@ private struct CheckLine: View {
         .accessibilityAddTraits(checked ? [.isSelected] : [])
         .accessibilityIdentifier("grocery-\(row.id)")
         .contextMenu {
+            // A typed or shared-list item can be linked to a recipe, and a link taken off (#422).
+            if links && row.items.allSatisfy({ $0.recipeId == nil }) {
+                Button { vm.onLinkStart(row) } label: { Label(Strings.actionForARecipe, systemImage: "book") }
+            }
+            if links && row.items.contains(where: { $0.recipeId != nil }) {
+                Button { vm.onUnlink(row) } label: { Label(Strings.actionNotForARecipe, systemImage: "book.closed") }
+            }
             Button { vm.onMoveStart(row) } label: { Label(Strings.moveToAisle, systemImage: "arrow.right") }
             Button(role: .destructive) { vm.onDelete(row, label: label) } label: {
                 Label(Strings.delete, systemImage: "trash")
             }
+        }
+    }
+}
+
+/// "For a recipe…" (#422): the cook's recipes, most recently viewed first, searchable by title or
+/// ingredient; one tap links the item to it (the Week's "+ Add" list without its meal types and notes).
+private struct LinkRecipeSheet: View {
+    let vm: GroceriesViewModel
+
+    var body: some View {
+        if let linking = vm.uiState.linking {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    SectionHeading(Strings.linkRecipeTitle).padding(.bottom, 12)
+                    OutlinedField(
+                        label: Strings.searchRecipes,
+                        text: Binding(get: { linking.query }, set: vm.onLinkQueryChange)
+                    )
+                    .accessibilityIdentifier("linkSearch")
+                    if let results = linking.results, results.isEmpty, linking.query.kIsBlank {
+                        Text(Strings.homeEmptyHint)
+                            .textStyle(Typography.bodyMedium)
+                            .foregroundStyle(Palette.muted)
+                            .padding(.top, 8)
+                    }
+                    ForEach(linking.results ?? []) { recipe in
+                        Button { vm.onLinkPick(recipe.id) } label: {
+                            Text(recipe.title)
+                                .textStyle(Typography.bodyLarge)
+                                .foregroundStyle(Palette.onBackground)
+                                .lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 10)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("link-\(recipe.id)")
+                        Hairline()
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 24)
+                .readableColumn()
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .presentationBackground(Palette.background)
         }
     }
 }
