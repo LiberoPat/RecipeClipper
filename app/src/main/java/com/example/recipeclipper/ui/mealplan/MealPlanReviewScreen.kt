@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.FreshNudge
 import com.example.recipeclipper.ui.common.FreshNudgeNote
 import com.example.recipeclipper.ui.common.noticeMessage
@@ -97,10 +98,19 @@ fun MealPlanReviewScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    stringResource(R.string.mealplan_intro),
+                    stringResource(if (state.meals) R.string.mealplan_intro_meals else R.string.mealplan_intro),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (state.notFound > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.mealplan_not_found, state.notFound),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("mealplan_not_found")
+                    )
+                }
                 if (state.cutOff) {
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -132,7 +142,10 @@ fun MealPlanReviewScreen(
                     state.loading -> CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     else -> {
                         state.items.forEach { item ->
-                            ReviewRow(item, state.days, viewModel::onTick, viewModel::onDay, state.nudges[item.index], viewModel::onSwap)
+                            ReviewRow(
+                                item, state.days, state.meals, state.mealTypes, viewModel::onTick, viewModel::onDay,
+                                viewModel::onMeal, state.nudges[item.index], viewModel::onSwap
+                            )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
                         Spacer(Modifier.height(12.dp))
@@ -169,8 +182,11 @@ private fun LimitNotice(state: MealPlanReviewUiState, onUnlock: () -> Unit) {
 private fun ReviewRow(
     item: ReviewItem,
     days: List<Long>,
+    meals: Boolean,
+    mealTypes: List<MealType>,
     onTick: (Int) -> Unit,
     onDay: (Int, Long?) -> Unit,
+    onMeal: (Int, Long) -> Unit,
     nudge: FreshNudge?,
     onSwap: (Int) -> Unit
 ) {
@@ -185,7 +201,14 @@ private fun ReviewRow(
                 Checkbox(checked = item.ticked, onCheckedChange = null, modifier = Modifier.padding(end = 12.dp, top = 8.dp, bottom = 8.dp))
                 Column(Modifier.weight(1f)) {
                     Text(item.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    if (item.preview.isNotEmpty()) {
+                    if (item.existing) {
+                        Text(
+                            stringResource(R.string.mealplan_already),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.testTag("mealplan_already_${item.index}")
+                        )
+                    } else if (item.preview.isNotEmpty()) {
                         Text(
                             item.preview,
                             style = MaterialTheme.typography.bodySmall,
@@ -197,6 +220,19 @@ private fun ReviewRow(
                 }
             }
             DayPicker(item, days, onDay)
+        }
+        if (meals && mealTypes.isNotEmpty()) {
+            Row(Modifier.padding(start = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+                MealPicker(item, mealTypes, onMeal)
+            }
+        }
+        if (item.existing && item.ticked && item.day == null) {
+            Text(
+                stringResource(R.string.mealplan_pick_day),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 40.dp).testTag("mealplan_pick_day_${item.index}")
+            )
         }
         if (item.passed && item.day == null) {
             Text(
@@ -240,6 +276,25 @@ private fun DayPicker(item: ReviewItem, days: List<Long>, onDay: (Int, Long?) ->
                 text = { Text(stringResource(R.string.mealplan_day_dont_plan)) },
                 onClick = { onDay(item.index, null); open = false }
             )
+        }
+    }
+}
+
+/** A row's meal, a button over a menu of the cook's meal types (#392): the one it is planned under. */
+@Composable
+private fun MealPicker(item: ReviewItem, types: List<MealType>, onMeal: (Int, Long) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val label = types.firstOrNull { it.id == item.mealTypeId }?.name ?: types.first().name
+    val description = stringResource(R.string.mealplan_meal_for, item.name)
+    Column {
+        TextButton(
+            onClick = { open = true },
+            modifier = Modifier.testTag("mealplan_meal_${item.index}").semantics { contentDescription = "$description: $label" }
+        ) { Text(label) }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            types.forEach { type ->
+                DropdownMenuItem(text = { Text(type.name) }, onClick = { onMeal(item.index, type.id); open = false })
+            }
         }
     }
 }

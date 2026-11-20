@@ -5,6 +5,9 @@ import Observation
 /// One recipe of the review (#352). `day` is the day the cook has chosen to plan it on (an epoch
 /// day), nil to leave it unplanned; `passed` says the answer's own day is already behind us, so
 /// the row asks for another. `fits` is false for a kept recipe the free library has no room for.
+/// With Plan my week's choices (#392, #367): `mealTypeId` is the meal type it is planned under, and
+/// `existingId` is set for a recipe the answer named by its link that is already in the library: Save
+/// plans that recipe, never a duplicate.
 struct ReviewItem: Equatable, Identifiable {
     let index: Int
     let name: String
@@ -14,8 +17,16 @@ struct ReviewItem: Equatable, Identifiable {
     let passed: Bool
     var ticked: Bool
     var fits = true
+    var mealTypeId: Int64? = nil
+    var existingId: Int64? = nil
 
     var id: Int { index }
+
+    /// The recipe is one the cook has: Save only plans it.
+    var existing: Bool { existingId != nil }
+
+    /// Save does something with this row: a new recipe that fits, or an existing one with a day.
+    var saves: Bool { ticked && (existing ? day != nil : fits) }
 }
 
 /// `room` is how many more recipes the free library holds, nil without a limit. `kept` counts the
@@ -29,6 +40,12 @@ struct MealPlanReviewUiState: Equatable {
     var copied = false
     /// The days the pickers offer: today and the next 13.
     var days: [Int64] = []
+    /// Plan my week's choices are on (#392): each row shows its meal, to change like its day.
+    var meals = false
+    /// The cook's meal types, for each row's meal picker.
+    var mealTypes: [MealType] = []
+    /// How many recipes the answer named by a link that matches nothing saved: left out, never made up (#367).
+    var notFound = 0
     var room: Int?
     var saving = false
     var saveFailed = false
@@ -42,8 +59,8 @@ struct MealPlanReviewUiState: Equatable {
     var nudges: [Int: FreshNudge] = [:]
 
     var tickedCount: Int { items.filter(\.ticked).count }
-    /// The kept recipes that will be saved: the ticked ones that fit.
-    var savingCount: Int { items.filter { $0.ticked && $0.fits }.count }
+    /// What Save does: the new recipes ticked that fit, and the ticked existing ones with a day.
+    var savingCount: Int { items.filter(\.saves).count }
     /// Some ticked recipes won't be saved for want of room: the review says so and offers Unlock.
     var overLimit: Bool { items.contains { $0.ticked && !$0.fits } }
 }
@@ -68,6 +85,8 @@ final class MealPlanReviewViewModel {
     @ObservationIgnored private let plan: MealPlanRepository
     @ObservationIgnored private let limit: () -> LibraryLimit
     @ObservationIgnored private let entitlements: Entitlements
+    /// Plan my week's choices (#392, #367) are on: nil/false reads the answer as before, dinners and new recipes.
+    @ObservationIgnored private let meals: Bool
     /// What was read, by `ReviewItem.index`; the rows are these with the cook's choices.
     @ObservationIgnored private var read: [MealPlanImport.Item] = []
     @ObservationIgnored private var mealTypes: [MealType] = []
@@ -80,12 +99,13 @@ final class MealPlanReviewViewModel {
     init(
         text: String, recipes: RecipeRepository, plan: MealPlanRepository, calendar: PlanCalendar,
         limit: @escaping () -> LibraryLimit = { .unlimited }, entitlements: Entitlements = UnavailableEntitlements(),
-        freshFood: Bool = false
+        freshFood: Bool = false, planPlus: Bool = false
     ) {
         self.recipes = recipes
         self.plan = plan
         self.limit = limit
         self.entitlements = entitlements
+        self.meals = planPlus
         let today = calendar.today()
         self.today = today
         uiState.days = (0..<PlanDays.sheetDays).map { today + Int64($0) }
@@ -99,8 +119,16 @@ final class MealPlanReviewViewModel {
                 }
             }
         }
-        uiState.items = read.enumerated().map { Self.row($0.offset, $0.element, today: today) }
-        uiState.loading = false
+        if planPlus {
+            // The meal types and, for recipes named by link, the library are read once before the rows show.
+            uiState.meals = true
+            Task { await loadRows(cutOff: found?.cutOff ?? false) }
+        } else {
+            // With the choices off a recipe named by its link is left out, as it always was.
+            uiState.items = read.enumerated().filter { !$0.element.namesSavedRecipe }
+                .map { Self.row($0.offset, $0.element, today: today) }
+            uiState.loading = false
+        }
         plan.observeMealTypes()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] types in self?.mealTypes = types }
@@ -115,12 +143,45 @@ final class MealPlanReviewViewModel {
         refreshRoom()
     }
 
-    private static func row(_ index: Int, _ item: MealPlanImport.Item, today: Int64) -> ReviewItem {
+    /// The rows with Plan my week's choices on: each meal mapped to a type by the name the prompt used
+    /// (else Dinner), each recipe named by its link matched to the library or left out and counted.
+    private func loadRows(cutOff: Bool) async {
+        var types: [MealType] = []
+        for await value in plan.observeMealTypes().values { types = value; break }
+        var saved: [RecipeSummary] = []
+        if read.contains(where: \.namesSavedRecipe) {
+            for await value in recipes.observeHistory(query: "").values { saved = value; break }
+        }
+        var notFound = 0
+        var rows: [ReviewItem] = []
+        for (i, item) in read.enumerated() {
+            if !item.namesSavedRecipe {
+                rows.append(Self.row(i, item, today: today, types: types))
+            } else if let match = SavedLink.find(item.link ?? "", in: saved) {
+                rows.append(Self.row(i, item, today: today, types: types, existingId: match.id, existingTitle: match.title))
+            } else {
+                notFound += 1
+            }
+        }
+        mealTypes = types
+        uiState.items = rows
+        uiState.mealTypes = types
+        uiState.notFound = notFound
+        uiState.loading = false
+        fit()
+    }
+
+    private static func row(
+        _ index: Int, _ item: MealPlanImport.Item, today: Int64, types: [MealType]? = nil,
+        existingId: Int64? = nil, existingTitle: String? = nil
+    ) -> ReviewItem {
         let passed = item.day.map { $0 < today } ?? false
         return ReviewItem(
-            index: index, name: item.recipe.name,
+            index: index, name: existingTitle ?? item.recipe.name,
             preview: item.recipe.ingredients.prefix(3).joined(separator: ", "),
-            day: passed ? nil : item.day, passed: passed, ticked: true
+            day: passed ? nil : item.day, passed: passed, ticked: true,
+            // The meal the prompt listed, by the name it used; else Dinner (never guessed from the recipe).
+            mealTypeId: types.flatMap { MealType.idForMeal(item.meal, $0) }, existingId: existingId
         )
     }
 
@@ -145,8 +206,9 @@ final class MealPlanReviewViewModel {
         for i in uiState.items.indices {
             let row = uiState.items[i]
             let remaining = left
-            let fits = !row.ticked || remaining == nil || remaining! > 0
-            if row.ticked, let remaining, remaining > 0 { left = remaining - 1 }
+            // A recipe the cook already has takes no room.
+            let fits = row.existing || !row.ticked || remaining == nil || remaining! > 0
+            if !row.existing, row.ticked, let remaining, remaining > 0 { left = remaining - 1 }
             uiState.items[i].fits = fits
         }
         uiState.nudges = nudgesOf(uiState.items)
@@ -185,6 +247,13 @@ final class MealPlanReviewViewModel {
         changed()
     }
 
+    /// A row's meal type (#392): the one it is planned under.
+    func onMeal(_ index: Int, _ typeId: Int64) {
+        guard let i = uiState.items.firstIndex(where: { $0.index == index }) else { return }
+        uiState.items[i].mealTypeId = typeId
+        changed()
+    }
+
     private func changed() {
         uiState.saveFailed = false
         uiState.unlockNotice = nil
@@ -196,7 +265,7 @@ final class MealPlanReviewViewModel {
         guard !state.loading, !state.saving, state.savingCount > 0 else { return }
         uiState.saving = true
         uiState.saveFailed = false
-        Task { await save(state.items.filter { $0.ticked && $0.fits }) }
+        Task { await save(state.items.filter { $0.ticked && ($0.existing || $0.fits) }) }
     }
 
     private func save(_ rows: [ReviewItem]) async {
@@ -206,6 +275,19 @@ final class MealPlanReviewViewModel {
         var failed = false
         var saved = Set<Int>()
         for row in rows {
+            let type = row.mealTypeId ?? mealType
+            if let existing = row.existingId {
+                // Already in the library (#367): planned on its day and meal, never saved again.
+                guard let day = row.day else { saved.insert(row.index); continue }
+                if let type, await plan.addRecipe(recipeId: existing, day: day, mealTypeId: type, servings: nil) {
+                    saved.insert(row.index)
+                    kept += 1
+                    planned += 1
+                } else {
+                    failed = true
+                }
+                continue
+            }
             let item = read[row.index]
             guard let recipe = await recipes.addManual(
                 draft: RecipeDraft.of(item.recipe), language: item.recipe.language, notes: nil, fromChat: true
@@ -214,8 +296,8 @@ final class MealPlanReviewViewModel {
             if recipe.id == 0 { continue }
             saved.insert(row.index)
             kept += 1
-            if let day = row.day, let mealType,
-               await plan.addRecipe(recipeId: recipe.id, day: day, mealTypeId: mealType, servings: nil) { planned += 1 }
+            if let day = row.day, let type,
+               await plan.addRecipe(recipeId: recipe.id, day: day, mealTypeId: type, servings: nil) { planned += 1 }
         }
         let left = uiState.items.filter { !saved.contains($0.index) }
         uiState.saving = false
@@ -230,7 +312,11 @@ final class MealPlanReviewViewModel {
     /// Unlock from the review (#107): a purchase makes room, which the limit and count then say.
     /// The message that asks the AI for the rest of a cut-off week (#352): the days the answer's
     /// whole recipes leave out (`CutOffMessage`), in the UI language's `words`. The screen copies it.
-    func followUp(_ words: CutOffMessage.Words) -> String { CutOffMessage.forPlan(read.map(\.day), words) }
+    func followUp(_ words: CutOffMessage.Words) -> String {
+        meals
+            ? CutOffMessage.forPlanMeals(read.map { (day: $0.day, meal: $0.meal) }, words)
+            : CutOffMessage.forPlan(read.map(\.day), words)
+    }
 
     /// The screen copied `followUp`: the note says to paste it into the chat.
     func onCopied() { uiState.copied = true }

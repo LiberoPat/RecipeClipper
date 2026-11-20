@@ -99,8 +99,8 @@ class MealPlanImportTest {
         assertTrue(plan.cutOff)
     }
 
-    @Test fun `a month of separate blocks is read, no more than a month is kept`() {
-        val many = (1..40).joinToString("\n") { "```json\n${recipe("R$it", "2026-11-23")}\n```" }
+    @Test fun `a week of separate blocks is read, no more than the ceiling is kept`() {
+        val many = (1..90).joinToString("\n") { "```json\n${recipe("R$it", "2026-11-23")}\n```" }
         assertEquals(MealPlanImport.MAX_RECIPES, MealPlanImport.read(many)!!.items.size)
     }
 
@@ -188,8 +188,8 @@ class MealPlanImportTest {
         assertEquals(listOf("A", "B"), MealPlanImport.read(text)!!.items.map { it.recipe.name })
     }
 
-    @Test fun `no more than a month of recipes are kept`() {
-        val many = (1..40).joinToString(",", "[", "]") { recipe("R$it", "2026-11-23") }
+    @Test fun `no more than the ceiling of recipes are kept`() {
+        val many = (1..90).joinToString(",", "[", "]") { recipe("R$it", "2026-11-23") }
         assertEquals(MealPlanImport.MAX_RECIPES, MealPlanImport.read(many)!!.items.size)
     }
 

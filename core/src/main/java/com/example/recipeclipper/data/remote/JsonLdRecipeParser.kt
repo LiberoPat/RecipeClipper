@@ -107,67 +107,108 @@ internal object JsonLdRecipeParser {
     }
 
     /**
-     * Every Recipe in one JSON [block], in order, each with the raw text of its `day` property
-     * (#352: the meal-plan format, `AskAiPrompt.DAY_FIELD`), null when it has none. Only what a
-     * list holds is walked: a top-level array, `@graph`, an ItemList's `itemListElement` and a
-     * ListItem's `item` (the day may sit on either). Each Recipe is read by [parseRecipeJson], as
-     * [parse] reads the first. The depth cap and the one `Throwable` catch are [parse]'s.
+     * One object [parseEach] found: its [recipe], the raw text of its `day` ([day], #352: the
+     * meal-plan format, `AskAiPrompt.DAY_FIELD`) and of its `meal` ([meal], #392), each null when
+     * it has none. [link] is set only for an object that names a saved recipe by its link and
+     * carries no recipe of its own (#367): `isBasedOn` (a string, or a thing's `@id` or `url`),
+     * else `url`; its [recipe] is then only the name (no ingredients, no steps, no link).
+     */
+    class Found(val recipe: Recipe, val day: String?, val meal: String?, val link: String? = null)
+
+    /**
+     * Every Recipe in one JSON [block], in order, each with its `day` and `meal` property (#352,
+     * #392), null when it has none. Only what a list holds is walked: a top-level array,
+     * `@graph`, an ItemList's `itemListElement` and a ListItem's `item` (the day may sit on
+     * either). Each Recipe is read by [parseRecipeJson], as [parse] reads the first. The depth
+     * cap and the one `Throwable` catch are [parse]'s.
      *
      * With [deep] (the meal-plan reader only, never a page): an object that is not a Recipe is
      * walked through every array and object it holds, under any key, in the keys' sorted order
      * (a wrapper like `{"mealPlan": [...]}` or `{"days": [{"day": ..., "recipe": {...}}]}`). A
-     * wrapper's `day`, or its `date` when it reads as `YYYY-MM-DD`, is carried down to the object
-     * directly under it (an array's elements start afresh), as is a key that is itself such a
-     * date. An object with `recipeIngredient` or `recipeInstructions` counts as a Recipe without
-     * its `@type`, and a Recipe's `date` (as a date) stands for a missing `day`.
+     * wrapper's `day`, or its `date` when it reads as `YYYY-MM-DD`, and its `meal`, are carried
+     * down to the object directly under it (an array's elements start afresh), as is a key that
+     * is itself such a date. An object with `recipeIngredient` or `recipeInstructions` counts as
+     * a Recipe without its `@type`, and a Recipe's `date` (as a date) stands for a missing
+     * `day`. A Recipe with no ingredients and no steps that has a name and a link, or an object
+     * with a name and an `isBasedOn`, is a saved recipe named by its link (#367, [Found.link]).
      */
     fun parseEach(
         block: String, sourceUrl: String = "", pageLanguage: String? = null, deep: Boolean = false
-    ): List<Pair<Recipe, String?>> {
+    ): List<Found> {
         val root = try {
             JSONTokener(block).nextValue()
         } catch (e: Throwable) {
             // As in [parse]: nested deep enough to overflow the stack is a block that isn't one.
             return emptyList()
         }
-        val found = mutableListOf<Pair<Recipe, String?>>()
-        collectRecipes(root, 0, null, found, sourceUrl, pageLanguage, deep)
+        val found = mutableListOf<Found>()
+        collectRecipes(root, 0, null, null, found, sourceUrl, pageLanguage, deep)
         return found
     }
 
     private fun collectRecipes(
-        node: Any?, depth: Int, outerDay: String?, into: MutableList<Pair<Recipe, String?>>,
+        node: Any?, depth: Int, outerDay: String?, outerMeal: String?, into: MutableList<Found>,
         sourceUrl: String, pageLanguage: String?, deep: Boolean
     ) {
         if (depth > MAX_DEPTH) return
         when (node) {
             is JSONArray -> for (i in 0 until node.length()) {
-                collectRecipes(node.opt(i), depth + 1, null, into, sourceUrl, pageLanguage, deep)
+                collectRecipes(node.opt(i), depth + 1, null, null, into, sourceUrl, pageLanguage, deep)
             }
-            is JSONObject ->
-                if (isRecipeType(node.opt("@type")) || deep && (node.has("recipeIngredient") || node.has("recipeInstructions"))) {
-                    parseRecipeJson(node, sourceUrl, pageLanguage)?.let { into += it to (dayOf(node, deep) ?: outerDay) }
-                } else {
-                    val day = dayOf(node, deep) ?: outerDay
-                    if (deep) {
-                        for (key in node.keys().asSequence().toList().sorted()) {
-                            val child = node.opt(key)
-                            if (child !is JSONObject && child !is JSONArray) continue
-                            val keyDay = key.takeIf { MealPlanImport.parseDay(it) != null }
-                            collectRecipes(child, depth + 1, keyDay ?: day, into, sourceUrl, pageLanguage, true)
-                        }
-                    } else {
-                        for (key in listOf("@graph", "itemListElement", "item")) {
-                            if (node.has(key)) collectRecipes(node.opt(key), depth + 1, day, into, sourceUrl, pageLanguage, false)
+            is JSONObject -> {
+                val typed = isRecipeType(node.opt("@type")) || deep && (node.has("recipeIngredient") || node.has("recipeInstructions"))
+                val recipe = if (typed) parseRecipeJson(node, sourceUrl, pageLanguage) else null
+                val link = if (deep && recipe == null) savedLink(node, typed) else null
+                when {
+                    recipe != null -> into += Found(recipe, dayOf(node, deep) ?: outerDay, mealOf(node, deep) ?: outerMeal)
+                    link != null -> {
+                        val named = jsonText(node.optString("name"))
+                        val placeholder = Recipe(
+                            name = named.ifBlank { link }, image = null, ingredients = emptyList(), instructions = emptyList(),
+                            prepTime = null, cookTime = null, totalTime = null, yield = null, sourceUrl = ""
+                        )
+                        into += Found(placeholder, dayOf(node, deep) ?: outerDay, mealOf(node, deep) ?: outerMeal, link)
+                    }
+                    typed -> {} // a Recipe object with nothing to read: skipped, as before
+                    else -> {
+                        val day = dayOf(node, deep) ?: outerDay
+                        val meal = mealOf(node, deep) ?: outerMeal
+                        if (deep) {
+                            for (key in node.keys().asSequence().toList().sorted()) {
+                                val child = node.opt(key)
+                                if (child !is JSONObject && child !is JSONArray) continue
+                                val keyDay = key.takeIf { MealPlanImport.parseDay(it) != null }
+                                collectRecipes(child, depth + 1, keyDay ?: day, meal, into, sourceUrl, pageLanguage, true)
+                            }
+                        } else {
+                            for (key in listOf("@graph", "itemListElement", "item")) {
+                                if (node.has(key)) collectRecipes(node.opt(key), depth + 1, day, null, into, sourceUrl, pageLanguage, false)
+                            }
                         }
                     }
                 }
+            }
         }
     }
 
     private fun dayOf(node: JSONObject, deep: Boolean): String? =
         (node.opt("day") as? String)?.trim()?.ifEmpty { null }
             ?: if (deep) (node.opt("date") as? String)?.trim()?.takeIf { MealPlanImport.parseDay(it) != null } else null
+
+    /** The meal a plan object names (#392), the meal-plan reader's only. */
+    private fun mealOf(node: JSONObject, deep: Boolean): String? =
+        if (deep) (node.opt("meal") as? String)?.trim()?.ifEmpty { null } else null
+
+    /**
+     * The link a body-less object names a saved recipe by (#367): `isBasedOn` (see [basedOnText]),
+     * else, for a Recipe-typed one, a string `url`. It needs a name. Null otherwise.
+     */
+    private fun savedLink(node: JSONObject, typed: Boolean): String? {
+        if (node.optString("name").isBlank()) return null
+        val based = basedOnText(node.opt("isBasedOn"))
+        if (!typed) return based
+        return based ?: (node.opt("url") as? String)?.trim()?.ifEmpty { null }
+    }
 
     /**
      * The `isBasedOn` of the first Recipe in [jsonLdBlocks] (#354): what an AI's reply names as

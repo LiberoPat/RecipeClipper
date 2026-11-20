@@ -229,6 +229,12 @@ enum Strings {
     static func mealPlanKept(_ n: Int) -> String { String(localized: "mealplan_kept \(n)") }
     static var mealPlanOpenWeek: String { String(localized: "mealplan_open_week") }
     static var mealPlanCutOff: String { String(localized: "mealplan_cut_off") }
+    // Plan my week with choices (#392, #367): the review's meals, saved recipes and their note
+    static var mealPlanIntroMeals: String { String(localized: "mealplan_intro_meals") }
+    static var mealPlanAlready: String { String(localized: "mealplan_already") }
+    static func mealPlanMealFor(_ name: String) -> String { String(localized: "mealplan_meal_for \(name)") }
+    static func mealPlanNotFound(_ n: Int) -> String { String(localized: "mealplan_not_found \(n)") }
+    static var mealPlanPickDay: String { String(localized: "mealplan_pick_day") }
     static var cutOffCopyAction: String { String(localized: "cutoff_copy_action") }
     static var cutOffCopied: String { String(localized: "cutoff_copied") }
     /// The follow-up message's sentences in the UI language, for `CutOffMessage`.
@@ -236,7 +242,8 @@ enum Strings {
         CutOffMessage.Words(
             plan: { days in String(localized: "cutoff_ask_plan \(days)") },
             planRest: String(localized: "cutoff_ask_plan_rest"),
-            recipe: String(localized: "cutoff_ask_recipe")
+            recipe: String(localized: "cutoff_ask_recipe"),
+            planMeals: { pairs in String(localized: "cutoff_ask_plan_meals \(pairs)") }
         )
     }
     static var shareSaved: String { String(localized: "share_saved") }
@@ -948,6 +955,27 @@ enum Strings {
     static var askAiKindMakeEmpty: String { String(localized: "ask_ai_kind_make_empty") }
     static var askAiKindPlan: String { String(localized: "ask_ai_kind_plan") }
     static var askAiKindPlanHint: String { String(localized: "ask_ai_kind_plan_hint") }
+    // Plan my week with choices (#392, #367)
+    static var askAiPlanHintNew: String { String(localized: "ask_ai_plan_hint_new") }
+    static var askAiPlanHintMine: String { String(localized: "ask_ai_plan_hint_mine") }
+    static var askAiPlanHintMix: String { String(localized: "ask_ai_plan_hint_mix") }
+    static var askAiPlanMeals: String { String(localized: "ask_ai_plan_meals") }
+    static var askAiPlanMealsNone: String { String(localized: "ask_ai_plan_meals_none") }
+    static var askAiPlanStart: String { String(localized: "ask_ai_plan_start") }
+    static var askAiPlanSource: String { String(localized: "ask_ai_plan_source") }
+    static var askAiPlanSourceNew: String { String(localized: "ask_ai_plan_source_new") }
+    static var askAiPlanSourceMine: String { String(localized: "ask_ai_plan_source_mine") }
+    static var askAiPlanSourceMix: String { String(localized: "ask_ai_plan_source_mix") }
+    static func askAiPlanMixCount(_ n: Int) -> String { String(localized: "ask_ai_plan_mix_count \(n)") }
+    static var askAiPlanMixLess: String { String(localized: "ask_ai_plan_mix_less") }
+    static var askAiPlanMixMore: String { String(localized: "ask_ai_plan_mix_more") }
+    static var askAiPlanFrom: String { String(localized: "ask_ai_plan_from") }
+    static var askAiPlanAllRecipes: String { String(localized: "ask_ai_plan_all_recipes") }
+    static func askAiPlanSent(_ sent: Int, of total: Int) -> String { String(localized: "ask_ai_plan_sent \(sent) \(total)") }
+    static var askAiPlanNoRecipes: String { String(localized: "ask_ai_plan_no_recipes") }
+    static var askAiPlanLong: String { String(localized: "ask_ai_plan_long") }
+    static var askAiPlanUseFavourites: String { String(localized: "ask_ai_plan_use_favourites") }
+    static var askAiPlanSkipCooked: String { String(localized: "ask_ai_plan_skip_cooked") }
     static var askAiCopy: String { String(localized: "ask_ai_copy") }
     static var askAiCopied: String { String(localized: "ask_ai_copied") }
     static var askAiShare: String { String(localized: "ask_ai_share") }
@@ -991,7 +1019,12 @@ enum Strings {
             temperatureCelsius: String(localized: "ai_prompt_temperature_c"),
             temperatureFahrenheit: String(localized: "ai_prompt_temperature_f"),
             writeIn: { String(localized: "ai_prompt_write_in \($0)") },
-            noteOutside: String(localized: "ai_prompt_note_outside")
+            noteOutside: String(localized: "ai_prompt_note_outside"),
+            planMealsIntro: { String(localized: "ai_prompt_plan_meals_intro \($0)") },
+            savedRecipesIntro: String(localized: "ai_prompt_saved_recipes"),
+            useSavedOnly: String(localized: "ai_prompt_use_saved_only"),
+            useSavedMix: { String(localized: "ai_prompt_use_saved_mix \($0)") },
+            replyPlanMeals: String(localized: "ai_prompt_reply_plan_meals \(AskAiPrompt.dayField) \(AskAiPrompt.mealField)")
         )
     }
 }

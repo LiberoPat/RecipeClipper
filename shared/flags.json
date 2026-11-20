@@ -161,6 +161,12 @@
       "description": "Fresh food (#396): Shop for this week splits To buy into Buy now and Buy later in the week (a perishable ingredient, matched in the recipe's language's perishables table, whose every planned meal is 3 or more days from today), each later line saying the day it is for, with its own Add to groceries; the meal-plan review and the Week's meal rows gain a quiet note when a perishable meal is planned later than its group keeps from the plan's first day ('keeps about 1-2 days once bought: cook it earlier?'), with a one-tap swap with the earliest day that fits. Nothing moves unless the cook taps. Off, To buy is one list and there is no note.",
       "defaults": { "debug": true, "release": true },
       "issue": 396
+    },
+    {
+      "key": "planMyWeekPlus",
+      "description": "Ask an AI's Plan my week with choices: the cook's meal types as chips (Dinner ticked, the last choice remembered), a start day, and a source: new recipes, from my recipes (the library or one list, named by link) or a mix. The reader takes each recipe's meal, an object naming a saved recipe by its link is planned from the library, and the review shows and changes day and meal. Off, the sheet and the review are as before: a week of dinners, new recipes.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 392
     }
   ]
 }

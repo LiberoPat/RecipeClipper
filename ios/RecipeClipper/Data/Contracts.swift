@@ -876,6 +876,37 @@ enum UseUpLogFormat {
     }
 }
 
+/// What Ask an AI's "Plan my week" remembers between openings (#392): the meal types ticked last time,
+/// each by `MealType.key` (a seeded type's `builtInKey`, else its `uid`), never by name, which the cook
+/// can change. The start day and the source are not remembered: a plan never silently starts in the
+/// past. In the settings' suite under `plan_my_week_meals`, as Android's `unit_preferences`;
+/// `UserDefaultsAppPreferences` implements it.
+protocol PlanChoices: AnyObject {
+    /// The type keys ticked last time, or nil when nothing was ever chosen (Dinner, then).
+    var planMealKeys: [String]? { get set }
+}
+
+enum PlanChoicesFormat {
+    static let key = "plan_my_week_meals"
+
+    /// Stored comma-separated: a key is a lowercase word or a uid, never holding a comma.
+    static func decode(_ text: String?) -> [String]? {
+        guard let text else { return nil }
+        var seen = Set<String>()
+        let keys = text.split(separator: ",").map { String($0).kTrimmed }.filter { !$0.isEmpty && seen.insert($0).inserted }
+        return keys.isEmpty ? nil : keys
+    }
+
+    static func encode(_ keys: [String]) -> String { keys.joined(separator: ",") }
+}
+
+/// What "Plan my week" remembers, in memory: what a container built for unit tests uses.
+final class MemoryPlanChoices: PlanChoices {
+    var planMealKeys: [String]?
+
+    init(_ planMealKeys: [String]? = nil) { self.planMealKeys = planMealKeys }
+}
+
 /// The use-up log in memory: what a container built for unit tests uses.
 final class MemoryUseUpLog: UseUpLog {
     var useUps: [Int64: Int64]

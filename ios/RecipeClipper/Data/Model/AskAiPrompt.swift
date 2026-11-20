@@ -15,6 +15,13 @@ import Foundation
 /// objects, one per listed day, each with one extra property, `dayField` ("day"), holding that
 /// day's date as `YYYY-MM-DD`, exactly as the prompt listed it.
 ///
+/// Plan my week with choices (#392, #367, `planMyWeekPlus`) asks for one recipe for each chosen meal
+/// on each day, each object carrying `"day"` and `"meal"` (the meal's name exactly as listed). From
+/// the cook's own recipes it lists up to `maxCandidates` of them, most recently viewed first, as
+/// `name | link` (`PlanCandidate`: the link is the recipe's `sourceUrl`, as `isBasedOn` in "Change
+/// this recipe") and asks the AI to name a saved recipe by that link instead of writing it out; the
+/// reader (`MealPlanImport`) finds it again.
+///
 /// "Change this recipe" sends the recipe as schema.org JSON with `isBasedOn` set to the recipe's
 /// `sourceUrl`: the one id every recipe has, unique and never changing (the cleaned link of a
 /// clipped page, `manual:<uuid>` for a typed-in one), and a URL, which is what schema.org's
@@ -26,8 +33,77 @@ enum AskAiPrompt {
     static let maxPantry = 60
     /// At most this many favourites, and this many recently cooked recipes, go into "Plan my week".
     static let maxTitles = 15
-    /// The days "Plan my week" asks for: a week from today.
+    /// The days "Plan my week" asks for: a week from the start day.
     static let planDays = Int(PlanDays.blockDays)
+    /// The meal plan's second extra property (#392): the meal's name, as the prompt listed it.
+    static let mealField = "meal"
+    /// At most this many of the cook's recipes are named in a plan prompt (#367), most recently viewed first.
+    static let maxCandidates = 40
+    /// More than this many recipes to write out make an answer chat apps may cut off (#392): the sheet warns.
+    static let longAnswer = 14
+
+    /// Where a week's recipes come from (#367).
+    enum PlanSource: String, Equatable { case new = "NEW", mine = "MINE", mix = "MIX" }
+
+    /// A saved recipe offered to the AI: its `name` and its `link` (the recipe's `sourceUrl`).
+    struct PlanCandidate: Equatable {
+        var name: String
+        var link: String
+    }
+
+    /// What the plan sheet chose (#392, #367): the `days` (epoch days, from the start day), the `meals`
+    /// (the meal types' names, in the cook's order, as listed in the prompt), where the recipes come
+    /// from, the `candidates` to name (most recently viewed first) and, for a mix, how many of the
+    /// cook's recipes at most (`mix`).
+    struct PlanChoice {
+        var days: [Int64]
+        var meals: [String]
+        var source: PlanSource = .new
+        var candidates: [PlanCandidate] = []
+        var mix = 0
+
+        /// The meals asked for, trimmed, blanks and repeats left out.
+        var mealNames: [String] {
+            var seen = Set<String>()
+            return meals.map(AskAiPrompt.trim).filter { !$0.isEmpty && seen.insert($0.lowercased()).inserted }
+        }
+
+        /// The recipes asked for: every meal on every day.
+        var slots: Int { days.count * mealNames.count }
+
+        /// The candidates actually named: usable ones, at most `maxCandidates`.
+        var named: [PlanCandidate] {
+            candidates.map { PlanCandidate(name: AskAiPrompt.trim($0.name), link: AskAiPrompt.trim($0.link)) }
+                .filter { !$0.name.isEmpty && !$0.link.isEmpty }
+                .prefix(AskAiPrompt.maxCandidates).map { $0 }
+        }
+
+        /// The recipes the AI has to write out, which is what makes an answer long.
+        var writtenOut: Int { AskAiPrompt.recipesToWrite(source, slots, mix) }
+
+        /// The answer may be long enough for a chat app to cut it off.
+        var isLongAnswer: Bool { writtenOut > AskAiPrompt.longAnswer }
+    }
+
+    /// How many of a week's `slots` meals the AI writes out in full: all of them for new recipes, none
+    /// from the cook's own (named by link), and for a `mix` the rest beyond the cook's.
+    static func recipesToWrite(_ source: PlanSource, _ slots: Int, _ mix: Int) -> Int {
+        switch source {
+        case .new: return slots
+        case .mine: return 0
+        case .mix: return max(0, slots - min(max(mix, 1), max(slots, 1)))
+        }
+    }
+
+    /// The recipes of `summaries` as candidates to name (#367), most recently viewed first (the newest
+    /// id first among equals): the tour's sample and any without a name or link are left out. The
+    /// prompt names the first `maxCandidates`; the sheet counts them all.
+    static func candidates(_ summaries: [RecipeSummary]) -> [PlanCandidate] {
+        summaries
+            .filter { !trim($0.title).isEmpty && !trim($0.sourceUrl).isEmpty && !SampleRecipe.isSample($0.sourceUrl) }
+            .sorted { a, b in a.lastViewedAt != b.lastViewedAt ? a.lastViewedAt > b.lastViewedAt : a.id > b.id }
+            .map { PlanCandidate(name: $0.title, link: $0.sourceUrl) }
+    }
 
     /// The words every prompt is made of, in the UI language. `language` is that language's own
     /// name ("Deutsch"), for "write it in …". `weekday` names 1 = Sunday … 7 = Saturday
@@ -56,6 +132,16 @@ enum AskAiPrompt {
         var temperatureFahrenheit: String
         var writeIn: (_ language: String) -> String
         var noteOutside: String
+        /// "Plan one recipe for each of these meals (Breakfast, Dinner) on each of these days:" (#392).
+        var planMealsIntro: (_ meals: String) -> String
+        /// Heads the saved recipes, one `name | link` per line (#367).
+        var savedRecipesIntro: String
+        /// From my recipes only: name them by link, don't write them out.
+        var useSavedOnly: String
+        /// A mix: up to this many saved ones by link, new ones written out.
+        var useSavedMix: (_ count: Int) -> String
+        /// The reply format with a `"day"` and a `"meal"` on each object (#392).
+        var replyPlanMeals: String
 
         static let english = Words(
             language: "English",
@@ -86,7 +172,21 @@ enum AskAiPrompt {
             temperatureCelsius: "Give oven temperatures in °C.",
             temperatureFahrenheit: "Give oven temperatures in °F.",
             writeIn: { "Write it in \($0)." },
-            noteOutside: "Put anything else you want to say outside the code block."
+            noteOutside: "Put anything else you want to say outside the code block.",
+            planMealsIntro: { "Plan one recipe for each of these meals (\($0)) on each of these days:" },
+            savedRecipesIntro: "My saved recipes, one per line as name | link:",
+            useSavedOnly: "Use only my saved recipes listed above. Don't write them out: for each one give just "
+                + "@type \"Recipe\", its \"name\", its link exactly as listed in \"isBasedOn\", and its day and meal. "
+                + "Use a recipe more than once only if there are fewer recipes than meals.",
+            useSavedMix: {
+                "Use up to \($0) of my saved recipes listed above and suggest new recipes for the rest. For a saved "
+                    + "recipe don't write it out: give just @type \"Recipe\", its \"name\", its link exactly as listed in "
+                    + "\"isBasedOn\", and its day and meal. Write every new recipe out in full."
+            },
+            replyPlanMeals: "Reply with a JSON array in one ```json code block: one schema.org Recipe object for each "
+                + "of these meals on each day listed, day by day in the order listed. Give each object two extra "
+                + "properties: \"\(dayField)\", holding that day's date exactly as listed (YYYY-MM-DD), and "
+                + "\"\(mealField)\", holding the meal's name exactly as listed."
         )
     }
 
@@ -145,6 +245,43 @@ enum AskAiPrompt {
             recent.isEmpty ? nil : words.cookedLately(recent),
             wish(request, words),
             reply(words.replyPlan, setup)
+        )
+    }
+
+    /// "Plan my week" with choices (#392, #367): one recipe for each of `choice`'s meals on each of its
+    /// days, from new recipes, the cook's own (named by link) or a mix; `favourites` as ideas and
+    /// `cooked` to avoid (titles; the caller leaves a list out by passing none). The reply is the
+    /// meal-plan format in this type's doc, with `"meal"` too. With no meal, the plain `planMyWeek`.
+    static func planMyWeekPlus(
+        _ choice: PlanChoice, favourites: [String], cooked: [String], request: String, setup: Setup
+    ) -> String {
+        let meals = choice.mealNames
+        if meals.isEmpty {
+            return planMyWeek(days: choice.days, favourites: favourites, cooked: cooked, request: request, setup: setup)
+        }
+        let words = setup.words
+        let listed = choice.days.map { "- \(isoDate($0)) (\(words.weekday(PlanDays.dayOfWeek($0))))" }
+        let named = choice.source == .new ? [] : choice.named
+        let saved: String? = named.isEmpty
+            ? nil : words.savedRecipesIntro + "\n" + named.map { "- \($0.name) | \($0.link)" }.joined(separator: "\n")
+        let source: String?
+        if named.isEmpty {
+            source = nil
+        } else if choice.source == .mine {
+            source = words.useSavedOnly
+        } else {
+            source = words.useSavedMix(min(max(choice.mix, 1), max(choice.slots, 1)))
+        }
+        let liked = titles(favourites), recent = titles(cooked)
+        return lines(
+            words.planMealsIntro(meals.joined(separator: ", ")),
+            listed.joined(separator: "\n"),
+            saved,
+            source,
+            liked.isEmpty ? nil : words.favourites(liked),
+            recent.isEmpty ? nil : words.cookedLately(recent),
+            wish(request, words),
+            reply(words.replyPlanMeals, setup, writeOut: !(choice.source == .mine && !named.isEmpty))
         )
     }
 
@@ -231,7 +368,9 @@ enum AskAiPrompt {
     }
 
     /// The sentence asking for the JSON, then the fields, the units, the temperature, the language.
-    private static func reply(_ ask: String, _ setup: Setup) -> String {
+    /// With `writeOut` false (only saved recipes, named by link) the fields, units and temperature
+    /// are left out: nothing is written out.
+    private static func reply(_ ask: String, _ setup: Setup, writeOut: Bool = true) -> String {
         let words = setup.words
         let units: String
         switch setup.unitSystem {
@@ -245,8 +384,10 @@ enum AskAiPrompt {
         case .celsius: temperature = words.temperatureCelsius
         case .fahrenheit: temperature = words.temperatureFahrenheit
         }
-        return [ask, words.recipeFields, units, temperature, words.writeIn(words.language), words.noteOutside]
-            .compactMap { $0 }.joined(separator: " ")
+        let parts: [String?] = writeOut
+            ? [ask, words.recipeFields, units, temperature, words.writeIn(words.language), words.noteOutside]
+            : [ask, words.writeIn(words.language), words.noteOutside]
+        return parts.compactMap { $0 }.joined(separator: " ")
     }
 
     private static func lines(_ parts: String?...) -> String { parts.compactMap { $0 }.joined(separator: "\n\n") }

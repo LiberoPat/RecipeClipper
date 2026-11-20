@@ -13,9 +13,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.recipeclipper.data.flags.FeatureFlags
-import com.example.recipeclipper.data.flags.FlagRegistry
-import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.remote.MealPlanImport
@@ -30,6 +27,11 @@ import com.example.recipeclipper.ui.navigation.Tab
 import com.example.recipeclipper.ui.navigation.mealPlanDestination
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagRegistry
+import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -60,7 +62,7 @@ class MealPlanReviewScreenTest {
     private lateinit var nav: NavHostController
 
     /** The review as the route opens it: the plan waiting in the inbox under the key the route carries. */
-    private fun show(plan: MealPlanImport.Plan, flags: FeatureFlags? = null) {
+    private fun show(plan: MealPlanImport.Plan, flags: FeatureFlags? = null, meals: Boolean = false) {
         val key = inbox.offerPlan("shared", plan)
         compose.setContent {
             nav = rememberNavController()
@@ -72,7 +74,8 @@ class MealPlanReviewScreenTest {
                     remember(routeKey) {
                         MealPlanReviewViewModel(
                             SavedStateHandle(mapOf(MealPlanReviewViewModel.PLAN_ARG to routeKey)),
-                            recipes, week, FakePlanCalendar(), policy, FakeEntitlements(), inbox, Dispatchers.Unconfined, flags
+                            recipes, week, FakePlanCalendar(), policy, FakeEntitlements(), inbox, Dispatchers.Unconfined,
+                            flags ?: FeatureFlags(FakeFeatureFlagStore(mapOf(Flag.PLAN_MY_WEEK_PLUS.key to meals)), FlagRegistry.definitions, isDebug = true)
                         )
                     }
                 }
@@ -115,6 +118,42 @@ class MealPlanReviewScreenTest {
         compose.waitForIdle()
 
         assertEquals(listOf("Soup"), recipes.addManualCalls.map { it.name })
+    }
+
+    @Test
+    fun withMealsEachRowShowsItsMealAndAnExistingRecipeSaysSo() {
+        recipes.history.value = listOf(
+            RecipeSummary(7, "Chicken Adobo", null, null, 7, true, sourceUrl = "https://example.com/adobo")
+        )
+        val named = MealPlanImport.Item(
+            Recipe(name = "Adobo", image = null, ingredients = emptyList(), instructions = emptyList(), prepTime = null,
+                cookTime = null, totalTime = null, yield = null, sourceUrl = ""),
+            today, "Dinner", "https://example.com/adobo"
+        )
+        val gone = named.copy(link = "https://example.com/gone")
+        val written = MealPlanImport.Item(recipe("Porridge"), today + 1, "Breakfast")
+        show(MealPlanImport.Plan(listOf(named, gone, written)), meals = true)
+
+        compose.onNodeWithText("Chicken Adobo").assertIsDisplayed()
+        compose.onNodeWithText("Already in your recipes").assertIsDisplayed()
+        compose.onNodeWithTag("mealplan_not_found").assertIsDisplayed()
+        compose.onNodeWithText("Left out, not found in your recipes: 1").assertIsDisplayed()
+        compose.onNodeWithTag("mealplan_meal_0").assertIsDisplayed()
+        compose.onNodeWithTag("mealplan_meal_2").assertIsDisplayed()
+        compose.onNodeWithText("Breakfast").assertIsDisplayed()
+
+        // Change the written recipe's meal before Save.
+        compose.onNodeWithTag("mealplan_meal_2").performClick()
+        compose.onNodeWithText("Snack").performClick()
+        recipes.addManualQueue.add(recipe("Porridge", 3))
+        compose.onNodeWithTag("mealplan_save").performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf("Porridge"), recipes.addManualCalls.map { it.name })
+        assertEquals(
+            listOf(7L to FakeMealPlanRepository.DINNER, 3L to FakeMealPlanRepository.SNACK),
+            week.meals.value.map { it.recipeId!! to it.mealTypeId }
+        )
     }
 
     @Test
