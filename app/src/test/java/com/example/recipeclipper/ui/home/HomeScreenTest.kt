@@ -15,11 +15,15 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.CookProgress
+import com.example.recipeclipper.data.model.PlanDays
+import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SavedTimer
+import com.example.recipeclipper.fake.FakeCookedPhotoRepository
 import com.example.recipeclipper.fake.FakeListRepository
+import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.data.remote.SharedText
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.ui.edit.PasteTarget
@@ -73,13 +77,23 @@ class HomeScreenTest {
         var newRecipe = 0
         var url: String? = null
         var pasted: PasteTarget? = null
+        /** Today's card (#402): the recipe, its planned servings, and whether to start cooking. */
+        var planned: Triple<Long, Int?, Boolean>? = null
     }
 
-    private fun show(oneCookbook: Boolean = false, askAi: Boolean = false, pasted: PastedTextRouter? = null): Taps {
+    private val plan = FakeMealPlanRepository()
+    private val cooked = FakeCookedPhotoRepository(today = PlanDays.today(NOW))
+
+    private fun show(
+        oneCookbook: Boolean = false,
+        askAi: Boolean = false,
+        pasted: PastedTextRouter? = null,
+        homeTonight: Boolean = false
+    ): Taps {
         val taps = Taps()
         // Built outside setContent: a ViewModel constructed inside a composable would be
         // rebuilt on every recomposition. A fixed clock, so a timer's time left is known.
-        val viewModel = HomeViewModel(repository, lists = lists, clock = Clock { NOW }, pasted = pasted)
+        val viewModel = HomeViewModel(repository, lists = lists, clock = Clock { NOW }, pasted = pasted, mealPlan = plan, cooked = cooked)
         compose.setContent {
             HomeScreen(
                 onOpenUrl = { taps.url = it },
@@ -90,9 +104,11 @@ class HomeScreenTest {
                 onOpenSettings = { taps.settings++ },
                 onNewRecipe = { taps.newRecipe++ },
                 onResumeCooking = { taps.resumed = it },
+                onOpenPlanned = { id, servings, cook -> taps.planned = Triple(id, servings, cook) },
                 viewModel = viewModel,
                 oneCookbook = oneCookbook,
-                askAiEnabled = askAi
+                askAiEnabled = askAi,
+                homeTonight = homeTonight
             )
         }
         return taps
@@ -325,6 +341,131 @@ class HomeScreenTest {
 
         compose.onNodeWithText("3").assertIsDisplayed()
         compose.onNodeWithText("6").assertIsDisplayed()
+    }
+
+    // Today's card (#402).
+
+    private fun planned(id: Long, type: Long, recipeId: Long?, title: String?, note: String? = null, servings: Int? = null) =
+        PlannedMeal(id, PlanDays.today(NOW), type, recipeId, title, null, servings, note)
+
+    @Test
+    fun todaysMealLeadsWithStartCookingAtThePlannedServings() {
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken", servings = 6))
+        repository.recent.value = listOf(summary(9, "Newest"))
+        val taps = show(homeTonight = true)
+
+        compose.onNodeWithText("TODAY").assertIsDisplayed()
+        compose.onNodeWithText("Lemon chicken").assertIsDisplayed()
+        compose.onNodeWithText("CONTINUE COOKING").assertDoesNotExist()
+        compose.onNodeWithText("Newest").assertDoesNotExist()
+        compose.onNodeWithText("Start cooking").performClick()
+
+        assertEquals(Triple(5L, 6, true), taps.planned)
+    }
+
+    @Test
+    fun theCardsNameOpensTheRecipeWithoutCooking() {
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken"))
+        val taps = show(homeTonight = true)
+
+        compose.onNodeWithText("Lemon chicken").performClick()
+
+        assertEquals(Triple(5L, null, false), taps.planned)
+    }
+
+    @Test
+    fun theRestOfTodayIsAShortLineEachAndTappable() {
+        plan.meals.value = listOf(
+            planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken"),
+            planned(2, FakeMealPlanRepository.BREAKFAST, 6, "Porridge"),
+            planned(3, FakeMealPlanRepository.SNACK, null, null, note = "Fruit")
+        )
+        val taps = show(homeTonight = true)
+
+        compose.onNodeWithText("Porridge").assertIsDisplayed()
+        compose.onNodeWithText("Dinner: Lemon chicken").assertIsDisplayed()
+        compose.onNodeWithText("Snack: Fruit").assertIsDisplayed()
+        compose.onNodeWithText("Dinner: Lemon chicken").performClick()
+
+        assertEquals(Triple(5L, null, false), taps.planned)
+    }
+
+    @Test
+    fun aMealCookedTodayDropsOffTheCard() {
+        plan.meals.value = listOf(
+            planned(1, FakeMealPlanRepository.BREAKFAST, 6, "Porridge"),
+            planned(2, FakeMealPlanRepository.DINNER, 5, "Lemon chicken")
+        )
+        cooked.mark(6)
+        show(homeTonight = true)
+
+        compose.onNodeWithText("Lemon chicken").assertIsDisplayed()
+        compose.onNodeWithText("Porridge").assertDoesNotExist()
+        compose.onNodeWithText("Dinner: Lemon chicken").assertDoesNotExist()
+    }
+
+    @Test
+    fun aPlannedNoteShowsItsTextWithNoButton() {
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, null, null, note = "Dinner at Mum's"))
+        val taps = show(homeTonight = true)
+
+        compose.onNodeWithText("Dinner at Mum's").assertIsDisplayed()
+        compose.onNodeWithText("Start cooking").assertDoesNotExist()
+        compose.onNodeWithText("Dinner at Mum's").performClick()
+        assertNull(taps.planned)
+    }
+
+    @Test
+    fun nothingTodayAndNothingMidCookIsNoCard() {
+        repository.recent.value = listOf(summary(1, "Adobo"))
+        repository.recipes.value = mapOf(1L to recipe(1, CookProgress()))
+        show(homeTonight = true)
+
+        compose.onNodeWithText("TODAY").assertDoesNotExist()
+        compose.onNodeWithText("CONTINUE COOKING").assertDoesNotExist()
+        compose.onNodeWithText("Open recipe").assertDoesNotExist()
+        compose.onAllNodesWithTag("todayCard").assertCountEquals(0)
+        // The way in is still there.
+        compose.onNodeWithText("Paste a link").assertIsDisplayed()
+    }
+
+    @Test
+    fun midCookKeepsContinueCookingOverTodaysMeal() {
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken"))
+        repository.recent.value = listOf(summary(1, "Adobo"))
+        repository.recipes.value = mapOf(1L to recipe(1, CookProgress(active = true, currentStep = 1)))
+        val taps = show(homeTonight = true)
+
+        compose.onNodeWithText("CONTINUE COOKING").assertIsDisplayed()
+        compose.onNodeWithText("Lemon chicken").assertDoesNotExist()
+        compose.onNodeWithText("Resume cooking").performClick()
+
+        assertEquals(1L, taps.resumed)
+    }
+
+    @Test
+    fun aFinishedRunWithATimerStillRunningIsNotOfferedForResuming() {
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken"))
+        repository.recent.value = listOf(summary(1, "Adobo"))
+        val timer = SavedTimer(totalSeconds = 1200, remainingSeconds = 1200, endsAt = NOW + 600_000)
+        repository.recipes.value =
+            mapOf(1L to recipe(1, CookProgress(doneSteps = setOf(0, 1, 2, 3), timers = mapOf(3 to timer))))
+        show(homeTonight = true)
+
+        compose.onNodeWithText("Resume cooking").assertDoesNotExist()
+        compose.onNodeWithText("Lemon chicken").assertIsDisplayed()
+    }
+
+    @Test
+    fun withTheFlagOffTheCardIsAlwaysTheLatestRecipe() {
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken"))
+        repository.recent.value = listOf(summary(1, "Adobo"))
+        repository.recipes.value = mapOf(1L to recipe(1, CookProgress()))
+        show(homeTonight = false)
+
+        compose.onNodeWithText("CONTINUE COOKING").assertIsDisplayed()
+        compose.onNodeWithText("Open recipe").assertIsDisplayed()
+        compose.onNodeWithText("Lemon chicken").assertDoesNotExist()
     }
 
     private companion object {

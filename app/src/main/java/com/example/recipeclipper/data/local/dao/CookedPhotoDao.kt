@@ -24,6 +24,14 @@ abstract class CookedPhotoDao {
     @Query("SELECT fileName FROM cooked_photos WHERE fileName IS NOT NULL")
     abstract suspend fun fileNames(): List<String>
 
+    /** How many entries [recipeId] has dated [day]. */
+    @Query("SELECT COUNT(*) FROM cooked_photos WHERE recipeId = :recipeId AND day = :day")
+    abstract suspend fun countOn(recipeId: Long, day: Long): Int
+
+    /** The recipes with an entry dated [day] (#402). */
+    @Query("SELECT DISTINCT recipeId FROM cooked_photos WHERE day = :day")
+    abstract fun observeRecipesCookedOn(day: Long): Flow<List<Long>>
+
     @Insert
     abstract suspend fun insert(photo: CookedPhotoEntity): Long
 

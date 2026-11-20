@@ -46,7 +46,9 @@ enum class Flag(val key: String) {
     /** Meal-plan import (#352): a week of AI recipes shared in opens a review, kept and planned on their days in Week. */
     MEAL_PLAN_IMPORT("mealPlanImport"),
     /** Recipe versions (#354): an AI's change to a recipe is saved linked to its original. */
-    RECIPE_VERSIONS("recipeVersions");
+    RECIPE_VERSIONS("recipeVersions"),
+    /** Home's Today card (#402): today's next uncooked planned meal, when nothing is being cooked. */
+    HOME_TONIGHT("homeTonight");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

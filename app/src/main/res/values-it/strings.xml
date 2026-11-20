@@ -87,6 +87,8 @@
     <string name="home_share_hint">Oppure condividi un link con Recipe Clipper da qualsiasi app.</string>
     <string name="home_resume_cooking">Riprendi a cucinare</string>
     <string name="home_open_recipe">Apri la ricetta</string>
+    <string name="home_today">Oggi</string>
+    <string name="home_today_other">%1$s: %2$s</string>
     <string name="home_timer_left">Ancora %1$s</string>
     <string name="recipes_title">Ricette</string>
     <string name="recipes_empty">Ancora niente. Le ricette che apri vengono conservate qui, e con + ne aggiungi una a mano o da un link.</string>

@@ -7,12 +7,17 @@ import com.example.recipeclipper.data.AutoBackupState
 import com.example.recipeclipper.data.BackupFiles
 import com.example.recipeclipper.data.BackupRepository
 import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.CookedPhotoRepository
 import com.example.recipeclipper.data.ListRepository
+import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.backup.AutoBackupPolicy
 import com.example.recipeclipper.data.importFile
 import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.edit.PastedTextRouter
+import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.PlanDays
+import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.recipe.CookController
@@ -35,6 +40,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.TimeZone
 import javax.inject.Inject
 
 /**
@@ -52,6 +58,11 @@ data class HomeUiState(
     val continueCooking: RecipeSummary? = null,
     /** Where the cook stopped on [continueCooking] (#286); null when it isn't being cooked. */
     val resume: CookResume? = null,
+    /**
+     * Today's next meal from Week (#402), shown in the resume card's place while nothing is
+     * being cooked ([resume] null); null when nothing is left to cook today.
+     */
+    val today: TodayCard? = null,
     /** The Recipes and Lists rows' counts (#286); null until known. */
     val recipeCount: Int? = null,
     val listCount: Int? = null,
@@ -88,6 +99,8 @@ data class CookResume(
             val count = recipe.instructions.size
             if (count == 0) return null
             val cook = recipe.cook
+            // A finished run (every step done) is never resumed, whatever its timers (#402).
+            if ((0 until count).all { it in cook.doneSteps }) return null
             val timer = cook.timers.filterKeys { it in 0 until count }.values
                 .mapNotNull { it.endsAt }
                 .filter { it > now }
@@ -95,6 +108,45 @@ data class CookResume(
                 ?.let { CookSession.secondsUntil(it, now) }
             if (!cook.active && timer == null) return null
             return CookResume(recipe.id, cook.currentStep.coerceIn(0, count - 1) + 1, count, timer)
+        }
+    }
+}
+
+/**
+ * One of today's planned meals (#402): [recipeId] is null for a note, which only shows its
+ * [title] (the note's text). [mealType] is the name it is planned under ("Dinner").
+ */
+data class TodayMeal(
+    val entryId: Long,
+    val mealType: String,
+    val recipeId: Long?,
+    val title: String,
+    val imageUrl: String?,
+    val servings: Int?
+)
+
+/**
+ * Home's Today card (#402): [lead], the earliest meal today not yet cooked, and the [others]
+ * still to cook, in meal type order. A recipe counts as cooked today with a cooking entry dated
+ * today (a photo, "Mark as cooked", or a finished run), and then drops off.
+ */
+data class TodayCard(val lead: TodayMeal, val others: List<TodayMeal>) {
+    companion object {
+        /** Today's card at [today], from the day's [meals]; null when nothing is left to cook. */
+        fun of(meals: List<PlannedMeal>, types: List<MealType>, today: Long, cooked: Set<Long>): TodayCard? {
+            val order = types.sortedWith(compareBy({ it.sortOrder }, { it.id }))
+                .mapIndexed { index, type -> type.id to index }.toMap()
+            val names = types.associate { it.id to it.name }
+            val left = meals.filter { it.day == today && (it.recipeId == null || it.recipeId !in cooked) }
+                .sortedBy { order[it.mealTypeId] ?: Int.MAX_VALUE }
+                .mapNotNull { meal ->
+                    val title = (meal.title ?: meal.note)?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+                    TodayMeal(
+                        meal.id, names[meal.mealTypeId].orEmpty(), meal.recipeId, title,
+                        meal.imageUrl, meal.servings
+                    )
+                }
+            return left.firstOrNull()?.let { TodayCard(it, left.drop(1)) }
         }
     }
 }
@@ -114,7 +166,10 @@ class HomeViewModel @Inject constructor(
     // The resume card's timer counts down from its saved deadline against this (#286).
     private val clock: Clock = Clock { System.currentTimeMillis() },
     // "Paste a link" takes any text (#372): where it goes is the shared-text route's; null opens links only.
-    private val pasted: PastedTextRouter? = null
+    private val pasted: PastedTextRouter? = null,
+    // Today's meals from Week, and which are cooked (#402); null shows no Today card.
+    private val mealPlan: MealPlanRepository? = null,
+    private val cooked: CookedPhotoRepository? = null
 ) : ViewModel() {
 
     private val link = MutableStateFlow<String?>(null)
@@ -150,6 +205,28 @@ class HomeViewModel @Inject constructor(
             }
         }
 
+    /** Today as an epoch day, again when the day turns over (#402); the clock's, never the screen's. */
+    private val today: Flow<Long> = flow {
+        while (true) {
+            val now = clock.now()
+            emit(PlanDays.today(now))
+            val zone = TimeZone.getDefault()
+            val sinceMidnight = Math.floorMod(now + zone.getOffset(now), PlanDays.MILLIS_PER_DAY)
+            // Woken at midnight, or in a minute: a clock or zone changed under it is seen soon too.
+            delay(minOf(PlanDays.MILLIS_PER_DAY - sinceMidnight, DAY_CHECK_MS))
+        }
+    }.distinctUntilChanged()
+
+    /** Today's card (#402), followed as the plan, the cooked entries and the day change. */
+    private val todayCard: Flow<TodayCard?> =
+        if (mealPlan == null) flowOf(null) else today.flatMapLatest { day ->
+            combine(
+                mealPlan.observeDays(day, day),
+                mealPlan.observeMealTypes(),
+                cooked?.observeCookedOn(day) ?: flowOf(emptySet())
+            ) { meals, types, cookedIds -> TodayCard.of(meals, types, day, cookedIds) }
+        }
+
     private val counts: Flow<Pair<Int, Int?>> = combine(
         repository.observeHistory("").map { it.size },
         lists?.observeLists()?.map { it.size } ?: flowOf(null),
@@ -164,14 +241,15 @@ class HomeViewModel @Inject constructor(
      * once crashed the LazyColumn, one recipe in two sections under one key.
      */
     val uiState: StateFlow<HomeUiState> = combine(
-        combine(recentRecipes, resume, askAi, ::Triple),
+        combine(combine(recentRecipes, resume, askAi, ::Triple), todayCard, ::Pair),
         counts,
         combine(link, linkNoRecipe, ::Pair),
         restore,
         backupState
-    ) { (recentAndSample, resume, askAiOpen), (recipeCount, listCount), (linkInput, noRecipe), restoring, backup ->
+    ) { (recentResumeAsk, todayCard), (recipeCount, listCount), (linkInput, noRecipe), restoring, backup ->
         // The sample alone (#151) still offers the restore row, and no folder card: there is
         // nothing of the user's to restore over or to lose.
+        val (recentAndSample, resume, askAiOpen) = recentResumeAsk
         val (recent, onlySample) = recentAndSample
         val latest = recent.firstOrNull()
         HomeUiState(
@@ -182,6 +260,7 @@ class HomeViewModel @Inject constructor(
             continueCooking = latest,
             // Only the latest recipe's own place: never the one before it, for a moment.
             resume = resume?.takeIf { it.recipeId == latest?.id },
+            today = todayCard,
             recipeCount = recipeCount,
             listCount = listCount,
             restore = if (backups != null) restoring else BackupStatus.Idle,
@@ -262,5 +341,8 @@ class HomeViewModel @Inject constructor(
 
         /** How often a running timer's time left is recomputed, as in cook mode. */
         const val TICK_MS = CookController.TICK_MS
+
+        /** How often the day is looked at again, at most (#402). */
+        const val DAY_CHECK_MS = 60_000L
     }
 }

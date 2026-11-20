@@ -63,12 +63,16 @@ fun HomeScreen(
     onScan: (List<String>) -> Unit = {},
     /** "Resume cooking" (#286): the recipe, opened in cook mode. */
     onResumeCooking: (Long) -> Unit = {},
+    /** Today's meal (#402): the planned recipe, its planned servings, and whether to start cooking it. */
+    onOpenPlanned: (Long, Int?, Boolean) -> Unit = { _, _, _ -> },
     viewModel: HomeViewModel = hiltViewModel(),
     scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
     /** "Ask an AI" (#351): the fourth tile and its sheet. */
     askAiEnabled: Boolean = LocalFlagValues.current.isOn(Flag.ASK_AI),
     /** One cookbook (#345): Recipes lists the lists and makes new ones, so no Lists row here (#371). */
-    oneCookbook: Boolean = LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK)
+    oneCookbook: Boolean = LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK),
+    /** Today's card (#402): off, Continue cooking always shows the most recent recipe. */
+    homeTonight: Boolean = LocalFlagValues.current.isOn(Flag.HOME_TONIGHT)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Restore from a backup file (#150): the same file picker as Settings' Import.
@@ -129,14 +133,27 @@ fun HomeScreen(
                         }
                     }
 
-                    // Continue cooking (#286): a photo card with where the cook stopped.
-                    state.continueCooking?.let { latest ->
-                        item(key = "resume") {
-                            ResumeCard(
-                                latest, state.resume,
-                                onResume = { onResumeCooking(latest.id) },
-                                onOpen = { onOpenRecipe(latest.id) }
+                    // Continue cooking (#286): a photo card with where the cook stopped. With
+                    // homeTonight (#402) it shows only while a recipe is being cooked; otherwise
+                    // today's next meal from Week takes its place, and with none there is no card.
+                    val today = state.today.takeIf { homeTonight && state.resume == null }
+                    if (today != null) {
+                        item(key = "today") {
+                            TodayCard(
+                                today,
+                                onStartCooking = { meal -> meal.recipeId?.let { onOpenPlanned(it, meal.servings, true) } },
+                                onOpen = { meal -> meal.recipeId?.let { onOpenPlanned(it, meal.servings, false) } }
                             )
+                        }
+                    } else if (!homeTonight || state.resume != null) {
+                        state.continueCooking?.let { latest ->
+                            item(key = "resume") {
+                                ResumeCard(
+                                    latest, state.resume,
+                                    onResume = { onResumeCooking(latest.id) },
+                                    onOpen = { onOpenRecipe(latest.id) }
+                                )
+                            }
                         }
                     }
 
