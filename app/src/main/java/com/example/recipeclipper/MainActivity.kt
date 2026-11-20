@@ -24,8 +24,8 @@ import com.example.recipeclipper.reminders.ExpiryNotifications
 import com.example.recipeclipper.timers.TimerNotifications
 import com.example.recipeclipper.widgets.HomeWidgets
 import com.example.recipeclipper.ui.common.LocalFlagValues
-import com.example.recipeclipper.ui.edit.SharedTextInbox
-import com.example.recipeclipper.ui.groceries.ReceivedListInbox
+import com.example.recipeclipper.ui.edit.PasteTarget
+import com.example.recipeclipper.ui.edit.PastedTextRouter
 import com.example.recipeclipper.ui.pantry.UseItUpInbox
 import com.example.recipeclipper.ui.navigation.AppShell
 import com.example.recipeclipper.ui.navigation.Routes
@@ -52,10 +52,7 @@ class MainActivity : ComponentActivity() {
     lateinit var featureFlags: FeatureFlags
 
     @Inject
-    lateinit var receivedLists: ReceivedListInbox
-
-    @Inject
-    lateinit var sharedTexts: SharedTextInbox
+    lateinit var pastedTexts: PastedTextRouter
 
     @Inject
     lateinit var useItUp: UseItUpInbox
@@ -181,7 +178,7 @@ class MainActivity : ComponentActivity() {
      *  link nor a bulleted list, opens the editor to check (#306; beside pictures, only a
      *  recipe wins, #334), a list (#149) opens Groceries on the "Add this list" sheet, and
      *  shared images (#226, the photoText flag) open the scan's review, read on the device.
-     *  Text is read once, off the main thread (it may be long), and left in [sharedTexts]. */
+     *  Text is read once, off the main thread (it may be long), and left by [pastedTexts]. */
     private suspend fun routeFor(intent: Intent?): String? {
         if (intent?.action == ExpiryNotifications.ACTION_OPEN_PANTRY) {
             // Use it up (#305): a reminder's Pantry opens on the saved recipes for what's expiring, if any.
@@ -197,18 +194,13 @@ class MainActivity : ComponentActivity() {
         }
         val shareTextOn = featureFlags.current.isOn(Flag.SHARE_TEXT)
         val pages = ScanIntent.pages(intent)
-        val mealPlanOn = featureFlags.current.isOn(Flag.MEAL_PLAN_IMPORT)
         val text = TextIntent.text(intent, shareTextOn)
-        val target = text?.let { withContext(Dispatchers.Default) { TextIntent.target(it, shareTextOn, pages != null, mealPlanOn) } }
-        when (target) {
-            is TextIntent.Target.Review -> return Routes.editText(sharedTexts.offer(target.text, target.reading))
-            is TextIntent.Target.Plan -> return Routes.mealPlan(sharedTexts.offerPlan(target.text, target.plan))
-            is TextIntent.Target.Failed -> return Routes.CUT_OFF
-            is TextIntent.Target.Open -> return target.route
-            is TextIntent.Target.OfferList -> {
-                receivedLists.offer(target.text)
-                return Tab.GROCERIES.route
-            }
+        when (val target = text?.let { pastedTexts.route(it, withPictures = pages != null) }) {
+            is PasteTarget.Review -> return Routes.editText(target.key)
+            is PasteTarget.Plan -> return Routes.mealPlan(target.key)
+            is PasteTarget.Link -> return Routes.import(target.url)
+            PasteTarget.Groceries -> return Tab.GROCERIES.route
+            PasteTarget.CutOff -> return Routes.CUT_OFF
             null -> Unit
         }
         return pages?.takeIf { featureFlags.current.isOn(Flag.PHOTO_TEXT) }?.let { Routes.scan(it) }

@@ -7,6 +7,8 @@ import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.ui.edit.PasteTarget
+import com.example.recipeclipper.ui.edit.PastedTextRouter
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeList
@@ -54,6 +56,8 @@ data class RecipesUiState(
     val deleteBatch: Int? = null,
     val sort: RecipeSort = RecipeSort.RECENTLY_VIEWED,
     val linkInput: String? = null,
+    /** Go found nothing to open in the pasted text (#372); cleared by the next keystroke. */
+    val linkNoRecipe: Boolean = false,
     /** The free library's quiet count (#107, #345); null when there is no limit to count against. */
     val count: LibraryCount? = null,
     val filter: RecipeFilter = RecipeFilter.ALL,
@@ -79,7 +83,7 @@ data class RecipesUiState(
     val showsViewsStrip: Boolean get() = view == null && ((counts?.all ?: 0) > 0 || lists.isNotEmpty())
 
     /** The dialog's Open is enabled only for what reads as a link (`UrlInput`). */
-    val canOpenLink: Boolean get() = linkInput?.let(UrlInput::normalize) != null
+    val canOpenLink: Boolean get() = !linkInput.isNullOrBlank()
 
     /** How many rows are listed (the matches, while searching); null until the database answers. */
     val listed: Int? get() = recipes?.size
@@ -108,7 +112,9 @@ class RecipesViewModel @Inject constructor(
     /** The strip's lists (#345); none without it (tests that aren't about them). */
     lists: ListRepository? = null,
     /** The automatic view's route argument (V4), when opened on one. */
-    savedStateHandle: SavedStateHandle? = null
+    savedStateHandle: SavedStateHandle? = null,
+    /** "Paste a link" takes any text (#372): where it goes is the shared-text route's; null opens links only. */
+    private val pasted: PastedTextRouter? = null
 ) : ViewModel() {
 
     private val view: RecipeFilter? = RecipeFilter.fromRouteName(savedStateHandle?.get<String>(VIEW_ARG))
@@ -123,6 +129,7 @@ class RecipesViewModel @Inject constructor(
         .map { it.recipeSort }
         .distinctUntilChanged()
     private val linkInput = MutableStateFlow<String?>(null)
+    private val linkNoRecipe = MutableStateFlow(false)
     private val restoreRefused = MutableStateFlow(false)
     // In the ViewModel, not `remember`, so it survives rotation; not stored, so Recipes opens on All.
     private val filter = MutableStateFlow(view ?: RecipeFilter.ALL)
@@ -161,7 +168,8 @@ class RecipesViewModel @Inject constructor(
         combine(
             combine(query, recipes, pendingDeletes, sort, linkInput) { q, found, pending, order, link ->
                 RecipesUiState(q, found?.let { sorted(it, order) }, pending.titles, pending.batch, order, link)
-            }.combine(restoreRefused) { state, refused -> state.copy(restoreRefused = refused) },
+            }.combine(restoreRefused) { state, refused -> state.copy(restoreRefused = refused) }
+                .combine(linkNoRecipe) { state, none -> state.copy(linkNoRecipe = none) },
             count,
             filter,
             counts,
@@ -189,17 +197,30 @@ class RecipesViewModel @Inject constructor(
 
     fun onLinkChange(text: String) {
         linkInput.value = text
+        linkNoRecipe.value = false
     }
 
     fun onLinkDismiss() {
         linkInput.value = null
+        linkNoRecipe.value = false
     }
 
-    /** The link to import, closing the dialog; null, and the dialog stays, if it isn't one. */
-    fun onOpenLink(): String? {
-        val url = linkInput.value?.let(UrlInput::normalize) ?: return null
-        linkInput.value = null
-        return url
+    /**
+     * Go (#372): a link imports, any other text goes where the same text shared would (the
+     * editor, the meal-plan review, Groceries' list sheet). [onTarget] gets where, and the dialog
+     * closes; with nothing to open the dialog stays, saying so. Nothing is saved here.
+     */
+    fun onOpenLink(onTarget: (PasteTarget) -> Unit) {
+        val text = linkInput.value?.takeIf { it.isNotBlank() } ?: return
+        viewModelScope.launch {
+            val target = pasted?.open(text) ?: UrlInput.normalize(text)?.let { PasteTarget.Link(it) }
+            if (target == null) {
+                linkNoRecipe.value = true
+            } else {
+                linkInput.value = null
+                onTarget(target)
+            }
+        }
     }
 
     /** Swipe-to-dismiss: deletes immediately, keeping what it removed so [onUndoDelete] can restore it. */

@@ -32,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navigation
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.settings.SettingsSection
@@ -199,3 +200,18 @@ private fun TabBar(selected: Tab?, onSelect: (Tab) -> Unit) {
         }
     }
 }
+
+/**
+ * Where pasted text leads (#372, [com.example.recipeclipper.ui.edit.PastedTextRouter]): the same
+ * routes a share opens, from inside the app. A link imports, text opens the editor or the
+ * meal-plan review, a list is offered on Groceries.
+ */
+fun NavHostController.openPasted(target: PasteTarget) = openRoute(
+    when (target) {
+        is PasteTarget.Link -> Routes.import(target.url)
+        is PasteTarget.Review -> Routes.editText(target.key)
+        is PasteTarget.Plan -> Routes.mealPlan(target.key)
+        PasteTarget.Groceries -> Tab.GROCERIES.route
+        PasteTarget.CutOff -> Routes.CUT_OFF
+    }
+)

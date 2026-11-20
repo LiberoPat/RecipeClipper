@@ -43,6 +43,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.recipe.SectionHeading
 
 /** The route's [AskAiViewModel], or null with the `askAi` flag off (#87): what every route that shows a recipe passes. */
@@ -56,7 +57,12 @@ fun askAiViewModelIfOn(): AskAiViewModel? = if (LocalFlagValues.current.isOn(Fla
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AskAiSheet(onDismiss: () -> Unit, viewModel: AskAiViewModel = hiltViewModel()) {
+fun AskAiSheet(
+    onDismiss: () -> Unit,
+    /** "Paste the answer" (#372): where the pasted text leads, the sheet already closed. */
+    onOpenPasted: (PasteTarget) -> Unit = {},
+    viewModel: AskAiViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val words = askAiWords(LocalResources.current)
     val context = LocalContext.current
@@ -123,6 +129,27 @@ fun AskAiSheet(onDismiss: () -> Unit, viewModel: AskAiViewModel = hiltViewModel(
                 onCopy = { viewModel.prompt(words)?.let { copyPrompt(context, title, it); viewModel.onCopied() } },
                 onShare = { viewModel.prompt(words)?.let { sharePrompt(context, title, it) } }
             )
+            // The answer comes back (#372): read from the clipboard once, on this tap, never on its own.
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = {
+                    viewModel.onPasteAnswer(readClipboard(context)) { target -> dismiss(); onOpenPasted(target) }
+                },
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().testTag("askAiPaste")
+            ) {
+                Text(stringResource(R.string.ask_ai_paste))
+            }
+            state.pasteProblem?.let { problem ->
+                Text(
+                    stringResource(
+                        if (problem == PasteProblem.EMPTY) R.string.ask_ai_paste_empty else R.string.ask_ai_paste_none
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp).testTag("askAiPasteProblem")
+                )
+            }
         }
     }
 }
@@ -232,6 +259,11 @@ private fun PromptButtons(enabled: Boolean, copied: Boolean, onCopy: () -> Unit,
         }
     }
 }
+
+/** A platform effect, so it lives in the view layer: the clipboard's text, or null when it holds none. */
+private fun readClipboard(context: Context): String? =
+    context.getSystemService(ClipboardManager::class.java)?.primaryClip
+        ?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
 
 /** A platform effect, so it lives in the view layer: [text] to the clipboard. */
 private fun copyPrompt(context: Context, label: String, text: String) {

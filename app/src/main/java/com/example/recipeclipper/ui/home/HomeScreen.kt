@@ -33,6 +33,7 @@ import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.ui.askai.AskAiSheet
+import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.settings.BackupStatus
 import com.example.recipeclipper.ui.settings.BackupStatusText
@@ -51,6 +52,8 @@ import androidx.compose.ui.platform.testTag
 @Composable
 fun HomeScreen(
     onOpenUrl: (String) -> Unit,
+    /** Pasted text that isn't a link (#372): the editor, the meal-plan review, Groceries' list sheet. */
+    onOpenPasted: (PasteTarget) -> Unit = {},
     onOpenRecipe: (Long) -> Unit,
     onOpenRecipes: () -> Unit,
     onOpenLists: () -> Unit,
@@ -83,11 +86,15 @@ fun HomeScreen(
                 value = link,
                 canOpen = state.canOpenLink,
                 onValueChange = viewModel::onLinkChange,
-                onOpen = { viewModel.onOpenLink()?.let(onOpenUrl) },
+                onOpen = { viewModel.onOpenLink { if (it is PasteTarget.Link) onOpenUrl(it.url) else onOpenPasted(it) } },
+                noRecipe = state.linkNoRecipe,
                 onDismiss = viewModel::onLinkDismiss
             )
         }
-        if (state.askAiOpen && askAiEnabled) AskAiSheet(onDismiss = viewModel::onAskAiDismiss)
+        if (state.askAiOpen && askAiEnabled) AskAiSheet(
+                onDismiss = viewModel::onAskAiDismiss,
+                onOpenPasted = { if (it is PasteTarget.Link) onOpenUrl(it.url) else onOpenPasted(it) }
+            )
         TooltipHost(TooltipScreen.HOME) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 LazyColumn(
