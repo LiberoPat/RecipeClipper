@@ -86,6 +86,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.RecipeTag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.common.MenuItemText
@@ -113,6 +116,10 @@ import com.example.recipeclipper.ui.tour.tooltipAnchor
  *
  * [receiveViewModel] backs "Add this list", for a list pasted here or shared into the app; null
  * leaves "Paste a list" out. [onOpenPantry] shows the pantry once lines were added to it.
+ *
+ * With [recipeTags] (#422, the `groceryRecipeTags` flag) a row's recipes are small tags on their own
+ * line, apart from its amount and note, and a tap opens the recipe through [onOpenRecipe] (at the
+ * planned servings when it came from the plan). Off, they are the muted line under the row.
  */
 @Composable
 fun GroceriesScreen(
@@ -120,7 +127,9 @@ fun GroceriesScreen(
     receiveViewModel: ReceiveListViewModel? = null,
     onOpenPantry: () -> Unit = {},
     // "Send as file" (#149, phase 2); null (screen tests) leaves it out.
-    sendFileViewModel: SendFileViewModel? = null
+    sendFileViewModel: SendFileViewModel? = null,
+    onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit = { _, _ -> },
+    recipeTags: Boolean = LocalFlagValues.current.isOn(Flag.GROCERY_RECIPE_TAGS)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -232,7 +241,9 @@ fun GroceriesScreen(
                         items(section.rows, key = { row -> "row-${row.items.first().id}" }) { row ->
                             GroceryRowView(
                                 row = row,
-                                recipes = state.recipeLines[row.items.first().id],
+                                recipes = if (recipeTags) null else state.recipeLines[row.items.first().id],
+                                tags = if (recipeTags) state.recipeTags[row.items.first().id].orEmpty() else emptyList(),
+                                onOpenTag = { tag -> viewModel.onOpenRecipe(tag, onOpenRecipe) },
                                 first = row == firstRow,
                                 onToggle = viewModel::onToggle,
                                 onMove = viewModel::onMoveStart,
@@ -402,12 +413,15 @@ private fun AisleLabel(name: String) {
  * A row on the list, always one tick. An added-up total shows its lines under it; lines that
  * can't be added up honestly sit under their ingredient's name, as written, without ticks of
  * their own: ticking the row ticks them all. Under those, [recipes] names the recipes the row
- * came from (#286); a row only typed in has none.
+ * came from (#286), or with the recipe tags (#422) [tags] show them, on a line of their own; a
+ * row only typed in has neither.
  */
 @Composable
 private fun GroceryRowView(
     row: GroceryRow,
     recipes: String?,
+    tags: List<RecipeTag>,
+    onOpenTag: (RecipeTag) -> Unit,
     first: Boolean,
     onToggle: (GroceryRow) -> Unit,
     onMove: (GroceryRow) -> Unit,
@@ -419,6 +433,8 @@ private fun GroceryRowView(
             detail = listOfNotNull(recipes),
             checked = row.item.checked,
             tag = "grocery-${row.item.id}",
+            tags = tags,
+            onOpenTag = onOpenTag,
             first = first,
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
@@ -429,6 +445,8 @@ private fun GroceryRowView(
             detail = listOf(GroceryCombiner.lines(row).joinToString(" + ")).filter { it != row.text } + listOfNotNull(recipes),
             checked = row.items.all { it.checked },
             tag = "grocery-${row.items.first().id}",
+            tags = tags,
+            onOpenTag = onOpenTag,
             first = first,
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
@@ -439,6 +457,8 @@ private fun GroceryRowView(
             detail = GroceryCombiner.lines(row) + listOfNotNull(recipes),
             checked = row.items.all { it.checked },
             tag = "grocery-${row.items.first().id}",
+            tags = tags,
+            onOpenTag = onOpenTag,
             first = first,
             onToggle = { onToggle(row) },
             onMove = { onMove(row) },
@@ -454,6 +474,8 @@ private fun CheckLine(
     detail: List<String>,
     checked: Boolean,
     tag: String,
+    tags: List<RecipeTag>,
+    onOpenTag: (RecipeTag) -> Unit,
     first: Boolean,
     onToggle: () -> Unit,
     onMove: () -> Unit,
@@ -485,6 +507,8 @@ private fun CheckLine(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                // The recipes it is for (#422): tags on a line of their own, buttons beside the row's tick.
+                if (tags.isNotEmpty()) RecipeTagRow(tags, onOpenTag, "groceryTag-$tag", Modifier.padding(top = 3.dp))
             }
             Spacer(Modifier.width(12.dp))
             RoundTick(checked, Modifier.padding(top = 2.dp))

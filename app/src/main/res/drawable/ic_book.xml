@@ -1,0 +1,15 @@
+<!-- A small open book: the recipe a grocery line is for (#422). Drawn here, like the tab icons
+     (see ic_tab_recipes.xml), rather than pulled from the extended icon set. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,6.5C10.5,5.2 8.2,4.6 3.5,4.6V17.8C8.2,17.8 10.5,18.4 12,19.7C13.5,18.4 15.8,17.8 20.5,17.8V4.6C15.8,4.6 13.5,5.2 12,6.5ZM12,6.5V19.7" />
+</vector>

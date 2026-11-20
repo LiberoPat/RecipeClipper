@@ -119,6 +119,12 @@
       "description": "Fresh food (#396): Shop for this week splits To buy into Buy now and Buy later in the week (a perishable ingredient, matched in the recipe's language's perishables table, whose every planned meal is 3 or more days from today), each later line saying the day it is for, with its own Add to groceries; the meal-plan review and the Week's meal rows gain a quiet note when a perishable meal is planned later than its group keeps from the plan's first day ('keeps about 1-2 days once bought: cook it earlier?'), with a one-tap swap with the earliest day that fits. Nothing moves unless the cook taps. Off, To buy is one list and there is no note.",
       "defaults": { "debug": true, "release": true },
       "issue": 396
+    },
+    {
+      "key": "groceryRecipeTags",
+      "description": "Recipe tags (#422): in Groceries and in Shop for this week, the recipe a line is for is a small rounded tag tinted with the paprika wash and a book glyph (\"Mushroom omelette · Thu\" when planned), apart from the line's amount and note; up to three show, then the first two and \"+N\". A tap opens the recipe (at the planned servings when it came from the plan), on the current tab. A typed or shared-list line has no tag. Off, the recipes are the muted line under the row as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 422
     }
   ]
 }

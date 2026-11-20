@@ -463,6 +463,38 @@ object GroceryShareText {
 }
 
 /**
+ * The recipe a grocery line is for, as a small tag (#422): its [title], and the [day] it is planned
+ * on when it came from the plan ("Mushroom omelette · Thu"). [recipeId] is what a tap opens.
+ */
+data class RecipeTag(val recipeId: Long, val title: String, val day: Long?)
+
+/**
+ * The tags under a Groceries row (#422), pure and the same on both platforms. One per recipe (and
+ * day) its lines came from, in the order added; none for a typed or shared-list line, or a recipe
+ * that is gone. Up to [FULL] show whole; more than that, the first [SHOWN_WHEN_MORE] and "+N" for
+ * the rest.
+ */
+object GroceryRecipeTags {
+
+    /** The most tags a row shows in full. */
+    const val FULL = 3
+
+    /** How many show when there are more than [FULL]; the rest are the "+N". */
+    const val SHOWN_WHEN_MORE = 2
+
+    fun of(items: List<GroceryItem>, recipeTitles: Map<Long, String>): List<RecipeTag> =
+        items.mapNotNull { item ->
+            val id = item.recipeId ?: return@mapNotNull null
+            val title = recipeTitles[id]?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            RecipeTag(id, title, item.plannedDay)
+        }.distinct()
+
+    /** The tags to draw, and how many more there are ("+N", 0 for none). */
+    fun shown(tags: List<RecipeTag>): Pair<List<RecipeTag>, Int> =
+        if (tags.size <= FULL) tags to 0 else tags.take(SHOWN_WHEN_MORE) to tags.size - SHOWN_WHEN_MORE
+}
+
+/**
  * A list shared into the app as plain text (#149): the lines to offer, as written. A bulleted
  * list, like the one "Send list" writes, is read by its bullets: only the "- " (or "• ", "* "…)
  * lines are items, so its title and aisle headings are left out. Text with no bullets offers
@@ -526,7 +558,9 @@ data class GrocerySource(
     val title: String,
     val day: Long?,
     val language: String?,
-    val lines: List<String>
+    val lines: List<String>,
+    /** The servings the week plans it at (#422), for opening the recipe from a tag; null: its own yield. */
+    val servings: Int? = null
 )
 
 /** Builds the add sheet's sources (#50). Pure: lines in, lines out. */
@@ -557,6 +591,6 @@ object GrocerySources {
             val factor = if (base != null && p.servings != null) p.servings.toDouble() / base else 1.0
             val lines = IngredientRendering.render(p.ingredients, factor, system, convertLiquids, words, decisions).filter(::buyable)
             if (lines.isEmpty()) null
-            else GrocerySource("plan-${p.entryId}", p.recipeId, p.title, p.day, words?.language, lines)
+            else GrocerySource("plan-${p.entryId}", p.recipeId, p.title, p.day, words?.language, lines, p.servings)
         }
 }

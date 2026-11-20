@@ -4,23 +4,27 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.GroceryRepository
+import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.model.Decisions
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryCombiner
 import com.example.recipeclipper.data.model.GroceryItem
+import com.example.recipeclipper.data.model.GroceryRecipeTags
 import com.example.recipeclipper.data.model.GroceryShareText
 import com.example.recipeclipper.data.model.IngredientName
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.NewGroceryLine
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryMatch
+import com.example.recipeclipper.data.model.RecipeTag
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -51,7 +55,8 @@ data class PutAwaySheet(val items: List<PutAwayItem>, val ticked: Set<String>)
  * [recipeTitles] names the recipes items came from, for "Send list" (#149). [confirmClearAll] is
  * the number of rows "Clear the whole list" asks about (#219), while its dialog is open.
  * [recipeLines] is the line under each row naming the recipes it came from (#286), by the row's
- * first item's id; a row only typed in has none.
+ * first item's id; a row only typed in has none. [recipeTags] is the same as small tags (#422), each
+ * with the day it is planned on, for the `groceryRecipeTags` flag.
  */
 data class GroceriesUiState(
     val sections: List<GroceryCombiner.Section>? = null,
@@ -61,7 +66,8 @@ data class GroceriesUiState(
     val putAway: PutAwaySheet? = null,
     val recipeTitles: Map<Long, String> = emptyMap(),
     val confirmClearAll: Int? = null,
-    val recipeLines: Map<Long, String> = emptyMap()
+    val recipeLines: Map<Long, String> = emptyMap(),
+    val recipeTags: Map<Long, List<RecipeTag>> = emptyMap()
 ) {
     val hasChecked: Boolean get() = sections.orEmpty().any { s -> s.rows.any { r -> r.items.any { it.checked } } }
     /** The rows ticked, for the "Done shopping" bar (#286): a combined row is one thing in the basket. */
@@ -96,7 +102,9 @@ class GroceriesViewModel @Inject constructor(
     private val pantry: PantryRepository,
     private val calendar: PlanCalendar,
     // The model's aisles for what the keyword table puts in Other (#104); none without it.
-    private val decisions: DecisionRepository? = null
+    private val decisions: DecisionRepository? = null,
+    // The servings a recipe is planned at, for a tag's tap (#422); none opens it at its own yield.
+    private val mealPlan: MealPlanRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GroceriesUiState())
@@ -123,7 +131,7 @@ class GroceriesViewModel @Inject constructor(
         }
         viewModelScope.launch {
             repository.observeRecipeTitles().collect { titles ->
-                _uiState.update { it.copy(recipeTitles = titles, recipeLines = recipeLines(it.sections, titles)) }
+                _uiState.update { it.copy(recipeTitles = titles, recipeLines = recipeLines(it.sections, titles), recipeTags = recipeTags(it.sections, titles)) }
             }
         }
         viewModelScope.launch {
@@ -144,7 +152,10 @@ class GroceriesViewModel @Inject constructor(
         _uiState.update { state ->
             // A row being moved that has since gone closes the aisle picker.
             val moving = state.moving?.takeIf { row -> row.items.all { i -> items.any { it.id == i.id } } }
-            state.copy(sections = sections, moving = moving, recipeLines = recipeLines(sections, state.recipeTitles))
+            state.copy(
+                sections = sections, moving = moving,
+                recipeLines = recipeLines(sections, state.recipeTitles), recipeTags = recipeTags(sections, state.recipeTitles)
+            )
         }
     }
 
@@ -156,6 +167,25 @@ class GroceriesViewModel @Inject constructor(
         sections.orEmpty().flatMap { it.rows }.mapNotNull { row ->
             GroceryShareText.recipes(row.items, titles).takeIf { it.isNotEmpty() }?.let { row.items.first().id to it.joinToString(", ") }
         }.toMap()
+
+    /** The small recipe tags under each row (#422), by the row's first item's id; none for a row only typed in. */
+    private fun recipeTags(sections: List<GroceryCombiner.Section>?, titles: Map<Long, String>): Map<Long, List<RecipeTag>> =
+        sections.orEmpty().flatMap { it.rows }.mapNotNull { row ->
+            GroceryRecipeTags.of(row.items, titles).takeIf { it.isNotEmpty() }?.let { row.items.first().id to it }
+        }.toMap()
+
+    /**
+     * A tag was tapped (#422): [open] the recipe, at the servings the week plans it at when the
+     * tag has a day and the plan still holds it, else at its own yield.
+     */
+    fun onOpenRecipe(tag: RecipeTag, open: (recipeId: Long, servings: Int?) -> Unit) {
+        viewModelScope.launch {
+            val servings = tag.day?.let { day ->
+                mealPlan?.observeDays(day, day)?.first()?.firstOrNull { it.recipeId == tag.recipeId }?.servings
+            }
+            open(tag.recipeId, servings)
+        }
+    }
 
     /**
      * The screen was left (not rotated, #219): the next visit tidies the list, ticked rows at the

@@ -33,15 +33,27 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
         route = Routes.WHAT_I_NEED,
         arguments = listOf(navArgument(WhatINeedViewModel.WEEK_START_ARG) { type = NavType.LongType })
     ) {
-        WhatINeedScreen(onBack = { navController.popBackStack() })
+        WhatINeedScreen(
+            onBack = { navController.popBackStack() },
+            onOpenRecipe = { id, servings -> navController.navigate(Routes.weekRecipe(id, servings)) }
+        )
     }
 
     composable(Routes.MEAL_TYPES) {
         MealTypesScreen(onBack = { navController.popBackStack() })
     }
 
+    tabRecipe(Routes.WEEK_RECIPE, navController) { Routes.weekRecipe(it, null) }
+}
+
+/**
+ * A recipe on a tab's own stack (#49, #422), opened at the servings the route carries (a planned
+ * meal's), so Back returns to that tab's screen rather than to Recipes. [route] is the tab's recipe
+ * route, [versionRoute] the one a version or original opened from the recipe takes.
+ */
+internal fun NavGraphBuilder.tabRecipe(route: String, navController: NavHostController, versionRoute: (Long) -> String) {
     composable(
-        route = Routes.WEEK_RECIPE,
+        route = route,
         arguments = listOf(
             navArgument(RecipeViewModel.RECIPE_ID_ARG) { type = NavType.LongType },
             navArgument(RecipeViewModel.SERVINGS_ARG) {
@@ -53,7 +65,7 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
         RecipeScreen(
             onBack = { navController.popBackStack() },
             onEdit = { navController.navigate(Routes.edit(it)) },
-            onOpenRecipe = { navController.navigate(Routes.weekRecipe(it, null)) },
+            onOpenRecipe = { navController.navigate(versionRoute(it)) },
             planViewModel = hiltViewModel(),
             groceriesViewModel = hiltViewModel(),
             photosViewModel = hiltViewModel(),

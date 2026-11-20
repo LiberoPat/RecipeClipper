@@ -31,6 +31,8 @@ import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.LaterRow
 import com.example.recipeclipper.data.model.NeedRow
 import com.example.recipeclipper.data.model.NeedStatus
+import com.example.recipeclipper.data.model.RecipeTag
+import com.example.recipeclipper.ui.groceries.RecipeTagRow
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.plan.dayTitle
 import com.example.recipeclipper.ui.plan.shortWeekday
@@ -46,12 +48,17 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  * have flour, never that there's enough, and the screen says so. An ingredient in the pantry
  * with an amount shows it beside what the week's recipes use, when that adds up exactly (#302):
  * the two side by side, never compared, so the cook judges.
+ *
+ * With [recipeTags] (#422, `groceryRecipeTags`) each line's recipe is a small tag under it, as in
+ * Groceries, and a tap opens the recipe through [onOpenRecipe] at the servings the week plans it at.
  */
 @Composable
 fun WhatINeedScreen(
     onBack: () -> Unit,
     viewModel: WhatINeedViewModel = hiltViewModel(),
-    shopForWeek: Boolean = LocalFlagValues.current.isOn(Flag.SHOP_FOR_WEEK)
+    shopForWeek: Boolean = LocalFlagValues.current.isOn(Flag.SHOP_FOR_WEEK),
+    onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit = { _, _ -> },
+    recipeTags: Boolean = LocalFlagValues.current.isOn(Flag.GROCERY_RECIPE_TAGS)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val needs = state.needs
@@ -96,7 +103,7 @@ fun WhatINeedScreen(
                                 }
                             }
                         }
-                        itemsIndexed(buyRows, key = { i, _ -> "buy-$i" }) { _, row -> NeedRowView(row) }
+                        itemsIndexed(buyRows, key = { i, _ -> "buy-$i" }) { _, row -> NeedRowView(row, recipeTags = recipeTags, onOpenRecipe = onOpenRecipe) }
                         if (trips != null) {
                             item(key = "laterHeading") {
                                 Column(Modifier.padding(top = 24.dp).testTag("buyLater")) {
@@ -105,7 +112,7 @@ fun WhatINeedScreen(
                                     AddButton(added = state.addedLater, tag = "addLaterToGroceries", addLabel = R.string.what_i_need_add_later, onClick = viewModel::onAddLaterToGroceries)
                                 }
                             }
-                            itemsIndexed(trips.later, key = { i, _ -> "later-$i" }) { _, later -> NeedRowView(later.row, later) }
+                            itemsIndexed(trips.later, key = { i, _ -> "later-$i" }) { _, later -> NeedRowView(later.row, later, recipeTags, onOpenRecipe) }
                         }
                         if (needs.have.isNotEmpty()) {
                             item(key = "haveHeading") {
@@ -114,7 +121,7 @@ fun WhatINeedScreen(
                                     Muted(stringResource(R.string.what_i_need_note), Modifier.padding(top = 4.dp))
                                 }
                             }
-                            itemsIndexed(needs.have, key = { i, _ -> "have-$i" }) { _, row -> NeedRowView(row) }
+                            itemsIndexed(needs.have, key = { i, _ -> "have-$i" }) { _, row -> NeedRowView(row, recipeTags = recipeTags, onOpenRecipe = onOpenRecipe) }
                         }
                     }
                 }
@@ -132,7 +139,12 @@ private fun AddButton(added: Boolean, tag: String, @StringRes addLabel: Int, onC
 
 /** One ingredient of the week; [later] (#396) adds the day it is first needed and what its group keeps. */
 @Composable
-private fun NeedRowView(row: NeedRow, later: LaterRow? = null) {
+private fun NeedRowView(
+    row: NeedRow,
+    later: LaterRow? = null,
+    recipeTags: Boolean = false,
+    onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit = { _, _ -> }
+) {
     Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
         Text(
             row.name ?: row.lines.first().text,
@@ -156,10 +168,19 @@ private fun NeedRowView(row: NeedRow, later: LaterRow? = null) {
             NeedStatus.STAPLE -> Muted(stringResource(R.string.pantry_always_have))
             NeedStatus.BUY -> Unit
         }
-        row.lines.forEach { line ->
-            val source = line.day?.let { stringResource(R.string.what_i_need_line_source, line.title, shortWeekday(it)) } ?: line.title
+        row.lines.forEachIndexed { i, line ->
             Text(line.text, style = MaterialTheme.typography.bodyMedium)
-            Muted(source)
+            if (recipeTags) {
+                // The recipe it is for (#422) as a tag, as in Groceries; a tap opens it at the planned servings.
+                RecipeTagRow(
+                    tags = listOf(RecipeTag(line.recipeId, line.title, line.day)),
+                    onOpen = { onOpenRecipe(line.recipeId, line.servings) },
+                    testPrefix = "needTag-${row.name ?: i}-$i"
+                )
+            } else {
+                val source = line.day?.let { stringResource(R.string.what_i_need_line_source, line.title, shortWeekday(it)) } ?: line.title
+                Muted(source)
+            }
         }
     }
 }

@@ -523,6 +523,10 @@
     <string name="pantry_in_stock">Disponibile</string>
     <string name="pantry_out">Finito</string>
     <string name="pantry_on_list">Nella tua lista della spesa</string>
+    <!-- A grocery line's recipe tag, read aloud (#422): "For Mushroom omelette, Thursday" -->
+    <string name="grocery_tag_for">Per %1$s</string>
+    <string name="grocery_tag_for_day">Per %1$s, %2$s</string>
+    <string name="grocery_tag_more">Altre %1$d ricette</string>
     <string name="pantry_ran_out">Finito</string>
     <string name="pantry_restock">Ricomprato</string>
     <string name="pantry_running_low">Sta finendo</string>

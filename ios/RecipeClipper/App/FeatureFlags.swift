@@ -48,6 +48,8 @@ enum Flag: String, CaseIterable {
     case eveningReminders
     /// Fresh food (#396): Shop for this week in two trips (Buy now, Buy later in the week), and the plan's "cook it earlier?" note.
     case freshFood
+    /// Recipe tags (#422): a grocery line's recipe is a small tappable tag, apart from its amount, in Groceries and Shop for this week.
+    case groceryRecipeTags
 }
 
 /// One flag as `shared/flags.json` declares it.

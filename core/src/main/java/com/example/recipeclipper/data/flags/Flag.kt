@@ -54,7 +54,9 @@ enum class Flag(val key: String) {
     /** The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397). */
     EVENING_REMINDERS("eveningReminders"),
     /** Fresh food (#396): Shop for this week in two trips (Buy now, Buy later in the week), and the plan's "cook it earlier?" note. */
-    FRESH_FOOD("freshFood");
+    FRESH_FOOD("freshFood"),
+    /** Recipe tags (#422): a grocery line's recipe is a small tappable tag, apart from its amount, in Groceries and Shop for this week. */
+    GROCERY_RECIPE_TAGS("groceryRecipeTags");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
