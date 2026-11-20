@@ -11,7 +11,7 @@ final class PlanMyWeekUITests: RecipeUITestCase {
         launch(.standard, flags: flags)
         require(app.buttons["home.askAi"], "the Ask an AI tile").tap()
         require(app.buttons["askAiKind-planMyWeek"], "Plan my week").tap()
-        require(app.descendants(matching: .any)["askAiPlan"], "the plan's choices")
+        require(app.buttons["askAiMeal-dinner"], "the plan's meal chips")
     }
 
     private func screenshot(_ name: String) {
@@ -52,7 +52,7 @@ final class PlanMyWeekUITests: RecipeUITestCase {
     func testTheReviewShowsEachRowsMealAnExistingRecipeAndWhatCouldNotBeFound() {
         let day = todayEpochDay()
         func iso(_ offset: Int) -> String {
-            let date = Date(timeIntervalSince1970: Double(day + offset) * 86_400)
+            let date = Date(timeIntervalSince1970: Double(day + Int64(offset)) * 86_400)
             let f = DateFormatter()
             f.dateFormat = "yyyy-MM-dd"
             f.timeZone = TimeZone(identifier: "UTC")

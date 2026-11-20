@@ -57,7 +57,6 @@ struct PlanOptions: View {
             if state.longAnswer { note(Strings.askAiPlanLong, id: "askAiPlanLong") }
         }
         .padding(.top, 8)
-        .accessibilityIdentifier("askAiPlan")
     }
 
     private func heading(_ text: String) -> some View {
@@ -122,7 +121,6 @@ struct PlanOptions: View {
         }
         .padding(.leading, 36)
         .padding(.top, 4)
-        .accessibilityIdentifier("askAiMix")
     }
 
     private func stepButton(_ glyph: String, enabled: Bool, label: String, id: String, action: @escaping () -> Void) -> some View {
