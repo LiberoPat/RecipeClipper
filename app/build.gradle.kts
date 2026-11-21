@@ -159,8 +159,8 @@ dependencies {
     implementation(composeBom)
 
     implementation("androidx.core:core-ktx:1.19.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.1")
     implementation("androidx.activity:activity-compose:1.13.0")
 
     implementation("androidx.compose.ui:ui")
@@ -182,7 +182,7 @@ dependencies {
 
     // Robolectric (#91): the Compose screen tests and the Room DAO tests run in
     // testDebugUnitTest, on the JVM, with the same AndroidX test APIs as on a device.
-    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("org.robolectric:robolectric:4.18.1")
     testImplementation("androidx.test.ext:junit:1.3.0")
     testImplementation("androidx.test:core-ktx:1.7.0")
     testImplementation("androidx.test.espresso:espresso-core:3.7.0")
@@ -235,7 +235,7 @@ dependencies {
     // kotlinx-serialization-json 1.8.1 onto core 1.7.3: every MigrationTest then dies in an
     // AbstractMethodError (GeneratedSerializer.typeParametersSerializers). Raise core past 1.8.1.
     constraints {
-        implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.11.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.13.0")
     }
 
     // Fetch + parse the shared page (also reads embedded JSON-LD recipe data). :core declares
@@ -249,7 +249,7 @@ dependencies {
 
     // "Clip it yourself" hears its page's main frame only (#235): WebViewCompat's message
     // listener says which frame posted, which the old JavaScript interface can't.
-    implementation("androidx.webkit:webkit:1.17.1")
+    implementation("androidx.webkit:webkit:1.18.0")
 
     // Recipe photo
     implementation("io.coil-kt:coil-compose:2.7.0")
@@ -273,9 +273,9 @@ dependencies {
     // A recipe picked from a page's text (#103): the Prompt API, as Rewriting takes only short
     // inputs. Its structured output needs an alpha KSP schema compiler, so the reply is JSON
     // parsed strictly instead (docs/decisions.md).
-    implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta5")
     // Reading a Reddit post's photo (#198): text recognition through Google Play services, which
     // downloads the Latin model once (the manifest asks for it at install) instead of bundling
     // ~11 MB of native code per ABI in the app (docs/decisions.md).
-    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.2")
 }
