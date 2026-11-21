@@ -819,16 +819,38 @@ both.
   as of September 2026). `DEVELOPER_DIR` selects Xcode 27 explicitly. It runs
   `RecipeClipperTests` on the image's iPhone 17 / iOS 27.0 simulator and
   uploads the `.xcresult` on failure.
-- **iOS UI tests** (`ios-ui-tests.yml`), about an hour: nightly at 03:00
+- **iOS UI tests** (`ios-ui-tests.yml`), about 50 minutes: nightly at 03:00
   UTC and on demand (Actions → iOS UI tests → Run workflow, or
-  `gh workflow run ios-ui-tests.yml --ref <branch>`). It builds once, then
-  tests on a simulator it creates and boots first, and deletes after. Each
+  `gh workflow run ios-ui-tests.yml --ref <branch>`). The suite was one job of
+  about two hours, so it runs as **three parallel shards** (a matrix, `fail-fast`
+  off, 90 minutes each). Each shard builds for testing itself (the three builds
+  overlap, about four minutes, which beats one build plus uploading and downloading
+  its products), then tests on a simulator it creates and boots first, and deletes
+  after. The result named `iOS UI tests` is a last small job that needs every shard,
+  so a run passes only if the whole suite did; a failed shard uploads its
+  `.xcresult` as `ios-ui-test-results-<shard>`. The workflow still runs one run at a
+  time. Each
   test has five minutes (ten at most), so a stuck one fails alone, and no
   diagnostics are collected from the simulator (after a failure that timed
   out at ten minutes, every time). If the
   test runner crashes before any test runs ("never finished bootstrapping",
   the preview image's simulator hanging), it reboots the simulator and runs
   once more (#296).
+  - **How the classes are split.** `ios/scripts/ui-test-shard.sh <index> <count>`
+    reads every class in `ios/RecipeClipperUITests` itself (a subclass of `XCTestCase`
+    or of `RecipeUITestCase`; the tests an extension such as
+    `WalkthroughUITests+Kitchen.swift` adds count for its class), packs them greedily by the
+    seconds in `ios/RecipeClipperUITests/ui-test-weights.json` (heaviest first into the lightest
+    shard; an unlisted class counts as the median) and prints that shard's
+    `-only-testing:RecipeClipperUITests/<Class>` arguments. A new test class needs
+    nothing registered. It exits non-zero if a class would be in no shard or two, or a
+    `func test…` isn't in a class it found. `ui-test-shard.sh --summary 3` shows the shards.
+  - **Refreshing the weights** (when a class is added or grows a lot, or now and then): take
+    the logs of one or two recent green full runs and run
+    `gh run view <id> --log > run.log; ios/scripts/ui-test-shard.sh --update-weights run.log [more.log…]`.
+    It sums each class's `Test Case … passed (N seconds)` lines, averages across the logs
+    and rewrites the file; commit it. Old weights only make a shard a little longer; they never
+    skip a test.
 - **Recipe site check** (`site-check.yml`, #32): Mondays at 06:00 UTC and on
   demand, and on a pull request that changes the check, its URL list or
   `shared/tables/site-rules.json`. It

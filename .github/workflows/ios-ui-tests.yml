@@ -1,7 +1,8 @@
 name: iOS UI tests
 
-# About an hour, so not on every pull request: nightly, and on demand from the
-# Actions tab (Run workflow) or `gh workflow run ios-ui-tests.yml --ref <branch>`.
+# About 50 minutes on three parallel shards, so not on every pull request: nightly, and on
+# demand from the Actions tab (Run workflow) or `gh workflow run ios-ui-tests.yml --ref <branch>`.
+# The classes are split by ios/scripts/ui-test-shard.sh; the run passes only if every shard does.
 on:
   workflow_dispatch:
   schedule:
@@ -19,21 +20,40 @@ env:
 
 jobs:
   ios-ui:
-    name: iOS UI tests
+    name: iOS UI tests (shard ${{ matrix.shard }})
     runs-on: xcode-27
-    # The full suite passed 2 h with batch 1's new tests (#416); 3 h leaves room to grow.
-    timeout-minutes: 180
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
 
       - name: Show Xcode
         run: xcodebuild -version
 
+      # The classes this shard runs, packed by weight (ios/RecipeClipperUITests/ui-test-weights.json).
+      # The script fails if a class would be in no shard or in two.
+      - name: Pick this shard's tests
+        id: shard
+        run: |
+          {
+            echo 'only<<EOF'
+            ios/scripts/ui-test-shard.sh ${{ matrix.shard }} ${{ strategy.job-total }}
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "### Shard ${{ matrix.shard }} of ${{ strategy.job-total }}" >> "$GITHUB_STEP_SUMMARY"
+          ios/scripts/ui-test-shard.sh ${{ matrix.shard }} ${{ strategy.job-total }} 2>/dev/null \
+            | sed 's/.*\//- /' >> "$GITHUB_STEP_SUMMARY"
+
       - name: Generate the Xcode project
         run: |
           brew install xcodegen
           cd ios && xcodegen generate
 
+      # Each shard builds for itself: the three builds run side by side (about four minutes),
+      # which beats one build plus uploading and downloading the products.
       - name: Build for testing
         working-directory: ios
         run: |
@@ -59,12 +79,13 @@ jobs:
         working-directory: ios
         env:
           UDID: ${{ steps.sim.outputs.udid }}
+          ONLY: ${{ steps.shard.outputs.only }}
         run: |
           run_tests() {
             xcodebuild test-without-building \
               -project RecipeClipper.xcodeproj -scheme RecipeClipper \
               -destination "id=$UDID" -derivedDataPath build/DerivedData \
-              -only-testing:RecipeClipperUITests -parallel-testing-enabled NO \
+              $ONLY -parallel-testing-enabled NO \
               -test-timeouts-enabled YES -collect-test-diagnostics never \
               -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
               -resultBundlePath "build/RecipeClipperUITests$1.xcresult" 2>&1 | tee "build/ui-tests$1.log"
@@ -84,10 +105,23 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: ios-ui-test-results
+          name: ios-ui-test-results-${{ matrix.shard }}
           path: ios/build/*.xcresult
           if-no-files-found: ignore
 
       - name: Delete the simulator
         if: always() && steps.sim.outputs.udid != ''
         run: xcrun simctl delete "${{ steps.sim.outputs.udid }}"
+
+  # One result for the run: it passes only if the whole suite did, every shard.
+  ios-ui-result:
+    name: iOS UI tests
+    needs: ios-ui
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every shard passed
+        run: |
+          echo "The shards finished: ${{ needs.ios-ui.result }}"
+          test "${{ needs.ios-ui.result }}" = "success"
