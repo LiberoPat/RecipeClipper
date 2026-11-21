@@ -128,6 +128,7 @@ import kotlinx.coroutines.flow.filterNotNull
  * shown; [groceriesViewModel] null leaves it out. "What I need" (#51) opens the week against the
  * pantry; [onOpenWhatINeed] null leaves it out. With [shopForWeek] (#384) the menu has just one
  * item, "Shop for this week", which opens What I need, and no "Add this week's ingredients".
+ * Last, "Plan settings" (#412) opens Settings' Plan section; [onOpenSettings] null leaves it out.
  */
 @Composable
 fun WeekScreen(
@@ -138,7 +139,9 @@ fun WeekScreen(
     groceriesViewModel: AddToGroceriesViewModel? = null,
     shopForWeek: Boolean = LocalFlagValues.current.isOn(Flag.SHOP_FOR_WEEK),
     /** The Pro screen (#413): without Pro, Skip and the fresh-food swap open it. */
-    onOpenPro: () -> Unit = {}
+    onOpenPro: () -> Unit = {},
+    /** Settings' Plan section (#412), from the menu; null leaves the item out. */
+    onOpenSettings: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var groceriesSheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -208,7 +211,8 @@ fun WeekScreen(
                             onShareCalendar = viewModel::onShareCalendar.takeIf { month == null },
                             canShareCalendar = state.hasMeals,
                             onSaveMenu = viewModel::onSaveMenuStart.takeIf { month == null },
-                            onApplyMenu = viewModel::onPickMenuStart.takeIf { month == null }
+                            onApplyMenu = viewModel::onPickMenuStart.takeIf { month == null },
+                            onOpenSettings = onOpenSettings
                         )
                         Spacer(Modifier.height(8.dp))
                         if (month == null) {
@@ -301,7 +305,8 @@ private fun TitleRow(
     onShareCalendar: (() -> Unit)?,
     canShareCalendar: Boolean,
     onSaveMenu: (() -> Unit)? = null,
-    onApplyMenu: (() -> Unit)? = null
+    onApplyMenu: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
         Text(
@@ -312,7 +317,7 @@ private fun TitleRow(
         TextButton(onClick = onToggleMonth, modifier = Modifier.testTag("toggleMonth")) {
             Text(stringResource(if (showingMonth) R.string.action_week_view else R.string.action_month_view))
         }
-        WeekMenu(onOpenMealTypes, onOpenWhatINeed, shopForWeek, onAddToGroceries, onShareCalendar, canShareCalendar, onSaveMenu, onApplyMenu)
+        WeekMenu(onOpenMealTypes, onOpenWhatINeed, shopForWeek, onAddToGroceries, onShareCalendar, canShareCalendar, onSaveMenu, onApplyMenu, onOpenSettings)
     }
 }
 
@@ -476,7 +481,8 @@ private fun WeekMenu(
     onShareCalendar: (() -> Unit)?,
     canShareCalendar: Boolean,
     onSaveMenu: (() -> Unit)?,
-    onApplyMenu: (() -> Unit)?
+    onApplyMenu: (() -> Unit)?,
+    onOpenSettings: (() -> Unit)?
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -546,6 +552,17 @@ private fun WeekMenu(
                     onOpenMealTypes()
                 }
             )
+            // Settings' Plan section (#412): the menu's last item, as on the Pantry's.
+            if (onOpenSettings != null) {
+                DropdownMenuItem(
+                    text = { MenuItemText(stringResource(R.string.action_plan_settings), stringResource(R.string.menu_desc_plan_settings)) },
+                    modifier = Modifier.testTag("planSettings"),
+                    onClick = {
+                        expanded = false
+                        onOpenSettings()
+                    }
+                )
+            }
         }
     }
 }

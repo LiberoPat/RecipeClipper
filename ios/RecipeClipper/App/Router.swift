@@ -21,6 +21,8 @@ final class Router {
     var weekPath: [Route] = []
     /// The Groceries tab's stack (#422): a recipe opened from a line's tag.
     var groceriesPath: [Route] = []
+    /// The Pantry tab's stack (#412): Settings' Pantry page, from its menu.
+    var pantryPath: [Route] = []
     var selectedTab: AppTab = .recipes
 
     /// An expiry reminder was tapped (#305): the Pantry opens the Use it up sheet, once.
@@ -29,7 +31,14 @@ final class Router {
     /// Opens the Pantry tab with the Use it up sheet waiting.
     func requestUseItUp() {
         useItUpPending = true
-        select(.pantry)
+        showPantry()
+    }
+
+    /// The Pantry tab on the pantry itself, not on its Settings page (#412), which would hide the
+    /// Use it up sheet or what was just put away (Android's `openRoute` of the Pantry tab).
+    func showPantry() {
+        selectedTab = .pantry
+        pantryPath = []
     }
 
     /// Whether the sheet was waiting, once: taking it clears it.
@@ -55,6 +64,7 @@ final class Router {
         if tab == selectedTab, tab == .recipes { path = [] }
         if tab == selectedTab, tab == .week { weekPath = [] }
         if tab == selectedTab, tab == .groceries { groceriesPath = [] }
+        if tab == selectedTab, tab == .pantry { pantryPath = [] }
         selectedTab = tab
     }
 
@@ -122,7 +132,7 @@ final class Router {
         }
         // A home-screen widget (#309) opens its tab.
         if let tab = AppLinks.tabName(from: url).flatMap(AppTab.init(rawValue:)) {
-            select(tab)
+            if tab == .pantry { showPantry() } else { select(tab) }
             return
         }
         guard let shared = DeepLink.sharedUrl(from: url) else { return }
