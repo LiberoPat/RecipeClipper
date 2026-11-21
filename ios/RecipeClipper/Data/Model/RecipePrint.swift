@@ -24,6 +24,8 @@ enum RecipePrint {
         case ingredient(String)
         case step(Int, String)
         case note(String)
+        /// One of the source's tips (#432), as written, unnumbered, after the steps.
+        case tip(String)
     }
 
     /// The section headings, from the screen's strings; `share` gives the serves and times words.
@@ -32,6 +34,8 @@ enum RecipePrint {
         var ingredients: String
         var instructions: String
         var notes: String
+        /// The tips' heading (#432).
+        var tips: String = "Tips"
 
         static let english = Labels(share: .english, ingredients: "Ingredients", instructions: "Instructions", notes: "Notes")
     }
@@ -63,6 +67,11 @@ enum RecipePrint {
             blocks.append(.section(labels.instructions))
             blocks += steps.enumerated().map { .step($0.offset + 1, $0.element) }
         }
+        let tips = recipe.tips.filter { !$0.kTrimmed.isEmpty }
+        if !tips.isEmpty {
+            blocks.append(.section(labels.tips))
+            blocks += tips.map { .tip($0) }
+        }
         if let note = note?.kTrimmed, !note.isEmpty {
             blocks.append(.section(labels.notes))
             blocks.append(.note(note))
@@ -75,7 +84,7 @@ enum RecipePrint {
     static func keepsWithNext(_ block: Block) -> Bool {
         switch block {
         case .photo, .title, .credit, .meta, .section, .groupHeading: return true
-        case .ingredient, .step, .note: return false
+        case .ingredient, .step, .note, .tip: return false
         }
     }
 

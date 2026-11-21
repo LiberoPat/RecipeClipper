@@ -46,6 +46,8 @@ internal fun measure(blocks: List<Block>, style: PrintStyle, cached: (String) ->
                 "${block.number}.", style.layout(block.text, style.text, style.contentWidth - 22f), 22f, 8f, style, true
             )
             is Block.Note -> text(style.layout(block.text, style.text), 4f, keep, style)
+            // A tip (#432): a plain paragraph, unnumbered, a little apart from the next.
+            is Block.Tip -> text(style.layout(block.text, style.text), 8f, keep, style)
         }
     }
 

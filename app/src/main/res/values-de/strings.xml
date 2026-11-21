@@ -24,6 +24,7 @@
     <string name="heading_ingredients">Zutaten</string>
     <string name="heading_instructions">Zubereitung</string>
     <string name="heading_notes">Notizen</string>
+    <string name="heading_tips">Tipps</string>
     <string name="notes_placeholder">Notiz hinzufügen</string>
     <string name="action_open_original">Original öffnen</string>
     <string name="cd_open_original">Originalrezept auf %1$s öffnen</string>

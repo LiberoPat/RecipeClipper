@@ -6486,6 +6486,58 @@ tap lands on the pantry, no item without a link, the flag's defaults). iOS: `Tab
 (the flag, the Pantry's stack, the reminder's tap) and three tests in `TabShellUITests` (each item
 opens its page on its tab and Back returns; no item with the flag off).
 
+## Recipe tips: HowToTip kept apart from the steps (#432, 2026-11-21)
+
+Found by the 2026-11-21 site check-up: kingarthurbaking.com lists its tips after the method as
+schema.org `HowToTip` entries in `recipeInstructions` (Mini Apple Pies: seventeen HowToSteps, then a
+crumb-topping variation, a spice substitution and a baking-stone tip), and the parser read every
+entry as a step, so cook mode ended on three steps that weren't. `stepNoise` (#120) only trims the
+end of the last step, so a site rule could not fix it. The owner's decision: **keep them as tips**,
+apart from the steps, below the method, unnumbered, and out of cook mode. Behind **`recipeTips`**
+(on in debug and release, both platforms).
+
+- **Parsing** (`JsonLdRecipeParser`, both platforms, pinned by the corpus's `Parse` rows, which now
+  end in `tips:` when there are some): an entry whose `@type` is `HowToTip` (any case), at the top
+  level or inside a HowToSection, is a tip; its text is read exactly as a step's (`text`, else
+  `name`, through `jsonText`), never rewritten. Tips are not steps, so the rule stands: a recipe
+  needs a name plus ingredients or steps, and one whose instructions are only tips has none. A
+  condensed duplicate section ("Abbreviated Recipe") that would have emptied the steps is put back with its tips
+  read once. Microdata, Reddit, the splitter and the importers have no tips. A `HowToStep` that
+  nests its own `HowToTip` (schema.org allows it; no site seen) is still one step.
+- **Storage:** `recipes.tips`, a JSON list like `instructions`, `NOT NULL DEFAULT '[]'` (Room 19 →
+  20, `MIGRATION_19_20`; iOS `user_version` 18 → 19, `addTips`). **Stored recipes are not rewritten:**
+  a King Arthur recipe saved before keeps its tips as steps until it is shared again, and the
+  re-share then refreshes it like any change of steps (its cook progress goes, as the rule for
+  changed steps says; ticks stay while the ingredients are the same). A change in the tips alone
+  keeps the cook's progress: step indexes still mean the same steps.
+- **Reading view:** after the steps (and before Versions and the note), a muted "Tips" heading in
+  the Versions style, then each tip as a plain paragraph: no number, no step amounts, no ingredient
+  links, no temperature conversion (the text stays as the source wrote it). **Cook mode never shows
+  them**: its steps, its "Step 1 of N", its timers and its progress are the steps alone.
+- **Flag off:** a freshly parsed recipe's tips are its last steps, as before (the repository folds
+  them in, `Recipe.withTipsAsSteps`, for a fetch, a rendered page, a page shared from Safari, the
+  iOS share extension through the mirrored `recipe_tips_on`, and a chat's JSON in the editor or the
+  meal-plan review). Tips already stored still show.
+- **Everything that carries a recipe:** the export file and a shared file write `tips` only when
+  there are some (older files, and recipes with none, have no key and read as none;
+  `backup-v1-tips.json` is the shared fixture), and `BackupMerger` passes them through; shared text
+  and the printed card put them after the steps under the heading, unnumbered (the text's heading in
+  capitals, like the other two); Ask an AI's recipe JSON writes them after the steps as `HowToTip`
+  objects, so a changed version (#354) comes back with them as tips (the prompt doesn't ask for
+  tips; absent is fine). Search doesn't read them.
+- **The editor (the simplest honest thing):** a recipe that has tips opens with a "Tips" box under
+  the steps, one tip per line, saved as typed (empty lines dropped; a blank box is no tips). A
+  recipe without tips, a typed-in one included, has no box, so nothing new to explain; tips are
+  never what makes a draft valid. A chat's HowToTip fills the box the same way.
+- **Tests:** `KingArthurPageTest` / `KingArthurPageTests` over
+  `shared/fixtures/pages/site-kingarthur-mini-apple-pies.html` (the saved page's one JSON-LD block,
+  verbatim); the parser's HowToTip tests; `RecipeTipsTest` / `RecipeTipsTests` (share text, print,
+  the AI's JSON, the draft, the backup fixture); `DefaultRecipeRepositoryTipsTest` /
+  `RecipeTipsDataTests` (the flag both ways, a re-share of a recipe saved with its tips as steps,
+  progress kept when only the tips change, an edit, and on iOS the 18 → 19 migration);
+  `EditRecipeTipsViewModelTest` / `EditRecipeTipsTests`; `RecipeTipsScreenTest` (Robolectric: the
+  section, and none of it in cook mode); `MigrationTest.migration19To20…` (device only).
+
 ## Pith (#414, 2026-11-20)
 
 The app is **Pith**, subtitle **"Skip the story. Cook."** (owner, 2026-11-19), with the
@@ -7081,9 +7133,9 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 19** (iOS `user_version` 18): `recipes`
+Room database `recipe_clipper.db`, **version 20** (iOS `user_version` 19): `recipes`
 (with nullable `notes`, `language`, `cookState`, `servingsTarget`, `editedAt`, `basedOnUid`,
-#354, and `photoFile`, #386, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
+#354, and `photoFile`, #386, and `contentOrigin` and `tips`, #432, a JSON list), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
 `meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51; `runningLow`, #194), `menus` and
 `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never
 exported), `cooked_photos` (#116, cascading; no `fileName` for "Mark as cooked", #173). Recipes, lists, the plan, grocery,

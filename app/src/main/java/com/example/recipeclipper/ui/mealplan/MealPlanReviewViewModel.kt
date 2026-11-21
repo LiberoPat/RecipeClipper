@@ -311,7 +311,9 @@ class MealPlanReviewViewModel @Inject constructor(
                     continue
                 }
                 val item = read[row.index]
-                val recipe = recipes.addManual(RecipeDraft.of(item.recipe), item.recipe.language, null, fromChat = true)
+                // Tips (#432) stay apart only with recipeTips on; off, they are the last steps, as before.
+                val asRead = if (flags?.isOn(Flag.RECIPE_TIPS) == true) item.recipe else item.recipe.withTipsAsSteps()
+                val recipe = recipes.addManual(RecipeDraft.of(asRead), item.recipe.language, null, fromChat = true)
                 if (recipe == null) { failed = true; continue }
                 // Id 0: the one upsert did not keep it (no room). It stays in the review.
                 if (recipe.id == 0L) continue

@@ -14,6 +14,7 @@ import com.example.recipeclipper.data.model.LibraryLimit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -875,12 +876,61 @@ class MigrationTest {
         }
     }
 
+    /**
+     * A recipe's tips (#432): a new `recipes.tips`, `[]` for every recipe. A recipe saved with its
+     * tips as steps is not rewritten: it keeps all its steps and its cook progress, and a re-share
+     * that brings the tips apart refreshes it (new steps, so the progress goes, as for any change).
+     */
+    @Test
+    fun migration19To20KeepsEveryRecipeAsItWasWithNoTips() {
+        helper.createDatabase(name, 19).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt, basedOnUid, photoFile)
+                VALUES
+                  (7, 'https://www.kingarthurbaking.com/recipes/mini-apple-pies-recipe', 'Mini Apple Pies', NULL,
+                   '["1 apple"]', '["Bake.","Cool.","A tip."]', NULL, NULL, NULL, '24', 'BLOG', 123, '[0]',
+                   'Mine', 'recipe-uid', 'en', '{"on":true,"current":1}', 12, 'PARSED', NULL, NULL, 'stored.jpg')
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 20, true, RecipeDatabase.MIGRATION_19_20)
+
+        val db = openMigrated()
+        runBlocking {
+            val kept = db.recipeDao().get(7)!!
+            assertEquals(listOf("Bake.", "Cool.", "A tip."), kept.instructions)
+            assertEquals(emptyList<String>(), kept.tips)
+            assertEquals(setOf(0), kept.checkedIngredients)
+            assertEquals("Mine", kept.notes)
+            assertEquals(12, kept.servingsTarget)
+            assertEquals("stored.jpg", kept.photoFile)
+            assertEquals("recipe-uid", kept.uid)
+            assertNotNull(kept.cookState)
+
+            db.recipeDao().upsert(
+                kept.copy(instructions = listOf("Bake.", "Cool."), tips = listOf("A tip."), cookState = null),
+                LibraryLimit.Unlimited
+            )
+            val refreshed = db.recipeDao().get(7)!!
+            assertEquals(listOf("Bake.", "Cool."), refreshed.instructions)
+            assertEquals(listOf("A tip."), refreshed.tips)
+            assertNull(refreshed.cookState)
+            assertEquals("Mine", refreshed.notes)
+            assertEquals("stored.jpg", refreshed.photoFile)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 19, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 20, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

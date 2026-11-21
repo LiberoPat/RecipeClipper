@@ -80,6 +80,8 @@ enum Flag: String, CaseIterable {
     case libraryFirst
     /// Settings links (#412): "Plan settings" in the Plan tab's menu and "Pantry settings" in the Pantry's, each opening its section on that tab's stack.
     case tabSettingsLinks
+    /// Recipe tips (#432): HowToTip entries kept apart from the steps, below the method, never in cook mode; off, they are the last steps.
+    case recipeTips
 }
 
 /// One flag as `shared/flags.json` declares it.

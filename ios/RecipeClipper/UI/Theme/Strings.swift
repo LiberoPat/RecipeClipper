@@ -36,6 +36,8 @@ enum Strings {
     static var headingIngredients: String { String(localized: "heading_ingredients") }
     static var headingInstructions: String { String(localized: "heading_instructions") }
     static var headingNotes: String { String(localized: "heading_notes") }
+    /// The quiet heading over a recipe's tips (#432), below the method; the editor's tips box too.
+    static var headingTips: String { String(localized: "heading_tips") }
     static var notesPlaceholder: String { String(localized: "notes_placeholder") }
     static var openOriginal: String { String(localized: "action_open_original") }
 
@@ -667,14 +669,17 @@ enum Strings {
             cook: labelCook,
             total: labelTotal,
             ingredients: String(localized: "share_heading_ingredients"),
-            instructions: String(localized: "share_heading_instructions")
+            instructions: String(localized: "share_heading_instructions"),
+            // The tips' heading (#432) in capitals, like the other two, in the phone's language.
+            tips: headingTips.uppercased(with: Locale.current)
         )
     }
 
     // The printed card's headings (#318), as the reading view words them.
     static var printLabels: RecipePrint.Labels {
         RecipePrint.Labels(
-            share: shareTextLabels, ingredients: headingIngredients, instructions: headingInstructions, notes: headingNotes
+            share: shareTextLabels, ingredients: headingIngredients, instructions: headingInstructions, notes: headingNotes,
+            tips: headingTips
         )
     }
 

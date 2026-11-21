@@ -33,7 +33,8 @@ internal fun Recipe.toEntity(viewedAt: Long) = RecipeEntity(
     servingsTarget = servingsTarget,
     contentOrigin = origin.name,
     editedAt = editedAt,
-    photoFile = photoFile
+    photoFile = photoFile,
+    tips = tips
 )
 
 internal fun RecipeEntity.toDomain() = Recipe(
@@ -57,7 +58,8 @@ internal fun RecipeEntity.toDomain() = Recipe(
     origin = ContentOrigin.fromName(contentOrigin),
     editedAt = editedAt,
     photoFile = photoFile,
-    uid = uid
+    uid = uid,
+    tips = tips
 )
 
 internal fun ListRow.toDomain() = RecipeList(
