@@ -849,13 +849,26 @@ both.
   (`concurrency: ios-ui-tests-<ref>`), so different pull requests test side by side
   (owner, 2026-11-20). A pull request that changes nothing iOS-related (the CI's
   "Detect iOS changes" says so and skips the iOS unit tests) doesn't need this run
-  to merge. Each
+  to merge. The run is `ios/scripts/run-ui-tests.sh`. Each
   test has five minutes (ten at most), so a stuck one fails alone, and no
   diagnostics are collected from the simulator (after a failure that timed
   out at ten minutes, every time). If the
   test runner crashes before any test runs ("never finished bootstrapping",
   the preview image's simulator hanging), it reboots the simulator and runs
   once more (#296).
+  - **Warm-up and one retry** (#395). A fresh simulator's first-boot work (wallpapers,
+    widgets, Shortcuts, sync daemons: about eight CPU-minutes, measured on a 10-core Mac) ran
+    under the first ten-odd minutes of tests on the runner's few cores: in the logs of two full
+    runs, XCTest steps that took 3-13 s came at about 8 per 1,000 steps until 14 minutes after
+    boot, and 1-2 per 1,000 from 18 minutes on, in whichever class ran then, so a different test
+    lost almost every run. So `ios/scripts/warm-simulator.sh` launches the app once and waits
+    for the simulator's own processes to go quiet (under 0.3 of a core for 15 s), stopping at
+    about three minutes in all; its line in the job summary says how long and whether it got
+    quiet. And a failed test runs once more at once (`-retry-tests-on-failure -test-iterations 2`):
+    it fails the shard only if it fails twice. A retry is never silent: the job summary lists
+    each test that needed one, with its first failure, and raises it as a warning, and the
+    shard uploads its `.xcresult` then too. **Note every retried test on #395**; one that keeps
+    coming back has a real problem to fix, and the retry is not a fix.
   - **How the classes are split.** `ios/scripts/ui-test-shard.sh <index> <count>`
     reads every class in `ios/RecipeClipperUITests` itself (a subclass of `XCTestCase`
     or of `RecipeUITestCase`; the tests an extension such as
@@ -868,7 +881,7 @@ both.
   - **Refreshing the weights** (when a class is added or grows a lot, or now and then): take
     the logs of one or two recent green full runs and run
     `gh run view <id> --log > run.log; ios/scripts/ui-test-shard.sh --update-weights run.log [more.log…]`.
-    It sums each class's `Test Case … passed (N seconds)` lines, averages across the logs
+    It sums each class's `Test Case … passed (N seconds)` lines (a retried test's last try only), averages across the logs
     and rewrites the file; commit it. Old weights only make a shard a little longer; they never
     skip a test.
 - **Recipe site check** (`site-check.yml`, #32): Mondays at 06:00 UTC and on
