@@ -86,8 +86,11 @@ final class CookedPhotosUITests: RecipeUITestCase {
         scrollToTheEnd()
         require(iMadeThis, "I made this").tap()
         require(app.buttons["Choose from library"], "the library choice").tap()
-        // The system's picker, out of process: any of the simulator's sample photos will do.
-        require(app.images.matching(identifier: "PXGGridLayout-Info").firstMatch, "a photo in the picker", within: 20).tap()
+        // The system's picker, out of process: any of the simulator's sample photos will do. On a
+        // fresh simulator its first opening lists them slowly: on CI the grid filled in only just
+        // after 20 s (run 44649715620's tree, #395, shows the photos there), so it gets a minute,
+        // as web content does.
+        require(app.images.matching(identifier: "PXGGridLayout-Info").firstMatch, "a photo in the picker", within: 60).tap()
         require(app.navigationBars["Photos"].buttons["Done"], "the picker's Done").tap()
 
         let note = require(app.descendants(matching: .any).matching(identifier: "cooked.note").firstMatch, "the note field")

@@ -65,46 +65,37 @@ jobs:
             -derivedDataPath build/DerivedData
 
       # A fresh simulator, fully booted before the run: the shared one hung at bootstrap and
-      # crashed the test runner before any test ran (#296).
-      - name: Boot a fresh simulator
+      # crashed the test runner before any test ran (#296). Then warmed: its first-boot work
+      # (about eight CPU-minutes) made XCTest steps take 3-13 s in the first ten-odd minutes of
+      # tests. The app is launched once, then the step waits for the simulator to go quiet, at
+      # most about three minutes in all (ios/scripts/warm-simulator.sh; its line in the summary).
+      - name: Boot and warm a fresh simulator
         id: sim
         run: |
           udid=$(xcrun simctl create rc-ui-tests "iPhone 17" com.apple.CoreSimulator.SimRuntime.iOS-27-0)
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$udid"
           xcrun simctl bootstatus "$udid" -b
+          ios/scripts/warm-simulator.sh "$udid" ios/build/DerivedData/Build/Products/Debug-iphonesimulator/RecipeClipper.app
 
-      # Each test gets five minutes (ten at most), so one stuck test fails alone instead of
-      # running the job into its timeout. No diagnostics from the simulator: collecting them
-      # after a failure timed out at ten minutes every time.
+      # A failed test runs once more at once; it fails the shard only if it fails twice. Every
+      # retry is listed in the summary and raised as a warning (note it on #395). The script
+      # also gives each test five minutes (ten at most) and reruns the shard once if the test
+      # runner never started (#296).
       - name: UI tests
+        id: tests
         working-directory: ios
         env:
           UDID: ${{ steps.sim.outputs.udid }}
           ONLY: ${{ steps.shard.outputs.only }}
         run: |
-          run_tests() {
-            xcodebuild test-without-building \
-              -project RecipeClipper.xcodeproj -scheme RecipeClipper \
-              -destination "id=$UDID" -derivedDataPath build/DerivedData \
-              $ONLY -parallel-testing-enabled NO \
-              -test-timeouts-enabled YES -collect-test-diagnostics never \
-              -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
-              -resultBundlePath "build/RecipeClipperUITests$1.xcresult" 2>&1 | tee "build/ui-tests$1.log"
-            return "${PIPESTATUS[0]}"
-          }
-          run_tests "" && exit 0
-          # The runner crashing before any test ran is the simulator, not a test: once more,
-          # on the simulator rebooted.
-          grep -q "never finished bootstrapping" build/ui-tests.log || exit 1
-          echo "The test runner never started: rebooting the simulator and running once more."
-          xcrun simctl shutdown "$UDID"
-          xcrun simctl boot "$UDID"
-          xcrun simctl bootstatus "$UDID" -b
-          run_tests "-retry"
+          # One -only-testing: argument per line.
+          # shellcheck disable=SC2086
+          scripts/run-ui-tests.sh "$UDID" $ONLY
 
+      # On a failure, and when a test needed a retry: its screenshots and recording show why.
       - name: Upload test results
-        if: failure()
+        if: failure() || steps.tests.outputs.retried == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: ios-ui-test-results-${{ matrix.shard }}

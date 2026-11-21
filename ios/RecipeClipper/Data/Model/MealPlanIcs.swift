@@ -9,7 +9,7 @@ import Foundation
 /// Chicken Adobo"). Events are `TRANSPARENT` (the day isn't shown as busy), and the UID is the
 /// entry's stable uid, so sharing the same week again updates rather than duplicates.
 enum MealPlanIcs {
-    static let productId = "-//Recipe Clipper//Meal plan//EN"
+    static let productId = "-//Pith//Meal plan//EN"
     private static let crlf = "\r\n"
     /// RFC 5545's limit on a content line, in octets, before it is folded.
     private static let lineOctets = 75

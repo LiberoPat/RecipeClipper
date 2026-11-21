@@ -21,6 +21,17 @@ final class ClipPageEventTests: XCTestCase {
         XCTAssertNil(ClipPageEvent.accept(#"{"type":"noImage"}"#, isMainFrame: false))
     }
 
+    /// The script's "ready" (#395) is the view layer's cue to push the state, never an event,
+    /// and only the main frame's counts.
+    func testReadyIsHeardFromTheMainFrameOnlyAndIsNoEvent() {
+        let ready = #"{"type":"ready"}"#
+        XCTAssertTrue(ClipPageEvent.isReady(ready, isMainFrame: true))
+        XCTAssertFalse(ClipPageEvent.isReady(ready, isMainFrame: false))
+        XCTAssertFalse(ClipPageEvent.isReady(selection, isMainFrame: true))
+        XCTAssertFalse(ClipPageEvent.isReady("not json", isMainFrame: true))
+        XCTAssertNil(ClipPageEvent.accept(ready, isMainFrame: true))
+    }
+
     func testAMessageThatIsntOneOfThePagesIsDropped() {
         XCTAssertNil(ClipPageEvent.accept(42, isMainFrame: true))
         XCTAssertNil(ClipPageEvent.accept("not json", isMainFrame: true))

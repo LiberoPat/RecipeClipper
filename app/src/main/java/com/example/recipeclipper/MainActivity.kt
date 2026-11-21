@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
         return pages?.takeIf { featureFlags.current.isOn(Flag.PHOTO_TEXT) }?.let { Routes.scan(it) }
     }
 
-    /** A Recipe Clipper file (#149): opened (VIEW) or shared in (SEND), by its type or its name. */
+    /** A Pith file (#149): opened (VIEW) or shared in (SEND), by its type or its name. */
     private fun sharedFile(intent: Intent?): String? {
         val uri = when (intent?.action) {
             Intent.ACTION_VIEW -> intent.data

@@ -107,6 +107,13 @@ enum UITestSeeding {
     /// container keeps no copy and Settings shows no backup rows.
     static let backupFolderFlag = "-uiTestBackupFolder"
 
+    /// Undo snackbars stay until Undo or leaving the screen, in place of their ten seconds
+    /// (`SnackbarTimeout`), for the tests that tap Undo and aren't about the window: XCTest's
+    /// queries can outlast it on a busy simulator. A test of the window's end leaves it off.
+    static let holdUndoFlag = "-uiTestHoldUndo"
+
+    static var holdsUndo: Bool { scenario != nil && arguments.contains(holdUndoFlag) }
+
     /// The title every import resolves to under test.
     static let stubRecipeTitle = "Stub Chicken Soup"
 

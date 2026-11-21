@@ -42,7 +42,7 @@ class SharingWalkthroughTest : WalkthroughBase() {
         pause(2500)
     }
 
-    /** A Recipe Clipper file opened from another app (Messages, Files): the VIEW intent it sends. */
+    /** A Pith file opened from another app (Messages, Files): the VIEW intent it sends. */
     private fun receive(bytes: ByteArray, name: String) {
         val context = instrumentation.targetContext
         val file = File(context.cacheDir, "exports/$name").apply { parentFile?.mkdirs(); writeBytes(bytes) }

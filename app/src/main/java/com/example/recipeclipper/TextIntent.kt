@@ -10,7 +10,7 @@ import com.example.recipeclipper.ui.navigation.Routes
 /**
  * Text shared into the app: `ACTION_SEND` text/plain (a browser's link, a messaging app's
  * message, a note), the text beside a shared picture, or, behind the shareText flag (#306),
- * `ACTION_PROCESS_TEXT` (text selected in any app, "Recipe Clipper" in its selection menu,
+ * `ACTION_PROCESS_TEXT` (text selected in any app, "Pith" in its selection menu,
  * through [ProcessTextActivity]).
  */
 object TextIntent {

@@ -242,9 +242,25 @@ native ear; the reason is the later passes'.
 | `recipes_quick_pantry_note` | "…al menos la mitad de los ingredientes… por nombre, no por cantidad" and its equivalents | The honest statement of the rule (half, by name, not by amount): check it stays that plain. |
 | `recipes_pantry_have` | "Tienes 6 de 8", "Vous avez 6 sur 8", "Du hast 6 von 8", "Hai 6 su 8", "Você tem 6 de 8" | The count says "of" the ingredients without the noun, as the English "You have 6 of 8". |
 
+**The Plan tab and the name Pith (#414, 2026-11-20, drafts)**
+
+`tab_week` (the tab, its screen's title and the Settings section) is "Plan", in each language
+the word the app already uses for the meal plan ("Add to plan"), so the two agree:
+
+| Key | es | fr | de | it | pt-BR | Question for a native ear |
+|---|---|---|---|---|---|---|
+| `tab_week` | Plan | Planning | Plan | Piano | Plano | French follows "Ajouter au planning"; Italian follows "Aggiungi al piano" (and moves with it if that becomes "programma", below). The Week/Month toggle (`action_week_view`) stays "Semana", "Semaine", "Woche", "Settimana". |
+| `mealplan_intro`, `mealplan_open_week`, `groceries_empty` | en Plan / Abrir Plan / desde Plan | dans Planning / Ouvrir Planning / depuis le Planning | im Plan / Plan öffnen / aus dem Plan | nel Piano / Apri Piano / dal Piano | no Plano / Abrir Plano / pelo Plano | The tab named as a place, as "Semana" was. |
+| `share_target_label` (Android; English "Clip recipe to Pith") | Guardar receta en Pith | Garder la recette dans Pith | Rezept in Pith speichern | Salva ricetta in Pith | Salvar receita no Pith | The share sheet and selection-menu entry: "save" rather than the clip verb ("Recortar", "Découper"…), which reads oddly as an action on a link. Short enough not to truncate? |
+| iOS share extension `CFBundleDisplayName` (English "Clip Recipe") | Guardar receta | Garder la recette | Rezept speichern | Salva ricetta | Salvar receita | The same, without the name: it sits under the Pith icon. |
+
+"Pith" is a name, never translated (`app_name` and `home_title` are `translatable="false"`);
+in the sentences it takes the article a brand does ("do Pith", "o Pith" in Portuguese,
+"Pith-Export" in German).
+
 **Open questions**
 
-- Italian: "piano" or "programma" for the meal plan (above).
+- Italian: "piano" or "programma" for the meal plan (above), the Plan tab with it.
 - Spanish: the Groceries tab, "Compras" or "Compra" (above).
 - Portuguese: `aisle_baking`, and the iOS photo library's name (above).
 - The library views' notes and labels (the 2026-11-18 table above): the clip wording, French "Saisies à la main", and whether recipes are "cooked" or "made".

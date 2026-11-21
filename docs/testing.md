@@ -41,12 +41,27 @@ not to undo:
 - iOS UI tests that delete and then tap Undo tap it as soon as the snackbar
   shows, and check the row went afterwards: an undo snackbar lasts ten seconds of
   real time (a plain notice four), and waiting for the row first could outlast it.
+  `GroceriesUITests`' Undo tests also launch with `-uiTestHoldUndo`, which keeps
+  an undo snackbar until Undo or leaving the screen: on CI, slow queries (3 to
+  13 s each) come in the first ten minutes after the fresh simulator boots, in
+  whatever class runs then (Groceries opens shard 1), and finding then tapping
+  Undo took past ten seconds. The screen itself idles at once and its tree is
+  small. A test of the window's end (`testADeleteWithoutUndoStands`) never holds.
 - `ClipUITests` gives anything on the web page 60 s, not the usual 10: WebKit
   draws it and answers accessibility queries from its own process, which on a
   busy machine took over 10 s to show the page, and on CI 9 s and then 28 s to
   answer one query. It also waits for each snackbar to go before the next
   tap: the snackbar leaves by itself after four seconds, sliding down across
   the field buttons, and a tap that met it there was lost.
+- `ClipUITests` touches the page only once the web view's value reads "ready"
+  (the clip's state is in, #395): the page's text reached the tree well before
+  the page answered taps, and a tap in between went unheard.
+- Under-load waits from #395: the photo picker gets 60 s to list the
+  simulator's photos (a fresh simulator fills its grid slowly);
+  `RecipesUITests` looks for the undo snackbar before the row's going, and
+  waits longer than the ten-second window for it to end; ViewModel tests
+  await the task an action returns (`onAddTyped`) rather than a count of
+  yields, which a first use of a language's tables outlasted.
 - `ShareUITests` dismisses the share sheet by tapping in the free part of the
   screen beside it, never at the very top. On iOS 27 the iPhone's share sheet
   is a popover starting just under the status bar, and a tap in the status bar
@@ -409,7 +424,7 @@ every phrase and skip phrase of every language (`AheadStepsTest`; iOS `AheadStep
 corpus's `Ahead` rows pin the two), the meals named, the order, the text and the first day
 (`MealRemindersTest` / `MealRemindersTests`), and what the alarms do (`MealReminderCoordinatorTest`:
 armed, re-armed, and what the receiver builds, or doesn't, when the plan, a switch, the flag or the day has
-changed; iOS `MealReminderCoordinatorTests`), with the Settings > Week switches and times
+changed; iOS `MealReminderCoordinatorTests`), with the Settings > Plan switches and times
 (`SettingsWeekRemindersTest` / `SettingsWeekRemindersTests`). The notification itself and the tap were
 checked by hand (docs/decisions.md, "The evening-before reminder").
 
@@ -609,7 +624,7 @@ or the calls will fail as "not mocked".
 
 The extension's logic is unit-tested (`RecipeClipperTests/Share`). What
 needs the real share sheet is `ShareExtensionUITests`. It drives Safari to a
-page, shares it to Recipe Clipper, checks the card, then checks that the app
+page, shares it to Pith, checks the card, then checks that the app
 shows the recipe. It is skipped unless `RC_SHARE_E2E_BASE` is set, so CI
 never runs it. It writes to the app's real App Group database, so use a
 simulator of your own:
@@ -834,13 +849,26 @@ both.
   (`concurrency: ios-ui-tests-<ref>`), so different pull requests test side by side
   (owner, 2026-11-20). A pull request that changes nothing iOS-related (the CI's
   "Detect iOS changes" says so and skips the iOS unit tests) doesn't need this run
-  to merge. Each
+  to merge. The run is `ios/scripts/run-ui-tests.sh`. Each
   test has five minutes (ten at most), so a stuck one fails alone, and no
   diagnostics are collected from the simulator (after a failure that timed
   out at ten minutes, every time). If the
   test runner crashes before any test runs ("never finished bootstrapping",
   the preview image's simulator hanging), it reboots the simulator and runs
   once more (#296).
+  - **Warm-up and one retry** (#395). A fresh simulator's first-boot work (wallpapers,
+    widgets, Shortcuts, sync daemons: about eight CPU-minutes, measured on a 10-core Mac) ran
+    under the first ten-odd minutes of tests on the runner's few cores: in the logs of two full
+    runs, XCTest steps that took 3-13 s came at about 8 per 1,000 steps until 14 minutes after
+    boot, and 1-2 per 1,000 from 18 minutes on, in whichever class ran then, so a different test
+    lost almost every run. So `ios/scripts/warm-simulator.sh` launches the app once and waits
+    for the simulator's own processes to go quiet (under 0.3 of a core for 15 s), stopping at
+    about three minutes in all; its line in the job summary says how long and whether it got
+    quiet. And a failed test runs once more at once (`-retry-tests-on-failure -test-iterations 2`):
+    it fails the shard only if it fails twice. A retry is never silent: the job summary lists
+    each test that needed one, with its first failure, and raises it as a warning, and the
+    shard uploads its `.xcresult` then too. **Note every retried test on #395**; one that keeps
+    coming back has a real problem to fix, and the retry is not a fix.
   - **How the classes are split.** `ios/scripts/ui-test-shard.sh <index> <count>`
     reads every class in `ios/RecipeClipperUITests` itself (a subclass of `XCTestCase`
     or of `RecipeUITestCase`; the tests an extension such as
@@ -853,7 +881,7 @@ both.
   - **Refreshing the weights** (when a class is added or grows a lot, or now and then): take
     the logs of one or two recent green full runs and run
     `gh run view <id> --log > run.log; ios/scripts/ui-test-shard.sh --update-weights run.log [more.log…]`.
-    It sums each class's `Test Case … passed (N seconds)` lines, averages across the logs
+    It sums each class's `Test Case … passed (N seconds)` lines (a retried test's last try only), averages across the logs
     and rewrites the file; commit it. Old weights only make a shard a little longer; they never
     skip a test.
 - **Recipe site check** (`site-check.yml`, #32): Mondays at 06:00 UTC and on

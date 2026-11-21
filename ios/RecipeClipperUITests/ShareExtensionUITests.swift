@@ -1,6 +1,6 @@
 import XCTest
 
-/// End to end through the real share sheet: Safari opens a page, shares it to Recipe Clipper,
+/// End to end through the real share sheet: Safari opens a page, shares it to Pith,
 /// and the extension imports it into the App Group database the app then shows.
 ///
 /// Skipped unless `RC_SHARE_E2E_BASE` names an HTTPS server the simulator trusts, serving
@@ -26,9 +26,9 @@ final class ShareExtensionUITests: XCTestCase {
         shareFromSafari("\(base!)/small.html")
 
         require(safari.staticTexts["E2E Guacamole Small"], in: safari, "the saved card with the title")
-        require(safari.staticTexts["Open Recipe Clipper to cook."], in: safari, "the saved card")
+        require(safari.staticTexts["Open Pith to cook."], in: safari, "the saved card")
         // The card dismisses itself.
-        XCTAssertTrue(safari.staticTexts["Open Recipe Clipper to cook."].waitForNonExistence(timeout: timeout))
+        XCTAssertTrue(safari.staticTexts["Open Pith to cook."].waitForNonExistence(timeout: timeout))
 
         let app = XCUIApplication()
         app.launch()
@@ -60,12 +60,12 @@ final class ShareExtensionUITests: XCTestCase {
         sleep(2) // let the page settle before sharing
 
         tapShare()
-        let target = safari.descendants(matching: .any).matching(NSPredicate(format: "label == 'Recipe Clipper'")).firstMatch
+        let target = safari.descendants(matching: .any).matching(NSPredicate(format: "label == 'Clip Recipe'")).firstMatch
         if !target.waitForExistence(timeout: 10) {
             // Not in the first row of apps: More, then pick it from the list.
             safari.buttons.matching(NSPredicate(format: "label == 'More'")).firstMatch.tap()
         }
-        require(target, in: safari, "Recipe Clipper in the share sheet")
+        require(target, in: safari, "Clip Recipe in the share sheet")
         target.tap()
     }
 

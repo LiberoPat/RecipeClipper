@@ -122,7 +122,7 @@ struct PantryScreen: View {
                     OutlinedField(
                         label: Strings.pantryAddHint,
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),
-                        onSubmit: vm.onAddTyped,
+                        onSubmit: { vm.onAddTyped() },
                         example: Strings.pantryAddExample
                     )
                     .accessibilityIdentifier("pantryDraft")

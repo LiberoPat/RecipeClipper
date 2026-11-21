@@ -151,7 +151,7 @@ extension WalkthroughUITests {
         tab("Pantry")
         type("onions\n", into: app.textFields["Add to the pantry"])
         pause()
-        tab("Week")
+        tab("Plan")
         planToday("Chicken Adobo")
         planToday("Guacamole")
         recipeMenu("What I need")

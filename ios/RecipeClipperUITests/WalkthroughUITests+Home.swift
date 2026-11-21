@@ -80,7 +80,7 @@ extension WalkthroughUITests {
         mark("START")
         gotItIfShown()
         pause()
-        tab("Week")
+        tab("Plan")
         gotItIfShown()
         planToday("Tomato and White Bean Soup")
         tab("Groceries")
@@ -121,9 +121,9 @@ extension WalkthroughUITests {
         pause(2)
         let search = home.searchFields.firstMatch
         requireHome(search, "the gallery's search").tap()
-        search.typeText("Recipe Clipper")
+        search.typeText("Pith")
         pause(1.5)
-        requireHome(home.cells.matching(NSPredicate(format: "label CONTAINS %@", "Recipe Clipper")).firstMatch, "the app in the gallery").tap()
+        requireHome(home.cells.matching(NSPredicate(format: "label CONTAINS %@", "Pith")).firstMatch, "the app in the gallery").tap()
         pause(2)
         let title = home.staticTexts[name].firstMatch
         for _ in 0..<3 where !title.exists { home.swipeLeft(); pause(1) }

@@ -15,7 +15,7 @@ final class WeekUITests: RecipeUITestCase {
 
     private func openWeek() {
         launch(.standard)
-        require(tabBar.buttons["Week"], "the Week tab").tap()
+        require(tabBar.buttons["Plan"], "the Plan tab").tap()
         require(app.staticTexts["weekRange"], "the Week")
     }
 
@@ -47,7 +47,7 @@ final class WeekUITests: RecipeUITestCase {
     /// read off the screen: each sits between its day's "+ Add" and the one before.
     func testSkipTonightPushesTheWeekBackADayAndUndoGivesItBack() {
         launch(.weekPlan, flags: ["skipTonight"])
-        require(tabBar.buttons["Week"], "the Week tab").tap()
+        require(tabBar.buttons["Plan"], "the Plan tab").tap()
         require(app.staticTexts["weekRange"], "the Week")
 
         func meal(_ title: String) -> XCUIElement {
@@ -95,7 +95,7 @@ final class WeekUITests: RecipeUITestCase {
         requireGone(app.buttons["plan.confirm"], "the sheet")
 
         back()
-        require(tabBar.buttons["Week"], "the Week tab").tap()
+        require(tabBar.buttons["Plan"], "the Plan tab").tap()
         let meal = require(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch, "the planned meal")
         XCTAssertTrue(meal.label.contains("Chicken Adobo"))
     }
@@ -108,7 +108,7 @@ final class WeekUITests: RecipeUITestCase {
     /// (#302), never compared; the soy sauce has no amount, so it shows nothing new.
     func testWhatINeedDrawsEveryRowOfBothSections() {
         launch(.walkthroughPantry)
-        require(tabBar.buttons["Week"], "the Week tab").tap()
+        require(tabBar.buttons["Plan"], "the Plan tab").tap()
         planToday("Chicken Adobo")
         require(app.buttons["More options"], "the Week menu").tap()
         require(menuItem("What I need"), "What I need").tap()
@@ -130,7 +130,7 @@ final class WeekUITests: RecipeUITestCase {
     /// week shown, and "What I need" and "Add this week's ingredients" are gone from the menu.
     func testShopForThisWeekIsTheOneItemAndOpensWhatINeed() {
         launch(.walkthroughPantry, flags: ["shopForWeek"])
-        require(tabBar.buttons["Week"], "the Week tab").tap()
+        require(tabBar.buttons["Plan"], "the Plan tab").tap()
         require(app.staticTexts["weekRange"], "the Week")
         planToday("Chicken Adobo")
         require(app.buttons["More options"], "the Week menu").tap()

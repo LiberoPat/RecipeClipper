@@ -272,12 +272,14 @@ final class GroceriesViewModel {
 
     func onDraftChange(_ text: String) { uiState.draft = text }
 
-    func onAddTyped() {
+    /// Returns the write so a test can await it (nil: nothing typed).
+    @discardableResult
+    func onAddTyped() -> Task<Void, Never>? {
         let text = uiState.draft.kTrimmed
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else { return nil }
         uiState.draft = ""
         let language = LanguageWords.forTag(phoneLanguage())?.language ?? LanguageWords.english.language
-        Task { await repository.add([NewGroceryLine(text: text, language: language)]) }
+        return Task { await repository.add([NewGroceryLine(text: text, language: language)]) }
     }
 
     /// Ticks or unticks every line in `row`: a combined row is one thing to pick up. A tick only

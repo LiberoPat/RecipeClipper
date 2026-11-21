@@ -356,7 +356,7 @@ class CookingWalkthroughTest : WalkthroughBase() {
     @Test
     fun test26_onionAndOnions() {
         start(kitchen = true)
-        tap("Week")
+        tap("Plan")
         planToday("Chicken Adobo")
         planToday("Guacamole")
         menu("What I need")

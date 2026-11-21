@@ -23,6 +23,15 @@ enum ClipPageEvent: Equatable {
         return decode(json)
     }
 
+    /// `clipper.js` saying it is in, from the main frame (a frame's own copy can't speak for the
+    /// page): the view layer's business, not an event.
+    static func isReady(_ body: Any, isMainFrame: Bool) -> Bool {
+        guard isMainFrame, let json = body as? String, let data = json.data(using: .utf8),
+              let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return false }
+        return message["type"] as? String == "ready"
+    }
+
     static func decode(_ json: String) -> ClipPageEvent? {
         guard let data = json.data(using: .utf8),
               let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -150,17 +159,37 @@ struct ClipWebPage: UIViewRepresentable {
         private var loaded = false
         private var sent: String?
 
-        /// Sends the latest state once the page has the script, and only when it changed.
+        /// Sends the latest state once the page has the script, and only when it changed. In a
+        /// debug build the web view's accessibility value turns "ready" once the page has had a
+        /// state, from then on answering taps: what the UI tests wait for before tapping the page
+        /// (never in release, where VoiceOver could read it).
         func push(to webView: WKWebView) {
-            guard loaded, script != sent else { return }
+            guard loaded, !script.isEmpty, script != sent else { return }
             sent = script
-            webView.evaluateJavaScript(script, completionHandler: nil)
+            webView.evaluateJavaScript(script) { [weak webView] _, error in
+                #if DEBUG
+                if error == nil { webView?.accessibilityValue = "ready" }
+                #endif
+            }
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             loaded = false
             sent = nil
+            #if DEBUG
+            webView.accessibilityValue = nil
+            #endif
             pendingRead?.cancel()
+        }
+
+        /// `clipper.js` is in (it says so at document end): the page can take the state now. Not
+        /// waiting for `didFinish`, which comes only once every image and frame has loaded: a
+        /// slow picture or ad kept the page deaf to taps meanwhile (#395).
+        private func scriptReady(_ webView: WKWebView) {
+            guard !loaded else { return }
+            loaded = true
+            sent = nil
+            push(to: webView)
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -208,6 +237,9 @@ struct ClipWebPage: UIViewRepresentable {
 
         /// The main frame's messages only (#235): `ClipPageEvent.accept` drops the rest.
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if ClipPageEvent.isReady(message.body, isMainFrame: message.frameInfo.isMainFrame), let webView = message.webView {
+                return scriptReady(webView)
+            }
             guard let event = ClipPageEvent.accept(message.body, isMainFrame: message.frameInfo.isMainFrame) else { return }
             onEvent(event)
         }

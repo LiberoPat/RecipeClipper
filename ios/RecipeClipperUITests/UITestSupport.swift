@@ -201,19 +201,27 @@ class RecipeUITestCase: XCTestCase {
     }
 
     /// Waits for `element` to go away. `waitForNonExistence` rather than an NSPredicate
-    /// expectation, which only re-checks about once a second.
-    func requireGone(_ element: XCUIElement, _ what: String = "", file: StaticString = #filePath, line: UInt = #line) {
-        if !element.waitForNonExistence(timeout: timeout) {
+    /// expectation, which only re-checks about once a second. `within` overrides `timeout` (an
+    /// undo snackbar stays ten seconds, so waiting for it to go needs longer).
+    func requireGone(
+        _ element: XCUIElement, _ what: String = "", within: TimeInterval? = nil,
+        file: StaticString = #filePath, line: UInt = #line
+    ) {
+        if !element.waitForNonExistence(timeout: within ?? timeout) {
             print(app.debugDescription)
             XCTFail("Still present: \(what.isEmpty ? element.description : what)", file: file, line: line)
         }
     }
 
     /// Waits for a predicate over an element's properties (e.g. "isSelected == true").
-    func requireState(_ element: XCUIElement, _ format: String, _ what: String = "", file: StaticString = #filePath, line: UInt = #line) {
-        require(element, what, file: file, line: line)
+    /// `within` overrides `timeout`, for both the element and the state.
+    func requireState(
+        _ element: XCUIElement, _ format: String, _ what: String = "", within: TimeInterval? = nil,
+        file: StaticString = #filePath, line: UInt = #line
+    ) {
+        require(element, what, within: within, file: file, line: line)
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: format), object: element)
-        if XCTWaiter.wait(for: [expectation], timeout: timeout) != .completed {
+        if XCTWaiter.wait(for: [expectation], timeout: within ?? timeout) != .completed {
             print(app.debugDescription)
             XCTFail("\(what.isEmpty ? element.description : what): expected \(format)", file: file, line: line)
         }

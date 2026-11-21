@@ -560,7 +560,7 @@ extension BackupRepository {
     }
 }
 
-/// The file that carries picked recipes and items to someone else's Recipe Clipper (#149, phase
+/// The file that carries picked recipes and items to someone else's Pith (#149, phase
 /// 2; Android's ShareFileRepository; the rules are `ShareFile`). Nothing is sent anywhere from
 /// here: the screen hands the file to the user's own share sheet.
 protocol ShareFileRepository: AnyObject {
@@ -581,7 +581,7 @@ protocol ShareFileRepository: AnyObject {
 /// Where an export file is written and a picked one is read (Android's BackupFiles), so the
 /// Settings ViewModel stays free of the file system and its test can use a fake.
 protocol BackupFiles: AnyObject {
-    /// Writes `json` as `recipe-clipper-YYYY-MM-DD.json`, or with `photos` (#116: path in the
+    /// Writes `json` as `pith-YYYY-MM-DD.json`, or with `photos` (#116: path in the
     /// zip to the stored file) as a `.zip` of both, and returns its URL for the share sheet, or
     /// nil if it couldn't be written.
     func writeExport(json: String, exportedAt: Int64, photos: [String: URL]) async -> URL?
@@ -595,13 +595,13 @@ protocol BackupFiles: AnyObject {
 /// Far beyond any real export (a few hundred recipes is well under 2 MB).
 let backupMaxBytes = 20 * 1024 * 1024
 
-/// `recipe-clipper-YYYY-MM-DD.json`, in the phone's time zone.
+/// `pith-YYYY-MM-DD.json`, in the phone's time zone.
 func backupFileName(exportedAt: Int64, zip: Bool = false) -> String {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.dateFormat = "yyyy-MM-dd"
     let date = Date(timeIntervalSince1970: TimeInterval(exportedAt) / 1000)
-    return "recipe-clipper-" + formatter.string(from: date) + (zip ? ".zip" : ".json")
+    return "pith-" + formatter.string(from: date) + (zip ? ".zip" : ".json")
 }
 
 /// The week meal plan (#49; Android's MealPlanRepository): what is planned on which day, and

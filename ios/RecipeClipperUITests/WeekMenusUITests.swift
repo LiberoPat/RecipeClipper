@@ -36,14 +36,14 @@ final class WeekMenusUITests: RecipeUITestCase {
     /// self-explanatory, read by VoiceOver with it.
     func testTheWeekMenuSaysWhatApplyAMenuDoes() {
         launch(.standard)
-        require(app.tabBars.firstMatch.buttons["Week"], "the Week tab").tap()
+        require(app.tabBars.firstMatch.buttons["Plan"], "the Plan tab").tap()
         require(app.buttons["More options"], "the Week menu").tap()
         let apply = require(app.buttons["applyMenu"], "Apply a menu…")
         XCTAssertEqual(apply.label, "Apply a menu…, Add a saved menu's meals to this week")    }
 
     func testSaveApplyRenameAndDeleteAMenu() {
         launch(.standard)
-        require(app.tabBars.firstMatch.buttons["Week"], "the Week tab").tap()
+        require(app.tabBars.firstMatch.buttons["Plan"], "the Plan tab").tap()
         let add = app.buttons["addToDay-\(today)"]
         for _ in 0 ..< 5 where !add.isHittable { app.swipeUp() }
         require(add, "+ Add on today").tap()

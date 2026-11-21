@@ -164,8 +164,7 @@ final class GroceriesViewModelTests: XCTestCase {
     func testATypedItemGoesOnTheListInThePhonesLanguage() async {
         let vm = await viewModel(language: "de")
         vm.onDraftChange("  Milch ")
-        vm.onAddTyped()
-        await settleMain()
+        await vm.onAddTyped()?.value
 
         let item = repository.items.value.first
         XCTAssertEqual(item?.text, "Milch")
@@ -177,8 +176,7 @@ final class GroceriesViewModelTests: XCTestCase {
     func testAPhoneLanguageWithNoWordsReadsTypedItemsInEnglish() async {
         let vm = await viewModel(language: "ko")
         vm.onDraftChange("milk")
-        vm.onAddTyped()
-        await settleMain()
+        await vm.onAddTyped()?.value
         XCTAssertEqual(repository.items.value.first?.language, "en")
     }
 

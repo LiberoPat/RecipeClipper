@@ -1,7 +1,10 @@
-# Recipe Clipper
+# Pith
+
+**Skip the story. Cook.**
 
 Share a recipe link, get just the recipe: ingredients, steps, times and servings, with none
-of the life story, ads or SEO filler. Recipe Clipper is a share target on **Android**
+of the life story, ads or SEO filler. Pith (formerly Recipe Clipper, the name the code, the
+package ids and this repo keep, #414) is a share target on **Android**
 (Kotlin, Jetpack Compose) and **iOS** (SwiftUI). Share a link to it from the browser or any
 app, and it opens the clean recipe.
 
@@ -9,7 +12,7 @@ No accounts, API keys or backend. Everything happens on the device.
 
 ## What it does
 
-- **Clean recipes from a shared link.** Share a page to Recipe Clipper, or paste a link on
+- **Clean recipes from a shared link.** Share a page to Pith, or paste a link on
   the home screen.
 - **History, automatically.** Every recipe you open is kept, newest first. History holds
   the 50 most recent, and it is searchable by title or ingredient. Swipe a recipe away to
@@ -44,7 +47,7 @@ No accounts, API keys or backend. Everything happens on the device.
 
 Almost every recipe site embeds a `schema.org/Recipe` JSON-LD block in the page. That is the
 structured data Google uses for recipe cards in search results, and it already holds just
-the recipe. Recipe Clipper fetches the shared page and reads that block, rather than
+the recipe. Pith fetches the shared page and reads that block, rather than
 scraping the article and guessing what to filter out. If a page doesn't publish it, the app
 falls back to the same data written as microdata (attributes on the page's own markup,
 used by WordPress's Jetpack recipe block, among others). If a page has neither, the app

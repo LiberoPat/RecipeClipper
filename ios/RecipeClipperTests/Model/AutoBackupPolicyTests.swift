@@ -55,19 +55,28 @@ final class AutoBackupPolicyTests: XCTestCase {
 
     func testCopiesAreNamedByTheLocalMinute() {
         let name = AutoBackupPolicy.fileName(now: now, timeZone: TimeZone(identifier: "UTC")!)
-        XCTAssertEqual(name, "recipe-clipper-backup-2027-01-15-0800.zip")
+        XCTAssertEqual(name, "pith-backup-2027-01-15-0800.zip")
         XCTAssertTrue(AutoBackupPolicy.isBackupFile(name))
     }
 
+    func testCopiesFromBeforeTheRenameAreStillTheAppsOwnOldestByTime() {
+        // #414: the old prefix sorts after "pith-" by name, so only the time may decide.
+        let old = (1 ... 3).map { "recipe-clipper-backup-2026-09-0\($0)-1200.zip" }
+        XCTAssertTrue(old.allSatisfy(AutoBackupPolicy.isBackupFile))
+        let new = (4 ... 5).map { "pith-backup-2026-09-0\($0)-1200.zip" }
+        let gone = AutoBackupPolicy.toDelete(existing: old + new, written: new.last!)
+        XCTAssertEqual(Set(gone), Set(old.prefix(2)))
+    }
+
     func testOnlyTheAppsOwnCopiesBeyondTheNewestThreeGo() {
-        let ours = (1 ... 5).map { "recipe-clipper-backup-2026-09-0\($0)-1200.zip" }
+        let ours = (1 ... 5).map { "pith-backup-2026-09-0\($0)-1200.zip" }
         let theirs = ["recipe-clipper-2026-09-01.zip", "notes.txt", "recipe-clipper-backup-2026-09-01-1200 (1).zip"]
         let gone = AutoBackupPolicy.toDelete(existing: ours + theirs, written: ours.last!)
         XCTAssertEqual(Set(gone), Set(ours.prefix(5 - AutoBackupPolicy.keep)))
     }
 
     func testTheCopyJustWrittenIsKeptWhateverItsName() {
-        let ours = (1 ... 4).map { "recipe-clipper-backup-2026-09-0\($0)-1200.zip" }
+        let ours = (1 ... 4).map { "pith-backup-2026-09-0\($0)-1200.zip" }
         let gone = AutoBackupPolicy.toDelete(existing: ours + ["renamed.zip"], written: "renamed.zip")
         XCTAssertEqual(Set(gone), Set(ours.prefix(2)))
     }

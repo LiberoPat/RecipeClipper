@@ -47,7 +47,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
         // The sheet's "Add to Friday" button, not the menu's "Add to plan" as it fades.
         tap(hasText("Add to ", substring = true) and hasClickAction() and !hasText("plan", substring = true))
         back()
-        tap("Week") // opens on today (#232)
+        tap("Plan") // opens on today (#232)
         planToday("Weeknight Chili")
         // One scroll of days (#232): a free swipe, then › snaps to the next 7 days, and "Today"
         // comes back; the month's day scrolls the days to it.
@@ -99,7 +99,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
         start()
         tap("Pantry")
         listOf("soy sauce", "garlic", "bay leaves", "white vinegar").forEach { type("pantryDraft", it) }
-        tap("Week")
+        tap("Plan")
         planToday("Chicken Adobo")
         menu("Shop for this week")
         pause(1500)
@@ -110,7 +110,7 @@ class MealPlanWalkthroughTest : WalkthroughBase() {
     @Test
     fun test04_weeklyMenus() {
         start()
-        tap("Week")
+        tap("Plan")
         planToday("Chicken Adobo")
         planToday("Spaghetti Carbonara")
         menu("Save week as menu…")

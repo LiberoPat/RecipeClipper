@@ -53,8 +53,10 @@ object AutoBackupPolicy {
     /** Settings nudges when the last copy is older than this and nothing is copying. */
     const val NUDGE_AFTER_MS = 30L * 24 * 60 * 60 * 1000
 
-    const val FILE_PREFIX = "recipe-clipper-backup-"
-    private val FILE_NAME = Regex("""recipe-clipper-backup-\d{4}-\d{2}-\d{2}-\d{4}\.zip""")
+    /** Pith's copies (#414). Those written before the rename (`recipe-clipper-backup-…`) are
+     *  still the app's own: kept or cleared with the new ones, by their time. */
+    const val FILE_PREFIX = "pith-backup-"
+    private val FILE_NAME = Regex("""(?:pith|recipe-clipper)-backup-(\d{4}-\d{2}-\d{2}-\d{4})\.zip""")
 
     /** The automatic copy is actually being kept: on, and somewhere to put it. */
     fun isWorking(record: AutoBackupRecord, destination: BackupDestination): Boolean =
@@ -88,7 +90,7 @@ object AutoBackupPolicy {
     fun offersFolderPrompt(record: AutoBackupRecord, destination: BackupDestination, libraryEmpty: Boolean): Boolean =
         !libraryEmpty && record.enabled && !record.folderPromptDone && destination == BackupDestination.NOT_CHOSEN
 
-    /** `recipe-clipper-backup-2026-09-26-1430.zip`, in the phone's time zone: sorts by time. */
+    /** `pith-backup-2026-09-26-1430.zip`, in the phone's time zone: sorts by time. */
     fun fileName(now: Long): String =
         FILE_PREFIX + SimpleDateFormat("yyyy-MM-dd-HHmm", Locale.US).format(Date(now)) + ".zip"
 
@@ -97,7 +99,9 @@ object AutoBackupPolicy {
 
     /** The app's own copies beyond the newest [KEEP], never [written] and never anything else. */
     fun toDelete(existing: List<String>, written: String): List<String> {
-        val ours = existing.filter(::isBackupFile).distinct().sortedDescending()
+        // Newest by the time in the name, not the name: the old prefix mustn't sort as newer.
+        val ours = existing.filter(::isBackupFile).distinct()
+            .sortedWith(compareByDescending<String> { FILE_NAME.matchEntire(it)!!.groupValues[1] }.thenByDescending { it })
         val keep = (listOf(written) + ours.filter { it != written }.take(KEEP - 1)).toSet()
         return ours.filter { it !in keep }
     }

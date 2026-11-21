@@ -82,7 +82,9 @@
     <string name="home_paste_link_hint">Ein Link oder der Text eines Rezepts</string>
     <string name="home_scan_hint">Rezeptkarte oder Kochbuchseite</string>
     <string name="home_type_hint">Selbst eintippen</string>
-    <string name="home_share_hint">Oder teile einen Link aus einer beliebigen App mit Recipe Clipper.</string>
+    <string name="home_share_hint">Oder teile einen Link aus einer beliebigen App mit Pith.</string>
+    <!-- The share target and the text-selection entry (#414): offered as an action, the app says what it does -->
+    <string name="share_target_label">Rezept in Pith speichern</string>
     <string name="home_resume_cooking">Kochen fortsetzen</string>
     <string name="home_open_recipe">Rezept öffnen</string>
     <string name="home_today">Heute</string>
@@ -194,8 +196,8 @@
         <item quantity="one">%1$d älteres Rezept ohne Liste wurde nicht hinzugefügt: Rezepte ohne Liste bleiben bis zu %2$d erhalten.</item>
         <item quantity="other">%1$d ältere Rezepte ohne Liste wurden nicht hinzugefügt: Rezepte ohne Liste bleiben bis zu %2$d erhalten.</item>
     </plurals>
-    <string name="backup_error_not_a_backup">Diese Datei ist kein Recipe-Clipper-Export.</string>
-    <string name="backup_error_newer_version">Diese Datei wurde mit einer neueren Version von Recipe Clipper erstellt (Format %1$d). Aktualisiere die App, um sie zu importieren.</string>
+    <string name="backup_error_not_a_backup">Diese Datei ist kein Pith-Export.</string>
+    <string name="backup_error_newer_version">Diese Datei wurde mit einer neueren Version von Pith erstellt (Format %1$d). Aktualisiere die App, um sie zu importieren.</string>
     <string name="backup_error_malformed">Diese Exportdatei ist beschädigt (%1$s). Es wurde nichts importiert.</string>
     <string name="backup_error_read_failed">Diese Datei konnte nicht geöffnet werden.</string>
     <string name="backup_error_save_failed">Die importierten Rezepte konnten nicht gespeichert werden. Es wurde nichts geändert.</string>
@@ -302,7 +304,7 @@
 
     <!-- Bottom tabs (#47) -->
     <string name="tab_recipes">Rezepte</string>
-    <string name="tab_week">Woche</string>
+    <string name="tab_week">Plan</string>
     <string name="tab_groceries">Einkauf</string>
     <string name="tab_pantry">Vorrat</string>
     <string name="share_serves">Portionen: %1$d</string>
@@ -356,7 +358,7 @@
     <string name="text_not_sorted">Im Text waren keine Zutaten und Schritte zu finden, also steht alles unverändert unter Schritte: Vervollständige es von Hand.</string>
     <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
     <string name="mealplan_title">Deine Woche</string>
-    <string name="mealplan_intro">Wähle die Rezepte aus, die du behalten möchtest. Jedes wird als „Aus einem Chat“ gespeichert und an seinem Tag in der Woche eingeplant. Gespeichert wird erst, wenn du auf Speichern tippst.</string>
+    <string name="mealplan_intro">Wähle die Rezepte aus, die du behalten möchtest. Jedes wird als „Aus einem Chat“ gespeichert und an seinem Tag im Plan eingeplant. Gespeichert wird erst, wenn du auf Speichern tippst.</string>
     <string name="mealplan_day_none">Kein Tag</string>
     <string name="mealplan_day_dont_plan">Nicht einplanen</string>
     <string name="mealplan_day_for">Tag für %1$s</string>
@@ -365,7 +367,7 @@
     <string name="mealplan_room">In deiner Bibliothek ist noch Platz für %1$d. Die ersten, die du behältst, werden gespeichert, die übrigen warten hier; nichts, was du hast, wird entfernt. Schalte frei, um alle zu behalten.</string>
     <string name="mealplan_wont_fit">Noch kein Platz dafür</string>
     <string name="mealplan_kept">Bisher gespeichert: %1$d</string>
-    <string name="mealplan_open_week">Woche öffnen</string>
+    <string name="mealplan_open_week">Plan öffnen</string>
     <string name="mealplan_cut_off">Die Antwort wurde abgeschnitten, deshalb sind nur diese Rezepte angekommen. Bitte die KI, für den Rest weiterzumachen.</string>
     <string name="error_cut_off">Diese Antwort wurde abgeschnitten, bevor das Rezept zu Ende war. Bitte die KI, sie noch einmal zu senden oder weiterzumachen.</string>
     <string name="cutoff_copy_action">Nachricht für die KI kopieren</string>
@@ -498,7 +500,7 @@
     <!-- Groceries (#50) -->
     <string name="action_add">Hinzufügen</string>
     <string name="groceries_add_hint">Artikel hinzufügen</string>
-    <string name="groceries_empty">Deine Liste ist leer. Gib oben einen Artikel ein oder füge Zutaten über das Menü eines Rezepts oder aus der Woche hinzu.</string>
+    <string name="groceries_empty">Deine Liste ist leer. Gib oben einen Artikel ein oder füge Zutaten über das Menü eines Rezepts oder aus dem Plan hinzu.</string>
     <string name="action_add_to_groceries">Zum Einkauf hinzufügen</string>
     <string name="add_to_groceries_title">Zum Einkauf hinzufügen</string>
     <string name="action_add_week_to_groceries">Zutaten dieser Woche hinzufügen</string>
@@ -516,7 +518,7 @@
     </plurals>
     <string name="receive_list_title">Diese Liste hinzufügen</string>
     <string name="receive_list_empty">In der Zwischenablage ist keine Liste. Kopiere zuerst eine und füge sie dann hier ein.</string>
-    <!-- A file sent to someone else's Recipe Clipper (#149, phase 2) -->
+    <!-- A file sent to someone else's Pith (#149, phase 2) -->
     <string name="action_send_file">Als Datei senden</string>
     <string name="send_file_failed">Die Datei zum Senden konnte nicht erstellt werden.</string>
     <string name="receive_file_title">Aus dieser Datei hinzufügen</string>
@@ -654,7 +656,7 @@
     <string name="settings_section_pantry">Vorrat</string>
     <string name="expiry_reminders_title">Ablauf-Erinnerungen</string>
     <string name="expiry_reminders_description">Eine Benachrichtigung um 9 Uhr morgens, wenn etwas Vorrätiges heute oder morgen abläuft</string>
-    <string name="expiry_reminders_denied">Benachrichtigungen sind für Recipe Clipper ausgeschaltet. Erlaube sie in den Systemeinstellungen, um Erinnerungen zu erhalten.</string>
+    <string name="expiry_reminders_denied">Benachrichtigungen sind für Pith ausgeschaltet. Erlaube sie in den Systemeinstellungen, um Erinnerungen zu erhalten.</string>
     <!-- Chef mode (#100) -->
     <string name="chef_mode_title">Profimodus</string>
     <string name="chef_mode_description">Kurze Schritte, auf diesem Gerät formuliert. Tippe auf einen, um ihn wie im Rezept zu sehen.</string>
@@ -760,7 +762,7 @@
     <string name="auto_backup_description">Legt eine Kopie von allem, Fotos inklusive, in einem Ordner deiner Wahl ab und hält sie nach Änderungen aktuell</string>
     <string name="auto_backup_folder_title">Sicherungsordner</string>
     <string name="auto_backup_folder_not_chosen">Noch nicht gewählt. Tippe, um einen zu wählen, etwa Google Drive.</string>
-    <string name="auto_backup_folder_lost">Recipe Clipper kann diesen Ordner nicht mehr erreichen. Tippe, um ihn erneut zu wählen.</string>
+    <string name="auto_backup_folder_lost">Pith kann diesen Ordner nicht mehr erreichen. Tippe, um ihn erneut zu wählen.</string>
     <string name="auto_backup_folder_refused">Dieser Ordner kann nicht für Sicherungen verwendet werden. Wähle einen anderen.</string>
     <string name="auto_backup_last">Zuletzt gesichert: %1$s</string>
     <string name="auto_backup_never">Noch nicht gesichert</string>
@@ -769,7 +771,7 @@
     <string name="auto_backup_now">Jetzt sichern</string>
     <string name="auto_backup_running">Wird gesichert…</string>
     <string name="backup_prompt_title">Sicherungskopie anlegen?</string>
-    <string name="backup_prompt_body">Wähle einen Ordner, etwa Google Drive, und Recipe Clipper legt dort eine Kopie deiner Rezepte und Fotos ab.</string>
+    <string name="backup_prompt_body">Wähle einen Ordner, etwa Google Drive, und Pith legt dort eine Kopie deiner Rezepte und Fotos ab.</string>
     <string name="backup_prompt_choose">Ordner wählen</string>
     <string name="backup_prompt_not_now">Nicht jetzt</string>
     <string name="home_restore_backup">Aus einer Sicherungsdatei wiederherstellen</string>
@@ -830,7 +832,7 @@
         <item quantity="other">%1$d Schritte entfernt</item>
     </plurals>
     <!-- The ⋮ menus' second lines (#260). -->
-    <string name="menu_desc_send_file">Eine Kopie zum Öffnen in Recipe Clipper</string>
+    <string name="menu_desc_send_file">Eine Kopie zum Öffnen in Pith</string>
     <!-- Print or save as PDF, and a list as a cookbook (#318). -->
     <string name="action_print">Drucken oder als PDF sichern</string>
     <string name="menu_desc_print">Dieses Rezept wie angezeigt, druckfertig</string>
@@ -873,7 +875,7 @@
     <string name="action_ask_ai">KI fragen</string>
     <string name="home_ask_ai_hint">Ein Prompt für jede Chat-App</string>
     <string name="ask_ai_title">KI fragen</string>
-    <string name="ask_ai_intro">Kopiere einen Prompt in eine beliebige Chat-App. Teile die Antwort mit Recipe Clipper oder kopiere sie und tippe auf „Antwort einfügen“, dann öffnet sie sich hier zum Prüfen.</string>
+    <string name="ask_ai_intro">Kopiere einen Prompt in eine beliebige Chat-App. Teile die Antwort mit Pith oder kopiere sie und tippe auf „Antwort einfügen“, dann öffnet sie sich hier zum Prüfen.</string>
     <string name="ask_ai_field">Was möchtest du kochen?</string>
     <string name="ask_ai_field_extra">Noch etwas? (optional)</string>
     <string name="ask_ai_kind_describe">Was ich oben beschreibe</string>
@@ -895,7 +897,7 @@
     <string name="action_change_recipe">Dieses Rezept ändern</string>
     <string name="menu_desc_change_recipe">Ein Prompt für jeden KI-Chat</string>
     <string name="change_recipe_title">Dieses Rezept ändern</string>
-    <string name="change_recipe_intro">Kopiere einen Prompt mit diesem Rezept und deinem Wunsch in einen KI-Chat. Teile die Antwort mit Recipe Clipper, um sie zu prüfen.</string>
+    <string name="change_recipe_intro">Kopiere einen Prompt mit diesem Rezept und deinem Wunsch in einen KI-Chat. Teile die Antwort mit Pith, um sie zu prüfen.</string>
     <string name="change_recipe_field">Was soll sich ändern?</string>
     <string name="change_recipe_placeholder">Mach es vegetarisch</string>
     <string name="ai_prompt_language">Deutsch</string>

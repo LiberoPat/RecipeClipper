@@ -2809,37 +2809,37 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "That file was made by a newer version of Recipe Clipper (format %lld). Update the app to import it."
+            "value" : "That file was made by a newer version of Pith (format %lld). Update the app to import it."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ese archivo se creó con una versión más reciente de Recipe Clipper (formato %lld). Actualiza la app para importarlo."
+            "value" : "Ese archivo se creó con una versión más reciente de Pith (formato %lld). Actualiza la app para importarlo."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce fichier a été créé avec une version plus récente de Recipe Clipper (format %lld). Mettez à jour l'appli pour l'importer."
+            "value" : "Ce fichier a été créé avec une version plus récente de Pith (format %lld). Mettez à jour l'appli pour l'importer."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Datei wurde mit einer neueren Version von Recipe Clipper erstellt (Format %lld). Aktualisiere die App, um sie zu importieren."
+            "value" : "Diese Datei wurde mit einer neueren Version von Pith erstellt (Format %lld). Aktualisiere die App, um sie zu importieren."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quel file è stato creato con una versione più recente di Recipe Clipper (formato %lld). Aggiorna l'app per importarlo."
+            "value" : "Quel file è stato creato con una versione più recente di Pith (formato %lld). Aggiorna l'app per importarlo."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esse arquivo foi criado com uma versão mais recente do Recipe Clipper (formato %lld). Atualize o app para importá-lo."
+            "value" : "Esse arquivo foi criado com uma versão mais recente do Pith (formato %lld). Atualize o app para importá-lo."
           }
         }
       }
@@ -2850,37 +2850,37 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "That file isn't a Recipe Clipper export."
+            "value" : "That file isn't a Pith export."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ese archivo no es una exportación de Recipe Clipper."
+            "value" : "Ese archivo no es una exportación de Pith."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce fichier n'est pas une exportation Recipe Clipper."
+            "value" : "Ce fichier n'est pas une exportation Pith."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Datei ist kein Recipe-Clipper-Export."
+            "value" : "Diese Datei ist kein Pith-Export."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quel file non è un'esportazione di Recipe Clipper."
+            "value" : "Quel file non è un'esportazione di Pith."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esse arquivo não é uma exportação do Recipe Clipper."
+            "value" : "Esse arquivo não é uma exportação do Pith."
           }
         }
       }
@@ -11275,37 +11275,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oder teile einen Link aus einer beliebigen App mit Recipe Clipper."
+            "value" : "Oder teile einen Link aus einer beliebigen App mit Pith."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Or share a link to Recipe Clipper from any app."
+            "value" : "Or share a link to Pith from any app."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O comparte un enlace con Recipe Clipper desde cualquier app."
+            "value" : "O comparte un enlace con Pith desde cualquier app."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ou partagez un lien vers Recipe Clipper depuis n'importe quelle appli."
+            "value" : "Ou partagez un lien vers Pith depuis n'importe quelle appli."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oppure condividi un link con Recipe Clipper da qualsiasi app."
+            "value" : "Oppure condividi un link con Pith da qualsiasi app."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ou compartilhe um link com o Recipe Clipper de qualquer app."
+            "value" : "Ou compartilhe um link com o Pith de qualquer app."
           }
         }
       }
@@ -14270,37 +14270,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffne Recipe Clipper, um unbegrenzt viele Rezepte freizuschalten."
+            "value" : "Öffne Pith, um unbegrenzt viele Rezepte freizuschalten."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Recipe Clipper to unlock unlimited recipes."
+            "value" : "Open Pith to unlock unlimited recipes."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abre Recipe Clipper para desbloquear recetas ilimitadas."
+            "value" : "Abre Pith para desbloquear recetas ilimitadas."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez Recipe Clipper pour débloquer les recettes illimitées."
+            "value" : "Ouvrez Pith pour débloquer les recettes illimitées."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri Recipe Clipper per sbloccare le ricette illimitate."
+            "value" : "Apri Pith per sbloccare le ricette illimitate."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abra o Recipe Clipper para desbloquear receitas ilimitadas."
+            "value" : "Abra o Pith para desbloquear receitas ilimitadas."
           }
         }
       }
@@ -15979,37 +15979,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffne Recipe Clipper zum Kochen."
+            "value" : "Öffne Pith zum Kochen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Recipe Clipper to cook."
+            "value" : "Open Pith to cook."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abre Recipe Clipper para cocinar."
+            "value" : "Abre Pith para cocinar."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez Recipe Clipper pour cuisiner."
+            "value" : "Ouvrez Pith pour cuisiner."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri Recipe Clipper per cucinare."
+            "value" : "Apri Pith per cucinare."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abra o Recipe Clipper para cozinhar."
+            "value" : "Abra o Pith para cozinhar."
           }
         }
       }
@@ -16102,37 +16102,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffne Recipe Clipper, um das aus diesem Foto gelesene Rezept zu prüfen. Es wartet dort noch ein paar Minuten auf dich."
+            "value" : "Öffne Pith, um das aus diesem Foto gelesene Rezept zu prüfen. Es wartet dort noch ein paar Minuten auf dich."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Recipe Clipper to check the recipe read from this photo. It's waiting there for the next few minutes."
+            "value" : "Open Pith to check the recipe read from this photo. It's waiting there for the next few minutes."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abre Recipe Clipper para revisar la receta leída de esta foto. Te espera allí durante los próximos minutos."
+            "value" : "Abre Pith para revisar la receta leída de esta foto. Te espera allí durante los próximos minutos."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez Recipe Clipper pour vérifier la recette lue sur cette photo. Elle vous y attend pendant quelques minutes."
+            "value" : "Ouvrez Pith pour vérifier la recette lue sur cette photo. Elle vous y attend pendant quelques minutes."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri Recipe Clipper per controllare la ricetta letta da questa foto. Resterà lì ad aspettarti per qualche minuto."
+            "value" : "Apri Pith per controllare la ricetta letta da questa foto. Resterà lì ad aspettarti per qualche minuto."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abra o Recipe Clipper para conferir a receita lida desta foto. Ela fica disponível lá por alguns minutos."
+            "value" : "Abra o Pith para conferir a receita lida desta foto. Ela fica disponível lá por alguns minutos."
           }
         }
       }
@@ -16143,37 +16143,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffne Recipe Clipper, um das Rezept aus diesem Text zu prüfen. Es wartet dort noch ein paar Minuten auf dich."
+            "value" : "Öffne Pith, um das Rezept aus diesem Text zu prüfen. Es wartet dort noch ein paar Minuten auf dich."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Recipe Clipper to check the recipe from this text. It's waiting there for the next few minutes."
+            "value" : "Open Pith to check the recipe from this text. It's waiting there for the next few minutes."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abre Recipe Clipper para revisar la receta de este texto. Te espera allí durante los próximos minutos."
+            "value" : "Abre Pith para revisar la receta de este texto. Te espera allí durante los próximos minutos."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez Recipe Clipper pour vérifier la recette de ce texte. Elle vous y attend pendant quelques minutes."
+            "value" : "Ouvrez Pith pour vérifier la recette de ce texte. Elle vous y attend pendant quelques minutes."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri Recipe Clipper per controllare la ricetta di questo testo. Resterà lì ad aspettarti per qualche minuto."
+            "value" : "Apri Pith per controllare la ricetta di questo testo. Resterà lì ad aspettarti per qualche minuto."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abra o Recipe Clipper para conferir a receita deste texto. Ela fica disponível lá por alguns minutos."
+            "value" : "Abra o Pith para conferir a receita deste texto. Ela fica disponível lá por alguns minutos."
           }
         }
       }
@@ -16184,37 +16184,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffne Recipe Clipper, um deine Woche zu prüfen. Sie wartet dort noch ein paar Minuten auf dich."
+            "value" : "Öffne Pith, um deine Woche zu prüfen. Sie wartet dort noch ein paar Minuten auf dich."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Recipe Clipper to review your week. It's waiting there for the next few minutes."
+            "value" : "Open Pith to review your week. It's waiting there for the next few minutes."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abre Recipe Clipper para revisar tu semana. Te espera allí durante los próximos minutos."
+            "value" : "Abre Pith para revisar tu semana. Te espera allí durante los próximos minutos."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez Recipe Clipper pour vérifier votre semaine. Elle vous y attend pendant quelques minutes."
+            "value" : "Ouvrez Pith pour vérifier votre semaine. Elle vous y attend pendant quelques minutes."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri Recipe Clipper per controllare la tua settimana. Resterà lì ad aspettarti per qualche minuto."
+            "value" : "Apri Pith per controllare la tua settimana. Resterà lì ad aspettarti per qualche minuto."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abra o Recipe Clipper para conferir sua semana. Ela fica esperando lá pelos próximos minutos."
+            "value" : "Abra o Pith para conferir sua semana. Ela fica esperando lá pelos próximos minutos."
           }
         }
       }
@@ -16731,37 +16731,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Woche"
+            "value" : "Plan"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Week"
+            "value" : "Plan"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Semana"
+            "value" : "Plan"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Semaine"
+            "value" : "Planning"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Settimana"
+            "value" : "Piano"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Semana"
+            "value" : "Plano"
           }
         }
       }
@@ -17635,37 +17635,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recipe Clipper"
+            "value" : "Pith"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recipe Clipper"
+            "value" : "Pith"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recipe Clipper"
+            "value" : "Pith"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recipe Clipper"
+            "value" : "Pith"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recipe Clipper"
+            "value" : "Pith"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recipe Clipper"
+            "value" : "Pith"
           }
         }
       }
@@ -19084,37 +19084,37 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your list is empty. Type an item above, or add ingredients from a recipe's menu or from the Week."
+            "value" : "Your list is empty. Type an item above, or add ingredients from a recipe's menu or from Plan."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tu lista está vacía. Escribe un artículo arriba, o añade ingredientes desde el menú de una receta o desde la Semana."
+            "value" : "Tu lista está vacía. Escribe un artículo arriba, o añade ingredientes desde el menú de una receta o desde Plan."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Votre liste est vide. Saisissez un article ci-dessus, ou ajoutez des ingrédients depuis le menu d'une recette ou depuis la Semaine."
+            "value" : "Votre liste est vide. Saisissez un article ci-dessus, ou ajoutez des ingrédients depuis le menu d'une recette ou depuis le Planning."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deine Liste ist leer. Gib oben einen Artikel ein oder füge Zutaten über das Menü eines Rezepts oder aus der Woche hinzu."
+            "value" : "Deine Liste ist leer. Gib oben einen Artikel ein oder füge Zutaten über das Menü eines Rezepts oder aus dem Plan hinzu."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La tua lista è vuota. Scrivi un articolo qui sopra, o aggiungi ingredienti dal menu di una ricetta o dalla Settimana."
+            "value" : "La tua lista è vuota. Scrivi un articolo qui sopra, o aggiungi ingredienti dal menu di una ricetta o dal Piano."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sua lista está vazia. Digite um item acima, ou adicione ingredientes pelo menu de uma receita ou pela Semana."
+            "value" : "Sua lista está vazia. Digite um item acima, ou adicione ingredientes pelo menu de uma receita ou pelo Plano."
           }
         }
       }
@@ -22938,37 +22938,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mitteilungen sind für Recipe Clipper ausgeschaltet. Erlaube sie in den Einstellungen, um Erinnerungen zu erhalten."
+            "value" : "Mitteilungen sind für Pith ausgeschaltet. Erlaube sie in den Einstellungen, um Erinnerungen zu erhalten."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Notifications are off for Recipe Clipper. Allow them in the system settings to get reminders."
+            "value" : "Notifications are off for Pith. Allow them in the system settings to get reminders."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las notificaciones están desactivadas para Recipe Clipper. Actívalas en los ajustes del sistema para recibir avisos."
+            "value" : "Las notificaciones están desactivadas para Pith. Actívalas en los ajustes del sistema para recibir avisos."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les notifications sont désactivées pour Recipe Clipper. Autorisez-les dans les réglages du système pour recevoir des rappels."
+            "value" : "Les notifications sont désactivées pour Pith. Autorisez-les dans les réglages du système pour recevoir des rappels."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le notifiche sono disattivate per Recipe Clipper. Consentile nelle impostazioni di sistema per ricevere i promemoria."
+            "value" : "Le notifiche sono disattivate per Pith. Consentile nelle impostazioni di sistema per ricevere i promemoria."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As notificações estão desativadas para o Recipe Clipper. Permita-as nos Ajustes para receber lembretes."
+            "value" : "As notificações estão desativadas para o Pith. Permita-as nos Ajustes para receber lembretes."
           }
         }
       }
@@ -25426,37 +25426,37 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keeps a copy of everything, photos included, in the Recipe Clipper folder in iCloud Drive, and refreshes it after changes"
+            "value" : "Keeps a copy of everything, photos included, in the Pith folder in iCloud Drive, and refreshes it after changes"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Guarda una copia de todo, fotos incluidas, en la carpeta Recipe Clipper de iCloud Drive, y la actualiza tras cada cambio"
+            "value" : "Guarda una copia de todo, fotos incluidas, en la carpeta Pith de iCloud Drive, y la actualiza tras cada cambio"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Garde une copie de tout, photos comprises, dans le dossier Recipe Clipper d'iCloud Drive, et la met à jour après chaque modification"
+            "value" : "Garde une copie de tout, photos comprises, dans le dossier Pith d'iCloud Drive, et la met à jour après chaque modification"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Legt eine Kopie von allem, Fotos inklusive, im Ordner „Recipe Clipper“ in iCloud Drive ab und hält sie nach Änderungen aktuell"
+            "value" : "Legt eine Kopie von allem, Fotos inklusive, im Ordner „Pith“ in iCloud Drive ab und hält sie nach Änderungen aktuell"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tiene una copia di tutto, foto comprese, nella cartella Recipe Clipper di iCloud Drive, e la aggiorna dopo ogni modifica"
+            "value" : "Tiene una copia di tutto, foto comprese, nella cartella Pith di iCloud Drive, e la aggiorna dopo ogni modifica"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mantém uma cópia de tudo, fotos incluídas, na pasta Recipe Clipper do iCloud Drive, e a atualiza depois de cada mudança"
+            "value" : "Mantém uma cópia de tudo, fotos incluídas, na pasta Pith do iCloud Drive, e a atualiza depois de cada mudança"
           }
         }
       }
@@ -26793,37 +26793,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wähle die Rezepte aus, die du behalten möchtest. Jedes wird als „Aus einem Chat“ gespeichert und an seinem Tag in der Woche eingeplant. Gespeichert wird erst, wenn du auf Speichern tippst."
+            "value" : "Wähle die Rezepte aus, die du behalten möchtest. Jedes wird als „Aus einem Chat“ gespeichert und an seinem Tag im Plan eingeplant. Gespeichert wird erst, wenn du auf Speichern tippst."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose the recipes to keep. Each one is saved as from a chat and planned on its day in Week. Nothing is saved until you tap Save."
+            "value" : "Choose the recipes to keep. Each one is saved as from a chat and planned on its day in Plan. Nothing is saved until you tap Save."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elige las recetas que quieres conservar. Cada una se guarda como «De un chat» y se planifica en su día en Semana. No se guarda nada hasta que toques Guardar."
+            "value" : "Elige las recetas que quieres conservar. Cada una se guarda como «De un chat» y se planifica en su día en Plan. No se guarda nada hasta que toques Guardar."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choisissez les recettes à garder. Chacune est enregistrée comme « Depuis un chat » et planifiée à son jour dans Semaine. Rien n'est enregistré avant que vous touchiez Enregistrer."
+            "value" : "Choisissez les recettes à garder. Chacune est enregistrée comme « Depuis un chat » et planifiée à son jour dans Planning. Rien n'est enregistré avant que vous touchiez Enregistrer."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scegli le ricette da tenere. Ognuna viene salvata come «Da una chat» e pianificata nel suo giorno in Settimana. Non viene salvato nulla finché non tocchi Salva."
+            "value" : "Scegli le ricette da tenere. Ognuna viene salvata come «Da una chat» e pianificata nel suo giorno nel Piano. Non viene salvato nulla finché non tocchi Salva."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escolha as receitas que quer manter. Cada uma é salva como “De um chat” e planejada no seu dia em Semana. Nada é salvo até você tocar em Salvar."
+            "value" : "Escolha as receitas que quer manter. Cada uma é salva como “De um chat” e planejada no seu dia no Plano. Nada é salvo até você tocar em Salvar."
           }
         }
       }
@@ -27162,37 +27162,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Woche öffnen"
+            "value" : "Plan öffnen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Week"
+            "value" : "Open Plan"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abrir Semana"
+            "value" : "Abrir Plan"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrir Semaine"
+            "value" : "Ouvrir Planning"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri Settimana"
+            "value" : "Apri Piano"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abrir Semana"
+            "value" : "Abrir Plano"
           }
         }
       }
@@ -27982,37 +27982,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit hat der App den Zugriff auf diesen Beitrag verweigert. Öffne Recipe Clipper: Dort ist der Beitrag geöffnet, und du kannst das Rezept markieren."
+            "value" : "Reddit hat der App den Zugriff auf diesen Beitrag verweigert. Öffne Pith: Dort ist der Beitrag geöffnet, und du kannst das Rezept markieren."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit didn't let the app read this post. Open Recipe Clipper: the post will be open there, to select the recipe."
+            "value" : "Reddit didn't let the app read this post. Open Pith: the post will be open there, to select the recipe."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit no dejó que la app leyera esta publicación. Abre Recipe Clipper: la publicación estará abierta allí para seleccionar la receta."
+            "value" : "Reddit no dejó que la app leyera esta publicación. Abre Pith: la publicación estará abierta allí para seleccionar la receta."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit n'a pas laissé l'appli lire cette publication. Ouvrez Recipe Clipper : elle y sera ouverte pour que vous sélectionniez la recette."
+            "value" : "Reddit n'a pas laissé l'appli lire cette publication. Ouvrez Pith : elle y sera ouverte pour que vous sélectionniez la recette."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reddit non ha permesso all'app di leggere questo post. Apri Recipe Clipper: lì troverai il post aperto, per selezionare la ricetta."
+            "value" : "Reddit non ha permesso all'app di leggere questo post. Apri Pith: lì troverai il post aperto, per selezionare la ricetta."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Reddit não deixou o app ler este post. Abra o Recipe Clipper: o post estará aberto lá para você selecionar a receita."
+            "value" : "O Reddit não deixou o app ler este post. Abra o Pith: o post estará aberto lá para você selecionar a receita."
           }
         }
       }
@@ -29939,37 +29939,37 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A copy someone can open in Recipe Clipper"
+            "value" : "A copy someone can open in Pith"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una copia que se puede abrir en Recipe Clipper"
+            "value" : "Una copia que se puede abrir en Pith"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une copie à ouvrir dans Recipe Clipper"
+            "value" : "Une copie à ouvrir dans Pith"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Kopie zum Öffnen in Recipe Clipper"
+            "value" : "Eine Kopie zum Öffnen in Pith"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una copia da aprire in Recipe Clipper"
+            "value" : "Una copia da aprire in Pith"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uma cópia para alguém abrir no Recipe Clipper"
+            "value" : "Uma cópia para alguém abrir no Pith"
           }
         }
       }
@@ -32455,37 +32455,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kopiere einen Prompt in eine beliebige Chat-App. Teile die Antwort mit Recipe Clipper oder kopiere sie und tippe auf „Antwort einfügen“, dann öffnet sie sich hier zum Prüfen."
+            "value" : "Kopiere einen Prompt in eine beliebige Chat-App. Teile die Antwort mit Pith oder kopiere sie und tippe auf „Antwort einfügen“, dann öffnet sie sich hier zum Prüfen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy a prompt into any chat app. Share the answer back to Recipe Clipper, or copy it and tap Paste the answer, and it opens here for you to check."
+            "value" : "Copy a prompt into any chat app. Share the answer back to Pith, or copy it and tap Paste the answer, and it opens here for you to check."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia un prompt en cualquier app de chat. Comparte la respuesta con Recipe Clipper, o cópiala y toca Pegar la respuesta, y se abrirá aquí para que la revises."
+            "value" : "Copia un prompt en cualquier app de chat. Comparte la respuesta con Pith, o cópiala y toca Pegar la respuesta, y se abrirá aquí para que la revises."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiez un prompt dans n'importe quelle appli de chat. Partagez la réponse avec Recipe Clipper, ou copiez-la et touchez Coller la réponse : elle s'ouvre ici pour que vous la vérifiiez."
+            "value" : "Copiez un prompt dans n'importe quelle appli de chat. Partagez la réponse avec Pith, ou copiez-la et touchez Coller la réponse : elle s'ouvre ici pour que vous la vérifiiez."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia un prompt in qualsiasi app di chat. Condividi la risposta con Recipe Clipper, oppure copiala e tocca Incolla la risposta, e si apre qui per controllarla."
+            "value" : "Copia un prompt in qualsiasi app di chat. Condividi la risposta con Pith, oppure copiala e tocca Incolla la risposta, e si apre qui per controllarla."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copie um prompt em qualquer app de chat. Compartilhe a resposta com o Recipe Clipper, ou copie-a e toque em Colar a resposta, e ela abre aqui para você conferir."
+            "value" : "Copie um prompt em qualquer app de chat. Compartilhe a resposta com o Pith, ou copie-a e toque em Colar a resposta, e ela abre aqui para você conferir."
           }
         }
       }
@@ -33357,37 +33357,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kopiere einen Prompt mit diesem Rezept und deinem Wunsch in einen KI-Chat. Teile die Antwort mit Recipe Clipper, um sie zu prüfen."
+            "value" : "Kopiere einen Prompt mit diesem Rezept und deinem Wunsch in einen KI-Chat. Teile die Antwort mit Pith, um sie zu prüfen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy a prompt with this recipe and your request into any AI chat. Share the answer back to Recipe Clipper to check it."
+            "value" : "Copy a prompt with this recipe and your request into any AI chat. Share the answer back to Pith to check it."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia un prompt con esta receta y tu petición en cualquier chat de IA. Comparte la respuesta con Recipe Clipper para revisarla."
+            "value" : "Copia un prompt con esta receta y tu petición en cualquier chat de IA. Comparte la respuesta con Pith para revisarla."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiez un prompt avec cette recette et votre demande dans n'importe quel chat d'IA. Partagez la réponse avec Recipe Clipper pour la vérifier."
+            "value" : "Copiez un prompt avec cette recette et votre demande dans n'importe quel chat d'IA. Partagez la réponse avec Pith pour la vérifier."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia un prompt con questa ricetta e la tua richiesta in una chat di IA. Condividi la risposta con Recipe Clipper per controllarla."
+            "value" : "Copia un prompt con questa ricetta e la tua richiesta in una chat di IA. Condividi la risposta con Pith per controllarla."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copie um prompt com esta receita e o seu pedido em qualquer chat de IA. Compartilhe a resposta com o Recipe Clipper para conferir."
+            "value" : "Copie um prompt com esta receita e o seu pedido em qualquer chat de IA. Compartilhe a resposta com o Pith para conferir."
           }
         }
       }
