@@ -37,7 +37,7 @@ import com.example.recipeclipper.data.model.MealType
         PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class,
         AiDecisionEntity::class, CookedPhotoEntity::class
     ],
-    version = 20,
+    version = 21,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -469,12 +469,25 @@ abstract class RecipeDatabase : RoomDatabase() {
 
         private const val TIPS_SQL = "ALTER TABLE `recipes` ADD COLUMN `tips` TEXT NOT NULL DEFAULT '[]'"
 
+        /**
+         * Step photos (#433): `recipes.stepPhotos`, each step's web image links as JSON; null for
+         * every existing recipe, which gains them on its next re-share. The same SQL is iOS's
+         * `addStepPhotos`. Numbered after #432's tips (20).
+         */
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(STEP_PHOTOS_SQL)
+            }
+        }
+
+        private const val STEP_PHOTOS_SQL = "ALTER TABLE `recipes` ADD COLUMN `stepPhotos` TEXT"
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
             MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
-            MIGRATION_19_20
+            MIGRATION_19_20, MIGRATION_20_21
         )
     }
 }

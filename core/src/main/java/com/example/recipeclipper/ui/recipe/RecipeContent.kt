@@ -6,6 +6,8 @@ import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.ServingsScale
 import com.example.recipeclipper.data.model.StepAmounts
+import com.example.recipeclipper.data.model.StepPhoto
+import com.example.recipeclipper.data.model.StepPhotos
 
 sealed class RecipeContent {
     object Loading : RecipeContent()
@@ -63,6 +65,19 @@ sealed class RecipeContent {
 
         /** The ingredient lines that aren't headings: what cook mode's bar counts. */
         val ingredientCount: Int get() = ingredients.count { !IngredientHeading.isHeading(it) }
+
+        /**
+         * Each step's photos (#433), numbered by the step text's own "(n)" markers (see
+         * [StepPhotos.numbered]); empty for a recipe with none. Read from the steps as stored:
+         * a converted temperature never moves a marker.
+         */
+        val stepPhotos: List<List<StepPhoto>> = StepPhotos.numbered(recipe.instructions, recipe.stepPhotos)
+
+        /** Every step photo in step order: the viewer's pages. */
+        val allStepPhotos: List<StepPhoto> get() = StepPhotos.all(stepPhotos)
+
+        /** Step [index]'s photos; none for a step without. */
+        fun photosOf(index: Int): List<StepPhoto> = stepPhotos.getOrNull(index).orEmpty()
     }
 
     data class Error(val error: ParseError) : RecipeContent()

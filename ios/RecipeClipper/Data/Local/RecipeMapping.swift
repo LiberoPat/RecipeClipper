@@ -26,7 +26,8 @@ extension Recipe {
             contentOrigin: origin.rawValue,
             editedAt: editedAt,
             photoFile: photoFile,
-            tips: tips
+            tips: tips,
+            stepPhotos: StepPhotos.encode(StepPhotos.aligned(stepPhotos, instructions.count))
         )
     }
 }
@@ -55,6 +56,7 @@ extension RecipeRecord {
             editedAt: editedAt,
             photoFile: photoFile,
             uid: uid,
+            stepPhotos: StepPhotos.aligned(StepPhotos.decode(stepPhotos), instructions.count),
             tips: tips
         )
     }

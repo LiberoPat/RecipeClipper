@@ -1013,4 +1013,13 @@
     <string name="pro_free_line">Kostenlos. Ohne Werbung. Ohne Konto. Ohne Abo.</string>
     <string name="pro_teaser_fresh">Frisches später in der Woche kaufen</string>
     <string name="pro_teaser_plan">Mahlzeiten, ersten Tag und eigene Rezepte wählen</string>
+    <!-- Step photos (#433) -->
+    <string name="step_photo_open">Foto %1$d von Schritt %2$d</string>
+    <plurals name="step_photos_open">
+        <item quantity="one">%1$d Foto von Schritt %2$d</item>
+        <item quantity="other">%1$d Fotos von Schritt %2$d</item>
+    </plurals>
+    <string name="step_photo_open_action">Im Vollbild ansehen</string>
+    <string name="step_photo_position">Foto %1$d von %2$d</string>
+    <string name="step_photo_step">Schritt %1$d</string>
 </resources>

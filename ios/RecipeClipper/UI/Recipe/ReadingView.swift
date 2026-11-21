@@ -14,6 +14,7 @@ struct ReadingView: View {
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.noPhotoImage) private var noPhotoImage
+    @Environment(\.stepPhotos) private var stepPhotos
     /// Only whether the keyboard is up for the note, so the cooking bar steps aside for it.
     @FocusState private var editingNotes: Bool
 
@@ -105,7 +106,11 @@ struct ReadingView: View {
                     let layout = stacked
                         ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
                         : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 0))
+                    // Step photos (#433): a thumbnail at the right of a step that has some; a step
+                    // without has none, and its text keeps the full width.
+                    let photos = stepPhotos ? content.photosOf(index) : []
                     VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .top, spacing: 0) {
                         layout {
                             Text("\(index + 1)")
                                 .textStyle(Typography.titleMedium)
@@ -117,6 +122,11 @@ struct ReadingView: View {
                                 .foregroundStyle(Palette.onBackground)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .modifier(StepLinks(parts: parts, onLink: { vm.onIngredientLink(index, $0) }))
+                        }
+                        if !photos.isEmpty {
+                            StepPhotoThumbnail(photos: photos, gap: 12, onOpen: vm.onStepPhotoOpen)
+                                .padding(.top, 4)
+                        }
                         }
                         // A timer still running after cooking ended (the last step's rest, say)
                         // is visible here, where a tap on its countdown outside the app lands (#333).

@@ -44,12 +44,16 @@ struct RecipeRecord: Equatable {
     /// them, `[]` for every recipe stored before user_version 19 (a King Arthur recipe saved then
     /// keeps its tips as steps until a re-share refreshes it). Never a step: cook progress ignores it.
     var tips: [String] = []
+    /// Each step's photos as the source gives them (#433): `StepPhotos.encode`'s JSON, an array of
+    /// arrays of web image links lined up with `instructions`; nil for none. Content, so a re-share
+    /// refreshes it with the steps; an edit carries it along (`StepPhotos.afterEdit`).
+    var stepPhotos: String? = nil
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
         totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language, \
-        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid, photoFile, tips
+        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid, photoFile, tips, stepPhotos
         """
 
     init(
@@ -60,7 +64,7 @@ struct RecipeRecord: Equatable {
         notes: String? = nil, uid: String = newUid(), language: String? = nil,
         cookState: String? = nil, servingsTarget: Int? = nil,
         contentOrigin: String = "PARSED", editedAt: Int64? = nil, basedOnUid: String? = nil,
-        photoFile: String? = nil, tips: [String] = []
+        photoFile: String? = nil, tips: [String] = [], stepPhotos: String? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -85,6 +89,7 @@ struct RecipeRecord: Equatable {
         self.basedOnUid = basedOnUid
         self.photoFile = photoFile
         self.tips = tips
+        self.stepPhotos = stepPhotos
     }
 
     init(row: SQLiteRow) {
@@ -111,6 +116,7 @@ struct RecipeRecord: Equatable {
         basedOnUid = row.optionalString(20)
         photoFile = row.optionalString(21)
         tips = JSONColumns.decodeStrings(row.string(22))
+        stepPhotos = row.optionalString(23)
     }
 }
 

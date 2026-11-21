@@ -358,11 +358,11 @@ enum JsonLdRecipeParser {
             LanguageWords.detectionText(name: name, ingredients: ingredients)
         }
         let words = LanguageWords.forTag(language)
-        let (instructions, tips) = extractInstructions(opt(json, "recipeInstructions"), words: words)
+        let (instructions, stepPhotos, tips) = extractInstructions(opt(json, "recipeInstructions"), words: words)
         // Tips (#432) are not steps: a recipe still needs ingredients or steps of its own.
         if ingredients.isEmpty && instructions.isEmpty { return nil }
 
-        return Recipe(
+        var recipe = Recipe(
             name: name,
             // A web image only (#235): never an address on the device.
             image: WebImageUrl.of(extractImage(opt(json, "image"))),
@@ -376,6 +376,8 @@ enum JsonLdRecipeParser {
             language: language,
             tips: tips
         )
+        recipe.stepPhotos = StepPhotos.aligned(stepPhotos, instructions.count)
+        return recipe
     }
 
     /// `inLanguage` as a tag ("en-US"), or a schema.org Language with one in `alternateName`.
@@ -434,6 +436,25 @@ enum JsonLdRecipeParser {
         return nil
     }
 
+    /// A HowToStep's `image` (#433): a link, an ImageObject (its `url`, else `contentUrl`) or an
+    /// array of them, as web images only (#235), each once, at most `StepPhotos.maxPerStep`.
+    private static func stepImages(_ node: Any?) -> [String] {
+        var found: [String] = []
+        func add(_ item: Any?) {
+            if let s = item as? String {
+                if let link = WebImageUrl.of(s) { found.append(link) }
+            } else if let object = item as? [String: Any] {
+                let url = optString(object, "url")
+                if let link = WebImageUrl.of(url.kIsBlank ? optString(object, "contentUrl") : url) { found.append(link) }
+            } else if let array = item as? [Any] {
+                for element in array where !(element is [Any]) { add(element) }
+            }
+        }
+        add(node)
+        var seen = Set<String>()
+        return Array(found.filter { seen.insert($0).inserted }.prefix(StepPhotos.maxPerStep))
+    }
+
     private static func extractStringList(_ node: Any?) -> [String] {
         var result: [String] = []
         if let array = node as? [Any] {
@@ -478,10 +499,12 @@ enum JsonLdRecipeParser {
     /// The steps of `recipeInstructions`, and apart from them its tips (#432): a `HowToTip` entry
     /// (kingarthurbaking.com lists three after the method) is not a step to advance through, so it
     /// never joins the steps, at the top level or inside a HowToSection. Its text is read as a
-    /// step's is, through `jsonText`.
-    private static func extractInstructions(_ node: Any?, words: LanguageWords?) -> (steps: [String], tips: [String]) {
+    /// step's is, through `jsonText`. Each step's photos (#433) come lined up with
+    /// the steps: none for a step given as a string, and a tip keeps none.
+    private static func extractInstructions(_ node: Any?, words: LanguageWords?) -> (steps: [String], photos: [[String]], tips: [String]) {
         var steps: [String] = []
         var tips: [String] = []
+        var photos: [[String]] = []
         let condensedNames = condensedSectionNames(words)
         func condensed(_ item: Any) -> Bool { isCondensedSection(item, condensedNames) }
 
@@ -492,7 +515,10 @@ enum JsonLdRecipeParser {
         func addStep(_ item: Any) {
             if let s = item as? String {
                 let text = jsonText(s).kTrimmed
-                if !text.isEmpty { steps.append(text) }
+                if !text.isEmpty {
+                    steps.append(text)
+                    photos.append([])
+                }
             } else if let object = item as? [String: Any] {
                 let type = optString(object, "@type")
                 if type.caseInsensitiveCompare("HowToSection") == .orderedSame {
@@ -512,6 +538,7 @@ enum JsonLdRecipeParser {
                             tips.append(stepText.kTrimmed)
                         } else {
                             steps.append(stepText.kTrimmed)
+                            photos.append(stepImages(opt(object, "image")))
                         }
                     }
                 }
@@ -537,7 +564,7 @@ enum JsonLdRecipeParser {
             // of lines into one collapsed line.
             steps += s.components(separatedBy: "\n").map { jsonText($0).kTrimmed }.filter { !$0.isEmpty }
         }
-        return (steps, tips)
+        return (steps, photos, tips)
     }
 
     /// A HowToStep's `text` given as an array of strings, as one step (#266): einfachbacken.de

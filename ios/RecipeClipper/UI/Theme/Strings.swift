@@ -1000,6 +1000,12 @@ enum Strings {
     static var sharePhoto: String { String(localized: "cd_share_photo") }
     static var deletePhoto: String { String(localized: "cd_delete_photo") }
     static var closePhoto: String { String(localized: "cd_close_photo") }
+    // Step photos (#433).
+    static func stepPhotoOpen(_ number: Int, step: Int) -> String { String(localized: "step_photo_open \(number) \(step)") }
+    static func stepPhotosOpen(_ count: Int, step: Int) -> String { String(localized: "step_photos_open \(count) \(step)") }
+    static var stepPhotoOpenAction: String { String(localized: "step_photo_open_action") }
+    static func stepPhotoPosition(_ n: Int, of total: Int) -> String { String(localized: "step_photo_position \(n) \(total)") }
+    static func stepPhotoStep(_ n: Int) -> String { String(localized: "step_photo_step \(n)") }
     static var cookedPhotoDeleted: String { String(localized: "cooked_photo_deleted") }
     static var cookedAddFailed: String { String(localized: "cooked_add_failed") }
     static var cameraUnavailable: String { String(localized: "camera_unavailable") }

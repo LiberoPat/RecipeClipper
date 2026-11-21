@@ -63,6 +63,7 @@ internal fun ReadingView(
     val firstLine = if (hasBanner) 3 else 2
     val firstStep = firstLine + content.ingredients.size + 1
     val jump = state.ingredientJump
+    val showPhotos = stepPhotosOn()
     // A step's ingredient link (#254): scroll to its lines, or back to the step.
     LaunchedEffect(jump?.scrollTo, jump?.lines, jump?.step) {
         val target = when (jump?.scrollTo) {
@@ -189,11 +190,17 @@ internal fun ReadingView(
                     )
                     val parts = content.shownStepAmounts(index, state.asWrittenSteps)
                     val onLink = { lines: List<Int> -> actions.onIngredientLink(index, lines) }
+                    // Step photos (#433): a thumbnail at the right of a step the source gave photos;
+                    // a step without keeps today's full width.
+                    val photos = if (showPhotos) content.photosOf(index) else emptyList()
                     Text(
                         stepText(step, parts, MaterialTheme.colorScheme.tertiary, onLink),
                         style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.stepLinkActions(parts, onLink)
+                        modifier = (if (photos.isEmpty()) Modifier else Modifier.weight(1f)).stepLinkActions(parts, onLink)
                     )
+                    if (photos.isNotEmpty()) {
+                        StepPhotoThumbnail(photos, actions.onStepPhotoOpen, Modifier.padding(top = 4.dp), gap = 12.dp)
+                    }
                 }
                 // A timer still running after cooking ended (the last step's rest, say) is
                 // visible here, where a tap on its countdown outside the app lands (#333).

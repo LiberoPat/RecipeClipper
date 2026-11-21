@@ -190,6 +190,14 @@ struct RecipeScreen: View {
         ), onDismiss: offerUseUpAfterMadeThis) { photo in
             if let photosVM { CookedPhotoViewer(vm: photosVM, photo: photo, recipeName: content?.recipe.name ?? "") }
         }
+        // Step photos (#433): every step photo, full screen, from a thumbnail's tap.
+        .fullScreenCover(isPresented: Binding(
+            get: { vm.uiState.stepPhotoViewer != nil }, set: { if !$0 { vm.onStepPhotoClose() } }
+        )) {
+            if let success = vm.uiState.content.success, let position = vm.uiState.stepPhotoViewer {
+                StepPhotoViewer(content: success, position: position, onPage: vm.onStepPhotoPage, onClose: vm.onStepPhotoClose)
+            }
+        }
         .overlay(alignment: .bottom) {
             if let photosVM, let deleted = photosVM.uiState.deleted {
                 Snackbar(
@@ -254,7 +262,7 @@ struct RecipeScreen: View {
     /// Something of this screen's own is over it (#190): a sheet, a dialog, a cover or a snackbar.
     private func covered(_ state: RecipeUiState) -> Bool {
         sheetOpen || planSheet != nil || groceriesSheet != nil || changing || confirmingDelete || confirmingUpdate
-            || state.unlockNotice != nil || state.updateError != nil || state.notKept
+            || state.unlockNotice != nil || state.updateError != nil || state.notKept || state.stepPhotoViewer != nil
             || photosVM?.uiState.open != nil || photosVM?.uiState.deleted != nil
             || useUpVM?.uiState.sheet != nil || useUpVM?.uiState.updated != nil
     }

@@ -97,7 +97,10 @@ data class BackupRecipe(
     val photo: String? = null,
     /** The recipe's tips (#432), as written; written only when there are some, so older files
      *  (and recipes with none) simply have no `tips`, read as none. */
-    val tips: List<String> = emptyList()
+    val tips: List<String> = emptyList(),
+    /** Each step's photos (#433): web image links, one list per step, lined up with [instructions];
+     *  empty for none (and absent from the file then, as in older files, which an older app ignores). */
+    val stepPhotos: List<List<String>> = emptyList()
 )
 
 data class BackupList(

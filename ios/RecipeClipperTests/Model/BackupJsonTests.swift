@@ -343,6 +343,22 @@ final class BackupJsonTests: XCTestCase {
         XCTAssertTrue(first["basedOn"] is NSNull)
     }
 
+    /// Step photos (#433): the shared fixture, read the same way by Android's `BackupJsonTest`.
+    func testStepPhotosReadAsWebImagesLinedUpWithTheStepsRoundTripAndAreAbsentWhenNone() throws {
+        let backup = try decodeOrFail(backupFixture("backup-v1-step-photos"))
+        XCTAssertEqual(backup.recipes.map(\.stepPhotos), [
+            [["https://img.example/1.jpg"], [], ["https://img.example/3.jpg", "https://img.example/4.jpg"]],
+            [],
+            [],
+        ])
+        XCTAssertEqual(backup, try decodeOrFail(BackupJson.encode(backup)))
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(BackupJson.encode(backup).utf8)) as? [String: Any])
+        let recipes = try XCTUnwrap(root["recipes"] as? [[String: Any]])
+        XCTAssertNotNil(recipes[0]["stepPhotos"])
+        XCTAssertNil(recipes[2]["stepPhotos"])
+        XCTAssertTrue(try decodeOrFail(backupFixture("backup-v1")).recipes.allSatisfy { $0.stepPhotos.isEmpty })
+    }
+
     func testABlankBasedOnReadsAsNone() throws {
         let text = try backupFixture("backup-v1-versions").replacingOccurrences(of: "\"basedOn\": \"r-soup\"", with: "\"basedOn\": \"  \"")
         XCTAssertNil(try decodeOrFail(text).recipes[1].basedOn)

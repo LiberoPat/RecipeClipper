@@ -131,7 +131,7 @@ final class RecipeTipsDataTests: XCTestCase {
         let migrated = try AppDatabase(path: path)
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
         XCTAssertEqual(version, AppDatabase.schemaVersion)
-        XCTAssertEqual(AppDatabase.schemaVersion, 19)
+        XCTAssertEqual(AppDatabase.schemaVersion, 20)
         let kept = try await migrated.read { try XCTUnwrap(RecipeDao(db: $0).get(7)) }
         XCTAssertEqual(kept.instructions, ["Bake.", "Cool.", "A tip."])
         XCTAssertEqual(kept.tips, [])
