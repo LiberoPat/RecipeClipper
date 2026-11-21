@@ -10,7 +10,9 @@ import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.local.CookStateJson
 import com.example.recipeclipper.data.model.ContentOrigin
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.LibraryLimit
 import kotlinx.coroutines.flow.Flow
 
@@ -525,8 +527,15 @@ abstract class RecipeDao {
         } else {
             emptySet() // the indexes no longer mean the same ingredients
         }
-        // Step indexes, like ticks, only mean the same steps if the steps are unchanged.
-        val cook = if (existing.instructions == fresh.instructions) existing.cookState else null
+        // Step indexes, like ticks, only mean the same steps if the steps are unchanged, or if
+        // the only change is that the last steps are now tips (#432): then the indexes left
+        // still mean the same steps, and any past the new last step go.
+        val cook = when {
+            existing.instructions == fresh.instructions -> existing.cookState
+            CookProgress.keptWhenTipsSplitOff(existing.instructions, fresh.instructions, fresh.tips) ->
+                CookStateJson.encode(CookStateJson.decode(existing.cookState).clampedTo(fresh.instructions.size))
+            else -> null
+        }
         // The uid is the recipe's identity in exports: a re-share never changes it.
         // The note and the servings are the user's, not the source's: a fresh parse never
         // carries them, and neither depends on the exact wording of the steps.

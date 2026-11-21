@@ -10,6 +10,7 @@ import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.entity.AiDecisionEntity
 import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.ShortStepEntity
+import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.StepPhotos
 import kotlinx.coroutines.flow.first
@@ -919,7 +920,8 @@ class MigrationTest {
     /**
      * A recipe's tips (#432): a new `recipes.tips`, `[]` for every recipe. A recipe saved with its
      * tips as steps is not rewritten: it keeps all its steps and its cook progress, and a re-share
-     * that brings the tips apart refreshes it (new steps, so the progress goes, as for any change).
+     * that brings the tips apart refreshes it, keeping the progress: its steps changed only by their
+     * last ones becoming tips.
      */
     @Test
     fun migration19To20KeepsEveryRecipeAsItWasWithNoTips() {
@@ -933,7 +935,7 @@ class MigrationTest {
                 VALUES
                   (7, 'https://www.kingarthurbaking.com/recipes/mini-apple-pies-recipe', 'Mini Apple Pies', NULL,
                    '["1 apple"]', '["Bake.","Cool.","A tip."]', NULL, NULL, NULL, '24', 'BLOG', 123, '[0]',
-                   'Mine', 'recipe-uid', 'en', '{"on":true,"current":1}', 12, 'PARSED', NULL, NULL, 'stored.jpg')
+                   'Mine', 'recipe-uid', 'en', '{"active":true,"currentStep":1}', 12, 'PARSED', NULL, NULL, 'stored.jpg')
                 """.trimIndent()
             )
         }
@@ -959,7 +961,7 @@ class MigrationTest {
             val refreshed = db.recipeDao().get(7)!!
             assertEquals(listOf("Bake.", "Cool."), refreshed.instructions)
             assertEquals(listOf("A tip."), refreshed.tips)
-            assertNull(refreshed.cookState)
+            assertEquals(CookProgress(active = true, currentStep = 1), CookStateJson.decode(refreshed.cookState))
             assertEquals("Mine", refreshed.notes)
             assertEquals("stored.jpg", refreshed.photoFile)
         }

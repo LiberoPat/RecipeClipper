@@ -4,7 +4,8 @@ import XCTest
 /// A recipe's tips (#432) through DefaultRecipeRepository over a real in-memory database (Android's
 /// DefaultRecipeRepositoryTipsTest and MigrationTest.migration19To20): with `recipeTips` on they are
 /// stored apart from the steps; off, a fresh parse's tips are its last steps, as before. A recipe saved
-/// with its tips as steps simply refreshes on a re-share.
+/// with its tips as steps refreshes on a re-share and keeps its cook progress, clamped to the steps
+/// left; any other change of steps still drops it.
 final class RecipeTipsDataTests: XCTestCase {
     private let url = "https://www.kingarthurbaking.com/recipes/mini-apple-pies-recipe"
     private var db: AppDatabase!
@@ -59,11 +60,18 @@ final class RecipeTipsDataTests: XCTestCase {
         XCTAssertEqual(saved.tips, [])
     }
 
-    func testARecipeSavedWithItsTipsAsStepsRefreshesOnAReShareItsProgressGoingWithTheOldSteps() async throws {
+    private let timer = SavedTimer(totalSeconds: 600, remainingSeconds: 300, endsAt: nil)
+
+    private func savedProgress(_ id: Int64) async throws -> CookProgress {
+        let row = try await db.read { try RecipeDao(db: $0).get(id) }
+        return CookStateJSON.decode(row?.cookState)
+    }
+
+    func testARecipeSavedWithItsTipsAsStepsRefreshesOnAReShareKeepingItsProgress() async throws {
         tipsOn = false
         let old = try await imported()
-        let progress = CookStateJSON.encode(CookProgress(active: true, currentStep: 2))
-        try await db.write { try RecipeDao(db: $0).setCookState(old.id, cookState: progress) }
+        let progress = CookProgress(active: true, currentStep: 1, doneSteps: [0], timers: [1: timer])
+        try await db.write { try RecipeDao(db: $0).setCookState(old.id, cookState: CookStateJSON.encode(progress)) }
 
         tipsOn = true
         let refreshed = try await imported()
@@ -71,8 +79,53 @@ final class RecipeTipsDataTests: XCTestCase {
         XCTAssertEqual(refreshed.id, old.id)
         XCTAssertEqual(refreshed.instructions, ["Bake.", "Cool."])
         XCTAssertEqual(refreshed.tips, ["Use a baking stone."])
+        let kept = try await savedProgress(old.id)
+        XCTAssertEqual(kept, progress, "only the last steps became tips: the indexes still mean the same steps")
+    }
+
+    func testProgressThatPointedAtAFormerTipRowIsClampedToTheStepsLeft() async throws {
+        tipsOn = false
+        let old = try await imported()
+        let progress = CookProgress(active: true, currentStep: 2, doneSteps: [0, 1, 2], timers: [0: timer, 2: timer])
+        try await db.write { try RecipeDao(db: $0).setCookState(old.id, cookState: CookStateJSON.encode(progress)) }
+
+        tipsOn = true
+        _ = try await imported()
+
+        let clamped = try await savedProgress(old.id)
+        XCTAssertEqual(clamped, CookProgress(active: true, currentStep: 1, doneSteps: [0, 1], timers: [0: timer]))
+    }
+
+    func testProgressStillGoesWhenARealStepChangedAsWell() async throws {
+        tipsOn = false
+        let old = try await imported()
+        let progress = CookStateJSON.encode(CookProgress(active: true, currentStep: 1))
+        try await db.write { try RecipeDao(db: $0).setCookState(old.id, cookState: progress) }
+        var changed = pies
+        changed.instructions = ["Bake well.", "Cool."]
+        source.results[url] = .success(changed)
+
+        tipsOn = true
+        _ = try await imported()
+
         let row = try await db.read { try RecipeDao(db: $0).get(old.id) }
         XCTAssertNil(row?.cookState, "the steps changed, so the step indexes no longer mean the same steps")
+    }
+
+    func testWithNoTipsAnyChangeOfStepsStillDropsTheProgress() async throws {
+        var plain = pies
+        plain.tips = []
+        source.results[url] = .success(plain)
+        let first = try await imported()
+        let progress = CookStateJSON.encode(CookProgress(active: true, currentStep: 1))
+        try await db.write { try RecipeDao(db: $0).setCookState(first.id, cookState: progress) }
+        plain.instructions = ["Bake."]
+        source.results[url] = .success(plain)
+
+        _ = try await imported()
+
+        let row = try await db.read { try RecipeDao(db: $0).get(first.id) }
+        XCTAssertNil(row?.cookState)
     }
 
     func testCookProgressStaysWhenOnlyTheTipsChange() async throws {
@@ -149,7 +202,7 @@ final class RecipeTipsDataTests: XCTestCase {
         let refreshed = try await migrated.read { try XCTUnwrap(RecipeDao(db: $0).get(7)) }
         XCTAssertEqual(refreshed.instructions, ["Bake.", "Cool."])
         XCTAssertEqual(refreshed.tips, ["A tip."])
-        XCTAssertNil(refreshed.cookState)
+        XCTAssertEqual(CookStateJSON.decode(refreshed.cookState), CookProgress(active: true, currentStep: 1))
         XCTAssertEqual(refreshed.notes, "Mine")
         XCTAssertEqual(refreshed.photoFile, "stored.jpg")
     }
