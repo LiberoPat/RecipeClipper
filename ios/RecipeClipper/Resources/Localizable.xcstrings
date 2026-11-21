@@ -10406,6 +10406,47 @@
         }
       }
     },
+    "library_empty_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hier erscheinen deine Rezepte"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your recipes go here"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus recetas irán aquí"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos recettes apparaîtront ici"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le tue ricette appariranno qui"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suas receitas ficam aqui"
+          }
+        }
+      }
+    },
     "library_full_body %lld" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -16557,6 +16598,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recipe Clipper"
+          }
+        }
+      }
+    },
+    "tooltip_library_add" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teile einen Rezeptlink mit dieser App oder tippe auf +, um ein Rezept hinzuzufügen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share a recipe link to this app, or tap + to add one."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparte el enlace de una receta con esta app, o toca + para añadir una."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partagez le lien d'une recette vers cette appli, ou touchez + pour en ajouter une."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Condividi il link di una ricetta con questa app, oppure tocca + per aggiungerne una."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartilhe o link de uma receita com este app, ou toque em + para adicionar uma."
           }
         }
       }

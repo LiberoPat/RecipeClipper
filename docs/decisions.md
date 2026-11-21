@@ -2972,6 +2972,9 @@ array in one string (einfachbacken), which no word table can read; and Japanese 
 
 ## Home: the resume card and three ways in (#286)
 
+**With `libraryFirst` (#375) there is no Home**: the Recipes tab opens the library, which takes the card, the
+ways in, the gear and the restore row; see "Library first (#375)". What follows is Home with the flag off.
+
 The owner's pick (2026-10-19): 01 V2 "Resume first" with 02 V1 "Three equal doors". It
 bends the settled link field: an always-visible field became a tile that opens it.
 
@@ -3056,6 +3059,65 @@ bends the settled link field: an always-visible field became a tile that opens i
 - Unchanged: the empty-library hint and "Restore from a backup file", the one-time backup
   card, the sample-only state and the gear. The mockup's step text ("· simmer covered") was
   left out: the card names the step by number only.
+
+## Library first (#375, 2026-11-20)
+
+The owner's pick (2026-11-19) was variation A, "Card on top", of the Recipes-tab designs: the tab
+opens the library, as Paprika, Mela and Crouton do. It **removes Home** (#286, #371) and moves its
+jobs; each rule it bends is named here. Behind `libraryFirst` (on by default; **needs `oneCookbook`**,
+whose views strip carries the Lists card that Home's Lists row was the only way to without it, so with
+`oneCookbook` off the tab keeps opening Home). Off, everything below is as the Home section says.
+
+- **The tab opens the library.** Android: the Recipes graph's start destination is `recipes` (not
+  `home`); iOS: the Recipes stack's root is `RecipesScreen`. It is the stack's first screen, so there
+  is **no Back**, and **choosing the open tab again pops to it** (the same code as before: pop to the
+  graph's start / empty the path). A route from an intent still always lands in Recipes: a share's
+  import is pushed over the library, and Back from it returns there. A received file's "Recipes" (#149)
+  goes back to the library rather than stacking a second one (`openRoute(Routes.RECIPES)`,
+  `Router.showLibrary()`). Not built: scrolling the list to the top on a second tap.
+- **Home's jobs, kept by `HomeViewModel`.** The library root takes `HomeViewModel` as a second
+  ViewModel (`LibraryRoot` on both platforms) for what it already follows: the cook's place, today's
+  meals, the restore row and the Ask an AI sheet. Its link-dialog and counts go unused. Nothing else
+  uses it with the flag on. The Paste a link dialog is the Recipes ViewModel's own.
+- **The card (#405's, compact).** Above search, the first item of the list, so it **scrolls away with
+  it**: a 64 dp thumbnail (the photo, or a plain paprika-wash block, never a stock image), "Today ·
+  Dinner" (the meal type's own name) or "Continue cooking", the name, one line, and the button. Today:
+  the next meal still to cook as "Dinner: Lemon chicken" (it opens that recipe) and **Start cooking**;
+  a planned note has no button. Mid-cook: "Step 2 of 4" with the running countdown, and **Resume
+  cooking**. The rules for what it shows are #402's, unchanged (meal windows, cooked today, a finished
+  run is never a resume), with one difference: **only a recipe being cooked, or today's next meal with
+  `homeTonight` on, gets a card.** Home's "Open recipe" card for a recipe nobody is cooking is gone: with
+  nothing to cook, search sits under the title. The photo and name open the recipe.
+- **Start cooking opens on the Recipes stack**, so Back returns to the library (Home's went to the
+  Week's stack, because Home had no plan of its own). Android: `recipe/{id}?servings=&startCook=true`
+  (the Recipes route gained the Week route's two optional arguments; `Routes.plannedRecipe`); iOS:
+  `.startWeekRecipe` / `.weekRecipe` pushed on the Recipes path (the destination is shared). A planned
+  meal's other lines, and the photo, open it the same way, at the planned servings, without cooking.
+- **The + opens "Add a recipe"**, a bottom sheet replacing #102's two-item menu: Paste a link (the
+  existing dialog, #372), Scan a recipe (#226, `photoText`), Type a recipe (#29), Ask an AI (#351,
+  `askAi`), each with Home's tile line, then "Or share a link to Recipe Clipper from any app." A choice
+  closes the sheet and then goes where it leads (iOS waits for the sheet to be away before opening the
+  next sheet). The + is a paprika circle; on a page that is not the root (a view) there is none, as
+  before. **The Settings gear sits beside the Recipes title**, left of the + (the Settings rule left
+  this to the owner; this is that call). Select (#377) sits left of the gear.
+- **An empty library** (nothing, or only the tour's sample, #151): in the list's place a heading
+  "Your recipes go here", the four ways in as tiles (two by two; one column at the accessibility sizes
+  on iOS), the sharing line, "Restore from a backup file" (#150) with how it went, and the sample under
+  it. No search, strips or sort line yet. Home's "Recipes you open will show up here." is gone with it.
+- **The backup-folder card** ("Keep a backup copy?", #150, Android) now sits under the card, above
+  search, until answered (owner's call to confirm: it was between Home's tiles and rows).
+- **The tour.** One tip pointed at Home: `home_link`. It keeps its id, so a cook who has seen it has
+  seen it, and its screen (`home`), and **moves to the +** with its own words: "Share a recipe link to
+  this app, or tap + to add one." (`tooltip_library_add`; Home's `tooltip_home_link` stays for the flag
+  off). The library is the first screen, so it shows on first launch. No other tooltip pointed at Home
+  (the others are on the recipe, cook, groceries, pantry and settings screens).
+- **Tests.** UI tests launch with the flag off, so the suites that go through Home are untouched;
+  `libraryFirst` in `launch(flags:)` turns on `oneCookbook` with it and makes `atRoot`, `openRecipes`,
+  `openLists`, `pasteLink` and `backToHome` mean the library (`LibraryFirstUITests`, its own shard
+  weight). Android's walkthrough recordings (`WalkthroughBase.start`) pin the flag off unless a clip asks
+  for it, since they are written through Home.
+- Not changed: variation D (a cooking bar docked above the tab bar on every tab) is filed separately; the
+  ongoing notification and Live Activity still show a timer outside the app.
 
 ## The Recipes screen (#102)
 

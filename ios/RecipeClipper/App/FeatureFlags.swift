@@ -64,7 +64,7 @@ enum Flag: String, CaseIterable {
     case freshFood
     /// Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix.
     case planMyWeekPlus
-    /// Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone.
+    /// Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone; needs `oneCookbook`.
     case libraryFirst
 }
 
