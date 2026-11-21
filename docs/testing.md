@@ -819,7 +819,7 @@ both.
   as of September 2026). `DEVELOPER_DIR` selects Xcode 27 explicitly. It runs
   `RecipeClipperTests` on the image's iPhone 17 / iOS 27.0 simulator and
   uploads the `.xcresult` on failure.
-- **iOS UI tests** (`ios-ui-tests.yml`), about 40 minutes: nightly at 03:00
+- **iOS UI tests** (`ios-ui-tests.yml`), about 50 minutes: nightly at 03:00
   UTC and on demand (Actions → iOS UI tests → Run workflow, or
   `gh workflow run ios-ui-tests.yml --ref <branch>`). The suite was one job of
   about two hours, so it runs as **three parallel shards** (a matrix, `fail-fast`

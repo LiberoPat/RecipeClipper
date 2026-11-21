@@ -1,6 +1,6 @@
 name: iOS UI tests
 
-# About 40 minutes on three parallel shards, so not on every pull request: nightly, and on
+# About 50 minutes on three parallel shards, so not on every pull request: nightly, and on
 # demand from the Actions tab (Run workflow) or `gh workflow run ios-ui-tests.yml --ref <branch>`.
 # The classes are split by ios/scripts/ui-test-shard.sh; the run passes only if every shard does.
 on:
