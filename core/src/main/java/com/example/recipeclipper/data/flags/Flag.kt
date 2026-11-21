@@ -85,6 +85,8 @@ enum class Flag(val key: String) {
     PRO_UNLOCK("proUnlock"),
     /** Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone; needs [ONE_COOKBOOK]. */
     LIBRARY_FIRST("libraryFirst"),
+    /** Settings links (#412): "Plan settings" in the Plan tab's menu and "Pantry settings" in the Pantry's, each opening its section on that tab's stack. */
+    TAB_SETTINGS_LINKS("tabSettingsLinks"),
     /** A recipe written inside an article (#435): a list of amounts and the method after it, offered in the editor to check. */
     ARTICLE_RECIPES("articleRecipes");
 

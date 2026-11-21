@@ -902,6 +902,10 @@
     <string name="menu_desc_pantry_send_list">Lo que tienes, como texto</string>
     <string name="menu_desc_clear_run_out">Quita todo lo marcado como Agotado</string>
     <string name="menu_desc_share_calendar">Añade las comidas de la semana a tu calendario</string>
+    <string name="action_plan_settings">Ajustes del plan</string>
+    <string name="menu_desc_plan_settings">Avisos de las comidas que planificas</string>
+    <string name="action_pantry_settings">Ajustes de la despensa</string>
+    <string name="menu_desc_pantry_settings">Avisos de caducidad</string>
     <string name="pantry_select_items">Seleccionar artículos</string>
     <string name="pantry_select">Seleccionar</string>
     <string name="action_select_all">Seleccionar todo</string>

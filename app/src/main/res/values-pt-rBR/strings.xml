@@ -902,6 +902,10 @@
     <string name="menu_desc_pantry_send_list">O que você tem em casa, como texto</string>
     <string name="menu_desc_clear_run_out">Remove tudo o que está marcado como Acabou</string>
     <string name="menu_desc_share_calendar">Adiciona as refeições da semana ao seu calendário</string>
+    <string name="action_plan_settings">Configurações do plano</string>
+    <string name="menu_desc_plan_settings">Lembretes das refeições que você planeja</string>
+    <string name="action_pantry_settings">Configurações da despensa</string>
+    <string name="menu_desc_pantry_settings">Lembretes de validade</string>
     <string name="pantry_select_items">Selecionar itens</string>
     <string name="pantry_select">Selecionar</string>
     <string name="action_select_all">Selecionar tudo</string>
