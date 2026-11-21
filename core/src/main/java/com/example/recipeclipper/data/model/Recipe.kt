@@ -250,6 +250,14 @@ sealed class ParseError {
     ) : ParseError()
 
     /**
+     * A page with no recipe data whose article holds recipes written as a list of amounts and the
+     * method after it (#435, `articleRecipes`): an outcome, not a failure. The import opens the
+     * editor on the one in [recipes], or a chooser over several, for the cook to check; none is
+     * ever saved unchecked. Never retried automatically, never reloaded on reconnect.
+     */
+    data class InArticle(val recipes: List<ArticleRecipe>) : ParseError()
+
+    /**
      * The site answered, but refused: 403, 404, 429 or any 5xx. Usually a bot block, and not
      * a stable one: the same site can refuse one minute and answer the next, and some sites
      * send 404 as a disguise for a block. So this reads as "try again", not "unsupported".

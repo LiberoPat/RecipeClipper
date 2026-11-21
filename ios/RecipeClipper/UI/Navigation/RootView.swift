@@ -51,6 +51,10 @@ struct RootView: View {
                 if phase == .active, let reading = container.takePendingText() {
                     router.openInRecipes(.textRecipe(reading))
                 }
+                // A recipe written inside an article it left (#435) opens in the editor, to check.
+                if phase == .active, let articles = container.takePendingArticle() {
+                    router.openInRecipes(.article(articles))
+                }
                 // A week of recipes it left (#352) opens the meal-plan review.
                 if phase == .active, let text = container.takePendingPlan() {
                     router.openInRecipes(.mealPlan(text))
@@ -258,9 +262,12 @@ struct RootView: View {
             // Reddit's block (#213) replaces the import with the clip, so Back never lands on an
             // error screen.
             // Cloudflare's check (#220) likewise, for the cook to pass it.
+            // Recipes written inside the article (#435) likewise: the editor or the chooser, so Back
+            // never lands on the import to open them again.
             recipe(
                 push: push, onClipBlocked: { replace(1, .clip($0, blocked: true)) },
-                onHumanCheck: { replace(1, .clip($0, check: true)) }
+                onHumanCheck: { replace(1, .clip($0, check: true)) },
+                onArticle: { replace(1, .article($0)) }
             ) {
                 container.makeRecipeViewModel(recipeId: nil, url: url)
             }
@@ -348,12 +355,28 @@ struct RootView: View {
             }
         case .clip(let url, let blocked, let check):
             ScreenHost({ container.makeClipViewModel(url: url, blocked: blocked, check: check) }) { vm in
-                ClipScreen(vm: vm, fixtureHTML: container.clipFixtureHTML, onSaved: router.openSavedClip)
+                ClipScreen(
+                    vm: vm, fixtureHTML: container.clipFixtureHTML, onSaved: router.openSavedClip,
+                    // Past Cloudflare's check, recipes written inside the article (#435), in the clip's place.
+                    onArticle: { replace(1, .article($0)) }
+                )
             }
         case .photoRecipe(let post):
             // The checked recipe replaces the editor and the post's error screen, as a saved clip does.
             ScreenHost({ container.makeEditRecipeViewModel(photo: post) }) { vm in
                 EditRecipeScreen(vm: vm, onSaved: router.openSavedClip)
+            }
+            .toolbar(.hidden, for: .tabBar)
+        case .articleRecipe(let article):
+            // As a Reddit photo's (#198): the checked recipe replaces the editor and the page's
+            // error screen.
+            ScreenHost({ container.makeEditRecipeViewModel(article: article) }) { vm in
+                EditRecipeScreen(vm: vm, onSaved: router.openSavedClip)
+            }
+            .toolbar(.hidden, for: .tabBar)
+        case .articleChoice(let articles):
+            ScreenHost({ container.makeArticleChoiceViewModel(articles: articles) }) { vm in
+                ArticleChoiceScreen(vm: vm, onCheck: { push(.articleRecipe($0)) }, onOpenSaved: { push(.recipe(id: $0)) })
             }
             .toolbar(.hidden, for: .tabBar)
         case .scanRecipe(let pages):
@@ -444,6 +467,7 @@ struct RootView: View {
     private func recipe(
         push: @escaping (Route) -> Void, onClipBlocked: @escaping (String) -> Void = { _ in },
         onHumanCheck: @escaping (String) -> Void = { _ in },
+        onArticle: @escaping ([ArticleRecipe]) -> Void = { _ in },
         _ make: @escaping () -> RecipeViewModel
     ) -> some View {
         let container = container
@@ -455,6 +479,7 @@ struct RootView: View {
                 onClip: { push(.clip($0)) },
                 onClipBlocked: onClipBlocked,
                 onHumanCheck: onHumanCheck,
+                onArticle: onArticle,
                 onReadPhoto: { push(.photoRecipe($0)) },
                 photoTextEnabled: container.featureFlags.isOn(.photoText),
                 makePhotosVM: container.makeCookedPhotosViewModel,

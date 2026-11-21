@@ -25,6 +25,12 @@ struct FailedLoad {
             next.humanCheckPage = shareUrl
             return next
         }
+        // Recipes written inside the page's article (#435): no error screen; the editor, or the
+        // chooser over several, opens in the screen's place.
+        if shareUrl != nil, case .inArticle(let articles) = error, !articles.isEmpty {
+            next.articleRecipes = articles
+            return next
+        }
         next.content = .error(error)
         next.reportSiteUrl = reportSiteUrl(for: error)
         next.clipUrl = error == .noRecipeFound ? shareUrl : nil

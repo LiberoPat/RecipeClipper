@@ -87,6 +87,19 @@ Sans compte. Sans abonnement.*, *Kostenlos. Ohne Werbung. Ohne Konto. Ohne Abo.*
 pubblicità. Senza account. Senza abbonamento.*, *Grátis. Sem anúncios. Sem conta. Sem assinatura.*),
 which the store listing will repeat, so it should read as the listing would.
 
+## A recipe written inside an article, 2026-11-21 (#435)
+
+Drafts written by Claude, for a native speaker to check: `article_read` (the editor's note) and the
+chooser's `article_choose_title`, `article_choose_note`, `article_choose_counts` and
+`article_choose_saved` on both platforms, `article_failed` on Android only (its editor reads the
+page again after process death) and `share_article_in_app` on iOS only (the share extension's card).
+The counts avoid plurals on purpose ("Ingredients: 6 · Steps: 5": *Ingredientes / Pasos*,
+*Ingrédients / Étapes*, *Zutaten / Schritte*, *Ingredienti / Passaggi*, *Ingredientes / Passos*).
+The words to check: "the page's heading above the recipe: change it to the dish's if it isn't"
+(*cámbialo por el del plato si no lo es*, *remplacez-le par celui du plat si ce n'est pas lui*,
+*Ändere ihn in den des Gerichts, falls er das nicht ist*, *cambialo con quello del piatto se non lo
+è*, *troque pelo nome do prato se não for*) and "This page writes out more than one recipe".
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,

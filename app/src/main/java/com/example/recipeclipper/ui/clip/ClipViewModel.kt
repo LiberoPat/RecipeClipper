@@ -126,6 +126,9 @@ data class ClipUiState(
     val readBlocked: Boolean = false,
     /** Opened for the cook to pass Cloudflare's check (#220); null for every other clip. */
     val check: ClipCheck? = null,
+    /** Past the check, the page's article holds recipes (#435): the screen opens the editor on
+     *  the one, or the chooser over several, in its place. */
+    val articleRecipes: List<com.example.recipeclipper.data.model.ArticleRecipe>? = null,
     /**
      * The address the page loads: [url], except a Reddit link on another of Reddit's hosts,
      * which loads from www.reddit.com (`RedditUrls.clipPageUrl`, #213). The clip is still saved
@@ -327,10 +330,11 @@ class ClipViewModel @Inject constructor(
     /**
      * The page settled while waiting on Cloudflare's check (#220), as [html]: read through the
      * repository. A recipe opens as an import would ([ClipUiState.savedRecipeId]); the check
-     * still showing keeps waiting; a page past it with no recipe offers the clip.
+     * still showing keeps waiting; a page past it whose article holds recipes (#435) opens them
+     * for the cook to check ([ClipUiState.articleRecipes]); a page with none offers the clip.
      */
     fun onPageLoaded(html: String) {
-        if (_uiState.value.check != ClipCheck.WAITING) return
+        if (_uiState.value.check != ClipCheck.WAITING || _uiState.value.articleRecipes != null) return
         checkJob?.cancel()
         checkJob = viewModelScope.launch {
             val result = repository.importPage(url, html)
@@ -346,6 +350,11 @@ class ClipViewModel @Inject constructor(
                     _uiState.update { it.copy(libraryFull = true) }
                 }
                 result is ParseResult.Error && result.error == ParseError.HumanCheck -> Unit
+                result is ParseResult.Error && result.error is ParseError.InArticle -> {
+                    drafts.remove(url)
+                    clearSavedState()
+                    _uiState.update { it.copy(articleRecipes = (result.error as ParseError.InArticle).recipes) }
+                }
                 result is ParseResult.Error && result.error == ParseError.SaveFailed ->
                     _uiState.update { it.copy(notice = notice(ClipMessage.SaveFailed)) }
                 else -> _uiState.update { it.copy(check = ClipCheck.NO_RECIPE).startGuide() }

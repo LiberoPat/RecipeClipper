@@ -147,11 +147,15 @@ final class BlogRecipeSource: RecipeSource {
         return .success(recipe)
     }
 
-    /// `parse`, plus the page's text when it holds no recipe data (#103).
+    /// `parse`, plus the page's text when it holds no recipe data (#103), and the recipes written
+    /// inside its article (#435).
     static func parsePage(html: String, url: String) -> FetchedPage {
         let result = parse(html: html, url: url)
         if case .error(.noRecipeFound) = result {
-            return FetchedPage(result: result, page: PageTextReader.read(html: html, url: url))
+            return FetchedPage(
+                result: result, page: PageTextReader.read(html: html, url: url),
+                articles: ArticleRecipeParser.parse(html: html, url: url)
+            )
         }
         return FetchedPage(result: result)
     }

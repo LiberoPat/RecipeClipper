@@ -93,7 +93,7 @@ Routes: `home`, `recipes`, `settings` (an index; each section's page is
 `settings/<section>`, #286, `settings/pro` the Pro screen, also `week/pro`; + hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
-membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `edit/scan?pages=…` (#226), `edit/text?text=…` (#306), `clip?url={url}&blocked=…&check=…`; with the tab
+membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `edit/scan?pages=…` (#226), `edit/text?text=…` (#306), `edit/article?article=…`, `article/choose?url=…` (#435), `clip?url={url}&blocked=…&check=…`; with the tab
 shell (#47) they sit under Recipes, beside `week/…`, `groceries` and
 `pantry`. A route from an intent always lands in Recipes.
 
@@ -375,7 +375,10 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 - **A recipe needs a name, plus ingredients or steps.**
 - **Last, the on-device model may pick from the page's text** (#103), only
   after `NoRecipeFound` on a page that loaded; `PageRecipeCheck` keeps only
-  what is on the page.
+  what is on the page. Failing that, recipes written inside an article
+  (#435, `ArticleRecipeParser`: each list of amounts, then its method up to
+  the next heading) open in the editor (several: a chooser) to check, never
+  saved unchecked.
 - Every extracted string except `sourceUrl` goes through `stripHtml` (Jsoup's
   `text()`; iOS has a Jsoup-compatible port). A plain-string instructions
   block is split on `\n` **before** stripping, so `<br>`-separated steps stay

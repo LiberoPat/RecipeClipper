@@ -75,12 +75,16 @@ struct EditRecipeUiState: Equatable {
     var note = ""
     /// Whether the split left lines out, so the review says where they went.
     var leftovers = false
+    /// This editor is the review of a recipe written inside an article (#435): "Check the
+    /// recipe", saved as a clip under the page's link.
+    var article = false
 
-    init(isNew: Bool, photo: PhotoPost? = nil, scan: Bool = false, shared: Bool = false) {
+    init(isNew: Bool, photo: PhotoPost? = nil, scan: Bool = false, shared: Bool = false, article: Bool = false) {
         self.isNew = isNew
         self.photo = photo
         self.scan = scan
         self.shared = shared
+        self.article = article
         loading = !isNew || shared
     }
 
@@ -113,6 +117,12 @@ struct EditRecipeUiState: Equatable {
 /// (#334, `SharedText.read`): split by the same splitter, in the text's language, or, when it
 /// doesn't split, every line as a step to finish by hand; the lines the split left out are the
 /// note. Saved as a typed-in recipe, like a scan; nothing until Save.
+///
+/// With an `article` (#435) it is the review of a recipe written inside a page's article: the
+/// list of amounts and the method after it, as written, with the headline as the name and
+/// `og:image` as the photo. Nothing is saved until Save; then it is kept under the page's link as
+/// the user's version (clipped, like #37's clips and a Reddit photo's read). Android's editor finds
+/// it by the page's link; here the route carries it, as shared text's reading.
 @MainActor
 @Observable
 final class EditRecipeViewModel {
@@ -123,6 +133,8 @@ final class EditRecipeViewModel {
     @ObservationIgnored private let scanPages: [String]?
     /// Text shared in (#306), as read; nil when this isn't its review.
     @ObservationIgnored private let sharedText: SharedText.Reading?
+    /// A recipe written inside an article (#435); nil when this isn't its review.
+    @ObservationIgnored private let article: ArticleRecipe?
     /// What is read: the post's pictures, or the scan's pages.
     @ObservationIgnored private let pictures: PhotoPost?
     @ObservationIgnored private let repository: RecipeRepository
@@ -138,7 +150,8 @@ final class EditRecipeViewModel {
     init(
         recipeId: Int64?, repository: RecipeRepository, entitlements: Entitlements = UnavailableEntitlements(),
         photo: PhotoPost? = nil, photoReader: PhotoTextReader = UnavailablePhotoTextReader(),
-        scanPages: [String]? = nil, shared: SharedText.Reading? = nil, countdowns: TimerCountdownSync? = nil
+        scanPages: [String]? = nil, shared: SharedText.Reading? = nil, countdowns: TimerCountdownSync? = nil,
+        article: ArticleRecipe? = nil
     ) {
         self.entitlements = entitlements
         self.countdowns = countdowns
@@ -147,11 +160,13 @@ final class EditRecipeViewModel {
         let pages = (scanPages ?? []).filter { !$0.isEmpty }
         self.scanPages = self.recipeId == nil && self.photo == nil && !pages.isEmpty ? pages : nil
         self.sharedText = self.recipeId == nil && self.photo == nil && self.scanPages == nil ? shared : nil
+        self.article = self.recipeId == nil && self.photo == nil && self.scanPages == nil && self.sharedText == nil ? article : nil
         pictures = self.photo ?? self.scanPages.map { PhotoPost(url: "", title: "", imageUrls: $0) }
         self.repository = repository
         self.photoReader = photoReader
         uiState = EditRecipeUiState(
-            isNew: self.recipeId == nil, photo: pictures, scan: self.scanPages != nil, shared: self.sharedText != nil
+            isNew: self.recipeId == nil, photo: pictures, scan: self.scanPages != nil, shared: self.sharedText != nil,
+            article: self.article != nil
         )
         if let id = self.recipeId {
             Task { [weak self, repository] in
@@ -168,6 +183,15 @@ final class EditRecipeViewModel {
             readPhoto(pictures)
         } else if let reading = self.sharedText {
             readText(reading)
+        } else if let article = self.article {
+            // The article's recipe (#435) into the fields, as written.
+            photoLanguage = article.language
+            uiState.draft = RecipeDraft(
+                name: article.name,
+                ingredientsText: article.ingredients.joined(separator: "\n"),
+                instructionsText: article.steps.joined(separator: "\n"),
+                image: article.image ?? ""
+            )
         }
     }
 
@@ -345,6 +369,10 @@ final class EditRecipeViewModel {
             savePhoto(photo, draft: state.draft)
             return
         }
+        if let article {
+            saveClip(draft: state.draft, url: article.sourceUrl, sourceType: .blog)
+            return
+        }
         // A scan's or shared text's (#226, #306) is saved as the cook's own, in its language.
         let ownText = scanPages != nil || sharedText != nil
         // A chat's recipe JSON (#350) is saved as from a chat (#355).
@@ -391,12 +419,18 @@ final class EditRecipeViewModel {
 
     /// The checked recipe, under the post's link, as the user's version (#198).
     private func savePhoto(_ post: PhotoPost, draft: RecipeDraft) {
+        saveClip(draft: draft, url: post.url, sourceType: .reddit)
+    }
+
+    /// The checked recipe, under `url`, as the user's version: a Reddit photo's (#198) or an
+    /// article's (#435).
+    private func saveClip(draft: RecipeDraft, url: String, sourceType: SourceType) {
         var recipe = draft.apply(to: Recipe(
             name: "", image: nil, ingredients: [], instructions: [], prepTime: nil, cookTime: nil,
-            totalTime: nil, yield: nil, sourceUrl: post.url, sourceType: .reddit
+            totalTime: nil, yield: nil, sourceUrl: url, sourceType: sourceType
         ))
         // Reddit declares no language: the photo's words (#208), then the checked recipe's,
-        // decide, else English (#14's rule).
+        // decide, else English (#14's rule). An article's: the words that found its list.
         let name = recipe.name, ingredients = recipe.ingredients
         recipe.language = LanguageWords.resolve(declared: photoLanguage, page: nil) {
             LanguageWords.detectionText(name: name, ingredients: ingredients)

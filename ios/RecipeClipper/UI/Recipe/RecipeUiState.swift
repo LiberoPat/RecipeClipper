@@ -156,6 +156,11 @@ struct RecipeUiState: Equatable {
     /// show the error. `content` stays loading meanwhile.
     var humanCheckPage: String?
 
+    /// A shared page whose article holds recipes (#435, `.inArticle`): the view opens the editor on
+    /// the one, or the chooser over several, in its own place, rather than show an error.
+    /// `content` stays loading meanwhile.
+    var articleRecipes: [ArticleRecipe]?
+
     /// The post to read the photos of ("Read the photo", #198): set while a Reddit post with no
     /// recipe text (`.noTranscription`) that has a picture is on screen. The screen offers it
     /// only behind the `photoText` flag.

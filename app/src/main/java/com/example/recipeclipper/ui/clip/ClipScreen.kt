@@ -78,6 +78,8 @@ import org.json.JSONObject
 fun ClipScreen(
     onCancel: () -> Unit,
     onSaved: (Long) -> Unit,
+    // Past Cloudflare's check, recipes written inside the page's article (#435): the page's link and how many.
+    onArticle: (url: String, count: Int) -> Unit = { _, _ -> },
     viewModel: ClipViewModel = hiltViewModel(),
     loadPage: ClipPageLoader = LoadLiveUrl
 ) {
@@ -86,6 +88,9 @@ fun ClipScreen(
 
     LaunchedEffect(state.savedRecipeId) {
         state.savedRecipeId?.let(onSaved)
+    }
+    LaunchedEffect(state.articleRecipes) {
+        state.articleRecipes?.let { onArticle(it.first().sourceUrl, it.size) }
     }
     BackHandler {
         if (state.reviewing) viewModel.onBackToPage() else onCancel()

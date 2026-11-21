@@ -19,7 +19,8 @@ object BlogPageParser {
     /** The recipe in [html], the page at [url], or why there is none. */
     fun parse(html: String, url: String): ParseResult = parsePage(html, url).result
 
-    /** [parse], plus the page's text when it holds no recipe data (#103). */
+    /** [parse], plus the page's text when it holds no recipe data (#103), and the recipes
+     *  written inside its article (#435). */
     fun parsePage(html: String, url: String): FetchedPage = parsePage(Jsoup.parse(html, url), url)
 
     /** [parsePage] for a page already parsed: the fetch's. */
@@ -29,7 +30,10 @@ object BlogPageParser {
         return if (recipe != null) {
             FetchedPage(ParseResult.Success(recipe))
         } else {
-            FetchedPage(ParseResult.Error(ParseError.NoRecipeFound), PageTextReader.read(doc))
+            FetchedPage(
+                ParseResult.Error(ParseError.NoRecipeFound), PageTextReader.read(doc),
+                articles = ArticleRecipeParser.parse(doc, url)
+            )
         }
     }
 

@@ -3633,6 +3633,92 @@ ones).
   output tokens for a long recipe. CI and the tests run the fake model only; `tools/eval`
   measures a 3B stand-in (`docs/eval/llm-vs-regex.md`).
 
+## A recipe written inside an article (#435, 2026-11-21; follow-up the same day)
+
+Some pages hold a real recipe inside an ordinary article: no schema.org Recipe, no microdata, no
+recipe headings (the owner's example, recetas.elperiodico.com: `NewsArticle` JSON-LD, a sentence, a
+`<ul>` of six quantity lines, then the method in five paragraphs). It ended in `NoRecipeFound`.
+The owner's decision: read it, **only where the page has a list of amounts** followed by method
+text, never from prose alone, and never save it unchecked. Behind `articleRecipes` (on).
+
+- **Where it runs:** `ArticleRecipeParser` (pure, `:core`, with a Swift port over `HtmlTree`), on
+  every page that loaded with no recipe data (`BlogPageParser.parsePage`, `FetchedPage.articles`),
+  so the plain fetch's, the rendered page's and (iOS share extension) Safari's page all carry it.
+  The repository offers them last: after the rendered fetch and after the on-device model's pick
+  (#103), which, when it finds a recipe, still wins (it imports straight away). Then
+  `Error(InArticle(recipes))`, a cause like `NoTranscription`: an outcome, never retried, never
+  reloaded on reconnect; "Update from source" on a recipe saved from it reads as `NoRecipeFound`
+  (the cook's copy stays). **Past Cloudflare's check** in the visible clip view (#220,
+  `importPage`), the page that view already has is read the same way, with no second fetch.
+- **What it accepts** (thresholds in the parser, pinned by the corpus's `Article` rows): the
+  article is the first `<article>`, else `<main>`, else the body. A list of amounts is a `<ul>` or
+  `<ol>` in it, not inside a nav, header, footer, aside or form, nor nested in another list's item,
+  with **at least 3 items that read as an amount and more than half of its items that do** (the
+  splitter's `isAmount`, in the article's language: `<html lang>` unless the words of its
+  paragraphs and items clearly say another, #14; a language with no tables finds nothing). An item
+  counts only at 200 characters or fewer and when it isn't just a link (a "more to read" list of
+  "10 easy dinners"). Every item of that list is an ingredient, as written, the unamounted ones
+  too ("Aceite para freír."). Its steps are the paragraphs, and an `<ol>`'s items, after it in
+  document order, through containers, **up to the next heading, whatever it says**, another `<ul>`
+  or the end of the article; figures, tables, asides, blockquotes and the like are passed over (an
+  image caption is never a step). A paragraph that is a steps header ("Método:", `splitter.json`)
+  is passed over; one that is an ingredients or notes header ("Notes:") ends them; at most 40; then
+  `SiteRules.steps` as for any page. No step, no recipe.
+- **Plain blog pages are not offered** (the owner, reversing the first build): a heading after the
+  list ends the steps even when it is a steps header ("Instructions"), so a page laid out as
+  "Ingredients" / "Instructions" headings with no recipe data finds nothing here and is left to the
+  on-device model and the no-recipe screen's offers, as before (`blog-no-recipe-data.html`).
+- **Several recipes in one article:** every list of amounts is read, in page order, each with the
+  steps that follow it; an `<ol>` read as steps is never a list of its own. **At most 6.** Each is
+  named by the nearest heading above its list in the article, else the page's headline (first
+  `<h1>`, else `og:title`, else `<title>`), which each also carries for the chooser; the photo is
+  `og:image`. So the El Periódico recipe is named by its section heading ("Cómo convertir una lata
+  de mejillones…"), and the editor's note says to change the name to the dish's.
+- **Refused:** the site's menus and footers, a list of links, a short bulleted list of tips, prose
+  with amounts inside sentences, a list of amounts with nothing after it before the next heading
+  (fixtures `shared/fixtures/pages/article-*.html`, read by both platforms' tests, with
+  `article-two-recipes.html` for two). The "También te puede interesar" line came before the list
+  on the example; after it, a line that isn't a `<p>` is passed over, and one that is would show as
+  a step for the cook to delete.
+- **What the cook sees** (the owner's reversal: no button, no error screen):
+  - **One found:** the share opens the #29 editor directly, titled "Check the recipe", filled in as
+    written, with "Taken from the article as written. The name is the page's heading above the
+    recipe…". It opens **in the import's place** (Android `popUpTo(IMPORT)`, iOS `replace(1, …)`),
+    so Back without saving goes where the share came from (Recipes), never to an import screen that
+    would open the editor again. Nothing is saved until Save.
+  - **Several found:** a chooser in the import's place: the page's photo and headline, a note
+    ("This page writes out more than one recipe. Choose one…"), then one plain row per recipe, its
+    name and "Ingredients: N · Steps: M". A row opens the editor on that one; Back returns to the
+    chooser. After a save the recipe opens over the chooser (the editor goes), and Back from it
+    returns to the chooser, which asks each time it shows which are saved by now
+    (`RecipeRepository.savedIds`): a saved row says "Saved: tap to open it" and opens the recipe.
+  - **Past Cloudflare's check:** the same, in the clip view's place; none found keeps the clip.
+  - Clip it yourself and Report this site stay for pages where nothing is found.
+- **Saved as a clip** (`saveClip`: `CLIPPED`, the cleaned link, the language that found the list):
+  the closest existing origin, since the cook checked lines taken from the page, as with #37's
+  clips and #198's photo read. So it is the user's version: a re-share opens it without fetching,
+  "Clipped by you · domain", counted by the one `upsert`.
+- **Each recipe's own `sourceUrl`** (no precedent fitted: a Reddit post is one recipe, a meal plan's
+  and a version's recipes are `manual:<uuid>` with no page link, and `UrlCleaner` drops a
+  `#fragment`): the first recipe on the page is saved under the page's cleaned link, as any clip;
+  each later one under the same link plus `pith_recipe=<n>` (n from 2, `ArticleRecipe.link`), a
+  query parameter `UrlCleaner` keeps because it is not tracking. A page with one recipe is saved
+  exactly as before. Consequences: re-sharing the page's own link opens the first recipe once it is
+  saved (the user's version, without fetching), so the chooser is reached again only while the
+  first is unsaved; "Open original" for a later one opens the page with the parameter, which sites
+  ignore; "Update from source" fetches it the same way (and reads as `NoRecipeFound`).
+- **Android** finds the recipes by link: `edit/article?article={url}&index={n}` and
+  `article/choose?url={url}`, with `RecipeRepository.articleRecipes(url)` answering from the last
+  few the import found (in memory), else, after process death, fetching the page again (if it no
+  longer holds them, the editor says so and stays empty to type in). **iOS** carries the
+  `ArticleRecipe`s in the routes (`.articleRecipe`, `.articleChoice`), as shared text's reading.
+- **iOS share extension:** it can't open the editor, so, like shared text (#306), it leaves all it
+  read for the app (`PendingArticle`: `pending_article`, `pending_article_at`, 10 minutes, taken
+  once, cleared by any later share) and says "This page writes its recipe inside an article. Open
+  Pith to check it before it's saved."; the app, becoming active, opens the editor on the one, or
+  the chooser over several, in Recipes. The extension reads the flag from the app's mirror
+  (`article_recipes_on`).
+
 ## Typed decisions on the device (#104)
 
 Part of #99. The owner turned down a paid Jev API (2026-09-25), so these decisions are made by
@@ -7034,7 +7120,11 @@ from a Reddit post's pictures, one address per line in `images`; saving replaces
 error screen like a clip), and `edit/scan?pages={pages}` (Scan a recipe, #226: the same editor
 over the cook's own pages, local URIs one per line; saving replaces it with `recipe/{id}`), and
 `edit/text?key={key}` (text shared in, #306: the same editor, split or as written, found by its
-key in `SharedTextInbox`, #334; saving replaces it with `recipe/{id}`). A bottom tab bar (#47) nests this graph under a Recipes tab
+key in `SharedTextInbox`, #334; saving replaces it with `recipe/{id}`), and
+`edit/article?article={url}&index={n}` (a recipe written inside an article, #435: the same
+editor, filled from what the import found at that link, opened in the import's place; saving
+replaces it with `recipe/{id}`), and `article/choose?url={url}` (several such recipes: the
+chooser, in the import's place). A bottom tab bar (#47) nests this graph under a Recipes tab
 alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and
 `week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry` (#51)
 (`AppShell`/iOS `RootView`'s `tabs`). Hidden on the recipe reading view and in cook
