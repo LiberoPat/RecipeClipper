@@ -119,6 +119,10 @@ class EditRecipeArticleViewModelTest {
             assertEquals(article.ingredients, saved.ingredients)
             assertEquals(article.steps, saved.instructions)
             assertEquals("es", saved.language)
+            // An article has no tips (#432) and no step photos (#433): no tips box, nothing carried.
+            assertFalse(vm.uiState.value.showsTips)
+            assertTrue(saved.tips.isEmpty())
+            assertTrue(saved.stepPhotos.all { it.isEmpty() })
             assertEquals(1L, vm.uiState.value.savedId)
             assertTrue(repository.addManualCalls.isEmpty())
         }

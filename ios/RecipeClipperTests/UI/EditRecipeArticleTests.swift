@@ -77,6 +77,10 @@ final class EditRecipeArticleTests: XCTestCase {
         XCTAssertEqual(saved?.sourceUrl, url + "?pith_recipe=2")
         XCTAssertEqual(saved?.sourceType, .blog)
         XCTAssertEqual(saved?.language, "es")
+        // An article has no tips (#432) and no step photos (#433): no tips box, nothing carried.
+        XCTAssertFalse(vm.uiState.showsTips)
+        XCTAssertEqual(saved?.tips, [])
+        XCTAssertTrue(saved?.stepPhotos.allSatisfy(\.isEmpty) ?? false)
         XCTAssertEqual(vm.uiState.savedId, 1)
     }
 
