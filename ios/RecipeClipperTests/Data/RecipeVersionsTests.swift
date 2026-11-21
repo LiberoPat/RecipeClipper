@@ -287,7 +287,7 @@ final class RecipeVersionsTests: XCTestCase {
         let migrated = try AppDatabase(path: path)
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
         XCTAssertEqual(version, AppDatabase.schemaVersion)
-        XCTAssertEqual(AppDatabase.schemaVersion, 18)
+        XCTAssertEqual(AppDatabase.schemaVersion, 19)
         let adobo = try await migrated.read { try RecipeDao(db: $0).get(7) }
         XCTAssertEqual(adobo?.title, "Adobo")
         XCTAssertEqual(adobo?.uid, "recipe-uid")

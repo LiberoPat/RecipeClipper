@@ -193,7 +193,8 @@ struct BackupDao {
                 sourceType: r.sourceType, lastViewedAt: r.lastViewedAt,
                 checkedIngredients: r.checkedIngredients, notes: r.notes, uid: r.id, language: r.language,
                 contentOrigin: r.contentOrigin, editedAt: r.editedAt, basedOnUid: r.basedOn,
-                photoFile: r.photo.flatMap { storedPhotos[$0] }
+                photoFile: r.photo.flatMap { storedPhotos[$0] },
+                stepPhotos: StepPhotos.encode(StepPhotos.aligned(r.stepPhotos, r.instructions.count))
             ))
         }
         for update in plan.noteUpdates {

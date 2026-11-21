@@ -89,7 +89,7 @@ final class ListOrderTests: XCTestCase {
         let migrated = try AppDatabase(path: path)
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
         XCTAssertEqual(version, AppDatabase.schemaVersion)
-        XCTAssertEqual(AppDatabase.schemaVersion, 18)
+        XCTAssertEqual(AppDatabase.schemaVersion, 19)
 
         let rows = try await migrated.read { try BackupDao(db: $0).snapshot().lists }
         XCTAssertEqual(rows.map(\.name), ["Favorites", "Lunch", "Breakfast", "Aaa", "Weeknights"])

@@ -10,6 +10,7 @@ struct CookView: View {
     let content: RecipeSuccess
     let state: RecipeUiState
     let vm: RecipeViewModel
+    @Environment(\.stepPhotos) private var stepPhotos
 
     var body: some View {
         let cook = state.cook
@@ -46,6 +47,8 @@ struct CookView: View {
                                 isLast: index == steps.count - 1,
                                 // "Tapping another step makes it current" (#190) points at the next one.
                                 isNext: index == cook.currentStep + 1,
+                                // Step photos (#433): none with the flag off, or for a step without.
+                                photos: stepPhotos ? content.photosOf(index) : [],
                                 vm: vm
                             )
                             .id(index)
@@ -288,6 +291,9 @@ private struct CookStep: View {
     let timer: StepTimer?
     let isLast: Bool
     let isNext: Bool
+    /// The step's photos (#433): the current card's thumbnail beside its timer, a smaller one on
+    /// the other rows; empty draws nothing new.
+    var photos: [StepPhoto] = []
     let vm: RecipeViewModel
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -313,11 +319,27 @@ private struct CookStep: View {
                     .foregroundStyle(Palette.onBackground)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .modifier(StepLinks(parts: amounts, onLink: { vm.onIngredientLink(index, $0) }))
-                if timerSeconds != nil || timer != nil {
-                    // The cook-mode tooltips (#190) go below their controls, never over the step's text.
-                    CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
-                        .tooltipAnchor(.cookTimer, side: .below)
-                        .padding(.top, 16)
+                if photos.isEmpty {
+                    if timerSeconds != nil || timer != nil {
+                        // The cook-mode tooltips (#190) go below their controls, never over the step's text.
+                        CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
+                            .tooltipAnchor(.cookTimer, side: .below)
+                            .padding(.top, 16)
+                    }
+                } else {
+                    // Step photos (#433): the thumbnail at the end of the timer's row, or alone in
+                    // the same place when the step has no timer.
+                    HStack(alignment: .center, spacing: 10) {
+                        if timerSeconds != nil || timer != nil {
+                            CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
+                                .tooltipAnchor(.cookTimer, side: .below)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            Spacer(minLength: 0)
+                        }
+                        StepPhotoThumbnail(photos: photos, size: 56, onOpen: vm.onStepPhotoOpen)
+                    }
+                    .padding(.top, 16)
                 }
                 Button(isLast ? Strings.cookDoneFinish : Strings.cookDoneNext, action: vm.onStepDone)
                     .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: true))
@@ -336,6 +358,7 @@ private struct CookStep: View {
                     ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
                     : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 0))
                 VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .top, spacing: 12) {
                     layout {
                         Text("\(index + 1)")
                             .textStyle(Typography.titleMedium)
@@ -348,6 +371,9 @@ private struct CookStep: View {
                             .foregroundStyle(Palette.muted)
                             .multilineTextAlignment(.leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    // Step photos (#433): a small one, decorative; the row's tap makes the step current.
+                    if !photos.isEmpty { StepPhotoMiniThumbnail(photos: photos).padding(.top, 2) }
                     }
                     // A timer still running on a step you've moved on from stays visible:
                     // steps overlap.

@@ -40,12 +40,16 @@ struct RecipeRecord: Equatable {
     /// `imageUrl` wherever the recipe's picture shows. Not an "I made this" photo (#116): never a
     /// cooking. nil for none. The user's: `update` never writes it, so a re-share or an edit keeps it.
     var photoFile: String? = nil
+    /// Each step's photos as the source gives them (#433): `StepPhotos.encode`'s JSON, an array of
+    /// arrays of web image links lined up with `instructions`; nil for none. Content, so a re-share
+    /// refreshes it with the steps; an edit carries it along (`StepPhotos.afterEdit`).
+    var stepPhotos: String? = nil
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
         totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language, \
-        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid, photoFile
+        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid, photoFile, stepPhotos
         """
 
     init(
@@ -56,7 +60,7 @@ struct RecipeRecord: Equatable {
         notes: String? = nil, uid: String = newUid(), language: String? = nil,
         cookState: String? = nil, servingsTarget: Int? = nil,
         contentOrigin: String = "PARSED", editedAt: Int64? = nil, basedOnUid: String? = nil,
-        photoFile: String? = nil
+        photoFile: String? = nil, stepPhotos: String? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -80,6 +84,7 @@ struct RecipeRecord: Equatable {
         self.editedAt = editedAt
         self.basedOnUid = basedOnUid
         self.photoFile = photoFile
+        self.stepPhotos = stepPhotos
     }
 
     init(row: SQLiteRow) {
@@ -105,6 +110,7 @@ struct RecipeRecord: Equatable {
         editedAt = row.isNull(19) ? nil : row.int64(19)
         basedOnUid = row.optionalString(20)
         photoFile = row.optionalString(21)
+        stepPhotos = row.optionalString(22)
     }
 }
 

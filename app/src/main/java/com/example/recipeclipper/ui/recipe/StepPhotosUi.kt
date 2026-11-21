@@ -260,7 +260,8 @@ internal fun StepPhotoViewer(content: RecipeContent.Success, position: Int, acti
                         modifier = Modifier.fillMaxSize().testTag("stepPhoto.page.${photo.position}")
                     )
                 }
-                PageDots(photos.size, pager.currentPage)
+                // One photo has nothing to page through: no dots.
+                if (photos.size > 1) PageDots(photos.size, pager.currentPage) else Spacer(Modifier.heightIn(min = 16.dp))
                 StepCaption(shown.step, content.instructions.getOrNull(shown.step).orEmpty())
             }
         }

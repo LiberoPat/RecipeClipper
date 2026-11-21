@@ -31,6 +31,9 @@ struct RecipeDraft: Equatable {
         recipe.image = Self.optional(image)
         recipe.ingredients = ingredients
         recipe.instructions = instructions
+        // The steps' photos (#433) follow their steps through the edit; see StepPhotos.afterEdit.
+        // The editor has no field for them: they are never shown or typed here.
+        recipe.stepPhotos = StepPhotos.afterEdit(base.instructions, base.stepPhotos, instructions)
         recipe.prepTime = Self.optional(prepTime)
         recipe.cookTime = Self.optional(cookTime)
         recipe.totalTime = Self.optional(totalTime)
