@@ -13,7 +13,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeListRepository
+import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.ui.assertInAppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -50,7 +52,8 @@ class ListDetailScreenTest {
         val taps = Taps()
         val viewModel = ListDetailViewModel(
             repository,
-            SavedStateHandle(mapOf(ListDetailViewModel.LIST_ID_ARG to listId))
+            SavedStateHandle(mapOf(ListDetailViewModel.LIST_ID_ARG to listId)),
+            FakeRecipeRepository(), FakeAppPreferences()
         )
         compose.setContent {
             ListDetailScreen(

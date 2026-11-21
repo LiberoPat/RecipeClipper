@@ -6,10 +6,25 @@ struct RecipeRow: View {
     let recipe: RecipeSummary
     let now: Int64
     let onClick: () -> Void
+    /// Selecting several (#377): a checkbox leads the row, always in it and zero wide when not
+    /// selecting (#203, #216), and a tap (the caller's `onClick`) toggles it.
+    var selecting = false
+    var selected = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
+        HStack(spacing: 0) {
+            CheckboxGlyph(checked: selected)
+                .frame(width: selecting ? 36 : 0, alignment: .leading)
+                .opacity(selecting ? 1 : 0)
+                .clipped()
+                .accessibilityIdentifier("recipes.check.\(recipe.id)")
+            rowButton
+        }
+    }
+
+    private var rowButton: some View {
         Button(action: onClick) {
             // At the accessibility sizes a thumbnail beside the text would leave it a column
             // a few letters wide, so the thumbnail goes above and the title may run longer.
@@ -40,6 +55,7 @@ struct RecipeRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(selecting && selected ? [.isSelected] : [])
     }
 
     private var details: String {

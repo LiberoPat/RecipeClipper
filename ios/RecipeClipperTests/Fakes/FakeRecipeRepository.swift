@@ -29,6 +29,8 @@ final class FakeRecipeRepository: RecipeRepository {
     private(set) var setCookProgressCalls: [(id: Int64, progress: CookProgress)] = []
     private(set) var setServingsTargetCalls: [(id: Int64, target: Int?)] = []
     private(set) var deleteCalls: [Int64] = []
+    /// Every `deleteAll` (#377), whole: the real repository runs each in one transaction.
+    private(set) var deleteAllCalls: [[Int64]] = []
     private(set) var restoreCalls: [DeletedRecipe] = []
 
     @MainActor func importFromUrl(_ sharedUrl: String, renderedPage: String?) async -> ParseResult { importResult }
@@ -117,6 +119,12 @@ final class FakeRecipeRepository: RecipeRepository {
         setServingsTargetCalls.append((id, target))
     }
 
+    @MainActor func deleteAll(ids: [Int64]) async -> [DeletedRecipe] {
+        deleteAllCalls.append(ids)
+        deleteCalls.append(contentsOf: ids)
+        return ids.compactMap { deleteResults[$0] }
+    }
+
     @MainActor func delete(id: Int64) async -> DeletedRecipe? {
         deleteCalls.append(id)
         return deleteResults[id]
@@ -164,6 +172,16 @@ final class FakeRecipeRepository: RecipeRepository {
             case .chat: rows.filter(\.isFromChat)
             }
         }.eraseToAnyPublisher()
+    }
+
+    /// What `observeRecipeLines` emits (#378): every recipe's ingredient lines, pushed by the test.
+    let recipeLines = CurrentValueSubject<[SavedRecipe], Never>([])
+    /// How many times `observeRecipeLines` was subscribed to, to show it is read only while the pantry chip is on.
+    private(set) var recipeLinesSubscriptions = 0
+
+    func observeRecipeLines() -> AnyPublisher<[SavedRecipe], Never> {
+        recipeLines.handleEvents(receiveSubscription: { [weak self] _ in self?.recipeLinesSubscriptions += 1 })
+            .eraseToAnyPublisher()
     }
 
     /// Counted from what `history` holds (#345).

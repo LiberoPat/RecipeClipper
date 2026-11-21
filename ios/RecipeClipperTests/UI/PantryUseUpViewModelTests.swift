@@ -237,6 +237,48 @@ final class PantryUseUpViewModelTests: XCTestCase {
         return vm
     }
 
+    /// #406: select all over the worked-out rows only; an asked row keeps its choice, and nothing
+    /// is written before the sheet's button.
+    func testSelectAllTicksAndUnticksTheWorkedOutRowsAndLeavesTheAskedRowAlone() async {
+        let (pantry, vm) = viewModel(chicken, eggs, flour)
+        vm.onCookFinished(recipeId: recipe, language: "en", lines: ["1 lb chicken", "2 large eggs", "2 cups flour"])
+        await settleMain()
+        vm.onChoice(3, .out)
+        XCTAssertEqual(vm.uiState.sheet?.selectAll, .on)
+        XCTAssertEqual(vm.uiState.sheet?.canSelectAll, true)
+
+        vm.onSelectAll() // all ticked: clears
+        XCTAssertEqual(vm.uiState.sheet?.ticked, [])
+        XCTAssertEqual(vm.uiState.sheet?.selectAll, .off)
+
+        vm.onToggle(1)
+        XCTAssertEqual(vm.uiState.sheet?.selectAll, .mixed)
+        vm.onSelectAll() // some: ticks the rest, never the asked row
+        XCTAssertEqual(vm.uiState.sheet?.ticked, [1, 2])
+        XCTAssertEqual(vm.uiState.sheet?.selectAll, .on)
+        XCTAssertEqual(vm.uiState.sheet?.choice(3), .out)
+
+        vm.onSelectAll()
+        vm.onSelectAll() // none: ticks every row
+        XCTAssertEqual(vm.uiState.sheet?.ticked, [1, 2])
+
+        // Nothing written until the button.
+        XCTAssertEqual(pantry.items.value, [chicken, eggs, flour])
+        vm.onSelectAll()
+        vm.onConfirm() // nothing worked-out ticked: only the asked row's Out lands
+        await settleMain { vm.uiState.updated != nil }
+        XCTAssertEqual(pantry.items.value.prefix(2).map(\.quantity), ["2 lb", "6"])
+        XCTAssertEqual(pantry.items.value[2].stock, .runOut)
+    }
+
+    func testTheUseUpSheetsSelectAllRowNeedsTwoRowsWithACheckbox() async {
+        // One worked-out row and one asked row: a single checkbox, so no select all.
+        let (_, vm) = viewModel(chicken, flour)
+        vm.onCookFinished(recipeId: recipe, language: "en", lines: ["1 lb chicken", "2 cups flour"])
+        await settleMain()
+        XCTAssertEqual(vm.uiState.sheet?.canSelectAll, false)
+    }
+
     func testFinishingHandsOverTheTickedLinesAsShownScaledInOrder() async {
         let vm = await recipeViewModel(checked: [2, 1], servings: 4)
         vm.onCookStart()

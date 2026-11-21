@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.groceries
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -23,7 +24,11 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.state.ToggleableState
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagValues
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.DecisionQuestion
 import com.example.recipeclipper.data.model.NewGroceryLine
@@ -49,10 +54,15 @@ class GroceriesScreenTest {
 
     private val repository = FakeGroceryRepository()
 
-    private fun show(vararg lines: String, decisions: FakeDecisionRepository? = null, pantry: FakePantryRepository = FakePantryRepository()) {
+    private fun show(
+        vararg lines: String,
+        decisions: FakeDecisionRepository? = null,
+        pantry: FakePantryRepository = FakePantryRepository(),
+        flags: FlagValues = FlagValues.ALL_OFF
+    ) {
         runBlocking { repository.add(lines.map { NewGroceryLine(it, "en") }) }
         val viewModel = GroceriesViewModel(repository, pantry, FakePlanCalendar(), decisions)
-        compose.setContent { GroceriesScreen(viewModel = viewModel) }
+        compose.setContent { CompositionLocalProvider(LocalFlagValues provides flags) { GroceriesScreen(viewModel = viewModel) } }
     }
 
     private fun scrollTo(tag: String) = compose.onNodeWithTag("groceryList").performScrollToNode(hasTestTag(tag))
@@ -214,6 +224,60 @@ class GroceriesScreenTest {
             assertEquals(listOf("2 onions", "1 cup milk"), repository.items.value.map { it.text })
             assertFalse(pantry.items.value.single().inStock)
         }
+    }
+
+    // #406: a tri-state "Select all" row tops the put-away sheet; it only moves ticks.
+    @Test
+    fun theSelectAllRowTopsThePutAwaySheetAndTicksOrClearsEveryRow() {
+        val pantry = FakePantryRepository(listOf(PantryItem(1, "milk", null, "en", Aisle.DAIRY, false, false, purchasedDay = 1, expiresDay = null)))
+        show("1 cup milk", "2 onions", "3 carrots", pantry = pantry, flags = FlagValues(setOf(Flag.PANTRY_SELECT_ALL)))
+        compose.runOnIdle { runBlocking { repository.setChecked(repository.items.value.map { it.id }, true) } }
+        compose.onNodeWithTag("doneShopping").performClick()
+
+        fun indeterminate() = SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Indeterminate)
+        // The tracked milk starts ticked, the new ones not: some.
+        compose.onNodeWithTag("putAwaySelectAll").assert(indeterminate())
+        compose.onNodeWithText("Select all").assertIsDisplayed()
+
+        compose.onNodeWithTag("putAwaySelectAll").performClick()
+        compose.onNodeWithTag("putAwaySelectAll").assertIsOn()
+        compose.onNodeWithText("Clear all").assertIsDisplayed()
+        compose.onNodeWithTag("putAway-pantry-1").assertIsOn()
+        compose.onNodeWithTag("putAway-new-en-onion").assertIsOn()
+        compose.onNodeWithTag("putAway-new-en-carrot").assertIsOn()
+
+        compose.onNodeWithTag("putAwaySelectAll").performClick()
+        compose.onNodeWithTag("putAwaySelectAll").assertIsOff()
+        compose.onNodeWithText("Select all").assertIsDisplayed()
+        compose.onNodeWithTag("putAway-pantry-1").assertIsOff()
+        compose.onNodeWithTag("putAway-new-en-onion").assertIsOff()
+
+        // A row's own tick still works, and the row follows it.
+        compose.onNodeWithTag("putAway-new-en-onion").performClick()
+        compose.onNodeWithTag("putAwaySelectAll").assert(indeterminate())
+        // Nothing is written until the button.
+        compose.runOnIdle {
+            assertEquals(3, repository.items.value.size)
+            assertFalse(pantry.items.value.single().inStock)
+        }
+    }
+
+    @Test
+    fun theSelectAllRowIsLeftOutWithTheFlagOff() {
+        show("1 cup milk", "2 onions", flags = FlagValues.ALL_OFF)
+        compose.runOnIdle { runBlocking { repository.setChecked(repository.items.value.map { it.id }, true) } }
+        compose.onNodeWithTag("doneShopping").performClick()
+        compose.onNodeWithTag("putAway").assertIsDisplayed()
+        compose.onNodeWithTag("putAwaySelectAll").assertDoesNotExist()
+    }
+
+    @Test
+    fun theSelectAllRowIsLeftOutForASingleItem() {
+        show("2 onions", flags = FlagValues(setOf(Flag.PANTRY_SELECT_ALL)))
+        compose.runOnIdle { runBlocking { repository.setChecked(repository.items.value.map { it.id }, true) } }
+        compose.onNodeWithTag("doneShopping").performClick()
+        compose.onNodeWithText("Put away and clear").assertIsDisplayed()
+        compose.onNodeWithTag("putAwaySelectAll").assertDoesNotExist()
     }
 
     // The owner's report: a recipe added three times showed "2 corn" three times, each with a

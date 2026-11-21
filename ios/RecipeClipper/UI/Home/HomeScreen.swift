@@ -13,6 +13,10 @@ struct HomeScreen: View {
     let onOpenRecipe: (Int64) -> Void
     /// "Resume cooking" (#286): the recipe, opened in cook mode.
     var onResumeCooking: (Int64) -> Void = { _ in }
+    /// Today's meal (#402): the planned recipe, its planned servings, and whether to start cooking it.
+    var onOpenPlanned: (Int64, Int?, Bool) -> Void = { _, _, _ in }
+    /// Today's card (#402): off, Continue cooking always shows the most recent recipe.
+    var homeTonight = false
     let onOpenRecipes: () -> Void
     let onOpenLists: () -> Void
     let onOpenSettings: () -> Void
@@ -60,8 +64,19 @@ struct HomeScreen: View {
                     .accessibilityLabel(Strings.navSettings)
                 }
 
-                // Continue cooking (#286): a photo card with where the cook stopped.
-                if let latest = state.continueCooking {
+                // Continue cooking (#286): a photo card with where the cook stopped. With homeTonight
+                // (#402) it shows only while a recipe is being cooked; otherwise today's next meal
+                // from Week takes its place, and with none there is no card.
+                if homeTonight, state.resume == nil {
+                    if let today = state.today {
+                        TodayCardView(
+                            card: today,
+                            onStartCooking: { meal in meal.recipeId.map { onOpenPlanned($0, meal.servings, true) } },
+                            onOpen: { meal in meal.recipeId.map { onOpenPlanned($0, meal.servings, false) } }
+                        )
+                        .padding(.top, 16)
+                    }
+                } else if let latest = state.continueCooking {
                     ResumeCard(
                         recipe: latest, resume: state.resume,
                         onResume: { onResumeCooking(latest.id) },

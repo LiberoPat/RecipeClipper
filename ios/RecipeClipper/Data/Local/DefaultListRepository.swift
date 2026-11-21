@@ -6,10 +6,13 @@ import Foundation
 final class DefaultListRepository: ListRepository {
     private let db: AppDatabase
     private let clock: Clock
+    /// The `reorderLists` flag (#381). Off, lists are in the order from before it: seeded first.
+    private let reorderOn: () -> Bool
 
-    init(db: AppDatabase, clock: Clock) {
+    init(db: AppDatabase, clock: Clock, reorderOn: @escaping () -> Bool = { true }) {
         self.db = db
         self.clock = clock
+        self.reorderOn = reorderOn
     }
 
     func observeLists() -> AnyPublisher<[RecipeList], Never> {
@@ -21,7 +24,12 @@ final class DefaultListRepository: ListRepository {
     }
 
     private func observeLists(recipeId: Int64) -> AnyPublisher<[RecipeList], Never> {
-        db.observe { conn in try ListDao(db: conn).lists(recipeId: recipeId).map { $0.toDomain() } }
+        db.observe { [reorderOn] conn in
+            let lists = try ListDao(db: conn).lists(recipeId: recipeId).map { $0.toDomain() }
+            // The stored order (#381), or with the flag off the order from before it: seeded
+            // lists first, each group in its stored order. The two agree until someone moves a list.
+            return reorderOn() ? lists : lists.filter(\.isBuiltIn) + lists.filter { !$0.isBuiltIn }
+        }
     }
 
     func observeRecipesIn(listId: Int64) -> AnyPublisher<[RecipeSummary], Never> {
@@ -52,6 +60,38 @@ final class DefaultListRepository: ListRepository {
         }
     }
 
+    func setMembershipAll(recipeIds: [Int64], listId: Int64, inList: Bool) async {
+        let now = clock.now()
+        await perform("setMembershipAll") { dao in
+            if inList {
+                try dao.addAllToList(recipeIds: recipeIds, listId: listId, addedAt: now)
+            } else {
+                try dao.removeAllFromList(recipeIds: recipeIds, listId: listId)
+            }
+        }
+    }
+
+    func observeMembershipCounts(recipeIds: [Int64]) -> AnyPublisher<[Int64: Int], Never> {
+        db.observe { conn in try ListDao(db: conn).membershipCounts(recipeIds: recipeIds) }
+    }
+
+    @discardableResult
+    func createList(name: String, addRecipeIds: [Int64]) async -> Int64 {
+        let now = clock.now()
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            return try await db.write { conn in
+                let dao = ListDao(db: conn)
+                let id = try dao.create(name: trimmed, recipeId: ListDao.noRecipe, now: now)
+                try dao.addAllToList(recipeIds: addRecipeIds, listId: id, addedAt: now)
+                return id
+            }
+        } catch {
+            dataLog.error("createList failed: \(String(describing: error), privacy: .public)")
+            return 0
+        }
+    }
+
     @discardableResult
     func createList(name: String, addRecipeId: Int64?) async -> Int64 {
         let now = clock.now()
@@ -64,6 +104,10 @@ final class DefaultListRepository: ListRepository {
             dataLog.error("createList failed: \(String(describing: error), privacy: .public)")
             return 0
         }
+    }
+
+    func reorderLists(_ orderedIds: [Int64]) async {
+        await perform("reorderLists") { dao in try dao.reorder(orderedIds) }
     }
 
     func rename(listId: Int64, name: String) async {

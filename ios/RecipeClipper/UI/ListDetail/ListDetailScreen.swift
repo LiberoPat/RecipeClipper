@@ -1,18 +1,43 @@
 import SwiftUI
 
 /// One list's recipes, most recently added first. Renaming and deleting the list live in the
-/// overflow here. Removing a recipe from the list is deliberately not offered: membership is
-/// edited in one place, the save-to-list sheet.
+/// overflow here. Membership is edited in the save-to-list sheet; the one other way off a list
+/// is "Remove from this list" in a row's long-press menu or the selection's (#376, #377), which
+/// is not a deletion.
 struct ListDetailScreen: View {
     let vm: ListDetailViewModel
     let onOpenRecipe: (Int64) -> Void
     /// Makes "Make a cookbook" (#318); nil (the flag off, or tests) leaves it out. Made on first use.
     var makePrintVM: (() -> PrintViewModel)? = nil
+    /// The long-press menu on a row (#376, the `rowActions` flag) and Select (#377, `multiSelect`).
+    var rowActions = false
+    var multiSelect = false
+    /// The save-to-list sheet's ViewModel, for a row's Add to list; nil leaves the menu out.
+    var saveVM: SaveToListViewModel? = nil
+    /// Makes the Add to plan sheet's ViewModel, once a row's menu first needs it; nil leaves the item out.
+    var makePlanVM: (() -> AddToPlanViewModel)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var printVM: PrintViewModel?
     @State private var confirmingDelete = false
     @State private var now = currentMillis()
+    /// What a row's menu has open: the save-to-list, plan and share sheets.
+    @State private var rowMenu = RowMenuPresenter()
+
+    /// The long-press menu for one row (#376); nil while selecting or with the flag off.
+    private func menu(for recipe: RecipeSummary) -> RecipeRowActions? {
+        guard rowActions, !vm.uiState.selecting, let saveVM else { return nil }
+        return RecipeRowActions(
+            onAddToList: { rowMenu.addToList([recipe], saveVM: saveVM) },
+            onAddToPlan: makePlanVM.map { make in
+                { rowMenu.addToPlan(recipe, makePlanVM: make) { await vm.yieldServings(recipeId: recipe.id) } }
+            },
+            onShare: { rowMenu.share { await vm.onShare(recipeId: recipe.id, labels: Strings.shareTextLabels) } },
+            onSelect: multiSelect ? { vm.onStartSelecting(recipe) } : nil,
+            onRemoveFromList: { vm.onRemoveFromList(ids: [recipe.id]) },
+            onDelete: { vm.onRequestDelete([recipe]) }
+        )
+    }
 
     var body: some View {
         let state = vm.uiState
@@ -38,7 +63,12 @@ struct ListDetailScreen: View {
                         .padding(.top, 24)
                 }
                 ForEach(state.recipes) { recipe in
-                    RecipeRow(recipe: recipe, now: now) { onOpenRecipe(recipe.id) }
+                    RecipeRow(
+                        recipe: recipe, now: now,
+                        onClick: { state.selecting ? vm.onToggleSelected(recipe.id) : onOpenRecipe(recipe.id) },
+                        selecting: state.selecting, selected: state.selectedIds.contains(recipe.id)
+                    )
+                    .recipeRowMenu(menu(for: recipe))
                 }
             }
             .padding(.horizontal, 20)
@@ -48,10 +78,24 @@ struct ListDetailScreen: View {
         }
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
+        // Selecting (#377): Done leaves it (Back would leave the screen, so it is hidden meanwhile).
+        .navigationBarBackButtonHidden(state.selecting)
         .toolbar {
-            if let list = state.list {
+            if state.selecting {
+                ToolbarItem(placement: .principal) { RecipesSelectionTitle(count: state.selectedIds.count) }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(Strings.done, action: vm.onExitSelection)
+                        .accessibilityIdentifier("recipes.selection.done")
+                }
+            } else if let list = state.list {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        if multiSelect && vm.canSelect {
+                            Button { vm.onStartSelecting() } label: {
+                                Label(Strings.select, systemImage: "checkmark.circle")
+                            }
+                            .accessibilityIdentifier("list.select")
+                        }
                         Button(action: vm.onStartRenaming) {
                             Label(Strings.rename, systemImage: "pencil")
                         }
@@ -100,6 +144,45 @@ struct ListDetailScreen: View {
             if deleted { dismiss() }
         }
         .modifier(PrintEffect(vm: printVM))
+        // The undo snackbar for deletes (#377), as Recipes': one for a burst, keyed on it (#268).
+        .overlay(alignment: .bottom) {
+            if state.restoreRefused {
+                Snackbar(message: Strings.restoreFull, actionLabel: nil)
+                    .frame(maxWidth: ReadableWidth.column)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .accessibilityIdentifier("recipes.restoreRefused")
+            } else if let message = Strings.deletedMessage(state.pendingDeletes) {
+                Snackbar(message: message, actionLabel: Strings.undo, action: vm.onUndoDelete)
+                    .frame(maxWidth: ReadableWidth.column)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: state.pendingDeletes.isEmpty)
+        .animation(.easeOut(duration: 0.2), value: state.restoreRefused)
+        .task(id: state.restoreRefused) {
+            guard state.restoreRefused else { return }
+            do { try await Sleeps.real(SnackbarTimeout.duration) } catch { return }
+            vm.onRestoreRefusedShown()
+        }
+        .task(id: state.deleteBatch) {
+            await SnackbarTimeout.run(pending: state.pendingDeletes, onTimeout: vm.onSnackbarDismissed)
+        }
+        .rowMenuSheets(rowMenu, saveVM: saveVM)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if state.selecting, let saveVM {
+                RecipesSelectionBar(
+                    count: state.selectedIds.count,
+                    onAddToList: { rowMenu.addToList(vm.selectedRecipes, saveVM: saveVM) },
+                    onRemoveFromList: { vm.onRemoveFromList(ids: vm.selectedRecipes.map(\.id)) },
+                    onDelete: { vm.onRequestDelete(vm.selectedRecipes) }
+                )
+            }
+        }
+        .recipeDeleteAlert(state.confirmingDelete, onConfirm: vm.onConfirmDelete, onCancel: vm.onCancelDelete)
         .onAppear { now = currentMillis() }
         #if DEBUG
         .onChange(of: state.list?.id) { _, id in

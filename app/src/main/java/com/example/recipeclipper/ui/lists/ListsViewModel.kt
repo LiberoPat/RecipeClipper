@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -20,19 +21,27 @@ import javax.inject.Inject
  *
  * [coverPhotos] is each list's cover (#286): up to four photo URLs, most recently added first.
  * A list with none is absent and gets a plain tile.
+ *
+ * [draggingId] is the list the cook is holding (#381); while it is set, [lists] is in the order
+ * the drag has made so far and nothing is stored yet.
  */
 data class ListsUiState(
     val loaded: Boolean = false,
     val lists: List<RecipeList> = emptyList(),
     val coverPhotos: Map<Long, List<String>> = emptyMap(),
     val creatingList: Boolean = false,
-    val newListName: String = ""
+    val newListName: String = "",
+    val draggingId: Long? = null
 )
 
+/** A drag in flight: the list held, and every list's id in the order the drag has made. */
+private data class Drag(val id: Long, val order: List<Long>)
+
 /**
- * The Lists screen: every list as a cover with its count, and creating a new one. Renaming and deleting
- * live on the list's own screen rather than here, so there is one place a list is managed
- * from — the same reason the recipe screen owns deleting a recipe.
+ * The Lists screen: every list as a cover with its count, creating a new one, and putting the
+ * covers in the cook's own order (#381). Renaming and deleting live on the list's own screen
+ * rather than here, so there is one place a list is managed from — the same reason the recipe
+ * screen owns deleting a recipe.
  */
 @HiltViewModel
 class ListsViewModel @Inject constructor(
@@ -41,19 +50,32 @@ class ListsViewModel @Inject constructor(
 
     private val creatingList = MutableStateFlow(false)
     private val newListName = MutableStateFlow("")
+    private val drag = MutableStateFlow<Drag?>(null)
+
+    /**
+     * The stored order, collected here (not read back off [uiState], whose `value` is the initial
+     * state while nothing collects) so a move always starts from what the database has.
+     */
+    private val stored = MutableStateFlow<List<RecipeList>?>(null)
+
+    init {
+        viewModelScope.launch { repository.observeLists().collect { stored.value = it } }
+    }
 
     val uiState: StateFlow<ListsUiState> = combine(
-        repository.observeLists(),
+        stored.filterNotNull(),
         repository.observeCoverPhotos(),
         creatingList,
-        newListName
-    ) { lists, photos, creating, name ->
+        newListName,
+        drag
+    ) { lists, photos, creating, name, dragging ->
         ListsUiState(
             loaded = true,
-            lists = lists,
+            lists = dragging?.let { lists.inOrder(it.order) } ?: lists,
             coverPhotos = photos.mapValues { it.value.take(ListDao.COVER_PHOTOS) },
             creatingList = creating,
-            newListName = name
+            newListName = name,
+            draggingId = dragging?.id
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListsUiState())
 
@@ -80,4 +102,58 @@ class ListsViewModel @Inject constructor(
             newListName.value = ""
         }
     }
+
+    // --- Reordering (#381) ---
+
+    /** The cook lifts a cover. Nothing is stored until [onDragEnd]. */
+    fun onDragStart(listId: Long) {
+        val lists = stored.value ?: return
+        if (lists.none { it.id == listId }) return
+        drag.value = Drag(listId, lists.map { it.id })
+    }
+
+    /** The held cover is over another's place: it takes that place, the ones between shift. */
+    fun onDragOver(targetId: Long) {
+        val current = drag.value ?: return
+        val from = current.order.indexOf(current.id)
+        val to = current.order.indexOf(targetId)
+        if (from < 0 || to < 0 || from == to) return
+        drag.value = current.copy(order = current.order.moved(from, to))
+    }
+
+    /** The cook let go: the order the drag made is stored, once. */
+    fun onDragEnd() {
+        val current = drag.value ?: return
+        viewModelScope.launch {
+            if (current.order != stored.value?.map { it.id }) repository.reorderLists(current.order)
+            drag.value = null
+        }
+    }
+
+    fun onDragCancel() {
+        drag.value = null
+    }
+
+    /** The accessible alternative to dragging: one place earlier, stored at once. */
+    fun onMoveEarlier(listId: Long) = move(listId, by = -1)
+
+    /** The accessible alternative to dragging: one place later, stored at once. */
+    fun onMoveLater(listId: Long) = move(listId, by = 1)
+
+    private fun move(listId: Long, by: Int) {
+        val order = stored.value?.map { it.id } ?: return
+        val from = order.indexOf(listId)
+        val to = from + by
+        if (from < 0 || to !in order.indices) return
+        viewModelScope.launch { repository.reorderLists(order.moved(from, to)) }
+    }
+}
+
+private fun List<Long>.moved(from: Int, to: Int): List<Long> =
+    toMutableList().also { it.add(to, it.removeAt(from)) }
+
+/** [this] arranged as [order] says; a list the order does not name (just created) goes last. */
+private fun List<RecipeList>.inOrder(order: List<Long>): List<RecipeList> {
+    val byId = associateBy { it.id }
+    return order.mapNotNull { byId[it] } + filterNot { it.id in order }
 }

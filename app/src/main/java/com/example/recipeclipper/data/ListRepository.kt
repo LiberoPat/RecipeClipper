@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface ListRepository {
 
-    /** Every list with its recipe count, built-ins first. */
+    /** Every list with its recipe count, in the cook's own order (#381; seeded lists start first). */
     fun observeLists(): Flow<List<RecipeList>>
 
     /**
@@ -45,11 +45,33 @@ interface ListRepository {
     suspend fun setMembership(recipeId: Long, listId: Long, inList: Boolean)
 
     /**
+     * Ticks or unticks one list for several recipes at once (#377), all or none (one transaction).
+     * Taking recipes off a list is not deleting them.
+     */
+    suspend fun setMembershipAll(recipeIds: List<Long>, listId: Long, inList: Boolean)
+
+    /**
+     * For each list holding at least one of [recipeIds], how many of them it holds (#377): what
+     * the sheet for several recipes draws as ticked (all), indeterminate (some) or unticked (a
+     * list absent from the map).
+     */
+    fun observeMemberCounts(recipeIds: List<Long>): Flow<Map<Long, Int>>
+
+    /**
      * Creates a user list. [addRecipeId] is the recipe to put straight into it, or null when
      * the list is being created from the Lists screen with no recipe in hand. Returns the new
      * list's id, or `-1` ([DefaultListRepository.CREATE_FAILED]) if the database refused.
      */
     suspend fun createList(name: String, addRecipeId: Long? = null): Long
+
+    /**
+     * The cook's new order for the lists (#381): [orderedIds] first, in that order, then any list
+     * not named in the order it had. Stored, so every place lists are shown follows it.
+     */
+    suspend fun reorderLists(orderedIds: List<Long>)
+
+    /** [createList] putting all of [addRecipeIds] straight into it (#377), in one transaction. */
+    suspend fun createListWith(name: String, addRecipeIds: List<Long>): Long
 
     suspend fun rename(listId: Long, name: String)
 

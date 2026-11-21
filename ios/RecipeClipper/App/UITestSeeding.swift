@@ -52,6 +52,10 @@ enum UITestSeeding {
     static let pasteboardFlag = "-uiTestPasteboard"
     static let receiveFileFlag = "-uiTestReceiveFile"
     static let liveTimersFlag = "-uiTestLiveTimers"
+    /// `-uiTestPlanToday "dinner:Chicken Adobo,breakfast:Banana Bread,lunch:#Leftovers"` (#402):
+    /// meals planned for today after the scenario is seeded, each `<built-in meal type>:<recipe
+    /// title>`, or `#<text>` for a note.
+    static let planTodayFlag = "-uiTestPlanToday"
 
     /// With `-uiTestReceiveFile`, a shared file (#149) as another phone would send it, opened
     /// once at launch as if from Messages (a UI test can't drive another app's "Open in"):
@@ -275,6 +279,7 @@ enum UITestSeeding {
                         try seedWeekPlan(conn, now: now)
                     default: try seedStandard(conn, now: now)
                     }
+                    try seedPlanToday(conn, now: now)
                 }
             } catch {
                 fatalError("UI test seed: \(error)")
@@ -285,6 +290,33 @@ enum UITestSeeding {
     }
 
     private static let minute: Int64 = 60_000
+
+    /// Today's plan for `-uiTestPlanToday` (#402), in the order the spec lists them.
+    private static func seedPlanToday(_ conn: SQLiteConnection, now: Int64) throws {
+        guard let index = arguments.firstIndex(of: planTodayFlag), index + 1 < arguments.count else { return }
+        let plan = MealPlanDao(db: conn)
+        let types = try plan.mealTypes()
+        let today = PlanDays.today(millis: now)
+        for item in arguments[index + 1].split(separator: ",") {
+            let parts = item.split(separator: ":", maxSplits: 1).map(String.init)
+            guard parts.count == 2, let type = types.first(where: { $0.builtInKey == parts[0] }) else {
+                fatalError("UI test plan: \(item)")
+            }
+            if parts[1].hasPrefix("#") {
+                try plan.add(MealPlanEntryRecord(
+                    day: today, mealTypeId: type.id, recipeId: nil, servings: nil,
+                    note: String(parts[1].dropFirst()), sortOrder: 0, updatedAt: now
+                ))
+            } else {
+                guard let recipeId = try conn.queryOne("SELECT id FROM recipes WHERE title = ?", parts[1], map: { $0.int64(0) }) else {
+                    fatalError("UI test plan: no recipe \(parts[1])")
+                }
+                try plan.add(MealPlanEntryRecord(
+                    day: today, mealTypeId: type.id, recipeId: recipeId, servings: nil, note: nil, sortOrder: 0, updatedAt: now
+                ))
+            }
+        }
+    }
 
     private static func recipe(_ title: String, slug: String, viewedAt: Int64, ingredients: [String]) -> RecipeRecord {
         RecipeRecord(

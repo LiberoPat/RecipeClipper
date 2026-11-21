@@ -14,6 +14,7 @@ import com.example.recipeclipper.data.model.RecipeLink
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.SavedRecipe
 import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
 
@@ -162,6 +163,13 @@ interface RecipeRepository {
      */
     suspend fun delete(id: Long): DeletedRecipe?
 
+    /**
+     * Deletes several recipes at once (#377: the Recipes selection), all or none in one transaction,
+     * those already gone left out. Each comes back as [delete]'s would, oldest first as given, for one
+     * [restoreAll] to put back together.
+     */
+    suspend fun deleteAll(ids: List<Long>): List<DeletedRecipe> = ids.mapNotNull { delete(it) }
+
     /** Undoes a [delete]: the recipe comes back with its original id and list membership. */
     suspend fun restore(deleted: DeletedRecipe): RestoreOutcome = restoreAll(listOf(deleted))
 
@@ -189,6 +197,9 @@ interface RecipeRepository {
 
     /** Titles and ingredients matching [query]; everything when [query] is blank. */
     fun observeHistory(query: String, filter: RecipeFilter = RecipeFilter.ALL): Flow<List<RecipeSummary>>
+
+    /** Every recipe's ingredient lines as stored, as they change (#378: "Uses what's in my pantry"). */
+    fun observeRecipeLines(): Flow<List<SavedRecipe>>
 
     /** How many recipes there are, and how many are in a list: the Recipes filter's counts (#345). */
     fun observeRecipeCounts(): Flow<RecipeCounts>

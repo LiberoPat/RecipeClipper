@@ -114,6 +114,44 @@ final class GroceriesUITests: RecipeUITestCase {
         require(pantryRow("flour"), "flour in the pantry")
     }
 
+    /// #406: with two or more items the put-away sheet opens with a Select all row, which ticks
+    /// every row and then reads Clear all; nothing is written until the sheet's button.
+    func testSelectAllTopsThePutAwaySheet() {
+        launch(.empty, flags: ["pantrySelectAll"])
+        require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
+        let field = require(app.textFields["Add an item"], "Add an item")
+        field.tap()
+        field.typeText("2 cups flour\n")
+        field.tap()
+        field.typeText("3 onions\n")
+        require(line("2 cups flour"), "the flour").tap()
+        require(line("3 onions"), "the onions").tap()
+        require(app.buttons["doneShopping"], "Done shopping").tap()
+
+        let all = require(app.buttons["putAwaySelectAll"], "Select all")
+        XCTAssertEqual(all.label, "Select all")
+        let flour = require(app.buttons["putAway-new-en-flour"], "flour, unticked")
+        let onion = require(app.buttons["putAway-new-en-onion"], "onions, unticked")
+        XCTAssertFalse(flour.isSelected)
+        XCTAssertFalse(onion.isSelected)
+
+        all.tap()
+        XCTAssertEqual(require(app.buttons["putAwaySelectAll"], "Clear all").label, "Clear all")
+        XCTAssertTrue(flour.isSelected)
+        XCTAssertTrue(onion.isSelected)
+
+        all.tap()
+        XCTAssertEqual(require(app.buttons["putAwaySelectAll"], "Select all, again").label, "Select all")
+        XCTAssertFalse(flour.isSelected)
+        XCTAssertFalse(onion.isSelected)
+
+        // One row ticked on its own is the mixed state: Select all, with the state as its value.
+        flour.tap()
+        let mixed = app.buttons["putAwaySelectAll"]
+        XCTAssertEqual(mixed.label, "Select all")
+        XCTAssertEqual(mixed.value as? String, "Some selected")
+    }
+
     /// #219: a tick leaves the row where it is; "Clear the whole list" asks first, and Undo
     /// brings the list back.
     func testATickStaysPutAndTheWholeListClearsWithUndo() {

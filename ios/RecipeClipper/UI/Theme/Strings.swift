@@ -349,6 +349,10 @@ enum Strings {
     static var homeResumeCooking: String { String(localized: "home_resume_cooking") }
     static var homeOpenRecipe: String { String(localized: "home_open_recipe") }
     static func homeTimerLeft(_ clock: String) -> String { String(localized: "home_timer_left \(clock)") }
+    static var homeToday: String { String(localized: "home_today") }
+    static func homeTodayOther(_ mealType: String, _ title: String) -> String {
+        String(localized: "home_today_other \(mealType) \(title)")
+    }
 
     // Recipes (#102; it replaced History)
     static var recipesTitle: String { String(localized: "recipes_title") }
@@ -392,6 +396,17 @@ enum Strings {
     // Recipes: the tidy list (#286). The count left of the sort, under search.
     static func recipesListed(_ n: Int) -> String { String(localized: "recipes_listed \(n)") }
     static var sort: String { String(localized: "cd_sort") }
+    // Recipes: quick filter chips (#378) and the rows / grid toggle (#380).
+    static var recipesQuickThirtyOrLess: String { String(localized: "recipes_quick_30_or_less") }
+    static var recipesQuickNotCooked: String { String(localized: "recipes_quick_not_cooked") }
+    static var recipesQuickPantry: String { String(localized: "recipes_quick_pantry") }
+    static var recipesQuickPantryNote: String { String(localized: "recipes_quick_pantry_note") }
+    static func recipesPantryHave(_ have: Int, of total: Int) -> String {
+        String(localized: "recipes_pantry_have \(have) \(total)")
+    }
+    static var recipesNoResultsFilters: String { String(localized: "recipes_no_results_filters") }
+    static var layoutToGrid: String { String(localized: "cd_layout_to_grid") }
+    static var layoutToRows: String { String(localized: "cd_layout_to_rows") }
 
     /// One snackbar message for the whole pending batch, or nil when nothing is pending.
     static func deletedMessage(_ pending: [String]) -> String? {
@@ -482,6 +497,9 @@ enum Strings {
     static var newList: String { String(localized: "action_new_list") }
     /// The last tile on the Lists screen (#286); the plus is drawn above it.
     static var newListTile: String { String(localized: "lists_new_list_tile") }
+    /// VoiceOver's actions on a list's cover (#381): the accessible way to reorder.
+    static var moveListEarlier: String { String(localized: "lists_move_earlier") }
+    static var moveListLater: String { String(localized: "lists_move_later") }
     static var create: String { String(localized: "action_create") }
     static var rename: String { String(localized: "action_rename") }
     static var save: String { String(localized: "action_save") }
@@ -499,6 +517,21 @@ enum Strings {
     static var inAList: String { String(localized: "cd_in_a_list") }
     /// Under the open "+ New list" field (#286): the recipe goes into the list it creates.
     static func newListNote(_ recipe: String) -> String { String(localized: "save_to_list_new_list_note \(recipe)") }
+
+    /// Under the open "+ New list" field when several recipes are selected (#377).
+    static func newListNoteMany(_ n: Int) -> String { String(localized: "save_to_list_new_list_note_many \(n)") }
+    /// A list that holds some, not all, of the selected recipes (#377): its checkbox's spoken value.
+    static var saveToListPartial: String { String(localized: "save_to_list_partial") }
+
+    // A recipe row's menu and selecting several recipes (#376, #377)
+    static var select: String { String(localized: "action_select") }
+    static var addToListAction: String { String(localized: "row_action_add_to_list") }
+    static var share: String { String(localized: "action_share") }
+    static var removeFromList: String { String(localized: "row_action_remove_from_list") }
+    static func recipesSelectedCount(_ n: Int) -> String { String(localized: "recipes_selected_count \(n)") }
+    static func deleteRecipesTitle(_ n: Int) -> String { String(localized: "delete_recipes_title \(n)") }
+    static var deleteRowBody: String { String(localized: "delete_row_body") }
+    static var deleteRowsBody: String { String(localized: "delete_rows_body") }
 
     // List detail
     static var renameListTitle: String { String(localized: "rename_list_title") }
@@ -713,6 +746,8 @@ enum Strings {
     static var pantrySelectItems: String { String(localized: "pantry_select_items") }
     static var pantrySelect: String { String(localized: "pantry_select") }
     static var selectAll: String { String(localized: "action_select_all") }
+    static var clearAll: String { String(localized: "action_clear_all") }
+    static var cdSelectAllSome: String { String(localized: "cd_select_all_some") }
     static var pantryMarkRunOut: String { String(localized: "pantry_mark_run_out") }
     static var exitSelection: String { String(localized: "cd_exit_selection") }
     static func pantrySelectedCount(_ n: Int) -> String { String(localized: "pantry_selected_count \(n)") }

@@ -2,6 +2,7 @@ package com.example.recipeclipper.data
 
 import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.ListCoverPhotoRow
+import com.example.recipeclipper.data.local.dao.ListMemberCountRow
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.ListRow
 import com.example.recipeclipper.data.local.dao.MealPlanDao
@@ -80,6 +81,7 @@ class DatabaseErrorTest {
         override fun observeHistory(): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int, chat: Int): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override fun observeLibraryCounts(): Flow<LibraryCountsRow> = flow { throw throwable() }
+        override fun observeRecipeLines(): Flow<List<SavedRecipeRow>> = flow { throw throwable() }
         override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = flow { throw throwable() }
         override suspend fun cullHistory(keep: Int, today: Long) = throw throwable()
         override suspend fun oldestCullable(today: Long): Long? = throw throwable()
@@ -106,10 +108,13 @@ class DatabaseErrorTest {
         override fun observeRecipesIn(listId: Long): Flow<List<RecipeSummaryRow>> = flow { throw Boom() }
         override fun observeCoverPhotos(): Flow<List<ListCoverPhotoRow>> = flow { throw Boom() }
         override fun observeSavedRecipes(): Flow<List<SavedRecipeRow>> = flow { throw Boom() }
+        override fun observeMemberCounts(recipeIds: List<Long>): Flow<List<ListMemberCountRow>> = flow { throw Boom() }
         override suspend fun addToList(crossRef: RecipeListCrossRef) = throw Boom()
         override suspend fun removeFromList(recipeId: Long, listId: Long) = throw Boom()
         override suspend fun insert(list: ListEntity): Long = throw Boom()
         override suspend fun nextSortOrder(): Int = throw Boom()
+        override suspend fun idsInOrder(): List<Long> = throw Boom()
+        override suspend fun setPosition(id: Long, position: Int) = throw Boom()
         override suspend fun rename(id: Long, name: String) = throw Boom()
         override suspend fun delete(id: Long) = throw Boom()
     }
@@ -181,6 +186,14 @@ class DatabaseErrorTest {
         assertEquals(listOf("observeHistory failed", "observeRecent failed"), log.messages)
     }
 
+    @Test fun `failing lines for the pantry chip emit an empty list and complete (#378)`() = runTest {
+        val log = RecordingLog()
+        val repository = recipes(ParseResult.Error(ParseError.NoRecipeFound), log)
+
+        assertEquals(listOf(emptyList<Any>()), repository.observeRecipeLines().toList())
+        assertEquals(listOf("observeRecipeLines failed"), log.messages)
+    }
+
     @Test fun `a failing recipe query emits null and completes`() = runTest {
         val log = RecordingLog()
         val repository = recipes(ParseResult.Error(ParseError.NoRecipeFound), log)
@@ -209,6 +222,7 @@ class DatabaseErrorTest {
         assertEquals(DefaultListRepository.CREATE_FAILED, lists.createList("Soups", addRecipeId = 1))
         lists.rename(2, "Stews")
         lists.deleteList(2)
+        lists.reorderLists(listOf(2, 1))
         assertEquals(listOf(emptyList<Any>()), lists.observeLists().toList())
         assertEquals(listOf(emptyList<Any>()), lists.observeListsFor(1).toList())
         assertEquals(listOf(emptyList<Any>()), lists.observeRecipesIn(2).toList())
@@ -217,7 +231,7 @@ class DatabaseErrorTest {
         assertEquals(
             listOf(
                 "setMembership failed", "setMembership failed", "createList failed",
-                "rename failed", "deleteList failed",
+                "rename failed", "deleteList failed", "reorderLists failed",
                 "observeLists failed", "observeListsFor failed", "observeRecipesIn failed",
                 "observeCoverPhotos failed"
             ),

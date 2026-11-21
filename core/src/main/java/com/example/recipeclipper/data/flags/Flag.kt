@@ -49,6 +49,20 @@ enum class Flag(val key: String) {
     RECIPE_VERSIONS("recipeVersions"),
     /** Shop for this week (#384): the Week menu's one item, opening What I need, in place of What I need and Add this week's ingredients. */
     SHOP_FOR_WEEK("shopForWeek"),
+    /** Reorder lists (#381): drag the covers on the Lists screen into your own order, used wherever lists are shown. */
+    REORDER_LISTS("reorderLists"),
+    /** Home's Today card (#402): today's next uncooked planned meal, when nothing is being cooked. */
+    HOME_TONIGHT("homeTonight"),
+    /** Select all / Clear all at the top of the put-away and Update the pantry checklists (#406). */
+    PANTRY_SELECT_ALL("pantrySelectAll"),
+    /** Recipes' quick filter chips under search (#378): 30 min or less, Not cooked yet, Uses what's in my pantry. */
+    RECIPE_FILTERS("recipeFilters"),
+    /** A toggle on Recipes between the rows and a photo grid (#380). */
+    RECIPES_GRID("recipesGrid"),
+    /** A long-press menu on a recipe row (#376): Add to list, Add to plan, Share, Delete, Remove from this list. */
+    ROW_ACTIONS("rowActions"),
+    /** Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo. */
+    MULTI_SELECT("multiSelect"),
     /** Skip tonight (#398): Week's long-press menu and today's meals gain Skip: push the week, move to the next free day, or remove. */
     SKIP_TONIGHT("skipTonight"),
     /** The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397). */

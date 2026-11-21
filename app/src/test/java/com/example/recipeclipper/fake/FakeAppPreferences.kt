@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.local.AppPreferences
 import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.model.MealReminders
 import com.example.recipeclipper.data.model.RecipeSort
+import com.example.recipeclipper.data.model.RecipesLayout
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.UnitSystem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,7 @@ class FakeAppPreferences(
     chefMode: Boolean = false,
     amountsInSteps: Boolean = false,
     recipeSort: RecipeSort = RecipeSort.RECENTLY_VIEWED,
+    recipesLayout: RecipesLayout = RecipesLayout.ROWS,
     eveningReminder: Boolean = true,
     eveningReminderMinute: Int = MealReminders.EVENING_MINUTE,
     tonightReminder: Boolean = false,
@@ -33,7 +35,7 @@ class FakeAppPreferences(
     private val state = MutableStateFlow(
         AppSettings(
             unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps,
-            recipeSort, eveningReminder, eveningReminderMinute, tonightReminder, tonightReminderMinute
+            recipeSort, recipesLayout, eveningReminder, eveningReminderMinute, tonightReminder, tonightReminderMinute
         )
     )
 
@@ -87,4 +89,8 @@ class FakeAppPreferences(
     override var recipeSort: RecipeSort
         get() = state.value.recipeSort
         set(value) = state.update { it.copy(recipeSort = value) }
+
+    override var recipesLayout: RecipesLayout
+        get() = state.value.recipesLayout
+        set(value) = state.update { it.copy(recipesLayout = value) }
 }

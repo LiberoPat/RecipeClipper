@@ -87,6 +87,8 @@
     <string name="home_share_hint">Ou partagez un lien vers Recipe Clipper depuis n\'importe quelle appli.</string>
     <string name="home_resume_cooking">Reprendre</string>
     <string name="home_open_recipe">Ouvrir la recette</string>
+    <string name="home_today">Aujourd\'hui</string>
+    <string name="home_today_other">%1$s : %2$s</string>
     <string name="home_timer_left">Encore %1$s</string>
     <string name="recipes_title">Recettes</string>
     <string name="recipes_empty">Rien pour l\'instant. Les recettes que vous ouvrez sont conservées ici, et + en ajoute une à la main ou depuis un lien.</string>
@@ -134,6 +136,14 @@
         <item quantity="other">%1$d recettes</item>
     </plurals>
     <string name="cd_sort">Trier</string>
+    <string name="recipes_quick_30_or_less">30 min ou moins</string>
+    <string name="recipes_quick_not_cooked">Pas encore cuisinée</string>
+    <string name="recipes_quick_pantry">Avec mon garde-manger</string>
+    <string name="recipes_quick_pantry_note">Affiche les recettes dont au moins la moitié des ingrédients sont dans votre garde-manger, par nom et non par quantité.</string>
+    <string name="recipes_pantry_have">Vous avez %1$d sur %2$d</string>
+    <string name="recipes_no_results_filters">Aucune recette ne correspond à ces filtres.</string>
+    <string name="cd_layout_to_grid">Afficher en grille</string>
+    <string name="cd_layout_to_rows">Afficher en liste</string>
     <string name="tag_saved">Enregistrée</string>
     <string name="time_just_now">À l\'instant</string>
     <string name="time_yesterday">Hier</string>
@@ -211,6 +221,8 @@
     <string name="lists_title">Listes</string>
     <string name="action_new_list">+  Nouvelle liste</string>
     <string name="lists_new_list_tile">Nouvelle liste</string>
+    <string name="lists_move_earlier">Déplacer avant</string>
+    <string name="lists_move_later">Déplacer après</string>
     <string name="action_create">Créer</string>
     <string name="action_rename">Renommer</string>
     <string name="action_save">Enregistrer</string>
@@ -792,6 +804,7 @@
     <string name="pantry_select_items">Sélectionner des articles</string>
     <string name="pantry_select">Sélectionner</string>
     <string name="action_select_all">Tout sélectionner</string>
+    <string name="action_clear_all">Tout désélectionner</string>
     <string name="pantry_mark_run_out">Marquer épuisé</string>
     <string name="cd_exit_selection">Arrêter la sélection</string>
     <plurals name="pantry_selected_count">
@@ -860,6 +873,30 @@
     <string name="ai_prompt_temperature_f">Donne les températures du four en °F.</string>
     <string name="ai_prompt_write_in">Écris-la en %1$s.</string>
     <string name="ai_prompt_note_outside">Mets tout ce que tu veux dire d\'autre en dehors du bloc de code.</string>
+    <!-- Long-press menu on a recipe row (#376) and selecting several recipes (#377). -->
+    <string name="action_select">Sélectionner</string>
+    <string name="row_action_add_to_list">Ajouter à une liste</string>
+    <string name="action_share">Partager</string>
+    <string name="row_action_remove_from_list">Retirer de cette liste</string>
+    <string name="cd_recipe_actions">Actions de la recette</string>
+    <string name="save_to_list_partial">Certaines</string>
+    <plurals name="recipes_selected_count">
+        <item quantity="one">%1$d sélectionnée</item>
+        <item quantity="many">%1$d sélectionnées</item>
+        <item quantity="other">%1$d sélectionnées</item>
+    </plurals>
+    <plurals name="delete_recipes_title">
+        <item quantity="one">Supprimer %1$d recette ?</item>
+        <item quantity="many">Supprimer %1$d de recettes ?</item>
+        <item quantity="other">Supprimer %1$d recettes ?</item>
+    </plurals>
+    <string name="delete_row_body">Elle sera retirée de vos recettes et de toutes les listes où elle figure, avec les photos que vous y avez ajoutées. Vous pouvez annuler pendant quelques secondes.</string>
+    <string name="delete_rows_body">Elles seront retirées de vos recettes et de toutes les listes où elles figurent, avec les photos que vous y avez ajoutées. Vous pouvez annuler pendant quelques secondes.</string>
+    <plurals name="save_to_list_new_list_note_many">
+        <item quantity="one">%1$d recette ira dans la nouvelle liste.</item>
+        <item quantity="many">%1$d de recettes iront dans la nouvelle liste.</item>
+        <item quantity="other">%1$d recettes iront dans la nouvelle liste.</item>
+    </plurals>
     <string name="ask_ai_plan_hint_new">De nouvelles recettes pour les repas et les jours choisis, selon vos goûts</string>
     <string name="ask_ai_plan_hint_mine">Des repas planifiés avec vos recettes enregistrées</string>
     <string name="ask_ai_plan_hint_mix">Un peu de vos recettes, un peu de nouvelles</string>

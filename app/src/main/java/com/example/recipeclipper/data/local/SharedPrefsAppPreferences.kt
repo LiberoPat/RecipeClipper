@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.recipeclipper.data.model.MealReminders
 import com.example.recipeclipper.data.model.RecipeSort
+import com.example.recipeclipper.data.model.RecipesLayout
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.UnitSystem
@@ -107,6 +108,12 @@ class SharedPrefsAppPreferences @Inject constructor(
             prefs.edit { putString(KEY_RECIPE_SORT, value.name) }
         }
 
+    override var recipesLayout: RecipesLayout
+        get() = RecipesLayout.fromStoredName(prefs.getString(KEY_RECIPES_LAYOUT, null))
+        set(value) {
+            prefs.edit { putString(KEY_RECIPES_LAYOUT, value.name) }
+        }
+
     /**
      * Over SharedPreferences' change listener. SharedPreferences holds its listeners weakly, so
      * the listener is a local that `awaitClose` keeps alive for as long as someone collects;
@@ -171,5 +178,6 @@ class SharedPrefsAppPreferences @Inject constructor(
         const val KEY_CHEF_MODE = "chef_mode"
         const val KEY_AMOUNTS_IN_STEPS = "amounts_in_steps"
         const val KEY_RECIPE_SORT = "recipe_sort"
+        const val KEY_RECIPES_LAYOUT = "recipes_layout"
     }
 }

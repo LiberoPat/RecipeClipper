@@ -42,7 +42,7 @@ struct BackupDao {
         let lists = try db.query(
             """
             SELECT id, uid, name, isBuiltIn, isFavorites, sortOrder, createdAt FROM lists
-            ORDER BY isBuiltIn DESC, sortOrder ASC, id ASC
+            ORDER BY sortOrder ASC, id ASC
             """
         ) { row in
             BackupSnapshot.ListRow(
@@ -127,7 +127,7 @@ struct BackupDao {
     }
 
     func existingLists() throws -> [ExistingList] {
-        try db.query("SELECT id, uid, name, isFavorites FROM lists ORDER BY isBuiltIn DESC, sortOrder ASC, id ASC") { row in
+        try db.query("SELECT id, uid, name, isFavorites FROM lists ORDER BY sortOrder ASC, id ASC") { row in
             ExistingList(id: row.int64(0), uid: row.string(1), name: row.string(2), isFavorites: row.bool(3))
         }
     }

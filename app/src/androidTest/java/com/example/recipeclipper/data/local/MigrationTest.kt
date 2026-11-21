@@ -761,12 +761,61 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Reorder lists (#381): `sortOrder` becomes the only thing lists are shown by, so every list is
+     * numbered 0, 1, 2... in the order it was shown (seeded first, then by position, then by id,
+     * with user lists and seeded ones sharing positions as old upgrades left them). Nothing moves.
+     */
+    @Test
+    fun migration17To18NumbersEveryListInTheOrderItWasShown() {
+        helper.createDatabase(name, 17).use { db ->
+            // (id, name, isBuiltIn, isFavorites, sortOrder): user lists share positions with seeded ones.
+            listOf(
+                listOf(1, "Favorites", 1, 1, 0), listOf(2, "Lunch", 1, 0, 1), listOf(3, "Weeknights", 0, 0, 2),
+                listOf(4, "Breakfast", 1, 0, 2), listOf(5, "Aaa", 0, 0, 0)
+            ).forEach { (id, listName, builtIn, favorites, order) ->
+                db.execSQL(
+                    "INSERT INTO lists (id, name, isBuiltIn, isFavorites, sortOrder, createdAt, uid) " +
+                        "VALUES (?, ?, ?, ?, ?, 0, ?)",
+                    arrayOf<Any>(id, listName, builtIn, favorites, order, "uid-$id")
+                )
+            }
+            db.execSQL(
+                """
+                INSERT INTO recipes
+                  (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+                   cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+                   language, cookState, servingsTarget, contentOrigin, editedAt, basedOnUid)
+                VALUES
+                  (7, 'https://example.com/a', 'Adobo', NULL, '["1 cup soy sauce"]',
+                   '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[]', NULL,
+                   'recipe-uid', 'en', NULL, NULL, 'PARSED', NULL, NULL)
+                """.trimIndent()
+            )
+            db.execSQL("INSERT INTO recipe_list_cross_ref (recipeId, listId, addedAt) VALUES (7, 3, 5)")
+        }
+
+        helper.runMigrationsAndValidate(name, 18, true, RecipeDatabase.MIGRATION_17_18)
+
+        val db = openMigrated()
+        runBlocking {
+            val lists = db.backupDao().allLists()
+            assertEquals(listOf("Favorites", "Lunch", "Breakfast", "Aaa", "Weeknights"), lists.map { it.name })
+            assertEquals(listOf(0, 1, 2, 3, 4), lists.map { it.sortOrder })
+            // What the screens read agrees, and the uids, flags and membership came across.
+            assertEquals(lists.map { it.name }, db.listDao().observeLists(ListDao.NO_RECIPE).first().map { it.name })
+            assertEquals(listOf("uid-1", "uid-2", "uid-4", "uid-5", "uid-3"), lists.map { it.uid })
+            assertEquals(listOf(true, false, false, false, false), lists.map { it.isFavorites })
+            assertEquals(listOf(7L), db.listDao().observeRecipesIn(3).first().map { it.id })
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 17, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 18, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

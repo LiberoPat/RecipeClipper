@@ -63,7 +63,8 @@ object Routes {
 
     // The Week tab's own stack (#49): a planned recipe opens at its planned servings.
     const val WEEK_RECIPE =
-        "week/recipe/{${RecipeViewModel.RECIPE_ID_ARG}}?${RecipeViewModel.SERVINGS_ARG}={${RecipeViewModel.SERVINGS_ARG}}"
+        "week/recipe/{${RecipeViewModel.RECIPE_ID_ARG}}?${RecipeViewModel.SERVINGS_ARG}={${RecipeViewModel.SERVINGS_ARG}}" +
+            "&${RecipeViewModel.START_COOK_ARG}={${RecipeViewModel.START_COOK_ARG}}"
     const val MEAL_TYPES = "week/meal-types"
     const val WHAT_I_NEED = "week/need/{${WhatINeedViewModel.WEEK_START_ARG}}"
     const val GROCERIES = "groceries"
@@ -73,8 +74,12 @@ object Routes {
     const val EDIT = "edit?${EditRecipeViewModel.RECIPE_ID_ARG}={${EditRecipeViewModel.RECIPE_ID_ARG}}"
 
     fun recipe(id: Long) = "recipe/$id"
-    fun weekRecipe(id: Long, servings: Int?) =
-        "week/recipe/$id" + (servings?.let { "?${RecipeViewModel.SERVINGS_ARG}=$it" } ?: "")
+    // `startCook` (#402): Home's Today card opens the planned recipe in cook mode.
+    fun weekRecipe(id: Long, servings: Int?, startCook: Boolean = false) =
+        "week/recipe/$id" + listOfNotNull(
+            servings?.let { "${RecipeViewModel.SERVINGS_ARG}=$it" },
+            "${RecipeViewModel.START_COOK_ARG}=true".takeIf { startCook }
+        ).let { if (it.isEmpty()) "" else "?" + it.joinToString("&") }
     fun whatINeed(weekStart: Long) = "week/need/$weekStart"
     fun edit(id: Long) ="edit?${EditRecipeViewModel.RECIPE_ID_ARG}=$id"
     const val NEW_RECIPE = "edit"
@@ -190,6 +195,11 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onOpenPasted = navController::openPasted,
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
             onResumeCooking = { navController.navigate(Routes.cookRecipe(it)) },
+            // Today's meal (#402): on the Week's stack, as the Week opens a planned recipe.
+            onOpenPlanned = { id, servings, cook ->
+                navController.selectTab(Tab.WEEK)
+                navController.navigate(Routes.weekRecipe(id, servings, cook))
+            },
             onOpenRecipes = { navController.navigate(Routes.RECIPES) },
             onOpenLists = { navController.navigate(Routes.LISTS) },
             onOpenSettings = { navController.navigate(Routes.SETTINGS) },

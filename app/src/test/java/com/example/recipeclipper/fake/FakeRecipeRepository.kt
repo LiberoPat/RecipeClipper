@@ -10,10 +10,12 @@ import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeLink
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.SavedRecipe
 import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 
 /**
  * A hand-written fake, not a mock: a recording fake reads better in a failure message than a
@@ -182,6 +184,14 @@ class FakeRecipeRepository : RecipeRepository {
         return deleteResults[id]
     }
 
+    /** Every id list [deleteAll] was called with: one entry per transaction (#377). */
+    val deleteAllCalls = mutableListOf<List<Long>>()
+
+    override suspend fun deleteAll(ids: List<Long>): List<RecipeRepository.DeletedRecipe> {
+        deleteAllCalls += ids
+        return ids.mapNotNull { delete(it) }
+    }
+
     /** The outcome [restoreAll] answers, to stage a full free library (#345); a refusal restores none. */
     var restoreOutcome = RecipeRepository.RestoreOutcome.RESTORED
 
@@ -222,6 +232,15 @@ class FakeRecipeRepository : RecipeRepository {
             }
         }
     }
+
+    /** What [observeRecipeLines] emits (#378): every recipe's ingredient lines, pushed by the test. */
+    val recipeLines = MutableStateFlow<List<SavedRecipe>>(emptyList())
+
+    /** How many times [observeRecipeLines] was collected, to show it is read only while the pantry chip is on. */
+    var recipeLinesCollections = 0
+
+    override fun observeRecipeLines(): Flow<List<SavedRecipe>> =
+        recipeLines.onStart { recipeLinesCollections++ }
 
     /** Typed in by hand (a `manual:` link), never the tour's sample (#345). */
     private val RecipeSummary.isTyped: Boolean

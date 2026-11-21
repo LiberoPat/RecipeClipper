@@ -1,11 +1,11 @@
 package com.example.recipeclipper.ui.recipes
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -16,19 +16,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.PantryCoverage
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.common.RecipeThumbnail
+import com.example.recipeclipper.ui.common.recipeRowClicks
 import com.example.recipeclipper.ui.recipe.sourceCreditText
 
 /**
  * A row of the Recipes library (#286, the tidy list): photo, title, the site and total time
  * under it, and a filled bookmark, not the word "Saved", when the recipe is in any list.
  * The site is credited as the reading view credits it. Home and List detail keep `RecipeRow`.
+ *
+ * A long press opens the row's menu through [onLongClick] (#376); while [selecting] (#377) the row
+ * leads with a checkbox, a tap toggles [selected] through [onClick], and the bookmark button is left out.
  */
 @Composable
 internal fun LibraryRow(
@@ -36,15 +40,24 @@ internal fun LibraryRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     /** One cookbook (#345): an outlined bookmark on a recipe in no list, opening the save-to-list sheet. */
-    onSaveToList: (() -> Unit)? = null
+    onSaveToList: (() -> Unit)? = null,
+    /** With the pantry chip on (#378): how many of its ingredients the pantry has, "You have 6 of 8". */
+    pantry: PantryCoverage? = null,
+    onLongClick: (() -> Unit)? = null,
+    selecting: Boolean = false,
+    selected: Boolean = false
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
+            .recipeRowClicks(selecting, selected, onClick, onLongClick)
             .padding(vertical = 10.dp)
     ) {
+        if (selecting) {
+            // Drawn only: the row itself is the toggle, so it reads as one checkbox.
+            Checkbox(checked = selected, onCheckedChange = null, modifier = Modifier.padding(end = 10.dp))
+        }
         RecipeThumbnail(recipe.imageUrl)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(
@@ -58,6 +71,7 @@ internal fun LibraryRow(
                     ?: if (recipe.isFromChat) stringResource(R.string.recipes_view_chat) else null,
                 recipe.totalTime
             )
+            if (pantry != null) PantryLine(pantry, Modifier.testTag("pantryHave-${recipe.id}"))
         }
         if (recipe.isSaved) {
             Icon(
@@ -66,7 +80,8 @@ internal fun LibraryRow(
                 tint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.padding(start = 12.dp).size(20.dp)
             )
-        } else if (onSaveToList != null) {
+        } else if (onSaveToList != null && !selecting) {
+            // Not while ticking: no button to tap by mistake.
             IconButton(onClick = onSaveToList, modifier = Modifier.testTag("saveToList-${recipe.id}")) {
                 Icon(
                     painterResource(R.drawable.ic_bookmark_border),

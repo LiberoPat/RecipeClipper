@@ -74,6 +74,15 @@ import XCTest
 // recipe), ingredients, steps and yield. Write only `Parse("{\"@type\":\"Recipe\", …}"),`.
 // Duration rows (#179): a prep, cook or total time, then Durations.format of it
 // (nil: hidden). Write only `Dur("PT1H30M"),` or `Dur("1 Std. 30 Min.", lang: "de"),`.
+// Minutes rows (#378): a stored prep, cook or total time, then Durations.minutes (nil: unreadable,
+// zero or too large). Write only `Mins("1h 30m"),` (optionally `, lang: "de"`).
+// Quick-filter rows (#378): a recipe's total, prep and cook times (nil or a string each), then the
+// minutes RecipeQuickFilters reads and whether it is 30 min or less. Write only
+// `Quick(nil, "10m", "15m"),` (optionally `, lang: "de"`).
+// Pantry-coverage rows (#378): pantry items by name ("*salt" a staple, "-butter" out of stock), one
+// recipe's lines, then RecipeQuickFilters.coverage: how many nameable lines the pantry has, how
+// many there are and whether that is half or more (nil, nil, false: the language has no tables).
+// Write only `Cover(["flour"], ["2 cups flour", "1 cup milk"]),` (optionally `, lang: "de"`).
 // Ahead-of-time rows (#397): a recipe's steps, then AheadSteps.find: the index of the step to
 // start ahead of time and its quoted sentence (nil, nil: none). Write only `Ahead(["Marinate overnight."], nil, nil),`
 // or `Ahead(["Über Nacht marinieren."], lang: "de", nil, nil),`.
@@ -325,6 +334,29 @@ final class DifferentialCorpusTests: XCTestCase {
         let time: String; let words: LanguageWords?; let shown: String?
         init(_ time: String, lang: String = "en", _ shown: String?) {
             self.time = time; self.words = LanguageWords.forTag(lang); self.shown = shown
+        }
+    }
+
+    private struct Mins {
+        let time: String; let words: LanguageWords?; let minutes: Int?
+        init(_ time: String, lang: String = "en", _ minutes: Int?) {
+            self.time = time; self.words = LanguageWords.forTag(lang); self.minutes = minutes
+        }
+    }
+
+    private struct Quick {
+        let total: String?; let prep: String?; let cook: String?; let language: String; let minutes: Int?; let under: Bool
+        init(_ total: String?, _ prep: String?, _ cook: String?, lang: String = "en", _ minutes: Int?, _ under: Bool) {
+            self.total = total; self.prep = prep; self.cook = cook; self.language = lang
+            self.minutes = minutes; self.under = under
+        }
+    }
+
+    private struct Cover {
+        let pantry: [String]; let lines: [String]; let language: String; let have: Int?; let total: Int?; let matches: Bool
+        init(_ pantry: [String], _ lines: [String], lang: String = "en", _ have: Int?, _ total: Int?, _ matches: Bool) {
+            self.pantry = pantry; self.lines = lines; self.language = lang
+            self.have = have; self.total = total; self.matches = matches
         }
     }
 
@@ -2140,6 +2172,77 @@ final class DifferentialCorpusTests: XCTestCase {
         Dur("  ", nil),
     ]
 
+    private static let minutesRows: [Mins] = [
+        Mins("10m", 10),
+        Mins("1h 30m", 90),
+        Mins("2h", 120),
+        Mins("PT1H30M", 90),
+        Mins("P1DT1H", 1500),
+        Mins("PT90S", 2),
+        Mins("PT20S", nil),
+        Mins("PT0S", nil),
+        Mins("0m", nil),
+        Mins("1 hour 30 minutes", 90),
+        Mins("Overnight", nil),
+        Mins("20 to 25 minutes", nil),
+        Mins("1-2 hours", nil),
+        Mins("  ", nil),
+        Mins("99999999999999999999 minutes", nil),
+        Mins("20000000 minutes", nil),
+        Mins("1h 30min", lang: "de", 90),
+        Mins("1 Std. 30 Min.", lang: "de", 90),
+        Mins("1 hour 30 minutes", lang: "de", nil),
+        Mins("1時間 30分", lang: "ja", 90),
+        Mins("45min", lang: "fr", 45),
+        Mins("2 horas y 15 minutos", lang: "es", 135),
+        Mins("PT20M", lang: "xx", 20),
+        Mins("1h 20m", lang: "xx", 80),
+        Mins("20 minutes", lang: "xx", nil),
+    ]
+
+    private static let quicks: [Quick] = [
+        Quick(nil, "10m", "15m", 25, true),
+        Quick(nil, "10m", "20m", 30, true),
+        Quick(nil, "10m", nil, nil, false),
+        Quick(nil, nil, "10m", nil, false),
+        Quick(nil, nil, nil, nil, false),
+        Quick(nil, "PT10M", "PT15M", 25, true),
+        Quick(nil, "5m", "Overnight", nil, false),
+        Quick("25m", nil, nil, 25, true),
+        Quick("29m", nil, nil, 29, true),
+        Quick("30m", nil, nil, 30, true),
+        Quick("31m", nil, nil, 31, false),
+        Quick(nil, "10m", "21m", 31, false),
+        Quick("1h 5m", nil, nil, 65, false),
+        Quick("PT25M", nil, nil, 25, true),
+        Quick("Overnight", "5m", "5m", nil, false),
+        Quick("20 to 25 minutes", nil, nil, nil, false),
+        Quick("0m", "10m", "10m", nil, false),
+        Quick("25min", nil, nil, lang: "de", 25, true),
+        Quick("1h 30min", nil, nil, lang: "de", 90, false),
+        Quick(nil, "10min", "15min", lang: "fr", 25, true),
+        Quick("25m", nil, nil, lang: "xx", 25, true),
+        Quick("25 minutes", nil, nil, lang: "xx", nil, false),
+    ]
+
+    private static let covers: [Cover] = [
+        Cover(["flour", "eggs"], ["2 cups flour", "3 large eggs", "1 cup milk"], 2, 3, true),
+        Cover(["flour"], ["2 cups flour", "1 cup milk", "1 cup sugar"], 1, 3, false),
+        Cover(["flour"], ["2 cups rice flour"], 0, 1, false),
+        Cover(["rice flour"], ["2 cups flour"], 0, 1, false),
+        Cover(["flour"], ["2 cups all-purpose flour"], 1, 1, true),
+        Cover(["butter"], ["1 can butter beans"], 0, 1, false),
+        Cover(["*salt", "butter"], ["For the dough:", "1 tsp salt", "2 tbsp unsalted butter", "1 egg"], 2, 3, true),
+        Cover(["-butter"], ["2 tbsp butter"], 0, 1, false),
+        Cover(["salt"], ["salt and pepper to taste", "1 cup flour"], 0, 1, false),
+        Cover(["onion"], ["2 onions, diced", "1 red onion", "3 green onions"], 1, 3, false),
+        Cover(["flour"], ["For the dough:"], 0, 0, false),
+        Cover([], [], 0, 0, false),
+        Cover(["Mehl"], ["200 g Mehl", "2 Eier"], lang: "de", 1, 2, true),
+        Cover(["lait"], ["250 ml de lait", "2 œufs"], lang: "fr", 1, 2, true),
+        Cover(["butter"], ["1 cup butter"], lang: "xx", nil, nil, false),
+    ]
+
     private static let aheads: [Ahead] = [
         Ahead(["Mix the marinade.", "Marinate the chicken at least 8 hours or overnight. Then grill it for 10 minutes."], 1, "Marinate the chicken at least 8 hours or overnight."),
         Ahead(["Marinate for 4 hours in the fridge, turning once."], 0, "Marinate for 4 hours in the fridge, turning once."),
@@ -2964,6 +3067,43 @@ final class DifferentialCorpusTests: XCTestCase {
     func testDurationsMatchKotlin() {
         for row in Self.durations {
             XCTAssertEqual(Durations.format(row.time, words: row.words), row.shown, row.time)
+        }
+    }
+
+    func testMinutesMatchKotlin() {
+        for row in Self.minutesRows {
+            XCTAssertEqual(Durations.minutes(row.time, words: row.words), row.minutes, row.time)
+        }
+    }
+
+    func testQuickFiltersMatchKotlin() {
+        for row in Self.quicks {
+            let recipe = RecipeSummary(
+                id: 1, title: "r", imageUrl: nil, totalTime: row.total, lastViewedAt: 0, isSaved: false,
+                prepTime: row.prep, cookTime: row.cook, language: row.language
+            )
+            let label = "\(row.total ?? "nil") / \(row.prep ?? "nil") / \(row.cook ?? "nil") \(row.language)"
+            XCTAssertEqual(RecipeQuickFilters.minutes(recipe), row.minutes, label)
+            XCTAssertEqual(RecipeQuickFilters.thirtyOrLess(recipe), row.under, label)
+        }
+    }
+
+    func testPantryCoverageMatchesKotlin() {
+        for row in Self.covers {
+            let pantry = row.pantry.enumerated().map { i, name in
+                PantryItem(
+                    id: Int64(i + 1), name: String(name.drop { $0 == "*" || $0 == "-" }), quantity: nil,
+                    language: row.language, aisle: .other, inStock: !name.hasPrefix("-"),
+                    alwaysHave: name.hasPrefix("*"), purchasedDay: nil, expiresDay: nil
+                )
+            }
+            let coverage = RecipeQuickFilters.coverage(
+                SavedRecipe(id: 1, title: "r", language: row.language, lines: row.lines), pantry: pantry
+            )
+            let label = "\(row.pantry) / \(row.lines)"
+            XCTAssertEqual(coverage?.have, row.have, label)
+            XCTAssertEqual(coverage?.total, row.total, label)
+            XCTAssertEqual(coverage?.matches ?? false, row.matches, label)
         }
     }
 

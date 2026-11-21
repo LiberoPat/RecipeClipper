@@ -29,6 +29,15 @@ interface CookedPhotoRepository {
     /** "Mark as cooked" (#173): an entry cooked today with no photo and no note; null if it couldn't be written. */
     suspend fun markCooked(recipeId: Long): CookedPhoto?
 
+    /**
+     * Finishing cook mode records the cooking (#402), unless [recipeId] already has an entry
+     * dated today (a photo, or "Mark as cooked"): one cooking a day is enough to say it was cooked.
+     */
+    suspend fun markCookedToday(recipeId: Long)
+
+    /** The recipes with an entry dated [day] (#402): what Home's Today card counts as cooked. */
+    fun observeCookedOn(day: Long): Flow<Set<Long>>
+
     suspend fun edit(id: Long, day: Long, note: String?)
 
     /** Deletes the entry; its file stays until [forget] or [sweep], so [restore] can undo it. */
@@ -80,6 +89,15 @@ class DefaultCookedPhotoRepository @Inject constructor(
         val id = log.guard("markCooked", null) { dao.insert(entity) } ?: return null
         return entity.copy(id = id).toDomain()
     }
+
+    override suspend fun markCookedToday(recipeId: Long) {
+        val today = PlanDays.today(clock.now())
+        val already = log.guard("cookedToday", true) { dao.countOn(recipeId, today) > 0 }
+        if (!already) markCooked(recipeId)
+    }
+
+    override fun observeCookedOn(day: Long): Flow<Set<Long>> =
+        dao.observeRecipesCookedOn(day).orEmptyOnError(log, "observeCookedOn").map { it.toSet() }
 
     override suspend fun edit(id: Long, day: Long, note: String?) =
         log.guard("editCookedPhoto", Unit) { dao.edit(id, day, CookedPhoto.cleanNote(note), clock.now()) }

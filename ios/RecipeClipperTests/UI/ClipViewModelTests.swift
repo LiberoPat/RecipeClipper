@@ -1015,4 +1015,17 @@ final class ClipViewModelTests: XCTestCase {
         XCTAssertEqual((object["photo"] as? [String: String])?["id"], "m3")
         XCTAssertTrue(ClipScreen.syncJson(draft, newMarkId: nil).contains("\"armed\":null"))
     }
+
+    /// A snackbar with an action to reach stays for the undo window (Android's `Long`), a plain
+    /// notice for 4 s. At 4 s the nightly's slow runner lost the removal's Undo before the test
+    /// tapped it.
+    func testASnackbarWithAnActionStaysForTheUndoWindowAPlainNoticeForFourSeconds() {
+        XCTAssertEqual(ClipMessage.removed(.ingredients, count: 3).snackbarWindow, .seconds(10))
+        XCTAssertEqual(ClipMessage.draftRestored.snackbarWindow, .seconds(10))
+        XCTAssertEqual(ClipMessage.saveFailed.snackbarWindow, .seconds(10))
+        XCTAssertEqual(ClipMessage.unlock(.pending).snackbarWindow, .seconds(10))
+        XCTAssertEqual(ClipMessage.photoUnreadable.snackbarWindow, .seconds(4))
+        XCTAssertEqual(ClipMessage.missing(name: true, lines: false).snackbarWindow, .seconds(4))
+        XCTAssertEqual(ClipMessage.textUnreadable.snackbarWindow, .seconds(4))
+    }
 }

@@ -37,7 +37,7 @@ place rather than appending an update.
 
 Built on both platforms: share → parse → show; the Recipes library (#102);
 the free tier and its unlock (#107); one cookbook (#345: nothing removed
-automatically, the free limit at 50, a views strip on Recipes); lists; scaling and unit conversion;
+automatically, the free limit at 50, a views strip on Recipes); lists, dragged into the cook's own order (#381); scaling and unit conversion;
 Settings; cook mode with saved progress and background timer alerts; sharing
 out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
@@ -206,8 +206,17 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   Lists screen, Back to Recipes), then the automatic views (Not in a list, Cooked, Typed by
   you, From a chat; each its own screen), in place of V1's All / In a list / Not in a list pills
   (those stay with `oneCookbook` off). Views are questions about stored data, never filing.
-  Recently viewed is a sort, not a place.
-- **Home** (#286): "Continue cooking" (the most recent) as a resume card;
+  Recently viewed is a sort, not a place. Under search, chips that combine with the search and the
+  sort (#378: 30 min or less, Not cooked yet, Uses what's in my pantry: half the nameable lines Have,
+  by name, each row saying "You have 6 of 8"), and a rows / photo-grid toggle beside the sort
+  (`recipes_layout`, #380).
+- **Home** (#286, #402): one card at the top. Mid-cook (cook mode left on, or a
+  timer running on an unfinished run; never a finished run): "Continue cooking" with
+  Resume cooking. Otherwise (`homeTonight`) "Today": the earliest of today's planned
+  meals, in the meal types' order, not yet cooked (no cooking entry dated today; a
+  finished run records one) and in its window (`MealWindows`: breakfast to 11:00,
+  lunch to 15:00, dinner and snack all day, own types always), with Start cooking, the rest on a line under it; a note
+  shows its text; nothing left, no card. Off, always the most recent recipe. Then
   Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles, then a full-width Ask an AI tile (#351); one Recipes
   row with its count (a Lists row too only with `oneCookbook` off); the
   Settings gear. Empty sections hide. **No "Saved" section and no "Recently
@@ -221,12 +230,14 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   pantry" after cooking ends, never on a tick. Snackbars are only for undo.
 - **Save-to-list sheet:** checkboxes, each tick writes at once (no
   Save/Cancel), "+ New list" expands inline and ticks the recipe into it.
-  Opened from the bookmark icon (filled = in a list); membership is edited
-  only here. A list is renamed and deleted on its own screen.
+  Opened from the bookmark icon (filled = in a list) or a row's long-press
+  menu; membership is edited only here, plus "Remove from this list" on a
+  list's own screen (#376, #377). A list is renamed and deleted on its own screen.
 - **Deleting a recipe** is a hard delete: a Recipes swipe with an undo
-  snackbar (a burst of swipes shares one all-or-nothing undo), or the recipe
-  screen's overflow menu with a confirmation dialog (no undo). The user's
-  photos go with it. On the free tier an Undo that would take the library
+  snackbar (a burst of swipes shares one all-or-nothing undo), a row's
+  long-press menu or a selection (#376, #377: one confirmation, then that
+  same one undo for all), or the recipe screen's overflow menu with a
+  confirmation dialog (no undo). The user's photos go with it. On the free tier an Undo that would take the library
   past its limit restores none and says so (#345).
 - **Sharing a recipe out** sends plain text (no Markdown), as shown on
   screen, scaled and converted, without the source link. The share icon sits
@@ -234,7 +245,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
 
 ## Data rules
 
-- Room database `recipe_clipper.db`, **version 17** (iOS `user_version` 16),
+- Room database `recipe_clipper.db`, **version 18** (iOS `user_version` 17),
   schema exported to `app/schemas/`: commit it. **Never use destructive
   migration**, and give every migration a `MigrationTest`. iOS mirrors the
   schema in SQLite, with `PRAGMA user_version` migrations, in the App Group

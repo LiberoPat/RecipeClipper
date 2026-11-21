@@ -138,6 +138,11 @@ extension AppDatabase {
         try await read { try ListDao(db: $0).lists(recipeId: recipeId) }
     }
 
+    /// The rows an export reads (#26), in the order it writes them.
+    func snapshotLists() async throws -> [BackupSnapshot.ListRow] {
+        try await read { try BackupDao(db: $0).snapshot().lists }
+    }
+
     func favoritesId() async throws -> Int64 {
         try await allLists().first { $0.isFavorites }!.id
     }

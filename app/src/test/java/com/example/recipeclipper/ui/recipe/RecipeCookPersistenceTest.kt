@@ -14,6 +14,7 @@ import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.fake.FakeAppInfo
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeConnectivity
+import com.example.recipeclipper.fake.FakeCookedPhotoRepository
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeTimerAlarmScheduler
@@ -64,16 +65,20 @@ class RecipeCookPersistenceTest {
         recipe: Recipe,
         repository: FakeRecipeRepository = FakeRecipeRepository(),
         cookArg: Boolean = false,
+        startCookArg: Boolean = false,
         plannedServings: Int? = null,
-        countdowns: TimerCountdownSync? = null
+        countdowns: TimerCountdownSync? = null,
+        cooked: FakeCookedPhotoRepository? = null
     ): RecipeViewModel {
         repository.openResult = recipe
         val args = mutableMapOf<String, Any?>(RecipeViewModel.RECIPE_ID_ARG to ID)
         if (cookArg) args[RecipeViewModel.COOK_ARG] = true
+        if (startCookArg) args[RecipeViewModel.START_COOK_ARG] = true
         if (plannedServings != null) args[RecipeViewModel.SERVINGS_ARG] = plannedServings
         return RecipeViewModel(
             SavedStateHandle(args), repository, FakeAppPreferences(), Clock { testScheduler.currentTime },
-            FakeConnectivity(), FakeAppInfo(), alarms, countdowns = countdowns
+            FakeConnectivity(), FakeAppInfo(), alarms, countdowns = countdowns,
+            cooked = cooked
         )
     }
 
@@ -280,6 +285,80 @@ class RecipeCookPersistenceTest {
 
             assertTrue(alarms.pending.isEmpty())
             assertTrue(vm.uiState.value.cook.timers.isEmpty())
+        }
+
+    // #402: "Done — finish" ends the run's timers, their alarms and countdowns, and records the cooking.
+    @Test fun `finishing a run stops its timers and cancels their alarms`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRecipeRepository()
+        val vm = open(recipe(instructions = listOf("Simmer for 10 minutes.", "Serve.")), repository)
+        advanceUntilIdle()
+        vm.onCookStart()
+        vm.onTimerStart(0)
+        assertEquals(1, alarms.pending.size)
+
+        vm.onStepDone()
+        assertEquals("not the last step: the timer runs on", 1, alarms.pending.size)
+        vm.onStepDone() // the last step: Done, finish
+        advanceUntilIdle()
+
+        assertTrue(alarms.pending.isEmpty())
+        assertEquals(listOf(ID to 0), alarms.cancelCalls)
+        assertTrue(vm.uiState.value.cook.timers.values.none { it.running })
+        val saved = repository.setCookProgressCalls.last().second
+        assertEquals(null, saved.timers.getValue(0).endsAt)
+    }
+
+    @Test fun `finishing a run records today's cooking once`() = runTest(mainDispatcherRule.dispatcher) {
+        val cooked = FakeCookedPhotoRepository(today = 0L)
+        val vm = open(recipe(instructions = listOf("Serve.")), cooked = cooked)
+        advanceUntilIdle()
+
+        vm.onCookStart()
+        vm.onStepDone()
+        advanceUntilIdle()
+        assertEquals(listOf(ID), cooked.photos.value.map { it.recipeId })
+
+        // Cooked again the same day: still one entry for the day.
+        vm.onCookStart()
+        vm.onStepDone()
+        advanceUntilIdle()
+        assertEquals(1, cooked.photos.value.size)
+    }
+
+    @Test fun `a run already marked cooked today adds no second entry, and an unfinished one adds none`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val cooked = FakeCookedPhotoRepository(today = 0L)
+            cooked.mark(ID)
+            val vm = open(recipe(instructions = listOf("Chop.", "Serve.")), cooked = cooked)
+            advanceUntilIdle()
+
+            vm.onCookStart()
+            vm.onStepDone()
+            advanceUntilIdle()
+            assertEquals(1, cooked.photos.value.size)
+
+            vm.onStepDone()
+            advanceUntilIdle()
+            assertEquals(1, cooked.photos.value.size)
+        }
+
+    // #402: Home's Today card opens the recipe in cook mode; a finished last run starts afresh.
+    @Test fun `startCook opens in cook mode, a finished run starting afresh and an unfinished one where it was`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val fresh = open(
+                recipe(CookProgress(currentStep = 2, doneSteps = setOf(0, 1, 2))),
+                startCookArg = true
+            )
+            advanceUntilIdle()
+            assertTrue(fresh.uiState.value.cook.active)
+            assertEquals(0, fresh.uiState.value.cook.currentStep)
+            assertTrue(fresh.uiState.value.cook.doneSteps.isEmpty())
+
+            val resumed = open(recipe(CookProgress(currentStep = 1, doneSteps = setOf(0))), startCookArg = true)
+            advanceUntilIdle()
+            assertTrue(resumed.uiState.value.cook.active)
+            assertEquals(1, resumed.uiState.value.cook.currentStep)
+            assertEquals(setOf(0), resumed.uiState.value.cook.doneSteps)
         }
 
     @Test fun `deleting the recipe cancels its running timers`() = runTest(mainDispatcherRule.dispatcher) {

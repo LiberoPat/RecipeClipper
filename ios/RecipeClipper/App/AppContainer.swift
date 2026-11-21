@@ -231,7 +231,9 @@ final class AppContainer {
                 photos: photoStore,
                 versionsOn: { featureFlags?.isOn(.recipeVersions) ?? false }
             ),
-            listRepository: DefaultListRepository(db: database, clock: clock),
+            listRepository: DefaultListRepository(
+                db: database, clock: clock, reorderOn: { featureFlags?.isOn(.reorderLists) ?? true }
+            ),
             mealPlanRepository: DefaultMealPlanRepository(db: database, clock: clock),
             groceryRepository: DefaultGroceryRepository(db: database, clock: clock, decisions: decisions),
             pantryRepository: DefaultPantryRepository(db: database, clock: clock),
@@ -303,7 +305,8 @@ final class AppContainer {
     func makeHomeViewModel() -> HomeViewModel {
         HomeViewModel(
             repository: recipeRepository, backups: backupRepository, files: backupFiles,
-            lists: listRepository, clock: clock, pasted: pastedTextRouter
+            lists: listRepository, clock: clock, pasted: pastedTextRouter,
+            mealPlan: mealPlanRepository, cooked: cookedPhotoRepository
         )
     }
 
@@ -328,19 +331,22 @@ final class AppContainer {
         RecipesViewModel(
             repository: recipeRepository, preferences: preferences, library: libraryPolicy,
             cookedSort: cookedPhotoRepository != nil, countdowns: timerCountdowns,
-            view: view, lists: listRepository, pasted: pastedTextRouter
+            view: view, lists: listRepository, pasted: pastedTextRouter, pantry: pantryRepository,
+            decisions: decisionRepository
         )
     }
 
     func makeRecipeViewModel(
-        recipeId: Int64?, url: String?, openInCookMode: Bool = false, plannedServings: Int? = nil
+        recipeId: Int64?, url: String?, openInCookMode: Bool = false, plannedServings: Int? = nil,
+        startInCookMode: Bool = false
     ) -> RecipeViewModel {
         RecipeViewModel(
             recipeId: recipeId, url: url, repository: recipeRepository, preferences: preferences,
             clock: clock, connectivity: connectivity, appInfo: appInfo, alarms: alarms,
             openInCookMode: openInCookMode, plannedServings: plannedServings,
             shortSteps: shortStepRepository, flags: featureFlags, entitlements: entitlements,
-            decisions: decisionRepository, countdowns: timerCountdowns
+            decisions: decisionRepository, countdowns: timerCountdowns,
+            cooked: cookedPhotoRepository, startInCookMode: startInCookMode
         )
     }
 
@@ -553,6 +559,9 @@ final class AppContainer {
     }
 
     func makeListDetailViewModel(listId: Int64) -> ListDetailViewModel {
-        ListDetailViewModel(listId: listId, repository: listRepository)
+        ListDetailViewModel(
+            listId: listId, repository: listRepository, recipes: recipeRepository, preferences: preferences,
+            decisions: decisionRepository, countdowns: timerCountdowns
+        )
     }
 }

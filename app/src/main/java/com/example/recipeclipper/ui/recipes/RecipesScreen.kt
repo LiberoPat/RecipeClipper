@@ -1,9 +1,15 @@
 package com.example.recipeclipper.ui.recipes
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +18,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,6 +37,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxDefaults
 import androidx.compose.material3.SwipeToDismissBoxState
@@ -45,6 +56,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -54,10 +68,19 @@ import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.model.PantryCoverage
 import com.example.recipeclipper.data.model.RecipeFilter
+import com.example.recipeclipper.data.model.RecipeQuickFilter
+import com.example.recipeclipper.data.model.RecipesLayout
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.ui.common.ConfirmDeleteRecipesDialog
 import com.example.recipeclipper.ui.common.LocalFlagValues
+import com.example.recipeclipper.ui.common.RowActionSet
+import com.example.recipeclipper.ui.common.RowWithMenu
+import com.example.recipeclipper.ui.plan.AddToPlanBottomSheet
+import com.example.recipeclipper.ui.plan.AddToPlanViewModel
+import com.example.recipeclipper.ui.recipe.shareLabels
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
@@ -86,14 +109,29 @@ fun RecipesScreen(
     scanEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
     /** One cookbook (#345): the views strip in place of the filter pills, and a bookmark to save from a row. */
     oneCookbook: Boolean = LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK),
-    /** The sheet behind a row's outlined bookmark (#345); the recipe goes in with `setRecipe`. */
-    saveViewModel: SaveToListViewModel? = if (oneCookbook) hiltViewModel() else null,
+    /** A long press on a row opens its menu (#376). */
+    rowActions: Boolean = LocalFlagValues.current.isOn(Flag.ROW_ACTIONS),
+    /** Selecting several recipes (#377): a Select action in the header and in a row's menu. */
+    multiSelect: Boolean = LocalFlagValues.current.isOn(Flag.MULTI_SELECT),
+    /** The sheet behind a row's outlined bookmark (#345) and its menu's Add to list (#376); the recipe goes in with `setRecipe`. */
+    saveViewModel: SaveToListViewModel? = if (oneCookbook || rowActions || multiSelect) hiltViewModel() else null,
+    /** The sheet behind a row menu's Add to plan (#376). */
+    planViewModel: AddToPlanViewModel? = if (rowActions) hiltViewModel() else null,
+    /** Quick filter chips under search (#378). */
+    quickFilters: Boolean = LocalFlagValues.current.isOn(Flag.RECIPE_FILTERS),
+    /** The rows / photo grid toggle (#380); off, Recipes is the rows whatever was stored. */
+    gridEnabled: Boolean = LocalFlagValues.current.isOn(Flag.RECIPES_GRID),
     // A parameter so a test can watch the one snackbar a burst shares (#268).
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var saveSheetOpen by rememberSaveable { mutableStateOf(false) }
+    var planSheetOpen by rememberSaveable { mutableStateOf(false) }
     val view = state.view
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    // Back leaves selecting first (#377), then the screen.
+    BackHandler(enabled = state.selecting, onBack = viewModel::onExitSelection)
 
     // Resolved here, not inside LaunchedEffect below: its block is a suspend lambda, not a
     // composable one, so stringResource cannot be called from it. Resolving the finished
@@ -142,7 +180,38 @@ fun RecipesScreen(
         if (saveSheetOpen && saveViewModel != null) {
             SaveToListBottomSheet(saveViewModel, onDismiss = { saveSheetOpen = false })
         }
+        if (planSheetOpen && planViewModel != null) {
+            AddToPlanBottomSheet(planViewModel, onDismiss = { planSheetOpen = false })
+        }
+        // A row menu's Delete or a selection's (#376, #377): one confirmation for everything asked about.
+        if (state.confirmingDelete.isNotEmpty()) {
+            ConfirmDeleteRecipesDialog(
+                state.confirmingDelete,
+                onConfirm = viewModel::onConfirmDelete,
+                onCancel = viewModel::onCancelDelete
+            )
+        }
         Scaffold(
+            topBar = {
+                // Selecting several recipes (#377): the count, Done, and what to do with them.
+                if (state.selecting) {
+                    SelectionBar(
+                        modifier = Modifier.windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+                        ),
+                        count = state.selectedIds.size,
+                        onDone = viewModel::onExitSelection,
+                        onAddToList = if (saveViewModel == null) null else {
+                            {
+                                saveViewModel.setRecipes(state.selectedIds.toList())
+                                saveSheetOpen = true
+                            }
+                        },
+                        onRemoveFromList = null,
+                        onDelete = viewModel::onRequestDeleteSelected
+                    )
+                }
+            },
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->
                     // No colour overrides: the defaults are the scheme's inverse* slots,
@@ -160,86 +229,219 @@ fun RecipesScreen(
                 Modifier.fillMaxSize().padding(padding),
                 color = MaterialTheme.colorScheme.background
             ) {
-                LazyColumn(
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    item {
-                        BackButton(onBack)
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                            Text(
-                                stringResource(if (view != null) filterLabel(view) else R.string.recipes_title),
-                                style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (view == null) {
-                                AddMenu(
-                                    onTypeRecipe = onNewRecipe, onPasteLink = viewModel::onPasteLink,
-                                    onScan = onScan.takeIf { scanEnabled }
+                val header: @Composable () -> Unit = {
+                    RecipesHeader(
+                        state = state,
+                        onBack = onBack,
+                        onNewRecipe = onNewRecipe,
+                        onPasteLink = viewModel::onPasteLink,
+                        onScan = onScan.takeIf { scanEnabled },
+                        onQueryChange = viewModel::onQueryChange,
+                        onFilterChange = viewModel::onFilterChange,
+                        oneCookbook = oneCookbook,
+                        onOpenView = onOpenView,
+                        onOpenLists = onOpenLists,
+                        quickFilters = quickFilters,
+                        onQuickToggle = viewModel::onQuickFilterToggle,
+                        onSort = viewModel::onSortChange,
+                        onLayout = viewModel::onLayoutChange.takeIf { gridEnabled },
+                        // Select (#377): the header's own entry, beside the + (a view has no +).
+                        onSelect = if (multiSelect) ({ viewModel.onStartSelecting() }) else null
+                    )
+                }
+                val onSave: ((RecipeSummary) -> Unit)? = if (oneCookbook && saveViewModel != null) {
+                    { recipe ->
+                        saveViewModel.setRecipe(recipe.id, recipe.title)
+                        saveSheetOpen = true
+                    }
+                } else {
+                    null
+                }
+                // A long press (#376): not while selecting, when a row is only a checkbox. The rows and the
+                // photo grid share it, and the tap (#377), so a recipe acts the same in either layout.
+                val actionsFor: (RecipeSummary) -> RowActionSet? = { recipe ->
+                    if (!rowActions || state.selecting || saveViewModel == null) {
+                        null
+                    } else {
+                        RowActionSet(
+                            onAddToList = {
+                                saveViewModel.setRecipe(recipe.id, recipe.title)
+                                saveSheetOpen = true
+                            },
+                            onAddToPlan = planViewModel?.let { plan ->
+                                {
+                                    viewModel.onAddToPlan(recipe.id) { base ->
+                                        plan.setRecipe(recipe.id, base)
+                                        planSheetOpen = true
+                                    }
+                                }
+                            },
+                            onShare = {
+                                viewModel.onShare(recipe.id, shareLabels(resources)) { shareRecipeText(context, it) }
+                            },
+                            onSelect = if (multiSelect) ({ viewModel.onStartSelecting(recipe) }) else null,
+                            onRemoveFromList = null,
+                            onDelete = { viewModel.onRequestDelete(listOf(recipe)) }
+                        )
+                    }
+                }
+                val onRowClick: (RecipeSummary) -> Unit = { recipe ->
+                    if (state.selecting) viewModel.onToggleSelected(recipe.id) else onOpenRecipe(recipe.id)
+                }
+                val pantryChip = RecipeQuickFilter.USES_PANTRY in state.quick
+                if (gridEnabled && state.layout == RecipesLayout.GRID) {
+                    // The photo grid (#380): two columns on a phone, more as the width allows.
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(GRID_CELL_MIN_WIDTH),
+                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize().testTag("recipesGrid")
+                    ) {
+                        item(key = "header", span = { GridItemSpan(maxLineSpan) }) { header() }
+                        val cullKeep = state.cullKeep
+                        if (state.showsCullNote && cullKeep != null) {
+                            item(key = "cull", span = { GridItemSpan(maxLineSpan) }) { CullNote(cullKeep) }
+                        }
+                        val recipes = state.recipes
+                        if (recipes != null && recipes.isEmpty()) {
+                            item(key = "empty", span = { GridItemSpan(maxLineSpan) }) { EmptyMessage(state) }
+                        }
+                        gridItems(recipes.orEmpty(), key = { "recipe-${it.id}" }) { recipe ->
+                            // No swipe in a grid: Delete is in the long-press menu (#376), with the rows' other actions.
+                            RowWithMenu(actionsFor(recipe)) { onLongClick ->
+                                LibraryGridCell(
+                                    recipe = recipe,
+                                    onClick = { onRowClick(recipe) },
+                                    pantry = state.coverage[recipe.id].takeIf { pantryChip },
+                                    onSaveToList = onSave?.let { save -> { save(recipe) } },
+                                    onLongClick = onLongClick,
+                                    selecting = state.selecting,
+                                    selected = recipe.id in state.selectedIds
                                 )
                             }
                         }
-                        if (view != null) ViewNote(view, Modifier.padding(top = 6.dp))
-                        Spacer(Modifier.height(12.dp))
-                        SearchField(query = state.query, onQueryChange = viewModel::onQueryChange)
-                        when {
-                            // One cookbook (#345): the views, then the lists, in place of the pills.
-                            oneCookbook && state.showsViewsStrip ->
-                                RecipesViewsStrip(state.counts, state.lists.size, onOpenView, onOpenLists)
-                            !oneCookbook && state.showsFilter ->
-                                RecipeFilterPills(state.filter, state.counts, viewModel::onFilterChange)
-                        }
-                        if (state.showsSortLine) {
-                            SortLine(state, viewModel::onSortChange)
-                        } else {
-                            Spacer(Modifier.height(12.dp))
-                        }
                     }
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        item { header() }
 
-                    val cullKeep = state.cullKeep
-                    if (state.showsCullNote && cullKeep != null) {
-                        item { CullNote(cullKeep, Modifier.padding(top = 12.dp, bottom = 4.dp)) }
-                    }
+                        val cullKeep = state.cullKeep
+                        if (state.showsCullNote && cullKeep != null) {
+                            item { CullNote(cullKeep, Modifier.padding(top = 12.dp, bottom = 4.dp)) }
+                        }
 
-                    val recipes = state.recipes
-                    if (recipes != null && recipes.isEmpty()) {
-                        item {
-                            Text(
-                                when {
-                                    state.query.isNotBlank() -> stringResource(R.string.recipes_no_results, state.query)
-                                    state.filter == RecipeFilter.COOKED -> stringResource(R.string.recipes_empty_cooked)
-                                    state.filter == RecipeFilter.TYPED -> stringResource(R.string.recipes_empty_typed)
-                                    state.filter == RecipeFilter.CHAT -> stringResource(R.string.recipes_empty_chat)
-                                    state.showsFilter && state.filter == RecipeFilter.IN_A_LIST -> stringResource(R.string.recipes_empty_in_list)
-                                    state.showsFilter && state.filter == RecipeFilter.NOT_IN_A_LIST -> stringResource(R.string.recipes_empty_not_in_list)
-                                    else -> stringResource(R.string.recipes_empty)
-                                },
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        val recipes = state.recipes
+                        if (recipes != null && recipes.isEmpty()) {
+                            item { EmptyMessage(state) }
+                        }
+
+                        items(recipes.orEmpty(), key = { it.id }) { recipe ->
+                            Hairline()
+                            SwipeToDeleteRow(
+                                recipe = recipe,
+                                onClick = { onRowClick(recipe) },
+                                onDelete = { viewModel.onDelete(recipe) },
+                                pantry = state.coverage[recipe.id].takeIf { pantryChip },
+                                onSaveToList = onSave?.let { save -> { save(recipe) } },
+                                selecting = state.selecting,
+                                selected = recipe.id in state.selectedIds,
+                                actions = actionsFor(recipe)
                             )
                         }
-                    }
-
-                    items(recipes.orEmpty(), key = { it.id }) { recipe ->
-                        Hairline()
-                        SwipeToDeleteRow(
-                            recipe = recipe,
-                            onClick = { onOpenRecipe(recipe.id) },
-                            onDelete = { viewModel.onDelete(recipe) },
-                            onSaveToList = if (oneCookbook && saveViewModel != null) {
-                                {
-                                    saveViewModel.setRecipe(recipe.id, recipe.title)
-                                    saveSheetOpen = true
-                                }
-                            } else {
-                                null
-                            }
-                        )
                     }
                 }
             }
         }
     }
+}
+
+/** A photo cell's narrowest width: two columns on a phone (320dp of content and up), more on wider screens. */
+private val GRID_CELL_MIN_WIDTH = 140.dp
+
+/**
+ * Everything above the recipes: the back button, the title with its + menu, search, the quick
+ * filter chips (#378), the views strip or the old pills, and the line with the count, the layout
+ * toggle (#380) and the sort. The same in the rows and in the grid.
+ */
+@Composable
+private fun RecipesHeader(
+    state: RecipesUiState,
+    onBack: () -> Unit,
+    onNewRecipe: () -> Unit,
+    onPasteLink: () -> Unit,
+    onScan: ((List<String>) -> Unit)?,
+    onQueryChange: (String) -> Unit,
+    onFilterChange: (RecipeFilter) -> Unit,
+    oneCookbook: Boolean,
+    onOpenView: (RecipeFilter) -> Unit,
+    onOpenLists: () -> Unit,
+    quickFilters: Boolean,
+    onQuickToggle: (RecipeQuickFilter) -> Unit,
+    onSort: (RecipeSort) -> Unit,
+    onLayout: ((RecipesLayout) -> Unit)?,
+    /** Select (#377); null with the flag off. */
+    onSelect: (() -> Unit)? = null
+) {
+    val view = state.view
+    Column {
+        BackButton(onBack)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+            Text(
+                stringResource(if (view != null) filterLabel(view) else R.string.recipes_title),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.weight(1f)
+            )
+            if (onSelect != null && !state.selecting && !state.recipes.isNullOrEmpty()) {
+                TextButton(onClick = onSelect, modifier = Modifier.testTag("selectRecipes")) {
+                    Text(stringResource(R.string.action_select))
+                }
+            }
+            if (view == null && !state.selecting) {
+                AddMenu(onTypeRecipe = onNewRecipe, onPasteLink = onPasteLink, onScan = onScan)
+            }
+        }
+        if (view != null) ViewNote(view, Modifier.padding(top = 6.dp))
+        Spacer(Modifier.height(12.dp))
+        SearchField(query = state.query, onQueryChange = onQueryChange)
+        if (quickFilters && state.showsFilter) {
+            QuickFilterChips(state.quickFilters, state.quick, onQuickToggle)
+        }
+        when {
+            // One cookbook (#345): the views, then the lists, in place of the pills.
+            oneCookbook && state.showsViewsStrip ->
+                RecipesViewsStrip(state.counts, state.lists.size, onOpenView, onOpenLists)
+            !oneCookbook && state.showsFilter ->
+                RecipeFilterPills(state.filter, state.counts, onFilterChange)
+        }
+        if (state.showsSortLine) {
+            SortLine(state, onSort, onLayout)
+        } else {
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+/** What an empty list says: the chips', the search's, else the view's or the empty library's. */
+@Composable
+private fun EmptyMessage(state: RecipesUiState) {
+    Text(
+        when {
+            state.quick.isNotEmpty() -> stringResource(R.string.recipes_no_results_filters)
+            state.query.isNotBlank() -> stringResource(R.string.recipes_no_results, state.query)
+            state.filter == RecipeFilter.COOKED -> stringResource(R.string.recipes_empty_cooked)
+            state.filter == RecipeFilter.TYPED -> stringResource(R.string.recipes_empty_typed)
+            state.filter == RecipeFilter.CHAT -> stringResource(R.string.recipes_empty_chat)
+            state.showsFilter && state.filter == RecipeFilter.IN_A_LIST -> stringResource(R.string.recipes_empty_in_list)
+            state.showsFilter && state.filter == RecipeFilter.NOT_IN_A_LIST -> stringResource(R.string.recipes_empty_not_in_list)
+            else -> stringResource(R.string.recipes_empty)
+        },
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable
@@ -268,7 +470,11 @@ private fun SwipeToDeleteRow(
     recipe: RecipeSummary,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    onSaveToList: (() -> Unit)? = null
+    onSaveToList: (() -> Unit)? = null,
+    pantry: PantryCoverage? = null,
+    selecting: Boolean = false,
+    selected: Boolean = false,
+    actions: RowActionSet? = null
 ) {
     // Remembered, not rememberSaveable like rememberSwipeToDismissBoxState: the lazy list keeps a
     // removed row's saved state under its key, so a row put back by Undo came back dismissed and
@@ -285,11 +491,18 @@ private fun SwipeToDeleteRow(
         state = dismissState,
         backgroundContent = { DeleteBackground(dismissState) },
         modifier = Modifier.fillMaxWidth(),
+        // Not while selecting (#377): a row is then only a checkbox.
+        gesturesEnabled = !selecting,
         // Called once the row has settled off-screen, in either direction.
         onDismiss = onDismiss
     ) {
         Surface(color = MaterialTheme.colorScheme.background) {
-            LibraryRow(recipe, onClick = onClick, onSaveToList = onSaveToList)
+            RowWithMenu(actions) { onLongClick ->
+                LibraryRow(
+                    recipe, onClick = onClick, onSaveToList = onSaveToList, pantry = pantry,
+                    onLongClick = onLongClick, selecting = selecting, selected = selected
+                )
+            }
         }
     }
 }
@@ -318,7 +531,7 @@ private fun DeleteBackground(dismissState: SwipeToDismissBoxState) {
  * free tier "12 of 20 recipes", #107), and the order they're in on the right.
  */
 @Composable
-private fun SortLine(state: RecipesUiState, onSort: (RecipeSort) -> Unit) {
+private fun SortLine(state: RecipesUiState, onSort: (RecipeSort) -> Unit, onLayout: ((RecipesLayout) -> Unit)? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         // Inside a view the count is the view's own, not the free library's.
         val count = state.count.takeIf { state.view == null }
@@ -333,6 +546,7 @@ private fun SortLine(state: RecipesUiState, onSort: (RecipeSort) -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f).padding(start = 2.dp)
         )
+        if (onLayout != null) LayoutToggle(state.layout, onLayout)
         SortMenu(state.sort, onSort)
     }
 }

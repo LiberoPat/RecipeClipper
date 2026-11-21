@@ -85,6 +85,8 @@
     <string name="home_share_hint">Oder teile einen Link aus einer beliebigen App mit Recipe Clipper.</string>
     <string name="home_resume_cooking">Kochen fortsetzen</string>
     <string name="home_open_recipe">Rezept öffnen</string>
+    <string name="home_today">Heute</string>
+    <string name="home_today_other">%1$s: %2$s</string>
     <string name="home_timer_left">Noch %1$s</string>
     <string name="recipes_title">Rezepte</string>
     <string name="recipes_empty">Noch nichts da. Rezepte, die du öffnest, landen hier, und mit + fügst du eines von Hand oder per Link hinzu.</string>
@@ -130,6 +132,14 @@
         <item quantity="other">%1$d Rezepte</item>
     </plurals>
     <string name="cd_sort">Sortieren</string>
+    <string name="recipes_quick_30_or_less">Bis 30 Min.</string>
+    <string name="recipes_quick_not_cooked">Noch nicht gekocht</string>
+    <string name="recipes_quick_pantry">Mit meinem Vorrat</string>
+    <string name="recipes_quick_pantry_note">Zeigt Rezepte, bei denen mindestens die Hälfte der Zutaten in deinem Vorrat ist, nach Name, nicht nach Menge.</string>
+    <string name="recipes_pantry_have">Du hast %1$d von %2$d</string>
+    <string name="recipes_no_results_filters">Keine Rezepte passen zu diesen Filtern.</string>
+    <string name="cd_layout_to_grid">Als Raster anzeigen</string>
+    <string name="cd_layout_to_rows">Als Liste anzeigen</string>
     <string name="tag_saved">Gespeichert</string>
     <string name="time_just_now">Gerade eben</string>
     <string name="time_yesterday">Gestern</string>
@@ -200,6 +210,8 @@
     <string name="lists_title">Listen</string>
     <string name="action_new_list">+  Neue Liste</string>
     <string name="lists_new_list_tile">Neue Liste</string>
+    <string name="lists_move_earlier">Nach vorn verschieben</string>
+    <string name="lists_move_later">Nach hinten verschieben</string>
     <string name="action_create">Erstellen</string>
     <string name="action_rename">Umbenennen</string>
     <string name="action_save">Speichern</string>
@@ -760,6 +772,7 @@
     <string name="pantry_select_items">Artikel auswählen</string>
     <string name="pantry_select">Auswählen</string>
     <string name="action_select_all">Alle auswählen</string>
+    <string name="action_clear_all">Alle abwählen</string>
     <string name="pantry_mark_run_out">Als aufgebraucht markieren</string>
     <string name="cd_exit_selection">Auswahl beenden</string>
     <plurals name="pantry_selected_count">
@@ -825,6 +838,27 @@
     <string name="ai_prompt_temperature_f">Gib Ofentemperaturen in °F an.</string>
     <string name="ai_prompt_write_in">Schreibe es auf %1$s.</string>
     <string name="ai_prompt_note_outside">Schreibe alles andere, was du sagen möchtest, außerhalb des Codeblocks.</string>
+    <!-- Long-press menu on a recipe row (#376) and selecting several recipes (#377). -->
+    <string name="action_select">Auswählen</string>
+    <string name="row_action_add_to_list">Zu einer Liste hinzufügen</string>
+    <string name="action_share">Teilen</string>
+    <string name="row_action_remove_from_list">Aus dieser Liste entfernen</string>
+    <string name="cd_recipe_actions">Rezeptaktionen</string>
+    <string name="save_to_list_partial">Einige</string>
+    <plurals name="recipes_selected_count">
+        <item quantity="one">%1$d ausgewählt</item>
+        <item quantity="other">%1$d ausgewählt</item>
+    </plurals>
+    <plurals name="delete_recipes_title">
+        <item quantity="one">Dieses Rezept löschen?</item>
+        <item quantity="other">%1$d Rezepte löschen?</item>
+    </plurals>
+    <string name="delete_row_body">Das Rezept wird aus deinen Rezepten und allen Listen entfernt, mitsamt deinen Fotos dazu. Einige Sekunden lang kannst du das rückgängig machen.</string>
+    <string name="delete_rows_body">Die Rezepte werden aus deinen Rezepten und allen Listen entfernt, mitsamt deinen Fotos dazu. Einige Sekunden lang kannst du das rückgängig machen.</string>
+    <plurals name="save_to_list_new_list_note_many">
+        <item quantity="one">%1$d Rezept kommt in die neue Liste.</item>
+        <item quantity="other">%1$d Rezepte kommen in die neue Liste.</item>
+    </plurals>
     <string name="ask_ai_plan_hint_new">Neue Rezepte für die Mahlzeiten und Tage, die du wählst, passend zu dem, was du magst</string>
     <string name="ask_ai_plan_hint_mine">Mahlzeiten aus deinen gespeicherten Rezepten</string>
     <string name="ask_ai_plan_hint_mix">Teils deine Rezepte, teils neue</string>
