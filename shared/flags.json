@@ -218,7 +218,7 @@
     },
     {
       "key": "articleRecipes",
-      "description": "A recipe written inside an article: on a page with no JSON-LD or microdata recipe, the article's first list whose items are mostly amounts (at least 3, more than half), followed by its method in paragraphs or an ordered list up to the next heading, is offered on the no-recipe screen as Check the recipe, which opens the editor filled in with those lines as written for the cook to check, saved as a clip under the page's link. Never from prose alone, never saved unchecked. Off, such a page ends at No recipe found as before.",
+      "description": "Recipes written inside an article: on a page with no JSON-LD or microdata recipe, each list in the article whose items are mostly amounts (at least 3, more than half), with its method in paragraphs or an ordered list up to the next heading, is a recipe (at most 6, named by the heading above it). One opens the editor (Check the recipe) straight away in the import's place, filled in as written; several open a chooser first. The same past Cloudflare's check in the clip view. Saved only on Save, as a clip under the page's link (a later recipe adds pith_recipe=<n>). Never from prose alone, never saved unchecked. Off, such a page ends at No recipe found as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 435
     }
