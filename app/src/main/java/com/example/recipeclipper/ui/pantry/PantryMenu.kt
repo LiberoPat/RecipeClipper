@@ -24,7 +24,8 @@ import com.example.recipeclipper.data.model.PantrySort
 
 /**
  * "Select items" (#258), then "Send list" (the in-stock items as text) and "Send as file" (#149), disabled while nothing is
- * in stock, then the sort, then "Clear run-out items" (#194), disabled while nothing has run out.
+ * in stock, then the sort, then "Clear run-out items" (#194), disabled while nothing has run out, and
+ * last "Pantry settings" (#412), Settings' Pantry section; [onOpenSettings] null leaves it out.
  */
 @Composable
 internal fun PantryMenu(
@@ -36,7 +37,8 @@ internal fun PantryMenu(
     canClearRunOut: Boolean,
     onClearRunOut: () -> Unit,
     canSelect: Boolean = false,
-    onSelectItems: () -> Unit = {}
+    onSelectItems: () -> Unit = {},
+    onOpenSettings: (() -> Unit)? = null
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -96,6 +98,17 @@ internal fun PantryMenu(
                     onClearRunOut()
                 }
             )
+            if (onOpenSettings != null) {
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { MenuItemText(stringResource(R.string.action_pantry_settings), stringResource(R.string.menu_desc_pantry_settings)) },
+                    modifier = Modifier.testTag("pantrySettings"),
+                    onClick = {
+                        expanded = false
+                        onOpenSettings()
+                    }
+                )
+            }
         }
     }
 }

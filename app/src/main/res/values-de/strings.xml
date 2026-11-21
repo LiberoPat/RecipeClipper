@@ -853,6 +853,10 @@
     <string name="menu_desc_pantry_send_list">Was vorrätig ist, als Text</string>
     <string name="menu_desc_clear_run_out">Entfernt alles, was als aufgebraucht markiert ist</string>
     <string name="menu_desc_share_calendar">Die Mahlzeiten der Woche in deinen Kalender eintragen</string>
+    <string name="action_plan_settings">Plan-Einstellungen</string>
+    <string name="menu_desc_plan_settings">Erinnerungen an deine geplanten Mahlzeiten</string>
+    <string name="action_pantry_settings">Vorratseinstellungen</string>
+    <string name="menu_desc_pantry_settings">Ablauf-Erinnerungen</string>
     <string name="pantry_select_items">Artikel auswählen</string>
     <string name="pantry_select">Auswählen</string>
     <string name="action_select_all">Alle auswählen</string>

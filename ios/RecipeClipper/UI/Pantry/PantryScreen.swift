@@ -20,6 +20,8 @@ struct PantryScreen: View {
     var useItUpVM: UseItUpViewModel? = nil
     var useItUpPending = false
     var takeUseItUp: () -> Bool = { false }
+    /// Settings' Pantry section (#412), the menu's last item; nil leaves it out.
+    var onOpenSettings: (() -> Void)? = nil
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
     @State private var sideInset = ReadableWidth.gutter
     /// Touch and hold, and drag to select (#258).
@@ -292,6 +294,13 @@ struct PantryScreen: View {
                     Text(Strings.clearRunOut); Text(Strings.menuDescClearRunOut); Image(systemName: "trash")
                 }
                 .disabled(!state.hasRunOut)
+                if let onOpenSettings {
+                    Divider()
+                    Button(action: onOpenSettings) {
+                        Text(Strings.pantrySettings); Text(Strings.menuDescPantrySettings); Image(systemName: "gearshape")
+                    }
+                    .accessibilityIdentifier("pantrySettings")
+                }
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
