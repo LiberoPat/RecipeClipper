@@ -32,9 +32,10 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  * applies at once; the meal-plan flag swaps the navigation graph, so it lands on Home.
  */
 /** Developer text, English by design, like the flags' descriptions. */
-private const val UNLOCKED_OVERRIDE_TITLE = "Unlocked"
+private const val UNLOCKED_OVERRIDE_TITLE = "Pro (unlocked)"
 private const val UNLOCKED_OVERRIDE_DESCRIPTION =
-    "Counts the unlimited-recipes purchase as bought, with no store: needs freeTier on to show."
+    "Counts the one-time unlock as bought, with no store: Pro's Week extras with proUnlock on (#413), " +
+        "unlimited recipes with freeTier on and proUnlock off (#107). Off, the store decides."
 
 @Composable
 fun DeveloperSettingsScreen(onBack: () -> Unit, viewModel: DeveloperSettingsViewModel = hiltViewModel()) {
@@ -75,13 +76,13 @@ fun DeveloperSettingsScreen(onBack: () -> Unit, viewModel: DeveloperSettingsView
                     )
                 }
 
-                // Not a flag: the unlock (#107) counted as bought, to test without a store.
+                // Not a flag: the unlock (#107, Pro since #413) counted as bought, to test without a store.
                 item(key = "unlocked-override") {
                     SwitchRow(
                         title = UNLOCKED_OVERRIDE_TITLE,
                         description = listOfNotNull(
                             UNLOCKED_OVERRIDE_DESCRIPTION,
-                            stringResource(R.string.developer_flag_issue, 107),
+                            stringResource(R.string.developer_flag_issue, 413),
                             if (state.unlockedOverride) stringResource(R.string.developer_flag_changed) else null
                         ).joinToString(" · "),
                         checked = state.unlockedOverride,

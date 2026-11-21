@@ -72,6 +72,21 @@ Two things need a native speaker, both drafts written by Claude:
   hides a fresh ingredient and that no alias is a different thing in that language ("mora", "bayas",
   "salade", Japanese "いか" and "たら" inside longer words). Missing a name only means "bought now".
 
+## Pro, 2026-11-21 (#413)
+
+Nineteen `pro_*` strings on both platforms, drafts written by Claude, for a native speaker to check:
+the badge and the screen's title keep the names "Pro" and "Pith Pro" in every language; the four
+extras' titles ("Shop in two trips": *Compra en dos veces*, *Les courses en deux fois*, *Zweimal
+einkaufen*, *La spesa in due volte*, *Compras em duas vezes*; "Skip a meal": the Skip sheet's verb);
+"One-time purchase, never a subscription." (*Compra única, nunca una suscripción*, *Achat unique,
+jamais un abonnement*, *Einmaliger Kauf, nie ein Abo*, *Acquisto una tantum, mai un abbonamento*,
+*Compra única, nunca uma assinatura*); "Restore purchases" (each store's own wording should win:
+check against the App Store's and Play's in that language); and the free line "Free. No ads. No
+account. No subscription." (*Gratis. Sin anuncios. Sin cuenta. Sin suscripción.*, *Gratuit. Sans pub.
+Sans compte. Sans abonnement.*, *Kostenlos. Ohne Werbung. Ohne Konto. Ohne Abo.*, *Gratis. Senza
+pubblicità. Senza account. Senza abbonamento.*, *Grátis. Sem anúncios. Sem conta. Sem assinatura.*),
+which the store listing will repeat, so it should read as the listing would.
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,

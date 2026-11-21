@@ -45,6 +45,12 @@ interface AppPreferences {
      */
     var eveningReminder: Boolean
 
+    /**
+     * Whether the cook ever set [eveningReminder]'s switch (#413): its "on" by default is a Pro
+     * default, so without Pro only a reminder the cook turned on runs.
+     */
+    val eveningReminderChosen: Boolean
+
     /** When the evening reminder fires, in minutes since local midnight (default 19:00). */
     var eveningReminderMinute: Int
 
@@ -84,7 +90,8 @@ interface AppPreferences {
             unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps,
             recipeSort, recipesLayout,
             eveningReminder = eveningReminder, eveningReminderMinute = eveningReminderMinute,
-            tonightReminder = tonightReminder, tonightReminderMinute = tonightReminderMinute
+            tonightReminder = tonightReminder, tonightReminderMinute = tonightReminderMinute,
+            eveningReminderChosen = eveningReminderChosen
         )
 }
 
@@ -102,5 +109,6 @@ data class AppSettings(
     val eveningReminder: Boolean = true,
     val eveningReminderMinute: Int = MealReminders.EVENING_MINUTE,
     val tonightReminder: Boolean = false,
-    val tonightReminderMinute: Int = MealReminders.TONIGHT_MINUTE
+    val tonightReminderMinute: Int = MealReminders.TONIGHT_MINUTE,
+    val eveningReminderChosen: Boolean = false
 )

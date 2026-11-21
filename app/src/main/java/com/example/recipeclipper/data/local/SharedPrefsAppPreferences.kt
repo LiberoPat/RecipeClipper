@@ -69,6 +69,10 @@ class SharedPrefsAppPreferences @Inject constructor(
             prefs.edit { putBoolean(KEY_EVENING_REMINDER, value) }
         }
 
+    // Only the switch writes the key, so its presence is the cook's own choice (#413).
+    override val eveningReminderChosen: Boolean
+        get() = prefs.contains(KEY_EVENING_REMINDER)
+
     // A stored time outside the day (a damaged file) reads as the default.
     override var eveningReminderMinute: Int
         get() = prefs.getInt(KEY_EVENING_REMINDER_MINUTE, MealReminders.EVENING_MINUTE).takeIf { it in 0 until 24 * 60 }

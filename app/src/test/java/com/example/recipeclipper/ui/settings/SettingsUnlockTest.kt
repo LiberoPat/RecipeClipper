@@ -22,13 +22,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** Settings' "Unlimited recipes" row and Developer settings' "Unlocked" override (#107). */
+/**
+ * Settings' "Unlimited recipes" row and Developer settings' "Unlocked" override (#107), with
+ * `proUnlock` off (#413): the app as before Pro. `SettingsProTest` has the flag on.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsUnlockTest {
 
     @get:Rule val mainDispatcherRule = MainDispatcherRule()
 
     private val flags = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = false)
+        .also { it.set(Flag.PRO_UNLOCK, false) }
     private val entitlements = FakeEntitlements(UnlockState(price = "€2.99"))
 
     private fun settings() = SettingsViewModel(
@@ -49,7 +53,7 @@ class SettingsUnlockTest {
         val vm = settings()
         advanceUntilIdle()
         assertEquals(UnlockRow(unlocked = false, price = "€2.99"), vm.uiState.value.unlock)
-        assertEquals(SettingsSection.entries.toList(), vm.uiState.value.sections)
+        assertEquals(SettingsSection.entries - SettingsSection.PRO, vm.uiState.value.sections)
 
         vm.onUnlock()
         advanceUntilIdle()
@@ -82,6 +86,7 @@ class SettingsUnlockTest {
         developer.onReset()
         advanceUntilIdle()
         assertFalse(developer.uiState.value.unlockedOverride)
+        // Reset brings every flag back to its default: the free tier off, proUnlock on.
         assertNull("Reset turned the free tier off too", vm.uiState.value.unlock)
     }
 }

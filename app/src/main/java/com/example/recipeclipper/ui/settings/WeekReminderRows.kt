@@ -34,12 +34,17 @@ import java.util.Calendar
  * each a switch and, while it is on, its time; a line saying notifications are off when they are.
  * Turning one on is [onSwitch]'s: the screen asks for notification permission first (never on
  * launch, as for the expiry reminders, #52).
+ *
+ * Without Pro (#413, [SettingsUiState.remindersLocked]) a reminder that is off carries the Pro badge
+ * and turning it on opens the Pro screen ([onOpenPro]); one the cook had on stays on, and can be
+ * retimed or turned off as before.
  */
 @Composable
 internal fun WeekReminderRows(
     state: SettingsUiState,
     onSwitch: (MealReminderKind, Boolean) -> Unit,
-    onTime: (MealReminderKind, Int) -> Unit
+    onTime: (MealReminderKind, Int) -> Unit,
+    onOpenPro: () -> Unit = {}
 ) {
     Column {
         ReminderRows(
@@ -49,7 +54,9 @@ internal fun WeekReminderRows(
             on = state.eveningReminder,
             minute = state.eveningReminderMinute,
             onSwitch = onSwitch,
-            onTime = onTime
+            onTime = onTime,
+            locked = state.remindersLocked,
+            onOpenPro = onOpenPro
         )
         ReminderRows(
             kind = MealReminderKind.TONIGHT,
@@ -58,7 +65,9 @@ internal fun WeekReminderRows(
             on = state.tonightReminder,
             minute = state.tonightReminderMinute,
             onSwitch = onSwitch,
-            onTime = onTime
+            onTime = onTime,
+            locked = state.remindersLocked,
+            onOpenPro = onOpenPro
         )
         if (state.weekRemindersBlocked) {
             Text(
@@ -82,14 +91,20 @@ private fun ReminderRows(
     on: Boolean,
     minute: Int,
     onSwitch: (MealReminderKind, Boolean) -> Unit,
-    onTime: (MealReminderKind, Int) -> Unit
+    onTime: (MealReminderKind, Int) -> Unit,
+    locked: Boolean,
+    onOpenPro: () -> Unit
 ) {
     var picking by rememberSaveable(kind) { mutableStateOf(false) }
+    // Locked and off: the badge, and switching it on opens the Pro screen. On stays the cook's.
+    val proBadge = locked && !on
     SwitchRow(
         title = title,
         description = description,
         checked = on,
-        onCheckedChange = { onSwitch(kind, it) }
+        onCheckedChange = { if (it && proBadge) onOpenPro() else onSwitch(kind, it) },
+        proBadge = proBadge,
+        modifier = Modifier.testTag("reminderSwitch-${kind.name}")
     )
     if (on) {
         ActionRow(

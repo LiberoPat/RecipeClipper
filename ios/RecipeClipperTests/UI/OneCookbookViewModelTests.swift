@@ -67,7 +67,7 @@ final class OneCookbookViewModelTests: XCTestCase {
         repository.history.send((1...12).map { summary(Int64($0)) })
         let vm = RecipesViewModel(
             repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep,
-            library: policy(["freeTier": true, "oneCookbook": true])
+            library: policy(["freeTier": true, "oneCookbook": true, "proUnlock": false])
         )
         await settleMain()
 
@@ -77,7 +77,7 @@ final class OneCookbookViewModelTests: XCTestCase {
 
         let off = RecipesViewModel(
             repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep,
-            library: policy(["freeTier": true, "oneCookbook": false])
+            library: policy(["freeTier": true, "oneCookbook": false, "proUnlock": false])
         )
         await settleMain()
         XCTAssertEqual(off.count?.max, 20, "with the flag off the old swap stands")

@@ -75,7 +75,9 @@ class LibraryRoot(
     /** "Resume cooking": the recipe, in cook mode. */
     val onResumeCooking: (Long) -> Unit,
     /** Today's meal: the planned recipe, its planned servings, and whether to start cooking it. */
-    val onOpenPlanned: (Long, Int?, Boolean) -> Unit
+    val onOpenPlanned: (Long, Int?, Boolean) -> Unit,
+    /** The Pro screen (#413): Ask an AI's locked Plan my week choices open it. */
+    val onOpenPro: () -> Unit = {}
 )
 
 /** The gear and the + beside the title (#375): Settings, and the Add a recipe sheet. */

@@ -8,6 +8,8 @@ import UIKit
 struct MealPlanReviewScreen: View {
     let vm: MealPlanReviewViewModel
     let onFinished: (_ planned: Bool) -> Void
+    /// The Pro screen (#413): without Pro, a fresh-food note's swap opens it.
+    var onOpenPro: () -> Void = {}
 
     var body: some View {
         let state = vm.uiState
@@ -176,7 +178,9 @@ struct MealPlanReviewScreen: View {
                     .accessibilityIdentifier("mealplan.wontfit.\(item.index)")
             }
             if let nudge {
-                FreshNudgeNote(nudge: nudge) { vm.onSwap(item.index) }
+                FreshNudgeNote(nudge: nudge, locked: vm.proLocked) {
+                    if vm.proLocked { onOpenPro() } else { vm.onSwap(item.index) }
+                }
                     .padding(.leading, 40)
             }
         }

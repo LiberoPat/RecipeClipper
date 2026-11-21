@@ -54,7 +54,7 @@ struct SettingsScreen: View {
         case .appearance: return state.darkWhileCooking ? Strings.darkWhileCookingTitle : Strings.settingsValueSystemTheme
         case .steps: return state.amountsInSteps ? Strings.settingsValueAmountsOn : Strings.settingsValueAmountsOff
         case .week:
-            return state.eveningReminder || state.tonightReminder ? Strings.settingsValueRemindersOn : Strings.settingsValueRemindersOff
+            return vm.eveningReminderOn || vm.tonightReminderOn ? Strings.settingsValueRemindersOn : Strings.settingsValueRemindersOff
         case .pantry: return state.expiryReminders ? Strings.settingsValueRemindersOn : Strings.settingsValueRemindersOff
         // The automatic copy's "Last backed up", as its page says it, but how long ago.
         case .yourRecipes:
@@ -66,6 +66,7 @@ struct SettingsScreen: View {
             return Strings.autoBackupLast(formatter.localizedString(for: date, relativeTo: Date()))
         case .help: return nil
         case .unlimited: return vm.unlockRow?.unlocked == true ? Strings.settingsValueUnlocked : nil
+        case .pro: return vm.isPro ? Strings.settingsValueUnlocked : nil
         }
     }
 }

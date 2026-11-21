@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.common.ProBadge
 import com.example.recipeclipper.data.ChefSupport
 import com.example.recipeclipper.data.HISTORY_LIMIT
 import com.example.recipeclipper.data.backup.BackupDestination
@@ -324,17 +325,28 @@ internal fun SwitchRow(
     description: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    // A locked Week extra (#413): the Pro badge after the title; the caller's onCheckedChange opens the Pro screen.
+    proBadge: Boolean = false
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
             .padding(vertical = 10.dp)
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
+            if (proBadge) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f, fill = false))
+                    Spacer(Modifier.width(8.dp))
+                    ProBadge()
+                }
+            } else {
+                Text(title, style = MaterialTheme.typography.bodyLarge)
+            }
             Text(
                 description,
                 style = MaterialTheme.typography.bodySmall,

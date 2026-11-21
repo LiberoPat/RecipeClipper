@@ -30,6 +30,7 @@ import com.example.recipeclipper.ui.print.printViewModelIfOn
 import com.example.recipeclipper.ui.recipe.RecipeScreen
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.week.WhatINeedViewModel
+import com.example.recipeclipper.ui.pro.ProScreen
 import com.example.recipeclipper.ui.settings.DeveloperSettingsScreen
 import com.example.recipeclipper.ui.settings.SettingsScreen
 import com.example.recipeclipper.ui.settings.SettingsSection
@@ -53,6 +54,12 @@ object Routes {
 
     // Settings' pages (#286), one per section of its index: `settings/units`, `settings/help`…
     fun settingsSection(section: SettingsSection) = "settings/${section.route}"
+
+    // The Pro screen (#413) on the Recipes stack: Settings' Pro page, and where every locked extra here leads.
+    val PRO = settingsSection(SettingsSection.PRO)
+
+    // The same screen on the Week's own stack, so Back returns to the week.
+    const val WEEK_PRO = "week/pro"
     const val LISTS = "lists"
     const val LIST_DETAIL = "lists/{${ListDetailViewModel.LIST_ID_ARG}}"
     // `servings` and `startCook` (#375): the library's Today card starts a planned meal on the Recipes
@@ -195,7 +202,8 @@ fun NavGraphBuilder.mealPlanDestination(
                 navController.popBackStack()
                 if (planned) navController.selectTab(Tab.WEEK)
             },
-            viewModel = viewModel(entry)
+            viewModel = viewModel(entry),
+            onOpenPro = { navController.navigate(Routes.PRO) }
         )
     }
 }
@@ -224,7 +232,8 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onOpenLists = { navController.navigate(Routes.LISTS) },
             onOpenSettings = { navController.navigate(Routes.SETTINGS) },
             onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) },
-            onScan = { navController.navigate(Routes.scan(it)) }
+            onScan = { navController.navigate(Routes.scan(it)) },
+            onOpenPro = { navController.navigate(Routes.PRO) }
         )
     }
 
@@ -264,7 +273,8 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onResumeCooking = { navController.navigate(Routes.cookRecipe(it)) },
                 // Today's meal: on this stack, so Back returns to the library (Home's went to the Week's).
-                onOpenPlanned = { id, servings, cook -> navController.navigate(Routes.plannedRecipe(id, servings, cook)) }
+                onOpenPlanned = { id, servings, cook -> navController.navigate(Routes.plannedRecipe(id, servings, cook)) },
+                onOpenPro = { navController.navigate(Routes.PRO) }
             )
         )
     }
@@ -293,12 +303,18 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     // Each section's page (#286); Back returns to the index.
     SettingsSection.entries.forEach { section ->
         composable(Routes.settingsSection(section)) {
+            if (section == SettingsSection.PRO) {
+                // Pro (#413): its page is the Pro screen itself, the one every locked extra opens.
+                ProScreen(onBack = { navController.popBackStack() })
+                return@composable
+            }
             // "Show tips again" (#190): every tooltip once more, from the app's one TooltipsViewModel.
             val tooltips = LocalTooltips.current
             SettingsSectionScreen(
                 section,
                 onBack = { navController.popBackStack() },
-                onShowTips = { tooltips?.onReplay() }
+                onShowTips = { tooltips?.onReplay() },
+                onOpenPro = { navController.navigate(Routes.PRO) }
             )
         }
     }

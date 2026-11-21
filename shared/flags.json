@@ -8,7 +8,7 @@
     },
     {
       "key": "freeTier",
-      "description": "The free tier: 50 recipes (20 with oneCookbook off), a one-time unlock for unlimited, the Settings row to buy or restore it and the Recipes count. Off until the store products exist.",
+      "description": "The free tier: 50 recipes (20 with oneCookbook off), a one-time unlock for unlimited, the Settings row to buy or restore it and the Recipes count. Off until the store products exist. Ignored while proUnlock is on.",
       "defaults": { "debug": false, "release": false },
       "issue": 107
     },
@@ -197,6 +197,12 @@
       "description": "Ask an AI's Plan my week with choices: the cook's meal types as chips (Dinner ticked, the last choice remembered), a start day, and a source: new recipes, from my recipes (the library or one list, named by link) or a mix. The reader takes each recipe's meal, an object naming a saved recipe by its link is planned from the library, and the review shows and changes day and meal. Off, the sheet and the review are as before: a week of dinners, new recipes.",
       "defaults": { "debug": true, "release": true },
       "issue": 392
+    },
+    {
+      "key": "proUnlock",
+      "description": "Pro (#413): unlimited recipes for everyone (the free tier's limit never applies, whatever freeTier says), and the one-time unlock of #107 re-pointed at Pro, which holds the Week planning extras: fresh food's Buy later and its 'cook it earlier?' swap, the evening and Tonight reminders, Skip, and Plan my week's choices. Each shows a quiet Pro badge and opens the Pro screen until unlocked; nothing already saved or switched on is taken away. Off, the app is as before: freeTier decides the limit and every extra is free.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 413
     },
     {
       "key": "libraryFirst",

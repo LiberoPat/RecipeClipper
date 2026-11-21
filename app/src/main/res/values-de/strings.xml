@@ -988,4 +988,24 @@
     <string name="tonight_reminder_description">Am Nachmittag: die geplanten Mahlzeiten für heute Abend</string>
     <string name="reminder_time_title">Uhrzeit</string>
     <string name="reminder_time_dialog_title">Uhrzeit der Erinnerung</string>
+    <!-- Pro (#413): the badge on a locked Week extra, the Pro screen, and the locked lines. -->
+    <string name="pro_badge">Pro</string>
+    <string name="pro_title">Pith Pro</string>
+    <string name="pro_intro">Extras für die Planung deiner Woche. Alles andere in Pith bleibt kostenlos.</string>
+    <string name="pro_feature_fresh_title">Zweimal einkaufen</string>
+    <string name="pro_feature_fresh_body">Frisches später in der Woche kaufen und sehen, wenn eine Mahlzeit später geplant ist, als ihre Zutaten halten, mit einem Tausch per Tipp.</string>
+    <string name="pro_feature_reminders_title">Erinnerungen am Abend</string>
+    <string name="pro_feature_reminders_body">Am Abend davor: die Mahlzeiten für morgen und alles, was man vorher ansetzen muss. Und auf Wunsch eine am Tag selbst.</string>
+    <string name="pro_feature_skip_title">Eine Mahlzeit überspringen</string>
+    <string name="pro_feature_skip_body">Den Rest der Woche um einen Tag verschieben oder eine Mahlzeit auf den nächsten freien Tag legen, mit einem Rückgängig.</string>
+    <string name="pro_feature_plan_title">Meine Woche planen, wie du willst</string>
+    <string name="pro_feature_plan_body">Frag eine KI nach den Mahlzeiten und Tagen, die du wählst: aus deinen Rezepten, neuen oder gemischt.</string>
+    <string name="pro_one_time">Einmaliger Kauf, nie ein Abo.</string>
+    <string name="pro_unlock">Pro freischalten</string>
+    <string name="pro_unlock_price">Pro für %1$s freischalten</string>
+    <string name="pro_restore">Käufe wiederherstellen</string>
+    <string name="pro_unlocked">Pro ist freigeschaltet. Danke!</string>
+    <string name="pro_free_line">Kostenlos. Ohne Werbung. Ohne Konto. Ohne Abo.</string>
+    <string name="pro_teaser_fresh">Frisches später in der Woche kaufen</string>
+    <string name="pro_teaser_plan">Mahlzeiten, ersten Tag und eigene Rezepte wählen</string>
 </resources>

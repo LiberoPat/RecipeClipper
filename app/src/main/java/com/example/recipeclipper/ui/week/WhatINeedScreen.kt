@@ -34,6 +34,7 @@ import com.example.recipeclipper.data.model.NeedStatus
 import com.example.recipeclipper.data.model.RecipeTag
 import com.example.recipeclipper.ui.groceries.RecipeTagRow
 import com.example.recipeclipper.ui.common.LocalFlagValues
+import com.example.recipeclipper.ui.common.ProTeaserRow
 import com.example.recipeclipper.ui.plan.dayTitle
 import com.example.recipeclipper.ui.plan.shortWeekday
 import com.example.recipeclipper.ui.plan.weekRange
@@ -58,7 +59,9 @@ fun WhatINeedScreen(
     viewModel: WhatINeedViewModel = hiltViewModel(),
     shopForWeek: Boolean = LocalFlagValues.current.isOn(Flag.SHOP_FOR_WEEK),
     onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit = { _, _ -> },
-    recipeTags: Boolean = LocalFlagValues.current.isOn(Flag.GROCERY_RECIPE_TAGS)
+    recipeTags: Boolean = LocalFlagValues.current.isOn(Flag.GROCERY_RECIPE_TAGS),
+    /** The Pro screen (#413): without Pro, the locked Buy later line opens it. */
+    onOpenPro: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val needs = state.needs
@@ -90,7 +93,7 @@ fun WhatINeedScreen(
                     }
                     else -> {
                         // Fresh food (#396): with perishables for meals 4+ days away, To buy is two trips.
-                        val trips = state.trips?.takeIf { it.later.isNotEmpty() }
+                        val trips = state.shownTrips
                         val buyRows = if (trips != null) trips.now else needs.buy
                         item(key = "buyHeading") {
                             Column(Modifier.padding(top = 18.dp)) {
@@ -100,6 +103,10 @@ fun WhatINeedScreen(
                                     Muted(stringResource(if (trips != null) R.string.what_i_need_nothing_to_buy_now else R.string.what_i_need_nothing_to_buy))
                                 } else {
                                     AddButton(added = state.added, tag = "addBuyToGroceries", addLabel = R.string.action_add_to_groceries, onClick = viewModel::onAddBuyToGroceries)
+                                }
+                                // Without Pro (#413): one list, all bought now, and the second trip as one locked line.
+                                if (state.showsSplitTeaser) {
+                                    ProTeaserRow(stringResource(R.string.pro_teaser_fresh), onClick = onOpenPro, Modifier.padding(top = 4.dp))
                                 }
                             }
                         }

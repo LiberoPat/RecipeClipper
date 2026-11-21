@@ -60,7 +60,9 @@ fun SettingsSectionScreen(
     section: SettingsSection,
     onBack: () -> Unit,
     onShowTips: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    // The Pro screen (#413): a locked Week reminder's switch opens it.
+    onOpenPro: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -115,6 +117,7 @@ fun SettingsSectionScreen(
         onImportRecipeKeeper = { recipeKeeperPicker.launch(RECIPE_KEEPER_MIME_TYPES) },
         onImportMealie = { mealiePicker.launch(MEALIE_MIME_TYPES) },
         onChooseFolder = { folderPicker.launch(null) },
+        onOpenPro = onOpenPro,
         onWeekReminderChange = { kind, on ->
             // Asking is a platform effect, so it lives here: only when the cook turns one on, never
             // on launch (#397, as #52).
@@ -183,6 +186,7 @@ private class SectionActions(
     val onImportRecipeKeeper: () -> Unit,
     val onImportMealie: () -> Unit,
     val onChooseFolder: () -> Unit,
+    val onOpenPro: () -> Unit,
     val onWeekReminderChange: (MealReminderKind, Boolean) -> Unit,
     val onExpiryRemindersChange: (Boolean) -> Unit
 )
@@ -240,7 +244,7 @@ private fun LazyListScope.sectionRows(
             if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
         }
         SettingsSection.WEEK -> item(key = "week") {
-            WeekReminderRows(state, actions.onWeekReminderChange, viewModel::onWeekReminderTime)
+            WeekReminderRows(state, actions.onWeekReminderChange, viewModel::onWeekReminderTime, actions.onOpenPro)
         }
         SettingsSection.PANTRY -> item(key = "pantry") {
             SwitchRow(
@@ -271,6 +275,8 @@ private fun LazyListScope.sectionRows(
         SettingsSection.UNLIMITED -> state.unlock?.let { row ->
             item(key = "unlimited") { UnlockSection(row, state.unlockNotice, viewModel::onUnlock, viewModel::onRestore) }
         }
+        // Pro (#413) is its own screen, ProScreen, at this section's route: never drawn here.
+        SettingsSection.PRO -> Unit
     }
 }
 

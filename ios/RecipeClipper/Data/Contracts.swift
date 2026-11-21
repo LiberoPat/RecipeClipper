@@ -810,6 +810,9 @@ protocol AppPreferences: AnyObject {
     /// by default, once notifications are allowed (the owner's call on #397): nothing is sent
     /// without the permission, and Settings asks for it when the switch is turned on.
     var eveningReminder: Bool { get set }
+    /// Whether the cook ever set `eveningReminder`'s switch (#413): its "on" by default is a Pro
+    /// default, so without Pro only a reminder the cook turned on runs.
+    var eveningReminderChosen: Bool { get }
     /// When the evening reminder fires, in minutes since local midnight (default 19:00).
     var eveningReminderMinute: Int { get set }
     /// The optional afternoon "Tonight" reminder (#397), at `tonightReminderMinute`. Off by default.
@@ -848,7 +851,8 @@ extension AppPreferences {
             eveningReminder: eveningReminder,
             eveningReminderMinute: eveningReminderMinute,
             tonightReminder: tonightReminder,
-            tonightReminderMinute: tonightReminderMinute
+            tonightReminderMinute: tonightReminderMinute,
+            eveningReminderChosen: eveningReminderChosen
         )
     }
 }
@@ -984,4 +988,5 @@ struct AppSettings: Equatable {
     var eveningReminderMinute = MealReminders.eveningMinute
     var tonightReminder = false
     var tonightReminderMinute = MealReminders.tonightMinute
+    var eveningReminderChosen = false
 }

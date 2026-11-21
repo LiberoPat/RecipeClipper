@@ -37,8 +37,8 @@ place rather than appending an update.
 ## Status
 
 Built on both platforms: share → parse → show; the Recipes library (#102);
-the free tier and its unlock (#107); one cookbook (#345: nothing removed
-automatically, the free limit at 50, a views strip on Recipes); lists, dragged into the cook's own order (#381); scaling and unit conversion;
+unlimited recipes and the one-time Pro unlock for the Week extras (#413, the
+unlock of #107); one cookbook (#345: nothing removed automatically, a views strip on Recipes); lists, dragged into the cook's own order (#381); scaling and unit conversion;
 Settings; cook mode with saved progress and background timer alerts; sharing
 out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
@@ -90,7 +90,7 @@ with `local/` and `remote/`'s fetching; `ui/` a package per screen; `di/`,
 `docs/decisions.md` ("Code map and routes").
 
 Routes: `home`, `recipes`, `settings` (an index; each section's page is
-`settings/<section>`, #286; + hidden `settings/developer`),
+`settings/<section>`, #286, `settings/pro` the Pro screen, also `week/pro`; + hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
 membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `edit/scan?pages=…` (#226), `edit/text?text=…` (#306), `clip?url={url}&blocked=…&check=…`; with the tab
@@ -146,15 +146,15 @@ Decisions, not suggestions. Don't relitigate them in code.
   `oneCookbook` off the old clean-up returns: past 50, unprotected recipes in
   no list, not planned, in no menu, not typed in, with no photos go,
   oldest viewed first.)
-- **The free tier keeps 50 recipes** (#107, #345; 20, swapping the oldest out,
-  with `oneCookbook` off). Every recipe counts (not the tour's sample).
-  Sharing always opens the recipe; **at the limit a new one is shown, not
-  saved**, under the quiet "Not saved" bar with Unlock, and nothing old is
-  removed to make room. The limit holds on every way in (link, Reddit, typed,
-  scanned, photo-read, shared text, clip, `BackupMerger`, the iOS share
-  extension through the mirrored limit), through the one `upsert` and the one
-  `LibraryLimit`. A recipe already saved still opens and refreshes; deleting
-  one frees a place. Unlocked, no limit.
+- **Unlimited recipes, free; Pro is a one-time unlock, never a subscription**
+  (#413, `proUnlock`, which overrides `freeTier`). No limit on any way in
+  (`LibraryLimit` is never the free tier's). Pro is #107's purchase and
+  entitlement (an old unlock is Pro), read only through `ProAccess`, and holds
+  only the Week extras: Buy later and the fresh-food swap, the evening and
+  Tonight reminders, Skip, Plan my week's choices. Locked, each stays visible
+  with a quiet Pro badge that opens the Pro screen; nothing already saved or
+  switched on is taken away. With `proUnlock` off the free tier of #107/#345
+  returns exactly (50 shown-not-saved, the "Not saved" bar, the undo rule).
 - **Lists are deliberate:** adding to one is an explicit second act.
   Favorites is a list like Lunch, Dinner, Desserts, Breakfast and Snacks, not
   a separate tier.
@@ -249,8 +249,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   snackbar (a burst of swipes shares one all-or-nothing undo), a row's
   long-press menu or a selection (#376, #377: one confirmation, then that
   same one undo for all), or the recipe screen's overflow menu with a
-  confirmation dialog (no undo). The user's photos go with it. On the free tier an Undo that would take the library
-  past its limit restores none and says so (#345).
+  confirmation dialog (no undo). The user's photos go with it. (With `proUnlock` off and the free tier on, an Undo
+  that would take the library past its limit restores none and says so, #345.)
 - **Sharing a recipe out** sends plain text (no Markdown), as shown on
   screen, scaled and converted, without the source link. The share icon sits
   beside Back in the reading view, not in cook mode.

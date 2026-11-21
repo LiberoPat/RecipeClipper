@@ -72,7 +72,9 @@ fun HomeScreen(
     /** One cookbook (#345): Recipes lists the lists and makes new ones, so no Lists row here (#371). */
     oneCookbook: Boolean = LocalFlagValues.current.isOn(Flag.ONE_COOKBOOK),
     /** Today's card (#402): off, Continue cooking always shows the most recent recipe. */
-    homeTonight: Boolean = LocalFlagValues.current.isOn(Flag.HOME_TONIGHT)
+    homeTonight: Boolean = LocalFlagValues.current.isOn(Flag.HOME_TONIGHT),
+    /** The Pro screen (#413): Ask an AI's locked Plan my week choices open it. */
+    onOpenPro: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Restore from a backup file (#150): the same file picker as Settings' Import.
@@ -98,7 +100,8 @@ fun HomeScreen(
         }
         if (state.askAiOpen && askAiEnabled) AskAiSheet(
                 onDismiss = viewModel::onAskAiDismiss,
-                onOpenPasted = { if (it is PasteTarget.Link) onOpenUrl(it.url) else onOpenPasted(it) }
+                onOpenPasted = { if (it is PasteTarget.Link) onOpenUrl(it.url) else onOpenPasted(it) },
+                onOpenPro = onOpenPro
             )
         TooltipHost(TooltipScreen.HOME) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {

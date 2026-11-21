@@ -14,8 +14,8 @@ import Foundation
 /// - `capped`: `oneCookbook` on (#345), the free tier on and locked. Every recipe counts, and a new
 ///   one added at `max` is shown but not kept: nothing is ever removed to make room. Re-opening or
 ///   refreshing a recipe already here is allowed (it is already counted).
-/// - `unlimited`: unlocked, or `oneCookbook` on with the free tier off. Nothing is removed
-///   automatically, ever.
+/// - `unlimited`: unlocked, or `oneCookbook` on with the free tier off, or with `proUnlock` (#413).
+///   Nothing is removed automatically, ever.
 enum LibraryLimit: Equatable, Sendable {
     case history(keep: Int)
     case free(max: Int)
@@ -34,7 +34,10 @@ enum LibraryLimit: Equatable, Sendable {
     /// The old cap on unprotected recipes, while the free tier is off.
     static let historyRecipes = 50
 
-    static func of(freeTier: Bool, unlocked: Bool, oneCookbook: Bool = false) -> LibraryLimit {
+    /// `proUnlock` (#413) takes the free tier away whatever `freeTier` says: every recipe is free, so the
+    /// limit is the one `oneCookbook` alone gives (`unlimited` on, the old `history` cull off).
+    static func of(freeTier: Bool, unlocked: Bool, oneCookbook: Bool = false, proUnlock: Bool = false) -> LibraryLimit {
+        if proUnlock { return oneCookbook ? .unlimited : .history(keep: historyRecipes) }
         if oneCookbook { return freeTier && !unlocked ? .capped(max: cappedRecipes) : .unlimited }
         if !freeTier { return .history(keep: historyRecipes) }
         return unlocked ? .unlimited : .free(max: freeRecipes)

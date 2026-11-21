@@ -29,13 +29,16 @@ class FakeAppPreferences(
     eveningReminder: Boolean = true,
     eveningReminderMinute: Int = MealReminders.EVENING_MINUTE,
     tonightReminder: Boolean = false,
-    tonightReminderMinute: Int = MealReminders.TONIGHT_MINUTE
+    tonightReminderMinute: Int = MealReminders.TONIGHT_MINUTE,
+    /** Whether the evening switch was ever set (#413); setting [eveningReminder] sets it too. */
+    eveningReminderChosen: Boolean = false
 ) : AppPreferences {
 
     private val state = MutableStateFlow(
         AppSettings(
             unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps,
-            recipeSort, recipesLayout, eveningReminder, eveningReminderMinute, tonightReminder, tonightReminderMinute
+            recipeSort, recipesLayout, eveningReminder, eveningReminderMinute, tonightReminder, tonightReminderMinute,
+            eveningReminderChosen
         )
     )
 
@@ -63,7 +66,10 @@ class FakeAppPreferences(
 
     override var eveningReminder: Boolean
         get() = state.value.eveningReminder
-        set(value) = state.update { it.copy(eveningReminder = value) }
+        set(value) = state.update { it.copy(eveningReminder = value, eveningReminderChosen = true) }
+
+    override val eveningReminderChosen: Boolean
+        get() = state.value.eveningReminderChosen
 
     override var eveningReminderMinute: Int
         get() = state.value.eveningReminderMinute

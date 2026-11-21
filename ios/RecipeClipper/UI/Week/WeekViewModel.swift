@@ -220,16 +220,23 @@ final class WeekViewModel {
     /// Fresh food (#396): the planned recipes' ingredients, and whether the notes are on. Without both, no notes.
     @ObservationIgnored private let groceries: GroceryRepository?
     @ObservationIgnored private let freshFood: Bool
+    @ObservationIgnored private let pro: ProAccess
     @ObservationIgnored private var freshSubscription: AnyCancellable?
     @ObservationIgnored private var freshTask: Task<Void, Never>?
     /// The meals the notes were worked out from, for a swap's meal types.
     @ObservationIgnored private var freshMeals: [PlannedMeal] = []
 
+    /// Without Pro (#413): Skip and the fresh-food swap are still shown, with the Pro badge, and open
+    /// the Pro screen instead of acting. Meals skipped or swapped before stay where they are. Read live.
+    var proLocked: Bool { pro.state.locked }
+
     init(
         plan: MealPlanRepository, recipes: RecipeRepository, calendar: PlanCalendar,
         skipOn: () -> Bool = { true }, sleep: @escaping Sleep = Sleeps.real,
-        groceries: GroceryRepository? = nil, freshFood: Bool = false
+        groceries: GroceryRepository? = nil, freshFood: Bool = false,
+        pro: ProAccess = UngatedProAccess()
     ) {
+        self.pro = pro
         self.plan = plan
         self.recipes = recipes
         self.calendar = calendar
@@ -287,6 +294,7 @@ final class WeekViewModel {
     /// The cook tapped "Swap with ..." under a note: the two meals trade days, each keeping its meal
     /// type. Only on the tap.
     func onFreshSwap(_ mealId: Int64) {
+        guard !proLocked else { return }
         guard let nudge = uiState.freshNudges[mealId],
               let meal = freshMeals.first(where: { $0.id == nudge.key }),
               let partner = freshMeals.first(where: { $0.id == nudge.swapKey })
@@ -564,7 +572,7 @@ final class WeekViewModel {
 
     /// Opens the Skip sheet for `meal`, if Skip is offered for it (flag on, not in the past).
     func onSkipStart(_ meal: PlannedMeal) {
-        guard uiState.canSkip(meal) else { return }
+        guard uiState.canSkip(meal), !proLocked else { return }
         uiState.skipping = SkipState(meal: meal)
     }
 

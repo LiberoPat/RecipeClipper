@@ -124,7 +124,8 @@ struct RootView: View {
                         router.push(cook ? .startWeekRecipe(id: id, servings: servings) : .weekRecipe(id: id, servings: servings))
                     },
                     homeTonight: container.featureFlags.isOn(.homeTonight),
-                    makeAskAiVM: container.makeAskAiViewModel
+                    makeAskAiVM: container.makeAskAiViewModel,
+                    onOpenPro: { router.push(.settingsSection(.pro)) }
                 )
             )
         }
@@ -149,7 +150,8 @@ struct RootView: View {
                 oneCookbook: container.featureFlags.isOn(.oneCookbook),
                 onNewRecipe: { router.push(.editRecipe(id: nil)) },
                 onScan: scanHandler(push: router.push),
-                makeAskAiVM: container.makeAskAiViewModel
+                makeAskAiVM: container.makeAskAiViewModel,
+                onOpenPro: { router.push(.settingsSection(.pro)) }
             )
         }
     }
@@ -186,7 +188,9 @@ struct RootView: View {
                     onOpenMealTypes: { router.weekPath.append(.mealTypes) },
                     onOpenWhatINeed: { router.weekPath.append(.whatINeed(weekStart: $0)) },
                     makeGroceriesVM: container.makeAddToGroceriesViewModel,
-                    shopForWeek: container.featureFlags.isOn(.shopForWeek)
+                    shopForWeek: container.featureFlags.isOn(.shopForWeek),
+                    // The Pro screen (#413), on this stack, so Back returns to the week.
+                    onOpenPro: { router.weekPath.append(.settingsSection(.pro)) }
                 )
             }
             .navigationDestination(for: Route.self) { route in
@@ -273,7 +277,8 @@ struct RootView: View {
                 WhatINeedScreen(
                     vm: vm, shopForWeek: container.featureFlags.isOn(.shopForWeek),
                     recipeTags: container.featureFlags.isOn(.groceryRecipeTags),
-                    onOpenRecipe: { push(.weekRecipe(id: $0, servings: $1)) }
+                    onOpenRecipe: { push(.weekRecipe(id: $0, servings: $1)) },
+                    onOpenPro: { push(.settingsSection(.pro)) }
                 )
             }
         case .recipes:
@@ -303,10 +308,16 @@ struct RootView: View {
                     onOpenDeveloperSettings: { push(.developerSettings) }
                 )
             }
+        case .settingsSection(.pro):
+            // Pro (#413): its page is the Pro screen itself, the one every locked extra opens, on any stack.
+            ScreenHost(container.makeProViewModel) { vm in ProScreen(vm: vm) }
         case .settingsSection(let section):
             // Each section's page (#286); Back returns to the index.
             ScreenHost(container.makeSettingsViewModel) { vm in
-                SettingsSectionScreen(section: section, vm: vm, onShowTips: container.tooltips.onReplay)
+                SettingsSectionScreen(
+                    section: section, vm: vm, onShowTips: container.tooltips.onReplay,
+                    onOpenPro: { push(.settingsSection(.pro)) }
+                )
             }
         case .developerSettings:
             ScreenHost(container.makeDeveloperSettingsViewModel) { vm in DeveloperSettingsScreen(vm: vm) }
@@ -368,7 +379,7 @@ struct RootView: View {
                 MealPlanReviewScreen(vm: vm, onFinished: { planned in
                     router.path.removeAll { $0 == route }
                     if planned { router.select(.week) }
-                })
+                }, onOpenPro: { push(.settingsSection(.pro)) })
             }
             .toolbar(.hidden, for: .tabBar)
         case .cutOff:

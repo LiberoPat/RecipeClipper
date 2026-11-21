@@ -472,7 +472,7 @@ final class RecipesViewModelTests: XCTestCase {
         XCTAssertEqual(vm.cullKeep, 50)
 
         // The free tier and an unlocked library have their own rules: no note.
-        let freeFlags = FeatureFlags(store: MemoryFeatureFlagStore(["freeTier": true, "oneCookbook": false]), isDebug: false)
+        let freeFlags = FeatureFlags(store: MemoryFeatureFlagStore(["freeTier": true, "oneCookbook": false, "proUnlock": false]), isDebug: false)
         let free = RecipesViewModel(
             repository: repository, preferences: FakeAppPreferences(), sleep: immediateSleep,
             library: LibraryPolicy(flags: freeFlags, entitlements: FakeEntitlements())

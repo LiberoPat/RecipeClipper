@@ -1038,4 +1038,24 @@
     <string name="tonight_reminder_description">Nel pomeriggio: i pasti pianificati per stasera</string>
     <string name="reminder_time_title">Orario</string>
     <string name="reminder_time_dialog_title">Orario del promemoria</string>
+    <!-- Pro (#413): the badge on a locked Week extra, the Pro screen, and the locked lines. -->
+    <string name="pro_badge">Pro</string>
+    <string name="pro_title">Pith Pro</string>
+    <string name="pro_intro">Extra per pianificare la settimana. Tutto il resto di Pith resta gratuito.</string>
+    <string name="pro_feature_fresh_title">La spesa in due volte</string>
+    <string name="pro_feature_fresh_body">Compra i freschi più tardi nella settimana e scopri quando un pasto è pianificato oltre la durata dei suoi ingredienti, con uno scambio in un tocco.</string>
+    <string name="pro_feature_reminders_title">Promemoria serali</string>
+    <string name="pro_feature_reminders_body">La sera prima: i pasti di domani e ciò che va iniziato in anticipo. E uno facoltativo il giorno stesso.</string>
+    <string name="pro_feature_skip_title">Salta un pasto</string>
+    <string name="pro_feature_skip_body">Sposta il resto della settimana avanti di un giorno, o un pasto al prossimo giorno libero, con un solo annulla.</string>
+    <string name="pro_feature_plan_title">Pianifica la mia settimana, a modo tuo</string>
+    <string name="pro_feature_plan_body">Chiedi a un\'IA i pasti e i giorni che scegli, con le tue ricette, nuove o un mix.</string>
+    <string name="pro_one_time">Acquisto una tantum, mai un abbonamento.</string>
+    <string name="pro_unlock">Sblocca Pro</string>
+    <string name="pro_unlock_price">Sblocca Pro per %1$s</string>
+    <string name="pro_restore">Ripristina acquisti</string>
+    <string name="pro_unlocked">Pro è sbloccato. Grazie!</string>
+    <string name="pro_free_line">Gratis. Senza pubblicità. Senza account. Senza abbonamento.</string>
+    <string name="pro_teaser_fresh">Compra i freschi più tardi nella settimana</string>
+    <string name="pro_teaser_plan">Scegli i pasti, il primo giorno e le tue ricette</string>
 </resources>
