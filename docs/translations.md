@@ -87,6 +87,18 @@ Sans compte. Sans abonnement.*, *Kostenlos. Ohne Werbung. Ohne Konto. Ohne Abo.*
 pubblicità. Senza account. Senza abbonamento.*, *Grátis. Sem anúncios. Sem conta. Sem assinatura.*),
 which the store listing will repeat, so it should read as the listing would.
 
+## A recipe written inside an article, 2026-11-21 (#435)
+
+Drafts written by Claude, for a native speaker to check: `error_in_article`, `action_check_article`
+and `article_read` on both platforms, `article_failed` on Android only (its editor reads the page
+again after process death) and `share_article_in_app` on iOS only (the share extension's card).
+The button reuses each language's "Check the recipe" (*Revisar la receta*, *Vérifier la recette*,
+*Rezept prüfen*, *Controlla la ricetta*, *Conferir a receita*). The words to check: "the article
+writes one out" (*su artículo escribe una*, *son article en écrit une*, *ihr Artikel schreibt eines
+aus*, *il suo articolo ne scrive una*, *o artigo dela traz uma*) and "the name is the article's
+headline: change it to the dish's" (*cámbialo por el del plato*, *remplacez-le par celui du plat*,
+*Ändere ihn in den des Gerichts*, *cambialo con quello del piatto*, *troque pelo nome do prato*).
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,
