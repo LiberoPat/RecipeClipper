@@ -57,7 +57,7 @@ class FeaturesWalkthroughTest : WalkthroughBase() {
         tap("Pantry")
         listOf("3 onions", "2 cans tomatoes", "3 lb chicken thighs").forEach { type("pantryDraft", it); pause(1200) }
         pause(2500)
-        tap("Week")
+        tap("Plan")
         plan(today, "Chicken Adobo")
         plan(today + 1, "Chicken Adobo")
         menu("Shop for this week")
@@ -82,7 +82,7 @@ class FeaturesWalkthroughTest : WalkthroughBase() {
         tap("Plan tomorrow", 2500) // the first: Beef Stir-Fry
         waitFor(hasText("Planned tomorrow"))
         back() // closes the sheet
-        tap("Week")
+        tap("Plan")
         scrollTo("weekList", "addToDay-${today + 1}")
         pause(3500)
     }

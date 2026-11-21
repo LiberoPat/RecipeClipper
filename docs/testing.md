@@ -408,7 +408,7 @@ every phrase and skip phrase of every language (`AheadStepsTest`; iOS `AheadStep
 corpus's `Ahead` rows pin the two), the meals named, the order, the text and the first day
 (`MealRemindersTest` / `MealRemindersTests`), and what the alarms do (`MealReminderCoordinatorTest`:
 armed, re-armed, and what the receiver builds, or doesn't, when the plan, a switch, the flag or the day has
-changed; iOS `MealReminderCoordinatorTests`), with the Settings > Week switches and times
+changed; iOS `MealReminderCoordinatorTests`), with the Settings > Plan switches and times
 (`SettingsWeekRemindersTest` / `SettingsWeekRemindersTests`). The notification itself and the tap were
 checked by hand (docs/decisions.md, "The evening-before reminder").
 
@@ -607,7 +607,7 @@ or the calls will fail as "not mocked".
 
 The extension's logic is unit-tested (`RecipeClipperTests/Share`). What
 needs the real share sheet is `ShareExtensionUITests`. It drives Safari to a
-page, shares it to Recipe Clipper, checks the card, then checks that the app
+page, shares it to Pith, checks the card, then checks that the app
 shows the recipe. It is skipped unless `RC_SHARE_E2E_BASE` is set, so CI
 never runs it. It writes to the app's real App Group database, so use a
 simulator of your own:

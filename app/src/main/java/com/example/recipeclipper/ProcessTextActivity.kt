@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * "Recipe Clipper" in any app's text-selection menu (#306): a trampoline. The menu starts its
+ * "Pith" in any app's text-selection menu (#306): a trampoline. The menu starts its
  * target for a result, inside the other app's task, so landing here and forwarding to the
  * single-task [MainActivity] in its own task is what keeps a second copy of the app from
  * opening inside the other app (#334). Nothing is shown; the app's own selection menus leave it

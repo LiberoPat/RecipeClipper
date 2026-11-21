@@ -5,12 +5,12 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Recipe Clipper</string>
+	<string>Pith</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Recipe Clipper file</string>
+			<string>Pith file</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -70,7 +70,7 @@
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>
 			<key>NSUbiquitousContainerName</key>
-			<string>Recipe Clipper</string>
+			<string>Pith</string>
 			<key>NSUbiquitousContainerSupportedFolderLevels</key>
 			<string>None</string>
 		</dict>
@@ -104,7 +104,7 @@
 				<string>public.json</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Recipe Clipper file</string>
+			<string>Pith file</string>
 			<key>UTTypeIdentifier</key>
 			<string>com.liberopat.recipeclipper.share</string>
 			<key>UTTypeTagSpecification</key>

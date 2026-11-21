@@ -16,7 +16,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The file that carries picked recipes and items to someone else's Recipe Clipper (#149, phase
+ * The file that carries picked recipes and items to someone else's Pith (#149, phase
  * 2; the rules are [ShareFile]). An interface so the send and receive ViewModels take a fake.
  * Nothing is sent anywhere from here: the screen hands the file to the user's own share sheet.
  */

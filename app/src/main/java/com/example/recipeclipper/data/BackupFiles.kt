@@ -25,7 +25,7 @@ import javax.inject.Inject
  */
 interface BackupFiles {
 
-    /** Writes [json] as `recipe-clipper-YYYY-MM-DD.json`, or with [photos] (#116: path in the
+    /** Writes [json] as `pith-YYYY-MM-DD.json`, or with [photos] (#116: path in the
      *  zip to the stored file) as a `.zip` of both ([BackupArchive]), and returns a URI the share
      *  sheet can read, or null if it couldn't be written. */
     suspend fun writeExport(json: String, exportedAt: Long, photos: Map<String, String> = emptyMap()): String?
@@ -44,7 +44,7 @@ interface BackupFiles {
         const val MAX_BYTES = 20 * 1024 * 1024
 
         fun fileName(exportedAt: Long, zip: Boolean = false): String =
-            "recipe-clipper-" + SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(exportedAt)) +
+            "pith-" + SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(exportedAt)) +
                 if (zip) ".zip" else ".json"
     }
 }

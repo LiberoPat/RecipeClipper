@@ -1,6 +1,6 @@
 import XCTest
 
-/// A file sent from another Recipe Clipper (#149, phase 2): the sheet it opens, and what Add puts
+/// A file sent from another Pith (#149, phase 2): the sheet it opens, and what Add puts
 /// where. A UI test can't open a file from Messages, so `-uiTestReceiveFile` opens a canned one
 /// at launch through the same `onOpenURL` path's ViewModel ("Shared Lemon Cake", "2 lemons" for
 /// it, "baking paper", and "Basmati rice" for the pantry). The file "Send as file" writes is

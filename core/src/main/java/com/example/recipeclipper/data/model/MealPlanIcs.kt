@@ -14,7 +14,7 @@ package com.example.recipeclipper.data.model
 object MealPlanIcs {
 
     const val MIME_TYPE = "text/calendar"
-    const val PRODUCT_ID = "-//Recipe Clipper//Meal plan//EN"
+    const val PRODUCT_ID = "-//Pith//Meal plan//EN"
     private const val CRLF = "\r\n"
 
     /** RFC 5545's limit on a content line, in octets, before it is folded. */

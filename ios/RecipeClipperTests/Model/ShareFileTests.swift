@@ -148,7 +148,7 @@ final class ShareFileTests: XCTestCase {
         XCTAssertEqual(ShareFile.fileName("Sheet-pan chicken"), "Sheet-pan chicken.recipeclipper")
         XCTAssertEqual(ShareFile.fileName("Mac/and\\cheese: 1*2?"), "Mac and cheese 1 2.recipeclipper")
         XCTAssertEqual(ShareFile.fileName("..hidden"), "hidden.recipeclipper")
-        XCTAssertEqual(ShareFile.fileName(" / "), "Recipe Clipper.recipeclipper")
+        XCTAssertEqual(ShareFile.fileName(" / "), "Pith.recipeclipper")
         XCTAssertEqual(ShareFile.fileName(String(repeating: "x", count: 200)).count, 60 + ".recipeclipper".count)
     }
 }

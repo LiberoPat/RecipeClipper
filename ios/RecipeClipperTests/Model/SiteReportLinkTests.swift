@@ -19,7 +19,7 @@ final class SiteReportLinkTests: XCTestCase {
             url("https://example.com/recipe?id=1&x=2"),
             "https://github.com/LiberoPat/RecipeClipper/issues/new"
                 + "?title=Site%20not%20supported%3A%20example.com"
-                + "&body=Recipe%20Clipper%20found%20no%20recipe%20on%20this%20page.%0A%0A"
+                + "&body=Pith%20found%20no%20recipe%20on%20this%20page.%0A%0A"
                 + "Link%3A%20https%3A%2F%2Fexample.com%2Frecipe%3Fid%3D1%26x%3D2%0A"
                 + "Platform%3A%20Android%2014%20%28API%2034%29%0A"
                 + "App%20version%3A%201.0%20%281%29"
@@ -32,7 +32,7 @@ final class SiteReportLinkTests: XCTestCase {
         XCTAssertEqual(p["title"], "Site not supported: smitten-kitchen.com")
         XCTAssertEqual(
             p["body"],
-            "Recipe Clipper found no recipe on this page.\n\n"
+            "Pith found no recipe on this page.\n\n"
                 + "Link: https://www.smitten-kitchen.com/2024/01/soup/?print=1\n"
                 + "Platform: Android 14 (API 34)\n"
                 + "App version: 1.0 (1)"

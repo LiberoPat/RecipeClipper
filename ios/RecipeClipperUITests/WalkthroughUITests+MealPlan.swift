@@ -12,7 +12,7 @@ extension WalkthroughUITests {
         pause()
         back()
         pause()
-        tab("Week") // opens on today (#232)
+        tab("Plan") // opens on today (#232)
         planToday("Weeknight Chili")
         // One scroll of days (#232): a free swipe, then › snaps to the next 7 days, and "Today"
         // comes back; the month's day scrolls the days to it.
@@ -75,7 +75,7 @@ extension WalkthroughUITests {
             type("\(item)\n", into: app.textFields["Add to the pantry"])
         }
         pause()
-        tab("Week")
+        tab("Plan")
         planToday("Chicken Adobo")
         recipeMenu("Shop for this week")
         pause(2)
@@ -87,7 +87,7 @@ extension WalkthroughUITests {
 
     func test04_weeklyMenus() {
         startAsShipped()
-        tab("Week")
+        tab("Plan")
         planToday("Chicken Adobo")
         planToday("Spaghetti Carbonara")
         recipeMenu("Save week as menu…")

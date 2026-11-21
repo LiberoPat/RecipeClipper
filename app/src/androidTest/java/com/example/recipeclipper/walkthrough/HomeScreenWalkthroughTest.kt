@@ -133,7 +133,7 @@ class HomeScreenWalkthroughTest : WalkthroughBase() {
         start("widgets", kitchen = true)
         seeAllWindows()
         shell("pm clear com.google.android.apps.nexuslauncher") // the home screen as new: no widget from an earlier take
-        tap("Week")
+        tap("Plan")
         val today = LocalDate.now().toEpochDay()
         scrollTo("weekList", "addToDay-$today")
         tapTag("addToDay-$today")
@@ -147,7 +147,7 @@ class HomeScreenWalkthroughTest : WalkthroughBase() {
             systemTap("Search", 1000, fallback = "540 420") // the picker opens on Featured: the app is found by name
             shell("input text Recipe")
             Thread.sleep(1500)
-            systemTap("Recipe Clipper", scrollable = true)
+            systemTap("Pith", scrollable = true)
             systemTap(name, 1500, scrollable = true, exact = true) // the preview, not the row's "Tonight, Groceries"
             systemTap("Add $name widget", 3000)
         }

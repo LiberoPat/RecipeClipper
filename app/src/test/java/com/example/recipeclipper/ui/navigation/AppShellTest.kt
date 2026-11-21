@@ -112,12 +112,12 @@ class AppShellTest {
         show()
 
         bar().assertIsDisplayed()
-        val lefts = listOf("Recipes", "Week", "Groceries", "Pantry").map {
+        val lefts = listOf("Recipes", "Plan", "Groceries", "Pantry").map {
             tab(it).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.left
         }
         assertEquals(lefts.sorted(), lefts)
         tab("Recipes").assertIsSelected()
-        tab("Week").assertIsNotSelected()
+        tab("Plan").assertIsNotSelected()
     }
 
     @Test
@@ -144,9 +144,9 @@ class AppShellTest {
     fun theOtherTabsShowTheirScreens() {
         show()
 
-        tab("Week").performClick()
+        tab("Plan").performClick()
         compose.onNodeWithText("stub:week").assertIsDisplayed()
-        tab("Week").assertIsSelected()
+        tab("Plan").assertIsSelected()
 
         tab("Groceries").performClick()
         compose.onNodeWithText("stub:groceries").assertIsDisplayed()
@@ -163,7 +163,7 @@ class AppShellTest {
         onNav { navigate(Routes.LISTS) }
         onNav { navigate(Routes.list(4)) }
 
-        tab("Week").performClick()
+        tab("Plan").performClick()
         compose.onNodeWithText("stub:week").assertIsDisplayed()
 
         tab("Recipes").performClick()
@@ -222,7 +222,7 @@ class AppShellTest {
         // Back returns to the week.
         onNav { popBackStack() }
         compose.onNodeWithText("stub:week").assertIsDisplayed()
-        tab("Week").assertIsSelected()
+        tab("Plan").assertIsSelected()
     }
 
     @Test

@@ -133,7 +133,7 @@ final class HomeUITests: RecipeUITestCase {
     func testALinkCanBeSharedFromAnyApp() {
         launch(.empty)
 
-        require(text("Or share a link to Recipe Clipper from any app."))
+        require(text("Or share a link to Pith from any app."))
     }
 
     /// Go opens the import route; the stub source resolves it offline, and the recipe it

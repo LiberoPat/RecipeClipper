@@ -65,7 +65,7 @@ protocol HandOffKind {
 }
 
 /// Something the share extension hands to the app, as JSON. The extension can't open the app
-/// (#19), so it leaves the value here and its card says to open Recipe Clipper; the app,
+/// (#19), so it leaves the value here and its card says to open Pith; the app,
 /// becoming active within `window`, takes it, once. Each new share replaces or clears it.
 struct PendingHandOff<K: HandOffKind>: @unchecked Sendable {
     /// Long enough to switch to the app; short enough that opening it later, for something else,

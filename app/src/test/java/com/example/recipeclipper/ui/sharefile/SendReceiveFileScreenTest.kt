@@ -85,7 +85,7 @@ class SendReceiveFileScreenTest {
         RecipeScreenFixture(sendFile = SendFileViewModel(share, files)).show(compose)
 
         compose.onNodeWithContentDescription("More options").performClick()
-        compose.onNode(hasText("Send as file") and hasText("A copy someone can open in Recipe Clipper"))
+        compose.onNode(hasText("Send as file") and hasText("A copy someone can open in Pith"))
             .assertIsDisplayed()
         compose.onNode(hasText("Edit") and hasClickAction()).assertTextEquals("Edit") // self-explanatory: one line
     }

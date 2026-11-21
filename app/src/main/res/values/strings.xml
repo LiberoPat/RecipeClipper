@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="app_name" translatable="false">Recipe Clipper</string>
+    <string name="app_name" translatable="false">Pith</string>
 
     <!-- Common actions -->
     <string name="action_back">‹  Back</string>
@@ -153,14 +153,14 @@
     <string name="timers_up">Time\'s up</string>
 
     <!-- Home screen -->
-    <string name="home_title" translatable="false">Recipe Clipper</string>
+    <string name="home_title" translatable="false">Pith</string>
     <string name="section_continue_cooking">Continue cooking</string>
     <string name="home_empty_hint">Recipes you open will show up here.</string>
     <!-- Home (#286): the resume card and the Add a recipe tiles -->
     <string name="home_paste_link_hint">A link or a recipe\'s text</string>
     <string name="home_scan_hint">A card or a cookbook page</string>
     <string name="home_type_hint">Write it in yourself</string>
-    <string name="home_share_hint">Or share a link to Recipe Clipper from any app.</string>
+    <string name="home_share_hint">Or share a link to Pith from any app.</string>
     <string name="home_resume_cooking">Resume cooking</string>
     <string name="home_open_recipe">Open recipe</string>
     <string name="home_today">Today</string>
@@ -289,8 +289,8 @@
         <item quantity="one">%1$d older recipe in no list wasn\'t added: recipes in no list are kept up to %2$d.</item>
         <item quantity="other">%1$d older recipes in no list weren\'t added: recipes in no list are kept up to %2$d.</item>
     </plurals>
-    <string name="backup_error_not_a_backup">That file isn\'t a Recipe Clipper export.</string>
-    <string name="backup_error_newer_version">That file was made by a newer version of Recipe Clipper (format %1$d). Update the app to import it.</string>
+    <string name="backup_error_not_a_backup">That file isn\'t a Pith export.</string>
+    <string name="backup_error_newer_version">That file was made by a newer version of Pith (format %1$d). Update the app to import it.</string>
     <string name="backup_error_malformed">That export file is damaged (%1$s). Nothing was imported.</string>
     <string name="backup_error_read_failed">Couldn\'t open that file.</string>
     <string name="backup_error_save_failed">Couldn\'t save the imported recipes. Nothing was changed.</string>
@@ -408,7 +408,7 @@
 
     <!-- Bottom tabs (#47) -->
     <string name="tab_recipes">Recipes</string>
-    <string name="tab_week">Week</string>
+    <string name="tab_week">Plan</string>
     <string name="tab_groceries">Groceries</string>
     <string name="tab_pantry">Pantry</string>
 
@@ -466,7 +466,7 @@
     <string name="text_not_sorted">Couldn\'t find ingredients and steps in the text, so it\'s all under Steps, as written: finish it by hand.</string>
     <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
     <string name="mealplan_title">Your week</string>
-    <string name="mealplan_intro">Choose the recipes to keep. Each one is saved as from a chat and planned on its day in Week. Nothing is saved until you tap Save.</string>
+    <string name="mealplan_intro">Choose the recipes to keep. Each one is saved as from a chat and planned on its day in Plan. Nothing is saved until you tap Save.</string>
     <string name="mealplan_day_none">No day</string>
     <string name="mealplan_day_dont_plan">Don\'t plan</string>
     <string name="mealplan_day_for">Day for %1$s</string>
@@ -475,7 +475,7 @@
     <string name="mealplan_room" tools:ignore="PluralsCandidate">Your library has room for %1$d more. The first ones you keep are saved and the rest wait here; nothing you have is removed. Unlock to keep them all.</string>
     <string name="mealplan_wont_fit">No room for this one yet</string>
     <string name="mealplan_kept" tools:ignore="PluralsCandidate">Saved so far: %1$d</string>
-    <string name="mealplan_open_week">Open Week</string>
+    <string name="mealplan_open_week">Open Plan</string>
     <string name="mealplan_cut_off">The answer was cut off, so only these recipes came through. Ask the AI to continue for the rest.</string>
     <string name="error_cut_off">That answer was cut off before the recipe ended. Ask the AI to send it again, or to continue.</string>
     <string name="cutoff_copy_action">Copy a message for the AI</string>
@@ -550,7 +550,7 @@
     <!-- Groceries (#50) -->
     <string name="action_add">Add</string>
     <string name="groceries_add_hint">Add an item</string>
-    <string name="groceries_empty">Your list is empty. Type an item above, or add ingredients from a recipe\'s menu or from the Week.</string>
+    <string name="groceries_empty">Your list is empty. Type an item above, or add ingredients from a recipe\'s menu or from Plan.</string>
     <string name="action_add_to_groceries">Add to groceries</string>
     <string name="add_to_groceries_title">Add to groceries</string>
     <string name="action_add_week_to_groceries">Add this week\'s ingredients</string>
@@ -569,7 +569,7 @@
     </plurals>
     <string name="receive_list_title">Add this list</string>
     <string name="receive_list_empty">There\'s no list on the clipboard. Copy one first, then paste it here.</string>
-    <!-- A file sent to someone else's Recipe Clipper (#149, phase 2) -->
+    <!-- A file sent to someone else's Pith (#149, phase 2) -->
     <string name="action_send_file">Send as file</string>
     <string name="send_file_failed">Couldn\'t create the file to send.</string>
     <string name="receive_file_title">Add from this file</string>
@@ -700,7 +700,7 @@
     <string name="settings_section_pantry">Pantry</string>
     <string name="expiry_reminders_title">Expiry reminders</string>
     <string name="expiry_reminders_description">A notification at 9 in the morning when something in stock expires today or tomorrow</string>
-    <string name="expiry_reminders_denied">Notifications are off for Recipe Clipper. Allow them in the system settings to get reminders.</string>
+    <string name="expiry_reminders_denied">Notifications are off for Pith. Allow them in the system settings to get reminders.</string>
     <!-- Chef mode (#100) -->
     <string name="chef_mode_title">Chef mode</string>
     <string name="chef_mode_description">Short steps, written on this phone. Tap one to see it as written.</string>
@@ -809,7 +809,7 @@
     <string name="auto_backup_description">Keeps a copy of everything, photos included, in a folder you choose, and refreshes it after changes</string>
     <string name="auto_backup_folder_title">Backup folder</string>
     <string name="auto_backup_folder_not_chosen">Not chosen yet. Tap to choose one, such as Google Drive.</string>
-    <string name="auto_backup_folder_lost">Recipe Clipper can no longer reach this folder. Tap to choose it again.</string>
+    <string name="auto_backup_folder_lost">Pith can no longer reach this folder. Tap to choose it again.</string>
     <string name="auto_backup_folder_refused">That folder can\'t be used for backups. Choose another.</string>
     <string name="auto_backup_last">Last backed up %1$s</string>
     <string name="auto_backup_never">Not backed up yet</string>
@@ -818,7 +818,7 @@
     <string name="auto_backup_now">Back up now</string>
     <string name="auto_backup_running">Backing up…</string>
     <string name="backup_prompt_title">Keep a backup copy?</string>
-    <string name="backup_prompt_body">Choose a folder, such as Google Drive, and Recipe Clipper keeps a copy of your recipes and photos there.</string>
+    <string name="backup_prompt_body">Choose a folder, such as Google Drive, and Pith keeps a copy of your recipes and photos there.</string>
     <string name="backup_prompt_choose">Choose a folder</string>
     <string name="backup_prompt_not_now">Not now</string>
     <string name="home_restore_backup">Restore from a backup file</string>
@@ -877,7 +877,7 @@
         <item quantity="other">%1$d steps removed</item>
     </plurals>
     <!-- The ⋮ menus' second lines (#260). -->
-    <string name="menu_desc_send_file">A copy someone can open in Recipe Clipper</string>
+    <string name="menu_desc_send_file">A copy someone can open in Pith</string>
     <!-- Print or save as PDF, and a list as a cookbook (#318). -->
     <string name="action_print">Print or save as PDF</string>
     <string name="menu_desc_print">This recipe as shown, ready for paper</string>
@@ -921,7 +921,7 @@
     <string name="action_ask_ai">Ask an AI</string>
     <string name="home_ask_ai_hint">A prompt for any chat app</string>
     <string name="ask_ai_title">Ask an AI</string>
-    <string name="ask_ai_intro">Copy a prompt into any chat app. Share the answer back to Recipe Clipper, or copy it and tap Paste the answer, and it opens here for you to check.</string>
+    <string name="ask_ai_intro">Copy a prompt into any chat app. Share the answer back to Pith, or copy it and tap Paste the answer, and it opens here for you to check.</string>
     <string name="ask_ai_field">What do you want to cook?</string>
     <string name="ask_ai_field_extra">Anything else? (optional)</string>
     <string name="ask_ai_kind_describe">What I describe above</string>
@@ -943,7 +943,7 @@
     <string name="action_change_recipe">Change this recipe</string>
     <string name="menu_desc_change_recipe">A prompt for any AI chat</string>
     <string name="change_recipe_title">Change this recipe</string>
-    <string name="change_recipe_intro">Copy a prompt with this recipe and your request into any AI chat. Share the answer back to Recipe Clipper to check it.</string>
+    <string name="change_recipe_intro">Copy a prompt with this recipe and your request into any AI chat. Share the answer back to Pith to check it.</string>
     <string name="change_recipe_field">What should change?</string>
     <string name="change_recipe_placeholder">Make it vegetarian</string>
     <!-- The prompt Ask an AI copies (#351) is written in the UI language. ai_prompt_language is the language's own name, for "write it in ...". Keep ```json, @context, recipeYield and the other schema.org names as they are. -->

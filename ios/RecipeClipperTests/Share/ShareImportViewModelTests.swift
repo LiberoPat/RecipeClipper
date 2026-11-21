@@ -143,7 +143,7 @@ final class ShareImportViewModelTests: XCTestCase {
     func testTheCardSaysToOpenTheApp() {
         XCTAssertEqual(
             Strings.shareRedditBlocked,
-            "Reddit didn't let the app read this post. Open Recipe Clipper: the post will be open there, to select the recipe."
+            "Reddit didn't let the app read this post. Open Pith: the post will be open there, to select the recipe."
         )
     }
 

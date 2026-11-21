@@ -1,8 +1,9 @@
 # CLAUDE.md
 
-Recipe Clipper: share a recipe link from any app and get just the recipe
-(ingredients, steps, times, servings), with none of the story, ads or SEO
-filler.
+Pith ("Skip the story. Cook.", #414; Recipe Clipper in code, ids and data
+names, which never change): share a recipe link from any app and get just the
+recipe (ingredients, steps, times, servings), with none of the story, ads or
+SEO filler.
 
 - **Android** (`app/`): Kotlin, Jetpack Compose, single Activity. MVVM +
   repository, Hilt, Room, Compose Navigation. minSdk 26 (for ML Kit GenAI,
@@ -226,8 +227,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   Settings gear. Empty sections hide. **No "Saved" section and no "Recently
   viewed" shelf** (#371): both repeated Recipes, whose default sort is
   Recently viewed. Search is on Recipes only.
-- **Bottom tabs** (#47): Recipes · Week · Groceries · Pantry; Settings is not
-  a tab. Each keeps its own back stack; the bar hides on the reading view and
+- **Bottom tabs** (#47): Recipes · Plan · Groceries · Pantry (Plan is `week`
+  in code, routes and stored names, #414); Settings is not a tab. Each keeps its own back stack; the bar hides on the reading view and
   in cook mode.
 - **A grocery tick only ticks** (#146): it restocks the pantry only through
   "Done shopping". The pantry is used up (#147) only through "Update the

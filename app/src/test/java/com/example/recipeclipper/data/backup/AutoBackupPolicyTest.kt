@@ -70,15 +70,24 @@ class AutoBackupPolicyTest {
         val zone = TimeZone.getDefault()
         try {
             TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
-            assertEquals("recipe-clipper-backup-2027-01-15-0800.zip", AutoBackupPolicy.fileName(now))
+            assertEquals("pith-backup-2027-01-15-0800.zip", AutoBackupPolicy.fileName(now))
             assertTrue(AutoBackupPolicy.isBackupFile(AutoBackupPolicy.fileName(now)))
         } finally {
             TimeZone.setDefault(zone)
         }
     }
 
+    @Test fun `copies from before the rename are still the app's own, oldest by time`() {
+        // #414: the old prefix sorts after "pith-" by name, so only the time may decide.
+        val old = (1..3).map { "recipe-clipper-backup-2026-09-0$it-1200.zip" }
+        assertTrue(old.all(AutoBackupPolicy::isBackupFile))
+        val new = (4..5).map { "pith-backup-2026-09-0$it-1200.zip" }
+        val gone = AutoBackupPolicy.toDelete(old + new, new.last())
+        assertEquals(old.take(2).toSet(), gone.toSet())
+    }
+
     @Test fun `only the app's own copies beyond the newest three go`() {
-        val ours = (1..5).map { "recipe-clipper-backup-2026-09-0$it-1200.zip" }
+        val ours = (1..5).map { "pith-backup-2026-09-0$it-1200.zip" }
         val theirs = listOf("recipe-clipper-2026-09-01.zip", "notes.txt", "recipe-clipper-backup-2026-09-01-1200 (1).zip")
         val written = ours.last()
         val gone = AutoBackupPolicy.toDelete(ours + theirs, written)
@@ -86,7 +95,7 @@ class AutoBackupPolicyTest {
     }
 
     @Test fun `the copy just written is kept whatever its name`() {
-        val ours = (1..4).map { "recipe-clipper-backup-2026-09-0$it-1200.zip" }
+        val ours = (1..4).map { "pith-backup-2026-09-0$it-1200.zip" }
         val gone = AutoBackupPolicy.toDelete(ours + "renamed.zip", "renamed.zip")
         assertEquals(ours.take(2).toSet(), gone.toSet())
     }
