@@ -9,6 +9,7 @@ struct ResumeCard: View {
     let resume: CookResume?
     let onResume: () -> Void
     let onOpen: () -> Void
+    @Environment(\.noPhotoImage) private var noPhotoImage
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -51,9 +52,16 @@ struct ResumeCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
-    /// The recipe's photo, or a plain themed band: never a stock image.
+    /// The recipe's photo, or its designed image (#403: its first ingredient names on its tint,
+    /// 112 pt; a plain themed band with `noPhotoImage` off): never a stock image.
     @ViewBuilder private var photo: some View {
-        if let image = recipe.imageUrl, let url = URL(string: image) {
+        if noPhotoImage {
+            RecipeImage(url: recipe.imageUrl, recipe: recipe.noPhoto, style: .label)
+                .frame(maxWidth: .infinity)
+                .frame(height: recipe.imageUrl == nil ? 112 : 136)
+                .clipped()
+                .accessibilityHidden(true)
+        } else if let image = recipe.imageUrl, let url = URL(string: image) {
             Color.clear
                 .frame(maxWidth: .infinity)
                 .frame(height: 136)
@@ -106,6 +114,7 @@ struct TodayCardView: View {
     let card: TodayCard
     let onStartCooking: (TodayMeal) -> Void
     let onOpen: (TodayMeal) -> Void
+    @Environment(\.noPhotoImage) private var noPhotoImage
 
     var body: some View {
         let lead = card.lead
@@ -156,9 +165,17 @@ struct TodayCardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
-    /// The meal's photo, or a plain themed band: never a stock image.
+    /// The meal's photo, or its recipe's designed image (#403: its first ingredient names on its
+    /// tint, 112 pt, as Continue cooking's; a plain themed band with `noPhotoImage` off or for a
+    /// planned note): never a stock image.
     @ViewBuilder private func photo(_ meal: TodayMeal) -> some View {
-        if let image = meal.imageUrl, let url = URL(string: image) {
+        if meal.recipeId != nil && noPhotoImage {
+            RecipeImage(url: meal.imageUrl, recipe: meal.noPhoto, style: .label)
+                .frame(maxWidth: .infinity)
+                .frame(height: meal.imageUrl == nil ? 112 : 136)
+                .clipped()
+                .accessibilityHidden(true)
+        } else if let image = meal.imageUrl, let url = URL(string: image) {
             Color.clear
                 .frame(maxWidth: .infinity)
                 .frame(height: 136)

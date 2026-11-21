@@ -42,7 +42,11 @@ data class RecipeEntity(
      *  original), or null. A uid, not a row id, so it survives an export and an import. No foreign
      *  key: a delete clears it by hand (`RecipeDao.clearOrphanedLinks`), so it never points at
      *  nothing. */
-    val basedOnUid: String? = null
+    val basedOnUid: String? = null,
+    /** The recipe's own picture, stored on the phone (#386): the name of a file in the photo store,
+     *  preferred over [imageUrl] wherever the recipe's picture shows. Not an "I made this" photo
+     *  (#116): never a cooking. Null for none. The user's, so a re-share or an edit never changes it. */
+    val photoFile: String? = null
 )
 
 @Entity(tableName = "lists", indices = [Index(value = ["uid"], unique = true)])

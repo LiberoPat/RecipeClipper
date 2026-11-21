@@ -126,6 +126,7 @@ fun ListsScreen(
                     ListCoverTile(
                         list = list,
                         photos = state.coverPhotos[list.id].orEmpty(),
+                        placeholders = state.coverPlaceholders[list.id].orEmpty(),
                         onClick = { onOpenList(list.id) },
                         // The held cover rides the finger; the others slide to their new places.
                         modifier = if (reorder.draggedKey == listKey(list.id)) {

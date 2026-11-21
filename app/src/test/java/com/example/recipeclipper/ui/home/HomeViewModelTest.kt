@@ -304,6 +304,23 @@ class HomeViewModelTest {
         assertEquals(6, card.others[1].servings)
     }
 
+    @Test fun `the card carries what the no-photo image is drawn from`() = runTest(mainDispatcherRule.dispatcher) {
+        val soup = meal(1, FakeMealPlanRepository.DINNER, 12, "Lentil soup").copy(
+            recipeUid = "uid-12", language = "en", ingredients = listOf("1 cup red lentils", "2 carrots, diced")
+        )
+        plan.meals.value = listOf(soup, meal(2, FakeMealPlanRepository.SNACK, null, null, note = "Leftovers"))
+        val vm = home()
+        runCurrent()
+
+        val card = vm.uiState.value.today!!
+        assertEquals(
+            com.example.recipeclipper.data.model.NoPhotoSource("uid-12", "Lentil soup", "en", soup.ingredients),
+            card.lead.noPhoto
+        )
+        assertEquals(null, card.others.single().recipeUid)
+        assertEquals(emptyList<String>(), card.others.single().ingredients)
+    }
+
     @Test fun `a user's own meal type sits where the cook put it`() = runTest(mainDispatcherRule.dispatcher) {
         plan.types.value = listOf(
             com.example.recipeclipper.data.model.MealType(9, "Brunch", null, 0),

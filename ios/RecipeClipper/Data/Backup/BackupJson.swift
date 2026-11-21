@@ -7,7 +7,7 @@ import Foundation
 ///   "recipes":     [{ "id", "sourceUrl", "sourceType", "title", "imageUrl", "ingredients",
 ///                     "instructions", "prepTime", "cookTime", "totalTime", "servings",
 ///                     "lastViewedAt", "checkedIngredients", "notes", "language",
-///                     "contentOrigin", "editedAt", "basedOn" }],
+///                     "contentOrigin", "editedAt", "basedOn", "photo" }],
 ///   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
 ///   "memberships": [{ "recipeId", "listId", "addedAt" }],
 ///   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
@@ -131,7 +131,9 @@ enum BackupJson {
                 language: try r.string(o, "language"),
                 contentOrigin: (try r.string(o, "contentOrigin")).flatMap { $0.isEmpty ? nil : $0 } ?? "PARSED",
                 editedAt: try r.int64(o, "editedAt"),
-                basedOn: (try r.string(o, "basedOn")).flatMap { $0.isBlank ? nil : $0 }
+                basedOn: (try r.string(o, "basedOn")).flatMap { $0.isBlank ? nil : $0 },
+                // A path in the zip (#386); one that isn't a plain `photos/` name is no photo, never an error.
+                photo: (try r.string(o, "photo")).flatMap { isPhotoFile($0) ? $0 : nil }
             )
         }
         try requireUniqueIds(recipes.map(\.id), "recipes")
@@ -437,6 +439,7 @@ enum BackupJson {
             "contentOrigin": r.contentOrigin,
             "editedAt": r.editedAt.map { NSNumber(value: $0) } ?? NSNull(),
             "basedOn": r.basedOn ?? NSNull(),
+            "photo": r.photo ?? NSNull(),
         ]
     }
 

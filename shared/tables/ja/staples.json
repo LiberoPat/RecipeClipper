@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "Ingredient names that say nothing about a dish, skipped when the no-photo image picks the recipe's first ingredients (#403). Each is matched whole against the line's name as IngredientName reads it (apostrophes and hyphens dropped, listed plurals made singular), never at the end of a longer name: \"bell pepper\" is not \"pepper\".",
+  "staples": [
+    "塩",
+    "こしょう",
+    "胡椒",
+    "黒こしょう",
+    "油",
+    "サラダ油",
+    "オリーブオイル",
+    "オリーブ油",
+    "水",
+    "お湯",
+    "ぬるま湯",
+    "氷"
+  ]
+}

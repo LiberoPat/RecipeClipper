@@ -63,6 +63,14 @@ enum class Flag(val key: String) {
     ROW_ACTIONS("rowActions"),
     /** Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo. */
     MULTI_SELECT("multiSelect"),
+    /** Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library. */
+    PAPRIKA_IMPORT("paprikaImport"),
+    /** Import from Recipe Keeper (#390): Settings' Your recipes reads a Recipe Keeper export zip into the library. */
+    RECIPE_KEEPER_IMPORT("recipeKeeperImport"),
+    /** Import from Mealie (#391): Settings' Your recipes reads a Mealie export (a zip, or one recipe's .json) into the library. */
+    MEALIE_IMPORT("mealieImport"),
+    /** A designed image for a recipe with no photo, or whose photo fails to load (#403): a monogram, an ingredient label, one of five tints. */
+    NO_PHOTO_IMAGE("noPhotoImage"),
     /** Skip tonight (#398): Week's long-press menu and today's meals gain Skip: push the week, move to the next free day, or remove. */
     SKIP_TONIGHT("skipTonight"),
     /** The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397). */

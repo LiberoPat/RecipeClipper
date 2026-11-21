@@ -17,7 +17,8 @@ struct MealPlanDao {
     func days(start: Int64, end: Int64) throws -> [PlannedMeal] {
         try db.query(
             """
-            SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, r.imageUrl, e.uid
+            SELECT e.id, e.day, e.mealTypeId, e.recipeId, e.servings, e.note, r.title, \(RecipeImageSql.asR) AS imageUrl, e.uid,
+                   r.uid AS recipeUid, r.language, r.ingredients
             FROM meal_plan_entries e
             JOIN meal_types t ON t.id = e.mealTypeId
             LEFT JOIN recipes r ON r.id = e.recipeId
@@ -35,7 +36,10 @@ struct MealPlanDao {
                 imageUrl: row.optionalString(7),
                 servings: row.isNull(4) ? nil : row.int(4),
                 note: row.optionalString(5),
-                uid: row.string(8)
+                uid: row.string(8),
+                recipeUid: row.optionalString(9),
+                language: row.optionalString(10),
+                ingredients: row.isNull(11) ? [] : JSONColumns.decodeStrings(row.string(11))
             )
         }
     }

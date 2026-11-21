@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "language": "it",
+  "about": "Ingredient names that say nothing about a dish, skipped when the no-photo image picks the recipe's first ingredients (#403). Each is matched whole against the line's name as IngredientName reads it (apostrophes and hyphens dropped, listed plurals made singular), never at the end of a longer name: \"bell pepper\" is not \"pepper\".",
+  "staples": [
+    "sale",
+    "sale fino",
+    "sale grosso",
+    "sale marino",
+    "pepe",
+    "pepe nero",
+    "pepe bianco",
+    "olio",
+    "olio d'oliva",
+    "olio di oliva",
+    "olio extravergine d'oliva",
+    "olio extra vergine di oliva",
+    "olio di semi",
+    "acqua",
+    "acqua fredda",
+    "acqua calda",
+    "acqua tiepida",
+    "acqua bollente",
+    "ghiaccio"
+  ]
+}

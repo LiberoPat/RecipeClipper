@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "language": "pt",
+  "about": "Ingredient names that say nothing about a dish, skipped when the no-photo image picks the recipe's first ingredients (#403). Each is matched whole against the line's name as IngredientName reads it (apostrophes and hyphens dropped, listed plurals made singular), never at the end of a longer name: \"bell pepper\" is not \"pepper\".",
+  "staples": [
+    "sal",
+    "sal marinho",
+    "sal grosso",
+    "pimenta",
+    "pimenta-do-reino",
+    "pimenta preta",
+    "pimenta branca",
+    "óleo",
+    "óleo vegetal",
+    "óleo de girassol",
+    "azeite",
+    "azeite de oliva",
+    "azeite extra virgem",
+    "água",
+    "água fria",
+    "água quente",
+    "água morna",
+    "água fervente",
+    "gelo"
+  ]
+}

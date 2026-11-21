@@ -14,6 +14,8 @@ struct RootView: View {
         tabs
             // The tooltips (#190): every screen's TooltipHost reads them from here.
             .environment(container.tooltips)
+            // A designed image for a recipe with no photo (#403), read by every image slot.
+            .environment(\.noPhotoImage, container.featureFlags.isOn(.noPhotoImage))
             // A file sent from another Recipe Clipper (#149) opens its sheet over whatever is on
             // screen; a `recipeclipper://` link imports as before.
             .onOpenURL { url in

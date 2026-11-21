@@ -33,7 +33,7 @@ struct RecipeRow: View {
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
                 : AnyLayout(HStackLayout(spacing: 14))
             layout {
-                RecipeThumbnail(url: recipe.imageUrl)
+                RecipeThumbnail(url: recipe.imageUrl, recipe: recipe.noPhoto)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(recipe.title)
                         .textStyle(Typography.bodyLargeBold)
@@ -65,30 +65,22 @@ struct RecipeRow: View {
     }
 }
 
-/// A row's photo, or a plain tile when it has none. Shared with the Recipes library and Home's
-/// Recently viewed (#286), which asks for a larger `base`.
+/// A row's photo, or the recipe's designed image when it has none or the photo fails to load
+/// (#403: the title's first letter at 64 pt; a plain tile with `noPhotoImage` off). Shared with
+/// the Recipes library and Home's Recently viewed (#286), which asks for a larger `base`.
 struct RecipeThumbnail: View {
     let url: String?
+    let recipe: NoPhotoSource
     var base: CGFloat = 64
     /// Grows a little with the text, capped at half again: it is decoration, the title is the content.
     @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
     private var size: CGFloat { min(base * scale, base * 1.5) }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 10)
-        ZStack {
-            shape.fill(Palette.hairline)
-            if let url, let parsed = URL(string: url) {
-                CachedAsyncImage(url: parsed) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Color.clear
-                }
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(shape)
-        .accessibilityHidden(true)
+        RecipeImage(url: url, recipe: recipe)
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .accessibilityHidden(true)
     }
 }
 

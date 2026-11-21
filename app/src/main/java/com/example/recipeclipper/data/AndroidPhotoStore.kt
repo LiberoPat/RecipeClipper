@@ -10,6 +10,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStream
 import java.util.UUID
@@ -33,28 +34,41 @@ class AndroidPhotoStore @Inject constructor(
     override suspend fun importPicture(source: String): String? = withContext(Dispatchers.IO) {
         safely("importPicture") {
             val uri = source.toUri()
-            fun open(): InputStream = checkNotNull(context.contentResolver.openInputStream(uri))
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            open().use { BitmapFactory.decodeStream(it, null, bounds) }
-            val longEdge = max(bounds.outWidth, bounds.outHeight)
-            if (longEdge <= 0) return@safely null
-            // Decode at the smallest power-of-two reduction still at least MAX_EDGE long.
-            var sample = 1
-            while (longEdge / (sample * 2) >= PhotoStore.MAX_EDGE) sample *= 2
-            val decoded = open().use {
-                BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
-            } ?: return@safely null
-            val degrees = open().use { rotation(ExifInterface(it)) }
-            val scale = min(1f, PhotoStore.MAX_EDGE.toFloat() / max(decoded.width, decoded.height))
-            val matrix = Matrix().apply {
-                postScale(scale, scale)
-                postRotate(degrees.toFloat())
-            }
-            val upright = if (scale == 1f && degrees == 0) decoded else Bitmap.createBitmap(
-                decoded, 0, 0, decoded.width, decoded.height, matrix, true
-            )
-            write { out -> upright.compress(Bitmap.CompressFormat.JPEG, PhotoStore.JPEG_QUALITY, out) }
+            process(maxPixels = Long.MAX_VALUE) { checkNotNull(context.contentResolver.openInputStream(uri)) }
         }
+    }
+
+    override fun importBytes(bytes: ByteArray): String? = safely("importBytes") {
+        if (bytes.isEmpty() || bytes.size > PhotoStore.MAX_RECIPE_PHOTO_BYTES) return@safely null
+        process(PhotoStore.MAX_PIXELS) { ByteArrayInputStream(bytes) }
+    }
+
+    /**
+     * Decodes the picture [open] reads (three times: its size, its pixels, its orientation), upright and
+     * at most MAX_EDGE, and stores it; null if it declares more than [maxPixels] (a picture from a
+     * stranger's file: the phone's own photos have no cap).
+     */
+    private fun process(maxPixels: Long, open: () -> InputStream): String? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        open().use { BitmapFactory.decodeStream(it, null, bounds) }
+        val longEdge = max(bounds.outWidth, bounds.outHeight)
+        if (longEdge <= 0 || bounds.outWidth.toLong() * bounds.outHeight > maxPixels) return null
+        // Decode at the smallest power-of-two reduction still at least MAX_EDGE long.
+        var sample = 1
+        while (longEdge / (sample * 2) >= PhotoStore.MAX_EDGE) sample *= 2
+        val decoded = open().use {
+            BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+        } ?: return null
+        val degrees = open().use { rotation(ExifInterface(it)) }
+        val scale = min(1f, PhotoStore.MAX_EDGE.toFloat() / max(decoded.width, decoded.height))
+        val matrix = Matrix().apply {
+            postScale(scale, scale)
+            postRotate(degrees.toFloat())
+        }
+        val upright = if (scale == 1f && degrees == 0) decoded else Bitmap.createBitmap(
+            decoded, 0, 0, decoded.width, decoded.height, matrix, true
+        )
+        return write { out -> upright.compress(Bitmap.CompressFormat.JPEG, PhotoStore.JPEG_QUALITY, out) }
     }
 
     override suspend fun adopt(path: String): String? = withContext(Dispatchers.IO) {

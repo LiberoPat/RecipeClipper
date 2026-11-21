@@ -16,6 +16,10 @@ final class AppContainer {
     let connectivity: Connectivity
     let backupRepository: BackupRepository
     let backupFiles: BackupFiles
+    /// Import from Paprika (#382); nil under test unless given.
+    let paprikaImportRepository: PaprikaImportRepository?
+    /// Import from Mealie (#391); nil under test unless given.
+    let mealieImportRepository: MealieImportRepository?
     let appInfo: AppInfo
     let alarms: TimerAlarmScheduler
     /// The one path that squares the countdowns outside the app (#309) with the database (#333).
@@ -98,6 +102,8 @@ final class AppContainer {
         libraryMirror: DefaultsLibraryLimit? = nil,
         cookedPhotoRepository: CookedPhotoRepository? = nil,
         autoBackup: AutoBackup? = nil,
+        paprikaImportRepository: PaprikaImportRepository? = nil,
+        mealieImportRepository: MealieImportRepository? = nil,
         shareFileRepository: ShareFileRepository? = nil,
         // Unless given, every tooltip is seen: a unit test sees none it didn't ask for.
         tourPreferences: TourPreferences = MemoryTourPreferences(),
@@ -110,6 +116,8 @@ final class AppContainer {
         self.planChoices = planChoices
         self.shareFileRepository = shareFileRepository
         self.autoBackup = autoBackup
+        self.paprikaImportRepository = paprikaImportRepository
+        self.mealieImportRepository = mealieImportRepository
         self.cookedPhotoRepository = cookedPhotoRepository
         self.recipeRepository = recipeRepository
         self.listRepository = listRepository
@@ -207,6 +215,8 @@ final class AppContainer {
         let photoStore = testing
             ? FilePhotoStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("TestHostPhotos"))
             : FilePhotoStore(databasePath: AppDatabase.defaultPath())
+        // A recipe's own picture (#386) reaches the image loader as `photo://<name>`, a file in this store.
+        ImageLoader.photoDirectory = URL(fileURLWithPath: photoStore.path(""))
         let backupRepository = DefaultBackupRepository(db: database, clock: clock, library: libraryLimit, photos: photoStore)
         let decisions = DefaultDecisionRepository(
             db: database, model: FoundationModelsDecisionModel(), clock: clock,
@@ -266,6 +276,12 @@ final class AppContainer {
             autoBackup: testing ? nil : AutoBackup(
                 backups: backupRepository, folder: ICloudBackupFolder(),
                 store: UserDefaultsAutoBackupStore(defaults: defaults), clock: clock
+            ),
+            paprikaImportRepository: DefaultPaprikaImportRepository(
+                files: FilePaprikaFiles(photos: photoStore), db: database, clock: clock, library: libraryLimit, photos: photoStore
+            ),
+            mealieImportRepository: DefaultMealieImportRepository(
+                files: FileMealieFiles(photos: photoStore), db: database, clock: clock, library: libraryLimit, photos: photoStore
             ),
             shareFileRepository: DefaultShareFileRepository(db: database, clock: clock, library: libraryLimit),
             // Under XCTest (the unit tests' host) every tooltip is seen, as for any test container.
@@ -547,7 +563,8 @@ final class AppContainer {
         SettingsViewModel(
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
             flags: featureFlags, notificationPermission: notificationPermission,
-            shortSteps: shortStepRepository, entitlements: entitlements, autoBackup: autoBackup, clock: clock
+            shortSteps: shortStepRepository, entitlements: entitlements, autoBackup: autoBackup, clock: clock,
+            paprika: paprikaImportRepository, mealie: mealieImportRepository
         )
     }
 

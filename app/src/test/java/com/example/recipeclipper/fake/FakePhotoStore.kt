@@ -15,6 +15,11 @@ class FakePhotoStore(val dir: File = Files.createTempDirectory("photos").toFile(
     override suspend fun importPicture(source: String): String? =
         if (source.startsWith("bad")) null else write(source.toByteArray())
 
+    /** The bytes' text stands for the picture: one starting "bad" isn't an image; too long is refused. */
+    override fun importBytes(bytes: ByteArray): String? =
+        if (bytes.isEmpty() || bytes.size > PhotoStore.MAX_RECIPE_PHOTO_BYTES || String(bytes).startsWith("bad")) null
+        else write(bytes)
+
     override suspend fun adopt(path: String): String? = File(path).takeIf { it.isFile }?.let { write(it.readBytes()) }
 
     override fun path(name: String): String = File(dir, name).absolutePath

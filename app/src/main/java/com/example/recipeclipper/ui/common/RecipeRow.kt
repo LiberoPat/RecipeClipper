@@ -15,14 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeSummary
 
 /**
@@ -51,7 +50,7 @@ fun RecipeRow(
             // Drawn only: the row itself is the toggle, so it reads as one checkbox.
             Checkbox(checked = selected, onCheckedChange = null, modifier = Modifier.padding(end = 10.dp))
         }
-        RecipeThumbnail(recipe.imageUrl)
+        RecipeThumbnail(recipe.imageUrl, recipe.noPhoto)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(
                 recipe.title,
@@ -82,20 +81,16 @@ fun RecipeRow(
 }
 
 /**
- * A row's photo, or a plain tile when it has none. Shared with the Recipes library and Home's
- * Recently viewed (#286).
+ * A row's photo, or the recipe's designed image when it has none or the photo fails to load
+ * (#403: the title's first letter at 64 dp; a plain tile with `noPhotoImage` off). Shared with
+ * the Recipes library and Home's Recently viewed (#286).
  */
 @Composable
-internal fun RecipeThumbnail(imageUrl: String?, size: Dp = 64.dp) {
-    val shape = RoundedCornerShape(10.dp)
-    if (imageUrl != null) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(size).clip(shape)
-        )
-    } else {
-        Box(Modifier.size(size).clip(shape).background(MaterialTheme.colorScheme.outlineVariant))
-    }
+internal fun RecipeThumbnail(imageUrl: String?, recipe: NoPhotoSource, size: Dp = 64.dp) {
+    RecipeImage(
+        model = imageUrl,
+        recipe = recipe,
+        contentDescription = null,
+        modifier = Modifier.size(size).clip(RoundedCornerShape(10.dp))
+    )
 }

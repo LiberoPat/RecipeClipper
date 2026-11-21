@@ -1,6 +1,8 @@
 package com.example.recipeclipper.fake
 
 import com.example.recipeclipper.data.ListRepository
+import com.example.recipeclipper.data.model.CoverPhoto
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SavedRecipe
@@ -35,7 +37,7 @@ class FakeListRepository : ListRepository {
     val recipesByList = MutableStateFlow<Map<Long, List<RecipeSummary>>>(emptyMap())
 
     /** What [observeCoverPhotos] emits: list id to its cover photos, as the SQL groups them. */
-    val coverPhotos = MutableStateFlow<Map<Long, List<String>>>(emptyMap())
+    val coverPhotos = MutableStateFlow<Map<Long, List<CoverPhoto>>>(emptyMap())
 
     /** Name and the recipe to add (or null), for every [createList] call, in order. */
     val createCalls = mutableListOf<Pair<String, Long?>>()
@@ -65,7 +67,12 @@ class FakeListRepository : ListRepository {
         return combine(recipesIn, recipesByList) { all, byList -> byList[listId] ?: all }
     }
 
-    override fun observeCoverPhotos(): Flow<Map<Long, List<String>>> = coverPhotos
+    override fun observeCoverPhotos(): Flow<Map<Long, List<CoverPhoto>>> = coverPhotos
+
+    /** What [observeCoverPlaceholders] emits: list id to its no-photo recipes' image sources (#403). */
+    val coverPlaceholders = MutableStateFlow<Map<Long, List<NoPhotoSource>>>(emptyMap())
+
+    override fun observeCoverPlaceholders(): Flow<Map<Long, List<NoPhotoSource>>> = coverPlaceholders
 
     /** What [observeSavedRecipes] emits (#305). */
     val savedRecipes = MutableStateFlow<List<SavedRecipe>>(emptyList())
@@ -129,9 +136,27 @@ class FakeListRepository : ListRepository {
         return id
     }
 
+    /**
+     * When true, [reorderLists] returns without publishing, as Room's Flow re-emits a moment after
+     * the write: the new order reaches [observeLists] only when [publishHeldReorder] is called
+     * (or never, to model a write that did not land).
+     */
+    var holdReorderPublication = false
+    private var heldOrder: List<Long>? = null
+
+    /** Publishes the order the held [reorderLists] call left waiting. */
+    fun publishHeldReorder() {
+        heldOrder?.let { applyOrder(it) }
+        heldOrder = null
+    }
+
     /** As the SQL does it: the named lists first, in that order, then the rest as they were. */
     override suspend fun reorderLists(orderedIds: List<Long>) {
         reorderCalls += orderedIds
+        if (holdReorderPublication) heldOrder = orderedIds else applyOrder(orderedIds)
+    }
+
+    private fun applyOrder(orderedIds: List<Long>) {
         val byId = lists.value.associateBy { it.id }
         val named = orderedIds.filter { it in byId }.distinct()
         lists.value = (named + lists.value.map { it.id }.filterNot { it in named }).map { byId.getValue(it) }
@@ -155,3 +180,7 @@ class FakeListRepository : ListRepository {
         containsRecipe = recipeId != null && (recipeId to id) in rows
     )
 }
+
+/** A cover photo of a recipe named after its address, for a test that stages covers (#403). */
+fun coverPhoto(url: String, ingredients: List<String> = listOf("2 eggs")) =
+    CoverPhoto(url, NoPhotoSource("uid-$url", "Recipe $url", "en", ingredients))

@@ -1,6 +1,11 @@
 package com.example.recipeclipper
 
 import android.app.Application
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import com.example.recipeclipper.data.AndroidPhotoStore
+import com.example.recipeclipper.ui.common.StoredPhotoMapper
+import java.io.File
 import com.example.recipeclipper.data.AutoBackup
 import com.example.recipeclipper.data.CookedPhotoRepository
 import com.example.recipeclipper.data.ExpiryReminderCoordinator
@@ -16,7 +21,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
-class RecipeApp : Application() {
+class RecipeApp : Application(), ImageLoaderFactory {
+
+    /** Coil's default loader, plus the recipe's own stored pictures (#386): `photo://<name>` is a file in the photo store. */
+    override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
+        .components { add(StoredPhotoMapper(File(filesDir, AndroidPhotoStore.DIR))) }
+        .build()
 
     @Inject
     lateinit var expiryReminders: ExpiryReminderCoordinator

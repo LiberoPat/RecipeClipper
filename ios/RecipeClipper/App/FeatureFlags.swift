@@ -56,6 +56,14 @@ enum Flag: String, CaseIterable {
     case rowActions
     /// Selecting several recipes (#377): add to a list, remove from this list, delete with one Undo.
     case multiSelect
+    /// Import from Paprika (#382): Settings' Your recipes reads a .paprikarecipes export into the library.
+    case paprikaImport
+    /// Import from Recipe Keeper (#390): Settings' Your recipes reads a Recipe Keeper export zip into the library.
+    case recipeKeeperImport
+    /// Import from Mealie (#391): Settings' Your recipes reads a Mealie export (a zip, or one recipe's .json) into the library.
+    case mealieImport
+    /// A designed image for a recipe with no photo, or whose photo fails to load (#403): a monogram, an ingredient label, one of five tints.
+    case noPhotoImage
     /// Skip tonight (#398): Week's long-press menu and today's meals gain Skip: push the week, move to the next free day, or remove.
     case skipTonight
     /// The evening-before reminder of tomorrow's meals, and the optional "Tonight" one (#397).

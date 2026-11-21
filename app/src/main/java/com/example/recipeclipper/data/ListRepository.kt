@@ -1,5 +1,7 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.model.CoverPhoto
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SavedRecipe
@@ -33,7 +35,14 @@ interface ListRepository {
      * The Lists screen's covers (#286): list id to up to four photo URLs from the recipes in
      * it, most recently added first. A list with no photo is absent.
      */
-    fun observeCoverPhotos(): Flow<Map<Long, List<String>>>
+    fun observeCoverPhotos(): Flow<Map<Long, List<CoverPhoto>>>
+
+    /**
+     * The covers of lists whose recipes have no photo (#403): list id to up to four of those
+     * recipes' image sources, most recently added first. Used only for a list [observeCoverPhotos]
+     * has none for; a list with a photo is shown with photos alone.
+     */
+    fun observeCoverPlaceholders(): Flow<Map<Long, List<NoPhotoSource>>>
 
     /** Every saved recipe (in at least one list) with its ingredient lines, for "Use it up" (#305). */
     fun observeSavedRecipes(): Flow<List<SavedRecipe>>

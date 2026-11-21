@@ -31,10 +31,24 @@ data class ListMemberCountRow(
     val memberCount: Int
 )
 
-/** One photo on a list's cover (#286): a recipe in [listId] that has an [imageUrl]. */
+/** One photo on a list's cover (#286): a recipe in [listId] that has a picture; [imageUrl] is its stored photo's `photo://` model (#386), else its link. */
 data class ListCoverPhotoRow(
     val listId: Long,
-    val imageUrl: String
+    val imageUrl: String,
+    /** What the recipe's designed image is drawn from if the photo fails to load (#403). */
+    val uid: String,
+    val title: String,
+    val language: String?,
+    val ingredients: List<String>
+)
+
+/** One recipe with no photo on a list's cover (#403): what its designed image is drawn from. */
+data class ListCoverPlaceholderRow(
+    val listId: Long,
+    val uid: String,
+    val title: String,
+    val language: String?,
+    val ingredients: List<String>
 )
 
 /** A saved recipe as "Use it up" (#305) reads it: its lines as stored. */
@@ -76,8 +90,8 @@ abstract class ListDao {
      */
     @Query(
         """
-        SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
-               r.contentOrigin = 'CLIPPED' AS isClipped, r.sourceUrl,
+        SELECT r.id, r.title, ${RecipeImageSql.AS_R} AS imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
+               r.contentOrigin = 'CLIPPED' AS isClipped, r.sourceUrl, r.uid, r.language,
                r.contentOrigin = 'CHAT' AS isFromChat
         FROM recipes r
         JOIN recipe_list_cross_ref c ON c.recipeId = r.id
@@ -97,20 +111,45 @@ abstract class ListDao {
      */
     @Query(
         """
-        SELECT c.listId, r.imageUrl
+        SELECT c.listId, ${RecipeImageSql.AS_R} AS imageUrl, r.uid, r.title, r.language, r.ingredients
         FROM recipe_list_cross_ref c
         JOIN recipes r ON r.id = c.recipeId
-        WHERE r.imageUrl IS NOT NULL AND r.imageUrl != ''
+        WHERE (r.photoFile IS NOT NULL OR (r.imageUrl IS NOT NULL AND r.imageUrl != ''))
           AND r.id IN (
               SELECT c2.recipeId FROM recipe_list_cross_ref c2
               JOIN recipes r2 ON r2.id = c2.recipeId
-              WHERE c2.listId = c.listId AND r2.imageUrl IS NOT NULL AND r2.imageUrl != ''
+              WHERE c2.listId = c.listId
+                AND (r2.photoFile IS NOT NULL OR (r2.imageUrl IS NOT NULL AND r2.imageUrl != ''))
               ORDER BY c2.addedAt DESC, r2.id DESC
               LIMIT $COVER_PHOTOS)
         ORDER BY c.listId, c.addedAt DESC, r.id DESC
         """
     )
     abstract fun observeCoverPhotos(): Flow<List<ListCoverPhotoRow>>
+
+    /**
+     * The covers of lists with no photo (#403): up to [COVER_PHOTOS] recipes per list, from the
+     * ones in it that have no photo, most recently added first, with what their designed images
+     * are drawn from. The screen uses them only for a list [observeCoverPhotos] has no row for;
+     * a list with a photo shows photos alone. The same correlated `LIMIT` as above.
+     */
+    @Query(
+        """
+        SELECT c.listId, r.uid, r.title, r.language, r.ingredients
+        FROM recipe_list_cross_ref c
+        JOIN recipes r ON r.id = c.recipeId
+        WHERE (r.photoFile IS NULL AND (r.imageUrl IS NULL OR r.imageUrl = ''))
+          AND r.id IN (
+              SELECT c2.recipeId FROM recipe_list_cross_ref c2
+              JOIN recipes r2 ON r2.id = c2.recipeId
+              WHERE c2.listId = c.listId
+                AND (r2.photoFile IS NULL AND (r2.imageUrl IS NULL OR r2.imageUrl = ''))
+              ORDER BY c2.addedAt DESC, r2.id DESC
+              LIMIT $COVER_PHOTOS)
+        ORDER BY c.listId, c.addedAt DESC, r.id DESC
+        """
+    )
+    abstract fun observeCoverPlaceholders(): Flow<List<ListCoverPlaceholderRow>>
 
     /**
      * Every saved recipe (in at least one list, once however many) with its ingredient lines,

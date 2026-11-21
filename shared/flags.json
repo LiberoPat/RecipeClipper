@@ -145,6 +145,30 @@
       "issue": 377
     },
     {
+      "key": "paprikaImport",
+      "description": "Import from Paprika: Settings, Your recipes gains a row that reads a Paprika export (.paprikarecipes, a zip of gzipped JSON recipes) into the library. Each recipe is kept as the cook's own version (never refreshed from its link) with its picture stored on the phone, nothing here is replaced or deleted, the free limit says how many were left out, and a switch (on) files recipes in lists by their Paprika categories. Off, the row is not shown.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 382
+    },
+    {
+      "key": "recipeKeeperImport",
+      "description": "Import from Recipe Keeper: Settings, Your recipes gains a row that reads a Recipe Keeper export (the .zip with recipes.html and its images folder) into the library, the same way as the Paprika import: each recipe is the cook's own version with its first picture stored on the phone, nothing is replaced or deleted, the free limit says how many were left out, and the switch files recipes in lists by their courses, categories and collections. Off, the row is not shown.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 390
+    },
+    {
+      "key": "mealieImport",
+      "description": "Import from Mealie: Settings, Your recipes gains a row that reads a Mealie export (the bulk export's zip of recipes/<slug>/<slug>.json, one recipe's Download zip with its .webp, or a bare .json) into the library. Each recipe is kept as the cook's own version (never refreshed from its link) with its picture stored on the phone, nothing here is replaced or deleted, the free limit says how many were left out, and a switch (on) files recipes in lists by their Mealie categories and tags. Off, the row is not shown.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 391
+    },
+    {
+      "key": "noPhotoImage",
+      "description": "A designed image for a recipe with no photo, or whose photo fails to load: the title's first letter on a small thumbnail, the recipe's first ingredient names in italic on a cover, Home's card and the reading view's banner, on one of five warm tints chosen by the recipe's uid. Lists covers show those recipes' images in the mosaic when no recipe in the list has a photo. Off, the blank tile and band as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 403
+    },
+    {
       "key": "skipTonight",
       "description": "Skip tonight: a planned meal's long-press menu on Week, and today's planned meals, gain Skip, which asks: push the rest of the week back a day (this meal and every later planned meal, meal types kept), move this meal to the next day with no meal of its type, or remove it from the plan. One undo restores exactly what was there. Off, Week offers Move and Remove only.",
       "defaults": { "debug": true, "release": true },

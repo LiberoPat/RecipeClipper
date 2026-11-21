@@ -4,6 +4,8 @@ import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.CoverPhoto
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SavedRecipe
@@ -47,9 +49,19 @@ class DefaultListRepository @Inject constructor(
         listDao.observeRecipesIn(listId).map { rows -> rows.map { it.toDomain() } }
             .orEmptyOnError(log, "observeRecipesIn")
 
-    override fun observeCoverPhotos(): Flow<Map<Long, List<String>>> =
+    override fun observeCoverPhotos(): Flow<Map<Long, List<CoverPhoto>>> =
         listDao.observeCoverPhotos().orEmptyOnError(log, "observeCoverPhotos")
-            .map { rows -> rows.groupBy({ it.listId }, { it.imageUrl }) }
+            .map { rows ->
+                rows.groupBy({ it.listId }, {
+                    CoverPhoto(it.imageUrl, NoPhotoSource(it.uid, it.title, it.language, it.ingredients))
+                })
+            }
+
+    override fun observeCoverPlaceholders(): Flow<Map<Long, List<NoPhotoSource>>> =
+        listDao.observeCoverPlaceholders().orEmptyOnError(log, "observeCoverPlaceholders")
+            .map { rows ->
+                rows.groupBy({ it.listId }, { NoPhotoSource(it.uid, it.title, it.language, it.ingredients) })
+            }
 
     override fun observeSavedRecipes(): Flow<List<SavedRecipe>> =
         listDao.observeSavedRecipes().orEmptyOnError(log, "observeSavedRecipes")

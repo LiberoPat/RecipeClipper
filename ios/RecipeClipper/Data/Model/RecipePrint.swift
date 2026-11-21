@@ -49,7 +49,7 @@ enum RecipePrint {
         labels: Labels = .english
     ) -> [Block] {
         var blocks: [Block] = []
-        if let image = recipe.image, !image.kTrimmed.isEmpty { blocks.append(.photo(image)) }
+        if let image = recipe.displayImage, !image.kTrimmed.isEmpty { blocks.append(.photo(image)) }
         blocks.append(.title(recipe.name))
         if let sourceDomain, !sourceDomain.kTrimmed.isEmpty { blocks.append(.credit(sourceDomain)) }
         blocks += RecipeShareText.metaLines(recipe, servings, labels.share).map { .meta($0) }

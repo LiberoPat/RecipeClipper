@@ -75,23 +75,13 @@ struct LibraryGridCell: View {
         }
     }
 
-    /// The photo, square, or the blank tile a recipe with none has.
+    /// The photo, square, or the recipe's designed image when it has none or the photo fails
+    /// (#403; the blank tile with `noPhotoImage` off).
     private var photo: some View {
         let shape = RoundedRectangle(cornerRadius: 10)
         return Color.clear
             .aspectRatio(1, contentMode: .fit)
-            .overlay {
-                ZStack {
-                    shape.fill(Palette.hairline)
-                    if let url = recipe.imageUrl, let parsed = URL(string: url) {
-                        CachedAsyncImage(url: parsed) { image in
-                            image.resizable().scaledToFill()
-                        } placeholder: {
-                            Color.clear
-                        }
-                    }
-                }
-            }
+            .overlay { RecipeImage(url: recipe.imageUrl, recipe: recipe.noPhoto) }
             .clipShape(shape)
             .accessibilityHidden(true)
     }

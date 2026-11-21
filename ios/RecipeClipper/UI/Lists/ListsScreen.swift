@@ -70,7 +70,10 @@ struct ListsScreen: View {
         switch tile {
         case .list(let list):
             let index = state.lists.firstIndex { $0.id == list.id } ?? 0
-            ListCoverTile(list: list, photos: state.coverPhotos[list.id] ?? []) { onOpenList(list.id) }
+            ListCoverTile(
+                list: list, photos: state.coverPhotos[list.id] ?? [],
+                placeholders: state.coverPlaceholders[list.id] ?? []
+            ) { onOpenList(list.id) }
                 .modifier(ReorderableCover(
                     enabled: reorderEnabled, listId: list.id, held: state.draggingId == list.id, vm: vm
                 ))
