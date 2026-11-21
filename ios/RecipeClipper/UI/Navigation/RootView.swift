@@ -30,7 +30,7 @@ struct RootView: View {
             .modifier(ReceiveFileSheet(vm: container.receiveFileViewModel) { added in
                 switch added {
                 case .groceries: router.select(.groceries)
-                case .pantry: router.select(.pantry)
+                case .pantry: router.showPantry()
                 case .recipes: if libraryFirst { router.showLibrary() } else { router.openInRecipes(.recipes) }
                 }
             })
@@ -190,7 +190,10 @@ struct RootView: View {
                     makeGroceriesVM: container.makeAddToGroceriesViewModel,
                     shopForWeek: container.featureFlags.isOn(.shopForWeek),
                     // The Pro screen (#413), on this stack, so Back returns to the week.
-                    onOpenPro: { router.weekPath.append(.settingsSection(.pro)) }
+                    onOpenPro: { router.weekPath.append(.settingsSection(.pro)) },
+                    // Settings' Plan page (#412), on this stack too: the same page as Settings > Plan.
+                    onOpenSettings: container.featureFlags.planSettingsLink
+                        ? { router.weekPath.append(.settingsSection(.week)) } : nil
                 )
             }
             .navigationDestination(for: Route.self) { route in
@@ -228,14 +231,23 @@ struct RootView: View {
         .tint(Palette.accentText)
     }
 
-    /// The Pantry tab (#51): the pantry alone.
+    /// The Pantry tab (#51), with its own stack (#412): Settings' Pantry page opens here from the
+    /// menu, so Back returns to the pantry.
     private var pantryStack: some View {
-        NavigationStack {
+        NavigationStack(path: $router.pantryPath) {
             ScreenHost2(makeA: container.makePantryViewModel, makeB: container.makeUseItUpViewModel) { vm, useItUpVM in
                 PantryScreen(
                     vm: vm, makeSendFileVM: container.makeSendFileViewModel, useItUpVM: useItUpVM,
-                    useItUpPending: router.useItUpPending, takeUseItUp: router.takeUseItUp
+                    useItUpPending: router.useItUpPending, takeUseItUp: router.takeUseItUp,
+                    onOpenSettings: container.featureFlags.pantrySettingsLink
+                        ? { router.pantryPath.append(.settingsSection(.pantry)) } : nil
                 )
+            }
+            .navigationDestination(for: Route.self) { route in
+                destination(route, push: { router.pantryPath.append($0) }, replace: { count, route in
+                    router.pantryPath.removeLast(min(count, router.pantryPath.count))
+                    router.pantryPath.append(route)
+                })
             }
         }
         .tint(Palette.accentText)

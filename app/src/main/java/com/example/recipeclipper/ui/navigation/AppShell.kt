@@ -66,7 +66,7 @@ enum class Tab(
  */
 private val tabBarRoutes = setOf(
     Routes.HOME, Routes.RECIPES, Routes.RECIPES_VIEW, Routes.SETTINGS, Routes.DEVELOPER_SETTINGS, Routes.LISTS, Routes.LIST_DETAIL,
-    Routes.WEEK, Routes.MEAL_TYPES, Routes.WHAT_I_NEED, Routes.GROCERIES, Routes.PANTRY
+    Routes.WEEK, Routes.MEAL_TYPES, Routes.WHAT_I_NEED, Routes.WEEK_SETTINGS, Routes.GROCERIES, Routes.PANTRY, Routes.PANTRY_SETTINGS
 ) + SettingsSection.entries.map(Routes::settingsSection)
 
 internal fun NavDestination?.showsTabBar(): Boolean = this?.route in tabBarRoutes
@@ -98,11 +98,13 @@ fun NavHostController.selectTab(tab: Tab) {
  * A route from an intent (a shared link's import, or a timer notification's cook-mode open,
  * MainActivity's queue) always lands in Recipes: switch to that tab if another is open, then
  * navigate on top of whatever the Recipes stack held. A tab's own route (an expiry reminder's
- * [Tab.PANTRY], #52; a list shared in, [Tab.GROCERIES], #149) opens that tab instead.
+ * [Tab.PANTRY], #52; a list shared in, [Tab.GROCERIES], #149) opens that tab instead; the Pantry
+ * on the pantry itself, not on its Settings page (#412), which would hide the Use it up sheet.
  */
 fun NavHostController.openRoute(route: String) {
     Tab.entries.firstOrNull { it.route == route }?.let { tab ->
         selectTab(tab)
+        if (tab == Tab.PANTRY) popBackStack(Routes.PANTRY, inclusive = false)
         return
     }
     // A planned recipe opened from a reminder (#397) lands in the Week, on its own stack.
@@ -150,7 +152,7 @@ fun AppShell(
     recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) },
     week: NavGraphBuilder.(NavHostController) -> Unit = { weekDestinations(it) },
     groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations(it) },
-    pantry: NavGraphBuilder.(NavHostController) -> Unit = { pantryDestinations() },
+    pantry: NavGraphBuilder.(NavHostController) -> Unit = { pantryDestinations(it) },
     /** Library first (#375): the Recipes tab opens the library, not Home. */
     libraryFirst: Boolean = LocalFlagValues.current.libraryFirst
 ) {

@@ -87,6 +87,18 @@ Sans compte. Sans abonnement.*, *Kostenlos. Ohne Werbung. Ohne Konto. Ohne Abo.*
 pubblicità. Senza account. Senza abbonamento.*, *Grátis. Sem anúncios. Sem conta. Sem assinatura.*),
 which the store listing will repeat, so it should read as the listing would.
 
+## Settings links, 2026-11-21 (#412)
+
+Four strings on both platforms, drafts written by Claude: "Plan settings" (*Ajustes del plan*,
+*Paramètres du planning*, *Plan-Einstellungen*, *Impostazioni del piano*, *Configurações do plano*:
+each built on that language's tab name), "Pantry settings" (*Ajustes de la despensa*, *Paramètres du
+garde-manger*, *Vorratseinstellungen*, *Impostazioni della dispensa*, *Configurações da despensa*),
+and their menu lines, "Reminders about the meals you plan" (*Avisos de las comidas que planificas*,
+*Rappels des repas que tu planifies*, *Erinnerungen an deine geplanten Mahlzeiten*, *Promemoria dei
+pasti che pianifichi*, *Lembretes das refeições que você planeja*) and "Expiry reminders" (the
+setting's own title in each language). To check: whether each language's word for Settings reads
+naturally in a menu item ("Ajustes" against "Configuración", "Paramètres" against "Réglages").
+
 ## Recipe tips, 2026-11-21 (#432)
 
 One string on both platforms, `heading_tips`, a draft by Claude for a native speaker to check: the

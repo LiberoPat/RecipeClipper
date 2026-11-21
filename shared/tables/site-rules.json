@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 1,
-  "about": "Where a recipe card on the page says more than its JSON-LD (#119, #120). Data only, read by both apps; rationale in docs/decisions.md. version: raise it on every edit (a copy fetched later would be used only if newer). cards: ingredient lists on any site (recipe plugins); sites: by host without www., each with its own cards, tried before those. A card: list, the element holding the ingredients; item, one ingredient; heading, a group's name (used only if it is h1-h6, ends in a colon or is wholly bold); title, an element inside the list to ignore; amount, elements inside an item left out when matching it (the card writes 'cups' where JSON-LD writes 'c.'). A card only adds the group headings JSON-LD drops, and only when its items line up one-to-one with JSON-LD's recipeIngredient: the same count, each item's letters and digits found in its line. stepNoise: phrases that start noise at the end of the last step (a note on when the recipe was published); from the phrase on is dropped. Selectors: a tag, .class, #id, [attr], [attr=v], [attr^=v], [attr*=v], compounded, in comma lists; no combinators. Values are case-sensitive.",
+  "version": 2,
+  "about": "Where a recipe card on the page says more than its JSON-LD (#119, #120). Data only, read by both apps; rationale in docs/decisions.md. version: raise it on every edit (a copy fetched later would be used only if newer). cards: ingredient lists on any site (recipe plugins); sites: by host without www., each with its own cards, tried before those. A card: list, the element holding the ingredients; item, one ingredient; heading, a group's name (used only if it is h1-h6, ends in a colon or is wholly bold); title, an element inside the list to ignore; amount, elements inside an item left out when matching it (the card writes 'cups' where JSON-LD writes 'c.'). A card only adds the group headings JSON-LD drops, and only when its items line up one-to-one with JSON-LD's recipeIngredient: the same count, each item's letters and digits found in its line. stepNoise: phrases that start noise at the end of the last step (a note on when the recipe was published); from the phrase on is dropped. Rules go by the host of the link the cook shared, so a site that moved is listed under its old host and its new one. Selectors: a tag, .class, #id, [attr], [attr=v], [attr^=v], [attr*=v], compounded, in comma lists; no combinators. Values are case-sensitive.",
   "cards": [
     {
       "about": "Tasty Recipes (#119)",
@@ -19,6 +19,11 @@
     }
   ],
   "sites": {
+    "750g.com": {
+      "cards": [
+        { "list": ".recipe-ingredients", "item": "li.recipe-ingredients-item", "heading": "h3.recipe-ingredients-subtitle" }
+      ]
+    },
     "bbcgoodfood.com": {
       "cards": [
         { "list": "#ingredients-list", "item": "li.ingredients-list__item", "heading": "h3.ingredients-list__heading" }
@@ -45,6 +50,12 @@
         { "list": "[data-testid=IngredientList]", "item": "[class*=Description-]", "heading": "h3[class*=SubHed-]" }
       ],
       "stepNoise": ["Editor’s note:"]
+    },
+    "recetas.elperiodico.com": {
+      "stepNoise": ["Si quieres ver la preparación con más detalle", "Si te ha gustado esta receta, tienes algún comentario", "Cuéntanos en los comentarios"]
+    },
+    "recetasgratis.net": {
+      "stepNoise": ["Si quieres ver la preparación con más detalle", "Si te ha gustado esta receta, tienes algún comentario", "Cuéntanos en los comentarios"]
     }
   }
 }

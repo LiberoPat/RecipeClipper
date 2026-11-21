@@ -60,6 +60,11 @@ object Routes {
 
     // The same screen on the Week's own stack, so Back returns to the week.
     const val WEEK_PRO = "week/pro"
+
+    // Settings' Plan and Pantry pages (#412), each linked from its tab's menu and opened on that tab's
+    // own stack, so Back returns to the tab: `settings/week` and `settings/pantry` belong to Recipes'.
+    const val WEEK_SETTINGS = "week/settings"
+    const val PANTRY_SETTINGS = "pantry/settings"
     const val LISTS = "lists"
     const val LIST_DETAIL = "lists/{${ListDetailViewModel.LIST_ID_ARG}}"
     // `servings` and `startCook` (#375): the library's Today card starts a planned meal on the Recipes
