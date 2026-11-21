@@ -1,6 +1,6 @@
 name: iOS UI tests
 
-# About 50 minutes on three parallel shards, so not on every pull request: nightly, and on
+# About 30-35 minutes on five parallel shards, so not on every pull request: nightly, and on
 # demand from the Actions tab (Run workflow) or `gh workflow run ios-ui-tests.yml --ref <branch>`.
 # The classes are split by ios/scripts/ui-test-shard.sh; the run passes only if every shard does.
 on:
@@ -8,8 +8,10 @@ on:
   schedule:
     - cron: '0 3 * * *'
 
+# One run per branch at a time, so different pull requests test side by side instead of queuing
+# behind each other (owner, 2026-11-20); a second run on the same branch waits its turn.
 concurrency:
-  group: ios-ui-tests
+  group: ios-ui-tests-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -26,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v7
 
@@ -52,7 +54,7 @@ jobs:
           brew install xcodegen
           cd ios && xcodegen generate
 
-      # Each shard builds for itself: the three builds run side by side (about four minutes),
+      # Each shard builds for itself: the five builds run side by side (about four minutes),
       # which beats one build plus uploading and downloading the products.
       - name: Build for testing
         working-directory: ios
