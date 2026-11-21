@@ -283,7 +283,8 @@ internal object JsonLdRecipeParser {
             LanguageWords.detectionText(name, ingredients)
         }
         val words = LanguageWords.forTag(language)
-        val instructions = extractInstructions(json.opt("recipeInstructions"), words)
+        val (instructions, tips) = extractInstructions(json.opt("recipeInstructions"), words)
+        // Tips (#432) are not steps: a recipe still needs ingredients or steps of its own.
         if (ingredients.isEmpty() && instructions.isEmpty()) return null
 
         return Recipe(
@@ -292,6 +293,7 @@ internal object JsonLdRecipeParser {
             image = WebImageUrl.of(extractImage(json.opt("image"))),
             ingredients = ingredients,
             instructions = instructions,
+            tips = tips,
             prepTime = Durations.format(json.optString("prepTime", ""), words),
             cookTime = Durations.format(json.optString("cookTime", ""), words),
             totalTime = Durations.format(json.optString("totalTime", ""), words),
@@ -350,8 +352,15 @@ internal object JsonLdRecipeParser {
 
     private class CondensedSections(val names: Set<String>)
 
-    private fun extractInstructions(node: Any?, words: LanguageWords?): List<String> {
+    /**
+     * The steps of `recipeInstructions`, and apart from them its tips (#432): a `HowToTip` entry
+     * (kingarthurbaking.com lists three after the method: a make-ahead note, a substitution, a
+     * baking-stone tip) is not a step to advance through, so it never joins the steps, at the top
+     * level or inside a HowToSection. Its text is read as a step's is, through [jsonText].
+     */
+    private fun extractInstructions(node: Any?, words: LanguageWords?): Pair<List<String>, List<String>> {
         val steps = mutableListOf<String>()
+        val tips = mutableListOf<String>()
         val condensedNames = condensedSectionNames(words)
         fun condensed(item: Any?) = isCondensedSection(item, condensedNames)
 
@@ -374,7 +383,9 @@ internal object JsonLdRecipeParser {
                             parts.isNotEmpty() -> parts
                             else -> jsonText(item.optString("name"))
                         }
-                        if (stepText.isNotBlank()) steps.add(stepText.trim())
+                        if (stepText.isNotBlank()) {
+                            if (type.equals("HowToTip", ignoreCase = true)) tips.add(stepText.trim()) else steps.add(stepText.trim())
+                        }
                     }
                 }
             }
@@ -391,7 +402,10 @@ internal object JsonLdRecipeParser {
                 // recipe is never emptied by this. A lone section is never skipped.
                 if (sectionCount >= 2 && items.any(::condensed)) {
                     items.filterNot(::condensed).forEach(::addStep)
-                    if (steps.isEmpty()) items.forEach(::addStep)
+                    if (steps.isEmpty()) {
+                        tips.clear()
+                        items.forEach(::addStep)
+                    }
                 } else {
                     items.forEach(::addStep)
                 }
@@ -401,7 +415,7 @@ internal object JsonLdRecipeParser {
             // <br>-separated set of lines into one collapsed line.
             is String -> steps.addAll(node.split("\n").map { jsonText(it).trim() }.filter { it.isNotEmpty() })
         }
-        return steps
+        return steps to tips
     }
 
     /**

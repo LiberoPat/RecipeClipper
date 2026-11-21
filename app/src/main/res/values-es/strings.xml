@@ -24,6 +24,7 @@
     <string name="heading_ingredients">Ingredientes</string>
     <string name="heading_instructions">Elaboración</string>
     <string name="heading_notes">Notas</string>
+    <string name="heading_tips">Consejos</string>
     <string name="notes_placeholder">Añade una nota</string>
     <string name="action_open_original">Ver el original</string>
     <string name="cd_open_original">Abrir la receta original en %1$s</string>

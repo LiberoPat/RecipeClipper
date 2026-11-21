@@ -15,7 +15,7 @@ import org.json.JSONTokener
  *   "recipes":     [{ "id", "sourceUrl", "sourceType", "title", "imageUrl", "ingredients",
  *                     "instructions", "prepTime", "cookTime", "totalTime", "servings",
  *                     "lastViewedAt", "checkedIngredients", "notes", "language",
- *                     "contentOrigin", "editedAt", "basedOn", "photo" }],
+ *                     "contentOrigin", "editedAt", "basedOn", "photo", "tips" }],
  *   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
  *   "memberships": [{ "recipeId", "listId", "addedAt" }],
  *   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
@@ -142,7 +142,9 @@ object BackupJson {
                 editedAt = r.long(o, "editedAt"),
                 basedOn = r.string(o, "basedOn")?.takeIf { it.isNotBlank() },
                 // A path in the zip (#386); one that isn't a plain `photos/` name is no photo, never an error.
-                photo = r.string(o, "photo")?.takeIf { PHOTO_FILE.matches(it) }
+                photo = r.string(o, "photo")?.takeIf { PHOTO_FILE.matches(it) },
+                // Tips (#432): absent in older files, and for a recipe with none.
+                tips = r.strings(o, "tips")
             )
         }
         requireUniqueIds(recipes.map { it.id }, "recipes")
@@ -412,6 +414,7 @@ object BackupJson {
         put("editedAt", editedAt ?: JSONObject.NULL)
         put("basedOn", basedOn.orNull())
         put("photo", photo.orNull())
+        if (tips.isNotEmpty()) put("tips", JSONArray(tips))
     }
 
     private fun BackupList.toJson() = JSONObject().apply {

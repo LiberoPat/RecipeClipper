@@ -14,7 +14,9 @@ fun shareLabels(resources: Resources) = RecipeShareText.Labels(
     cook = resources.getString(R.string.label_cook),
     total = resources.getString(R.string.label_total),
     ingredients = resources.getString(R.string.share_heading_ingredients),
-    instructions = resources.getString(R.string.share_heading_instructions)
+    instructions = resources.getString(R.string.share_heading_instructions),
+    // The tips' heading (#432) in capitals, like the other two, in the phone's language.
+    tips = resources.getString(R.string.heading_tips).uppercase(resources.configuration.locales[0])
 )
 
 /** The printed card's headings (#318), as the reading view words them, around [shareLabels]' serves and times. */
@@ -22,5 +24,6 @@ fun printLabels(resources: Resources) = RecipePrint.Labels(
     share = shareLabels(resources),
     ingredients = resources.getString(R.string.heading_ingredients),
     instructions = resources.getString(R.string.heading_instructions),
-    notes = resources.getString(R.string.heading_notes)
+    notes = resources.getString(R.string.heading_notes),
+    tips = resources.getString(R.string.heading_tips)
 )

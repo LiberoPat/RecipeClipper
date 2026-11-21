@@ -37,7 +37,7 @@ import com.example.recipeclipper.data.model.MealType
         PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class,
         AiDecisionEntity::class, CookedPhotoEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -455,11 +455,26 @@ abstract class RecipeDatabase : RoomDatabase() {
 
         private const val PHOTO_FILE_SQL = "ALTER TABLE `recipes` ADD COLUMN `photoFile` TEXT"
 
+        /**
+         * A recipe's tips (#432): `recipes.tips`, the source's HowToTip entries as a JSON list, kept
+         * apart from the steps; `[]` for every existing recipe. Stored recipes are not rewritten: one
+         * saved with its tips as steps keeps them until a re-share refreshes it. The same SQL is
+         * iOS's `addTips`.
+         */
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(TIPS_SQL)
+            }
+        }
+
+        private const val TIPS_SQL = "ALTER TABLE `recipes` ADD COLUMN `tips` TEXT NOT NULL DEFAULT '[]'"
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19
+            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
+            MIGRATION_19_20
         )
     }
 }

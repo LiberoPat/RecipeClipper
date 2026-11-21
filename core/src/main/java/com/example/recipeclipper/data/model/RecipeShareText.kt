@@ -32,7 +32,9 @@ object RecipeShareText {
         val cook: String,
         val total: String,
         val ingredients: String,
-        val instructions: String
+        val instructions: String,
+        /** The tips' heading (#432), after the steps. */
+        val tips: String = "TIPS"
     ) {
         companion object {
             val ENGLISH = Labels(
@@ -71,6 +73,13 @@ object RecipeShareText {
 
         lines += labels.instructions
         lines += instructions.mapIndexed { index, step -> "${index + 1}. $step" }
+
+        // The source's tips (#432), after the steps, as written and unnumbered.
+        if (recipe.tips.isNotEmpty()) {
+            lines += ""
+            lines += labels.tips
+            lines += recipe.tips
+        }
 
         return lines.joinToString("\n")
     }

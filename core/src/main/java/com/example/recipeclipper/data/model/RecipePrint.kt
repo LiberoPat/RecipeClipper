@@ -29,6 +29,9 @@ object RecipePrint {
         data class Ingredient(val text: String) : Block()
         data class Step(val number: Int, val text: String) : Block()
         data class Note(val text: String) : Block()
+
+        /** One of the source's tips (#432), as written, unnumbered, after the steps. */
+        data class Tip(val text: String) : Block()
     }
 
     /** The section headings, from the screen's strings; [share] gives the serves and times words. */
@@ -36,7 +39,9 @@ object RecipePrint {
         val share: RecipeShareText.Labels,
         val ingredients: String,
         val instructions: String,
-        val notes: String
+        val notes: String,
+        /** The tips' heading (#432). */
+        val tips: String = "Tips"
     ) {
         companion object {
             val ENGLISH = Labels(RecipeShareText.Labels.ENGLISH, "Ingredients", "Instructions", "Notes")
@@ -72,6 +77,11 @@ object RecipePrint {
         if (steps.isNotEmpty()) {
             add(Block.Section(labels.instructions))
             steps.forEachIndexed { index, step -> add(Block.Step(index + 1, step)) }
+        }
+        val tips = recipe.tips.filter { it.isNotBlank() }
+        if (tips.isNotEmpty()) {
+            add(Block.Section(labels.tips))
+            tips.forEach { add(Block.Tip(it)) }
         }
         note?.trim()?.takeIf { it.isNotEmpty() }?.let {
             add(Block.Section(labels.notes))

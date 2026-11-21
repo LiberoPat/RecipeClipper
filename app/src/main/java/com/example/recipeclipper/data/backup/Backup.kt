@@ -94,7 +94,10 @@ data class BackupRecipe(
     /** The recipe's own picture (#386): its path in the zip (`photos/…`, [BackupArchive]), or null. An
      *  export with photos names it; a plain JSON export, a shared file and older files have none. An
      *  import takes it only with its picture, and only for a recipe that has none. */
-    val photo: String? = null
+    val photo: String? = null,
+    /** The recipe's tips (#432), as written; written only when there are some, so older files
+     *  (and recipes with none) simply have no `tips`, read as none. */
+    val tips: List<String> = emptyList()
 )
 
 data class BackupList(
