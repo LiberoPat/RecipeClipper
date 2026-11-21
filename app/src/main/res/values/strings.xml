@@ -1072,7 +1072,10 @@
     <string name="pro_teaser_plan">Choose the meals, the first day and your own recipes</string>
     <!-- Step photos (#433) -->
     <string name="step_photo_open">Photo %1$d of step %2$d</string>
-    <string name="step_photos_open">%1$d photos of step %2$d</string>
+    <plurals name="step_photos_open">
+        <item quantity="one">%1$d photo of step %2$d</item>
+        <item quantity="other">%1$d photos of step %2$d</item>
+    </plurals>
     <string name="step_photo_open_action">View full screen</string>
     <string name="step_photo_position">Photo %1$d of %2$d</string>
     <string name="step_photo_step">Step %1$d</string>

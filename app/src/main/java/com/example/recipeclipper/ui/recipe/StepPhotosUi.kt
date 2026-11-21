@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -100,7 +101,7 @@ internal fun StepPhotoThumbnail(
     val label = if (photos.size == 1) {
         stringResource(R.string.step_photo_open, front.number, step)
     } else {
-        stringResource(R.string.step_photos_open, photos.size, step)
+        pluralStringResource(R.plurals.step_photos_open, photos.size, photos.size, step)
     }
     val action = stringResource(R.string.step_photo_open_action)
     val corner = RoundedCornerShape(9.dp)

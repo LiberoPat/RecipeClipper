@@ -87,6 +87,16 @@ Sans compte. Sans abonnement.*, *Kostenlos. Ohne Werbung. Ohne Konto. Ohne Abo.*
 pubblicità. Senza account. Senza abbonamento.*, *Grátis. Sem anúncios. Sem conta. Sem assinatura.*),
 which the store listing will repeat, so it should read as the listing would.
 
+## Step photos, 2026-11-21 (#433)
+
+Five `step_photo*` strings on both platforms, drafts by Claude: a thumbnail's label ("Photo 3 of
+step 2": *Foto 3 del paso 2*, *Photo 3 de l'étape 2*, *Foto 3 von Schritt 2*, *Foto 3 del
+passaggio 2*, *Foto 3 do passo 2*), a stack's ("2 photos of step 2"), the tap's action ("View full
+screen": *Ver a pantalla completa*, *Afficher en plein écran*, *Im Vollbild ansehen*, *Vedi a
+schermo intero*, *Ver em tela cheia*), and the viewer's "Photo 3 of 7" and "Step 3", worded as cook
+mode's "Step 1 of 2" already is in each language. The stack's count is always two or more, but it
+is a plural anyway (lint's `PluralsCandidate`), with the `many` forms the other plurals use.
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,
