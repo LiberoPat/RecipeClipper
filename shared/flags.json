@@ -209,6 +209,12 @@
       "description": "Library first (#375): the Recipes tab opens the library, not Home. The Today / Continue cooking card sits compact above search while there is something to cook, the library's + opens an Add a recipe sheet (Paste a link, Scan a recipe, Type a recipe, Ask an AI), the Settings gear sits beside the Recipes title, and an empty library shows the four ways in as tiles. Needs oneCookbook (its views strip carries the Lists card): with that off the tab keeps opening Home. Off, the Recipes tab opens Home as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 375
+    },
+    {
+      "key": "articleRecipes",
+      "description": "A recipe written inside an article: on a page with no JSON-LD or microdata recipe, the article's first list whose items are mostly amounts (at least 3, more than half), followed by its method in paragraphs or an ordered list up to the next heading, is offered on the no-recipe screen as Check the recipe, which opens the editor filled in with those lines as written for the cook to check, saved as a clip under the page's link. Never from prose alone, never saved unchecked. Off, such a page ends at No recipe found as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 435
     }
   ]
 }

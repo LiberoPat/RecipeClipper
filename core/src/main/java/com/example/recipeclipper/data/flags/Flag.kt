@@ -84,7 +84,9 @@ enum class Flag(val key: String) {
     /** Pro (#413): no library limit for anyone, and the one-time unlock holds the Week planning extras, shown locked until bought. */
     PRO_UNLOCK("proUnlock"),
     /** Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone; needs [ONE_COOKBOOK]. */
-    LIBRARY_FIRST("libraryFirst");
+    LIBRARY_FIRST("libraryFirst"),
+    /** A recipe written inside an article (#435): a list of amounts and the method after it, offered in the editor to check. */
+    ARTICLE_RECIPES("articleRecipes");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
