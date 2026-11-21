@@ -21,6 +21,7 @@ import com.example.recipeclipper.data.flags.FlagValues
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.fake.FakeImages
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -125,6 +126,57 @@ class RecipeStepPhotosScreenTest {
         compose.onNodeWithTag("stepPhoto.thumbnail.3").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Photo 4 of 4").assertIsDisplayed()
+    }
+
+    @Test
+    fun withTipsTooTheThumbnailsSitBesideTheStepsAndTheTipsFollowWithNone() {
+        RecipeScreenFixture(
+            recipe().copy(tips = listOf("Use tart apples.")),
+            flags = FlagValues(setOf(Flag.STEP_PHOTOS, Flag.RECIPE_TIPS)),
+            imageLoader = FakeImages.loader(ApplicationProvider.getApplicationContext())
+        ).show(compose)
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("Use tart apples."))
+        val lastThumb = compose.onNodeWithTag("stepPhoto.thumbnail.3").fetchSemanticsNode().boundsInRoot
+        val tips = compose.onNodeWithText("Tips").fetchSemanticsNode().boundsInRoot
+        assertTrue("the method's photos, then the tips", lastThumb.bottom <= tips.top)
+        // A tip is no step: four thumbnails' worth of photos, no more.
+        assertEquals(0, count("stepPhoto.thumbnail.4"))
+    }
+
+    @Test
+    fun cookModesCurrentStepWithNoTimerHasItsThumbnailBesideItsText() {
+        show()
+        compose.onNodeWithText("Start cooking").performClick()
+        compose.waitForIdle()
+
+        // Step 1 has no timer: the thumbnail sits at the top right, beside the text, not in a row of its own.
+        val text = compose.onNodeWithText("Mix the flour (1).").fetchSemanticsNode().boundsInRoot
+        val thumb = compose.onNodeWithTag("stepPhoto.thumbnail.0").fetchSemanticsNode().boundsInRoot
+        assertTrue("beside, not below", thumb.top < text.bottom)
+        assertTrue("to the right", thumb.left >= text.right)
+        compose.onNodeWithTag("stepPhoto.thumbnail.0").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Photo 1 of 4").assertIsDisplayed()
+    }
+
+    @Test
+    fun cookModesCurrentStepWhosePhotoFailsLeavesNoGap() {
+        show(recipe(listOf(listOf(FakeImages.failing("1")), emptyList(), emptyList(), emptyList())))
+        compose.onNodeWithText("Start cooking").performClick()
+        compose.waitUntil(5_000) { count("stepPhoto.thumbnail.0") == 0 }
+        val withFailed = gapUnderText("Mix the flour (1).")
+
+        // The same card for a step with no photo at all: the gap under the text is the same.
+        compose.onNodeWithText("Peel the apples (2) (3).").performClick()
+        compose.waitForIdle()
+        assertEquals(gapUnderText("Peel the apples (2) (3)."), withFailed, 0.5f)
+    }
+
+    /** The space between a current step's text and its "Done — next step" button. */
+    private fun gapUnderText(step: String): Float {
+        val text = compose.onNodeWithText(step).fetchSemanticsNode().boundsInRoot
+        val done = compose.onNodeWithText("Done — next step").fetchSemanticsNode().boundsInRoot
+        return done.top - text.bottom
     }
 
     @Test

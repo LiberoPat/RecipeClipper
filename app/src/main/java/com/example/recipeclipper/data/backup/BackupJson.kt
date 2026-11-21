@@ -16,7 +16,7 @@ import org.json.JSONTokener
  *   "recipes":     [{ "id", "sourceUrl", "sourceType", "title", "imageUrl", "ingredients",
  *                     "instructions", "prepTime", "cookTime", "totalTime", "servings",
  *                     "lastViewedAt", "checkedIngredients", "notes", "language",
- *                     "contentOrigin", "editedAt", "basedOn", "photo", "stepPhotos" }],
+ *                     "contentOrigin", "editedAt", "basedOn", "photo", "tips", "stepPhotos" }],
  *   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
  *   "memberships": [{ "recipeId", "listId", "addedAt" }],
  *   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
@@ -144,6 +144,8 @@ object BackupJson {
                 basedOn = r.string(o, "basedOn")?.takeIf { it.isNotBlank() },
                 // A path in the zip (#386); one that isn't a plain `photos/` name is no photo, never an error.
                 photo = r.string(o, "photo")?.takeIf { PHOTO_FILE.matches(it) },
+                // Tips (#432): absent in older files, and for a recipe with none.
+                tips = r.strings(o, "tips"),
                 // Step photos (#433): web images only, lined up with the steps; anything odd is none, never an error.
                 stepPhotos = StepPhotos.decode(o.optJSONArray("stepPhotos")?.toString())
             ).let { it.copy(stepPhotos = StepPhotos.aligned(it.stepPhotos, it.instructions.size)) }
@@ -415,6 +417,7 @@ object BackupJson {
         put("editedAt", editedAt ?: JSONObject.NULL)
         put("basedOn", basedOn.orNull())
         put("photo", photo.orNull())
+        if (tips.isNotEmpty()) put("tips", JSONArray(tips))
         // Only when some step has a photo (#433), so a recipe without is written as before.
         if (stepPhotos.any { it.isNotEmpty() }) put("stepPhotos", JSONArray(stepPhotos.map { JSONArray(it) }))
     }

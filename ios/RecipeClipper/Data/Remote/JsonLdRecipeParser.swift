@@ -358,7 +358,8 @@ enum JsonLdRecipeParser {
             LanguageWords.detectionText(name: name, ingredients: ingredients)
         }
         let words = LanguageWords.forTag(language)
-        let (instructions, stepPhotos) = extractInstructions(opt(json, "recipeInstructions"), words: words)
+        let (instructions, stepPhotos, tips) = extractInstructions(opt(json, "recipeInstructions"), words: words)
+        // Tips (#432) are not steps: a recipe still needs ingredients or steps of its own.
         if ingredients.isEmpty && instructions.isEmpty { return nil }
 
         var recipe = Recipe(
@@ -372,7 +373,8 @@ enum JsonLdRecipeParser {
             totalTime: Durations.format(optString(json, "totalTime"), words: words),
             yield: extractYield(opt(json, "recipeYield"), words: words),
             sourceUrl: sourceUrl,
-            language: language
+            language: language,
+            tips: tips
         )
         recipe.stepPhotos = StepPhotos.aligned(stepPhotos, instructions.count)
         return recipe
@@ -494,9 +496,14 @@ enum JsonLdRecipeParser {
         return names.contains(jsonText(optString(object, "name")).kTrimmed.lowercased())
     }
 
-    /// The steps, and each one's photos (#433) lined up with them: none for a step given as a string.
-    private static func extractInstructions(_ node: Any?, words: LanguageWords?) -> ([String], [[String]]) {
+    /// The steps of `recipeInstructions`, and apart from them its tips (#432): a `HowToTip` entry
+    /// (kingarthurbaking.com lists three after the method) is not a step to advance through, so it
+    /// never joins the steps, at the top level or inside a HowToSection. Its text is read as a
+    /// step's is, through `jsonText`. Each step's photos (#433) come lined up with
+    /// the steps: none for a step given as a string, and a tip keeps none.
+    private static func extractInstructions(_ node: Any?, words: LanguageWords?) -> (steps: [String], photos: [[String]], tips: [String]) {
         var steps: [String] = []
+        var tips: [String] = []
         var photos: [[String]] = []
         let condensedNames = condensedSectionNames(words)
         func condensed(_ item: Any) -> Bool { isCondensedSection(item, condensedNames) }
@@ -527,8 +534,12 @@ enum JsonLdRecipeParser {
                         stepText = jsonText(text.kIsBlank ? optString(object, "name") : text)
                     }
                     if !stepText.kIsBlank {
-                        steps.append(stepText.kTrimmed)
-                        photos.append(stepImages(opt(object, "image")))
+                        if type.caseInsensitiveCompare("HowToTip") == .orderedSame {
+                            tips.append(stepText.kTrimmed)
+                        } else {
+                            steps.append(stepText.kTrimmed)
+                            photos.append(stepImages(opt(object, "image")))
+                        }
                     }
                 }
             }
@@ -540,7 +551,10 @@ enum JsonLdRecipeParser {
             // recipe is never emptied by this. A lone section is never skipped.
             if array.filter(isHowToSection).count >= 2 && array.contains(where: condensed) {
                 for element in array where !condensed(element) { addStep(element) }
-                if steps.isEmpty { for element in array { addStep(element) } }
+                if steps.isEmpty {
+                    tips = []
+                    for element in array { addStep(element) }
+                }
             } else {
                 for element in array { addStep(element) }
             }
@@ -550,7 +564,7 @@ enum JsonLdRecipeParser {
             // of lines into one collapsed line.
             steps += s.components(separatedBy: "\n").map { jsonText($0).kTrimmed }.filter { !$0.isEmpty }
         }
-        return (steps, photos)
+        return (steps, photos, tips)
     }
 
     /// A HowToStep's `text` given as an array of strings, as one step (#266): einfachbacken.de

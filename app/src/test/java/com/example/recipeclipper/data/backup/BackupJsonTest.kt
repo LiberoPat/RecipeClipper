@@ -1,6 +1,7 @@
 package com.example.recipeclipper.data.backup
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -377,6 +378,21 @@ class BackupJsonTest {
         assertTrue(recipes.getJSONObject(0).has("stepPhotos"))
         assertTrue(!recipes.getJSONObject(2).has("stepPhotos"))
         assertTrue(decodeOrFail(fixture("backup-v1.json")).recipes.all { it.stepPhotos.isEmpty() })
+    }
+
+    /** Tips (#432): the shared fixture, read the same way by iOS's `BackupJsonTests`. */
+    @Test fun `a recipe's tips read, round-trip, are written only when there are some, and older files have none`() {
+        val backup = decodeOrFail(fixture("backup-v1-tips.json"))
+        assertEquals(
+            listOf(listOf("If you don’t have Apple Pie Spice , mix cinnamon & nutmeg.", "Bake on a stone."), emptyList()),
+            backup.recipes.map { it.tips }
+        )
+        assertEquals(listOf("Bake for 35 to 40 minutes.", "Cool."), backup.recipes[0].instructions)
+        assertEquals(backup, decodeOrFail(BackupJson.encode(backup)))
+        val written = org.json.JSONObject(BackupJson.encode(backup)).getJSONArray("recipes")
+        assertTrue(written.getJSONObject(0).has("tips"))
+        assertFalse(written.getJSONObject(1).has("tips"))
+        assertTrue(decodeOrFail(fixture("backup-v1.json")).recipes.all { it.tips.isEmpty() })
     }
 
     @Test fun `a blank basedOn reads as none`() {

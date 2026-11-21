@@ -155,7 +155,7 @@ enum SharedText {
                 let split = SplitRecipe(
                     ingredients: recipe.ingredients, instructions: recipe.instructions, yield: recipe.yield,
                     prepTime: recipe.prepTime, cookTime: recipe.cookTime, totalTime: recipe.totalTime,
-                    language: recipe.language
+                    language: recipe.language, tips: recipe.tips
                 )
                 return Reading(
                     recipe: split, sorted: true, leftovers: [], name: recipe.name, fromChat: true,

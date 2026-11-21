@@ -199,8 +199,7 @@ internal fun ReadingView(
                         modifier = (if (photos.isEmpty()) Modifier else Modifier.weight(1f)).stepLinkActions(parts, onLink)
                     )
                     if (photos.isNotEmpty()) {
-                        Spacer(Modifier.width(12.dp))
-                        StepPhotoThumbnail(photos, actions.onStepPhotoOpen, Modifier.padding(top = 4.dp))
+                        StepPhotoThumbnail(photos, actions.onStepPhotoOpen, Modifier.padding(top = 4.dp), gap = 12.dp)
                     }
                 }
                 // A timer still running after cooking ended (the last step's rest, say) is
@@ -216,6 +215,11 @@ internal fun ReadingView(
                 }
             }
 
+            // The source's tips (#432): below the method, unnumbered and as written (never
+            // converted), under a quiet heading. Not steps: cook mode never shows them.
+            if (recipe.tips.isNotEmpty()) item {
+                TipsSection(recipe.tips)
+            }
             // The versions saved from this recipe (#354), quietly after the steps.
             if (state.versions.isNotEmpty() && !state.notKept) item {
                 VersionsSection(state.versions, actions.onOpenRecipe)

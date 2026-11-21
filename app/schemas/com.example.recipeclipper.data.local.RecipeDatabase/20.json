@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 20,
-    "identityHash": "5b40081e973b4bfe7a23c79e41949293",
+    "identityHash": "4946d7bcc4bc5bcee1d5629bb93dd313",
     "entities": [
       {
         "tableName": "recipes",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `imageUrl` TEXT, `ingredients` TEXT NOT NULL, `instructions` TEXT NOT NULL, `prepTime` TEXT, `cookTime` TEXT, `totalTime` TEXT, `servings` TEXT, `sourceType` TEXT NOT NULL, `lastViewedAt` INTEGER NOT NULL, `checkedIngredients` TEXT NOT NULL, `notes` TEXT, `uid` TEXT NOT NULL DEFAULT '', `language` TEXT, `cookState` TEXT, `servingsTarget` INTEGER, `contentOrigin` TEXT NOT NULL DEFAULT 'PARSED', `editedAt` INTEGER, `basedOnUid` TEXT, `photoFile` TEXT, `stepPhotos` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceUrl` TEXT NOT NULL, `title` TEXT NOT NULL, `imageUrl` TEXT, `ingredients` TEXT NOT NULL, `instructions` TEXT NOT NULL, `prepTime` TEXT, `cookTime` TEXT, `totalTime` TEXT, `servings` TEXT, `sourceType` TEXT NOT NULL, `lastViewedAt` INTEGER NOT NULL, `checkedIngredients` TEXT NOT NULL, `notes` TEXT, `uid` TEXT NOT NULL DEFAULT '', `language` TEXT, `cookState` TEXT, `servingsTarget` INTEGER, `contentOrigin` TEXT NOT NULL DEFAULT 'PARSED', `editedAt` INTEGER, `basedOnUid` TEXT, `photoFile` TEXT, `tips` TEXT NOT NULL DEFAULT '[]')",
         "fields": [
           {
             "fieldPath": "id",
@@ -131,9 +131,11 @@
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "stepPhotos",
-            "columnName": "stepPhotos",
-            "affinity": "TEXT"
+            "fieldPath": "tips",
+            "columnName": "tips",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'[]'"
           }
         ],
         "primaryKey": {
@@ -1134,7 +1136,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5b40081e973b4bfe7a23c79e41949293')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4946d7bcc4bc5bcee1d5629bb93dd313')"
     ]
   }
 }

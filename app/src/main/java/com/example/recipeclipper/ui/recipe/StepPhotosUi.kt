@@ -92,7 +92,9 @@ internal fun StepPhotoThumbnail(
     photos: List<StepPhoto>,
     onOpen: (position: Int) -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = StepThumbnailSize
+    size: Dp = StepThumbnailSize,
+    // Room before it, taken only while it shows, so a photo that fails leaves no gap.
+    gap: Dp = 0.dp
 ) {
     val front = photos.firstOrNull() ?: return
     var failed by remember(front.url) { mutableStateOf(false) }
@@ -107,6 +109,7 @@ internal fun StepPhotoThumbnail(
     val corner = RoundedCornerShape(9.dp)
     Box(
         modifier
+            .padding(start = gap)
             .size(size)
             .testTag("stepPhoto.thumbnail.${front.step}")
             .clickable(onClickLabel = action, role = Role.Button) { onOpen(front.position) }
@@ -166,7 +169,7 @@ internal fun StepPhotoThumbnail(
  * picture of the step, nothing to announce: the row's own tap (make it current) is the action.
  */
 @Composable
-internal fun StepPhotoMini(photos: List<StepPhoto>, modifier: Modifier = Modifier) {
+internal fun StepPhotoMini(photos: List<StepPhoto>, modifier: Modifier = Modifier, gap: Dp = 0.dp) {
     val front = photos.firstOrNull() ?: return
     var failed by remember(front.url) { mutableStateOf(false) }
     if (failed) return
@@ -176,6 +179,7 @@ internal fun StepPhotoMini(photos: List<StepPhoto>, modifier: Modifier = Modifie
         contentScale = ContentScale.Crop,
         onError = { failed = true },
         modifier = modifier
+            .padding(start = gap)
             .size(StepThumbnailSmall)
             .clip(RoundedCornerShape(7.dp))
             .background(MaterialTheme.colorScheme.outlineVariant)

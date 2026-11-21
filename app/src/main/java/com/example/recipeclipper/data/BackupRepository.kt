@@ -173,6 +173,7 @@ internal fun RecipeEntity.toBackup() = BackupRecipe(
     contentOrigin = contentOrigin,
     editedAt = editedAt,
     basedOn = basedOnUid,
+    tips = tips,
     stepPhotos = StepPhotos.aligned(StepPhotos.decode(stepPhotos), instructions.size)
 )
 

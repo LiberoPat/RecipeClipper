@@ -35,6 +35,7 @@ internal fun Recipe.toEntity(viewedAt: Long) = RecipeEntity(
     contentOrigin = origin.name,
     editedAt = editedAt,
     photoFile = photoFile,
+    tips = tips,
     stepPhotos = StepPhotos.encode(StepPhotos.aligned(stepPhotos, instructions.size))
 )
 
@@ -60,6 +61,7 @@ internal fun RecipeEntity.toDomain() = Recipe(
     editedAt = editedAt,
     photoFile = photoFile,
     uid = uid,
+    tips = tips,
     stepPhotos = StepPhotos.aligned(StepPhotos.decode(stepPhotos), instructions.size)
 )
 

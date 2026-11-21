@@ -91,7 +91,8 @@ import java.io.File
  * the app keeps it (`https`), or nil (no image); write only the address.
  *
  * `Parse("block")` rows (#266) pin [JsonLdRecipeParser.parse]'s text: one ld+json block as the
- * recipe's name (nil: no recipe), ingredients, steps and yield; write only the block.
+ * recipe's name (nil: no recipe), ingredients, steps and yield, then its tips (#432) when it has
+ * any; write only the block.
  *
  * `StepPh("block")` rows (#433) pin the step photos [JsonLdRecipeParser.parse] reads from one
  * ld+json block (each step's links, lined up with its steps; [] for none) and their badges'
@@ -352,8 +353,10 @@ class DifferentialCorpusTest {
         parseRow.find(line)?.let { m ->
             val block = unescape(m.groupValues[2])
             val r = JsonLdRecipeParser.parse(listOf(block), "https://src/parse")
-            val parsed = r?.let { "${q(it.name)}, ${list(it.ingredients)}, ${list(it.instructions)}, ${it.yield?.let(::q) ?: "nil"}" }
-                ?: "nil, [], [], nil"
+            val parsed = r?.let {
+                "${q(it.name)}, ${list(it.ingredients)}, ${list(it.instructions)}, ${it.yield?.let(::q) ?: "nil"}" +
+                    if (it.tips.isEmpty()) "" else ", tips: ${list(it.tips)}"
+            } ?: "nil, [], [], nil"
             return m.groupValues[1] + "Parse(${q(block)}, $parsed),"
         }
         stepPhotoRow.find(line)?.let { m ->

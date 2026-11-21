@@ -293,6 +293,7 @@ abstract class BackupDao {
                     editedAt = r.editedAt,
                     basedOnUid = r.basedOn,
                     photoFile = r.photo?.let(storedPhotos::get),
+                    tips = r.tips,
                     stepPhotos = StepPhotos.encode(StepPhotos.aligned(r.stepPhotos, r.instructions.size))
                 )
             )

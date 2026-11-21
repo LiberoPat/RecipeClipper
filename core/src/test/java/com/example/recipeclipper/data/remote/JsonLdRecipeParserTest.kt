@@ -289,4 +289,63 @@ class JsonLdRecipeParserTest {
             JsonLdRecipeParser.parse(listOf(block), sourceUrl)!!.instructions
         )
     }
+
+    // --- HowToTip (#432) ---
+
+    @Test
+    fun `a HowToTip is a tip, kept apart from the steps, in order and as written`() {
+        val block = """
+            {"@type": "Recipe", "name": "R", "recipeIngredient": ["1 apple"], "recipeInstructions": [
+              {"@type": "HowToStep", "text": "Peel."},
+              {"@type": "HowToTip", "text": "Use <b>tart</b> apples &amp; a sharp knife."},
+              {"@type": "HowToStep", "text": "Bake."},
+              {"@type": "howtotip", "name": "A tip named, with no text."},
+              {"@type": "HowToTip", "text": "  "}
+            ]}
+        """.trimIndent()
+        val recipe = JsonLdRecipeParser.parse(listOf(block), sourceUrl)!!
+        assertEquals(listOf("Peel.", "Bake."), recipe.instructions)
+        assertEquals(listOf("Use tart apples & a sharp knife.", "A tip named, with no text."), recipe.tips)
+    }
+
+    @Test
+    fun `a HowToTip inside a HowToSection is a tip too`() {
+        val block = """
+            {"@type": "Recipe", "name": "R", "recipeInstructions": [
+              {"@type": "HowToSection", "name": "Crust", "itemListElement": [
+                {"@type": "HowToStep", "text": "Roll."},
+                {"@type": "HowToTip", "text": "Chill the dough if it gets soft."}
+              ]},
+              {"@type": "HowToSection", "name": "Filling", "itemListElement": [{"@type": "HowToStep", "text": "Stir."}]}
+            ]}
+        """.trimIndent()
+        val recipe = JsonLdRecipeParser.parse(listOf(block), sourceUrl)!!
+        assertEquals(listOf("Roll.", "Stir."), recipe.instructions)
+        assertEquals(listOf("Chill the dough if it gets soft."), recipe.tips)
+    }
+
+    @Test
+    fun `instructions that are only tips are no steps, so a recipe still needs ingredients`() {
+        val onlyTips = """
+            {"@type": "Recipe", "name": "R", "recipeInstructions": [{"@type": "HowToTip", "text": "A tip."}]}
+        """.trimIndent()
+        assertNull(JsonLdRecipeParser.parse(listOf(onlyTips), sourceUrl))
+        val withIngredients = """
+            {"@type": "Recipe", "name": "R", "recipeIngredient": ["1 egg"], "recipeInstructions": [{"@type": "HowToTip", "text": "A tip."}]}
+        """.trimIndent()
+        val recipe = JsonLdRecipeParser.parse(listOf(withIngredients), sourceUrl)!!
+        assertEquals(emptyList<String>(), recipe.instructions)
+        assertEquals(listOf("A tip."), recipe.tips)
+    }
+
+    @Test
+    fun `a recipe with no HowToTip has no tips, and its tips as steps read as before`() {
+        val block = """{"@type": "Recipe", "name": "R", "recipeInstructions": ["One.", "Two."]}"""
+        val recipe = JsonLdRecipeParser.parse(listOf(block), sourceUrl)!!
+        assertEquals(emptyList<String>(), recipe.tips)
+        assertEquals(recipe, recipe.withTipsAsSteps())
+        val tipped = recipe.copy(tips = listOf("Tip."))
+        assertEquals(listOf("One.", "Two.", "Tip."), tipped.withTipsAsSteps().instructions)
+        assertEquals(emptyList<String>(), tipped.withTipsAsSteps().tips)
+    }
 }

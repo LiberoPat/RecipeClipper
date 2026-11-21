@@ -89,6 +89,21 @@ class RecipeStepPhotosDbTest {
         assertEquals(listOf(listOf(c), emptyList()), photosOf(id))
     }
 
+    @Test fun withTipsTooAReShareRefreshesBothAndAnExportCarriesBoth() = runBlocking {
+        val id = db.recipeDao().upsert(recipe(listOf(listOf(a), listOf(b))).copy(tips = listOf("Old tip.")), LibraryLimit.Unlimited)
+        db.recipeDao().upsert(recipe(listOf(listOf(c), emptyList())).copy(tips = listOf("New tip.")), LibraryLimit.Unlimited)
+        val refreshed = db.recipeDao().get(id)!!.toDomain()
+        assertEquals(listOf(listOf(c), emptyList()), refreshed.stepPhotos)
+        assertEquals(listOf("New tip."), refreshed.tips)
+
+        val exported = (DefaultBackupRepository(db.backupDao(), { 9 }, log, photos = FakePhotoStore()).export() as BackupResult.Success).value
+        val into = DefaultBackupRepository(other.backupDao(), { 9 }, log, FakeLibraryPolicy(LibraryLimit.Unlimited), FakePhotoStore())
+        assertEquals(1, (into.import(BackupPackage(exported.json)) as BackupResult.Success).value.recipesAdded)
+        val copy = other.recipeDao().findByUrl("https://www.cookist.it/torta")!!.toDomain()
+        assertEquals(listOf(listOf(c), emptyList()), copy.stepPhotos)
+        assertEquals(listOf("New tip."), copy.tips)
+    }
+
     @Test fun anExportCarriesThemAndAnImportBringsThemBack() = runBlocking {
         db.recipeDao().upsert(recipe(listOf(listOf(a), listOf(b, c))), LibraryLimit.Unlimited)
         db.recipeDao().upsert(recipe(emptyList()).copy(sourceUrl = "https://x/plain"), LibraryLimit.Unlimited)

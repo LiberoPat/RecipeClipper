@@ -74,7 +74,8 @@ import XCTest
 // Photo-address rows (#235): an image's address as a page gives it, then WebImageUrl.of (nil: no
 // image). Write only `Img("http://img.example/a.jpg"),`.
 // JSON-LD text rows (#266): one ld+json block, then JsonLdRecipeParser.parse's name (nil: no
-// recipe), ingredients, steps and yield. Write only `Parse("{\"@type\":\"Recipe\", …}"),`.
+// recipe), ingredients, steps and yield, then `tips:` (#432, HowToTip entries) when it has any.
+// Write only `Parse("{\"@type\":\"Recipe\", …}"),`.
 // Step-photo rows (#433): one ld+json block, then the step photos JsonLdRecipeParser.parse reads
 // (each step's links; [] for none) and StepPhotos.numbered's badge numbers. Write only
 // `StepPh("{\"@type\":\"Recipe\", …}"),`.
@@ -340,8 +341,10 @@ final class DifferentialCorpusTests: XCTestCase {
 
     private struct Parse {
         let block: String; let name: String?; let ingredients: [String]; let steps: [String]; let yield: String?
-        init(_ block: String, _ name: String?, _ ingredients: [String], _ steps: [String], _ yield: String?) {
+        let tips: [String]
+        init(_ block: String, _ name: String?, _ ingredients: [String], _ steps: [String], _ yield: String?, tips: [String] = []) {
             self.block = block; self.name = name; self.ingredients = ingredients; self.steps = steps; self.yield = yield
+            self.tips = tips
         }
     }
 
@@ -2175,6 +2178,12 @@ final class DifferentialCorpusTests: XCTestCase {
         Parse("{\"@type\":\"Recipe\",\"name\":\"Bolo de cenoura\",\"recipeYield\":\"8 por&amp;ccedil;&amp;otilde;es\",\"recipeIngredient\":[\"1/2 x&amp;iacute;cara (ch&amp;aacute;) de &amp;oacute;leo\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"name\":\"Massa\",\"text\":\"Acrescente o a&amp;ccedil;&amp;uacute;car e bata.\"}]}", "Bolo de cenoura", ["1/2 xícara (chá) de óleo"], ["Acrescente o açúcar e bata."], "8 porções"),
         Parse("{\"@type\":\"Recipe\",\"name\":\"R&amp;amp;D &amp;rsquo;s pie\",\"recipeIngredient\":[\"Salt &amp;amp pepper\",\"AT&amp;T &amp;notit; &amp;unknown;\",\"&amp;#233;t&amp;#xE9; &amp;#9999999; &amp;#x80; &amp;frac12\"],\"recipeInstructions\":[\"Keep &amp;lt;b&amp;gt; and &amp;#60; &amp;#x3E; as text &amp;amp;lt;\",\"Heat &lt;b&gt;gently&lt;/b&gt;\",\"Q&amp;A: 1 &amp; 2 &amp;shy;x&amp;#8203;y\"],\"recipeYield\":\"4 &amp;ndash; 6\"}", "R&D ’s pie", ["Salt &amp pepper", "AT&T &notit; &unknown;", "été � € &frac12"], ["Keep &lt;b&gt; and &#60; &#x3E; as text &lt;", "Heat <b>gently</b>", "Q&A: 1 & 2 xy"], "4 – 6"),
         Parse("{\"@type\":\"Recipe\",\"name\":\"Lauchkuchen\",\"recipeIngredient\":[\"200 g Mehl\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":[\"Für den Teig\\u00a0Mehl\",\"Backpulver und Salz mischen.\"]},{\"@type\":\"HowToStep\",\"text\":[\"\",\" \"],\"name\":\"Named\"},{\"@type\":\"HowToStep\",\"text\":[\"a\",1]},{\"@type\":\"HowToStep\",\"text\":[\"&amp;oacute;leo <b>x</b>\",\"\",\"y\"]},{\"@type\":\"HowToStep\",\"text\":\"[\\\"not\\\", \\\"json\\\"]\"}]}", "Lauchkuchen", ["200 g Mehl"], ["Für den Teig Mehl, Backpulver und Salz mischen.", "Named", "[\"a\",1]", "óleo x, y", "[\"not\", \"json\"]"], nil),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Mini Apple Pies\",\"recipeYield\":[\"24\",\"24 mini pies\"],\"recipeIngredient\":[\"1/3 cup (66g) granulated sugar\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"name\":\"Step 1\",\"text\":\"Bake for 35 to 40 minutes.\"},{\"@type\":\"HowToTip\",\"text\":\"If you don\\u2019t have <a href=\\\"/x\\\">Apple Pie Spice</a> , mix cinnamon &amp; nutmeg.\"},{\"@type\":\"howtotip\",\"name\":\"Named tip\"},{\"@type\":\"HowToTip\",\"text\":\" \"},{\"@type\":\"HowToStep\",\"text\":\"Cool.\"}]}", "Mini Apple Pies", ["1/3 cup (66g) granulated sugar"], ["Bake for 35 to 40 minutes.", "Cool."], "24", tips: ["If you don’t have Apple Pie Spice , mix cinnamon & nutmeg.", "Named tip"]),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Pie\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Crust\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Roll.\"},{\"@type\":\"HowToTip\",\"text\":\"Chill if soft.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Filling\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Stir.\"}]}]}", "Pie", [], ["Roll.", "Stir."], nil, tips: ["Chill if soft."]),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Only tips\",\"recipeInstructions\":[{\"@type\":\"HowToTip\",\"text\":\"A tip.\"}]}", nil, [], [], nil),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Tips and eggs\",\"recipeIngredient\":[\"1 egg\"],\"recipeInstructions\":[{\"@type\":\"HowToTip\",\"text\":\"A tip.\"}]}", "Tips and eggs", ["1 egg"], [], nil, tips: ["A tip."]),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Ragu\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Abbreviated Recipe\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"All at once.\"},{\"@type\":\"HowToTip\",\"text\":\"Short tip.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Method\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Real step.\"},{\"@type\":\"HowToTip\",\"text\":\"Real tip.\"}]}]}", "Ragu", [], ["Real step."], nil, tips: ["Real tip."]),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Ragu\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Summary\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Only step.\"},{\"@type\":\"HowToTip\",\"text\":\"Once.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Method\",\"itemListElement\":[{\"@type\":\"HowToTip\",\"text\":\"Method tip.\"}]}]}", "Ragu", [], ["Only step."], nil, tips: ["Once.", "Method tip."]),
     ]
 
     // Step-photo rows (#433): see the header. Write only the block.
@@ -3117,6 +3126,7 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(recipe?.ingredients ?? [], row.ingredients, row.block)
             XCTAssertEqual(recipe?.instructions ?? [], row.steps, row.block)
             XCTAssertEqual(recipe?.yield, row.yield, row.block)
+            XCTAssertEqual(recipe?.tips ?? [], row.tips, row.block)
         }
     }
 

@@ -314,30 +314,35 @@ private struct CookStep: View {
                 }
                 .padding(.bottom, 8)
                 // Only the current step's ingredient links open (#254): a tap elsewhere selects.
-                stepText(text, amounts, accent: Palette.accentText, linked: true)
-                    .textStyle(Typography.cookStep)
-                    .foregroundStyle(Palette.onBackground)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .modifier(StepLinks(parts: amounts, onLink: { vm.onIngredientLink(index, $0) }))
-                if photos.isEmpty {
-                    if timerSeconds != nil || timer != nil {
+                // Step photos (#433): beside the text when the step has no timer, at the end of the
+                // timer's row when it has one. The thumbnail's gap is its own, so a photo that fails
+                // to load leaves none.
+                let placement = CurrentStepPhoto.placement(hasPhotos: !photos.isEmpty, hasTimer: timerSeconds != nil || timer != nil)
+                HStack(alignment: .top, spacing: 0) {
+                    stepText(text, amounts, accent: Palette.accentText, linked: true)
+                        .textStyle(Typography.cookStep)
+                        .foregroundStyle(Palette.onBackground)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .modifier(StepLinks(parts: amounts, onLink: { vm.onIngredientLink(index, $0) }))
+                    if placement == .besideText {
+                        StepPhotoThumbnail(photos: photos, size: 56, gap: 12, onOpen: vm.onStepPhotoOpen)
+                            .padding(.top, 4)
+                    }
+                }
+                if placement == .none, timerSeconds != nil || timer != nil {
+                    // The cook-mode tooltips (#190) go below their controls, never over the step's text.
+                    CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
+                        .tooltipAnchor(.cookTimer, side: .below)
+                        .padding(.top, 16)
+                } else if placement == .besideTimer {
+                    HStack(alignment: .center, spacing: 0) {
                         // The cook-mode tooltips (#190) go below their controls, never over the step's text.
                         CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
                             .tooltipAnchor(.cookTimer, side: .below)
-                            .padding(.top, 16)
-                    }
-                } else {
-                    // Step photos (#433): the thumbnail at the end of the timer's row, or alone in
-                    // the same place when the step has no timer.
-                    HStack(alignment: .center, spacing: 10) {
-                        if timerSeconds != nil || timer != nil {
-                            CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
-                                .tooltipAnchor(.cookTimer, side: .below)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
-                            Spacer(minLength: 0)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if placement == .besideTimer {
+                            StepPhotoThumbnail(photos: photos, size: 56, gap: 10, onOpen: vm.onStepPhotoOpen)
                         }
-                        StepPhotoThumbnail(photos: photos, size: 56, onOpen: vm.onStepPhotoOpen)
                     }
                     .padding(.top, 16)
                 }
@@ -358,7 +363,7 @@ private struct CookStep: View {
                     ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
                     : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 0))
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: 0) {
                     layout {
                         Text("\(index + 1)")
                             .textStyle(Typography.titleMedium)
@@ -373,7 +378,7 @@ private struct CookStep: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     // Step photos (#433): a small one, decorative; the row's tap makes the step current.
-                    if !photos.isEmpty { StepPhotoMiniThumbnail(photos: photos).padding(.top, 2) }
+                    if !photos.isEmpty { StepPhotoMiniThumbnail(photos: photos, gap: 12).padding(.top, 2) }
                     }
                     // A timer still running on a step you've moved on from stays visible:
                     // steps overlap.

@@ -108,16 +108,15 @@ final class StepPhotosDataTests: XCTestCase {
 
     // MARK: Migration
 
-    /// A user_version 18 file (Android's Room 19) gains a nullable `stepPhotos` (Android's
-    /// `MigrationTest.migration19To20…`): every recipe comes across as it was with none, and they can
-    /// then be written. A user_version 17 file, which first gains `photoFile` (#386), ends the same.
-    /// (#432, recipe tips, also claims user_version 19 on its branch: whichever lands second renumbers.)
-    func testAVersion18DatabaseMigratesToVersion19() async throws {
-        try await assertStepPhotosMigration(from: 18)
+    /// A user_version 19 file (Android's Room 20, #432's tips) gains a nullable `stepPhotos` (Android's
+    /// `MigrationTest.migration20To21…`): every recipe comes across as it was with none, and they can
+    /// then be written. A user_version 18 file, which first gains `tips` (#432), ends the same.
+    func testAVersion19DatabaseMigratesToVersion20() async throws {
+        try await assertStepPhotosMigration(from: 19)
     }
 
-    func testAVersion17DatabaseEndsWithBothChanges() async throws {
-        try await assertStepPhotosMigration(from: 17)
+    func testAVersion18DatabaseEndsWithBothChanges() async throws {
+        try await assertStepPhotosMigration(from: 18)
     }
 
     private func assertStepPhotosMigration(from oldVersion: Int) async throws {
@@ -140,12 +139,12 @@ final class StepPhotosDataTests: XCTestCase {
         let migrated = try AppDatabase(path: path)
         let version = try await migrated.read { try $0.queryOne("PRAGMA user_version") { $0.int(0) } }
         XCTAssertEqual(version, AppDatabase.schemaVersion)
-        XCTAssertEqual(AppDatabase.schemaVersion, 19)
+        XCTAssertEqual(AppDatabase.schemaVersion, 20)
         let original = try await migrated.read { try XCTUnwrap(RecipeDao(db: $0).get(7)) }
         XCTAssertEqual(original.title, "Adobo")
         XCTAssertEqual(original.instructions, ["Simmer."])
         XCTAssertNil(original.stepPhotos)
-        XCTAssertNil(original.photoFile)
+        XCTAssertEqual(original.tips, [])
         try await migrated.write { try $0.run("UPDATE recipes SET stepPhotos = ? WHERE id = 7", "[[\"https://img.example/s.jpg\"]]") }
         let stored = try await migrated.read { try XCTUnwrap(RecipeDao(db: $0).get(7)).toDomain() }
         XCTAssertEqual(stored.stepPhotos, [["https://img.example/s.jpg"]])

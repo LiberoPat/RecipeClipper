@@ -137,6 +137,44 @@ final class StepPhotosViewTests: XCTestCase {
         }
     }
 
+    /// Cook mode's current card (#433): a step with photos and no timer puts its thumbnail beside its
+    /// text; with a timer, at the end of the timer's row; a step without photos has none.
+    func testTheCurrentCardPutsTheThumbnailBesideTheTextWithNoTimerAndBesideTheTimerWithOne() async throws {
+        XCTAssertEqual(CurrentStepPhoto.placement(hasPhotos: true, hasTimer: false), .besideText)
+        XCTAssertEqual(CurrentStepPhoto.placement(hasPhotos: true, hasTimer: true), .besideTimer)
+        XCTAssertEqual(CurrentStepPhoto.placement(hasPhotos: false, hasTimer: true), .none)
+        XCTAssertEqual(CurrentStepPhoto.placement(hasPhotos: false, hasTimer: false), .none)
+
+        // Step 1 has a photo and no timer; step 4, "per 50 minuti", may have a timer and here a photo.
+        let vm = await loaded(recipe(photos: [[one], [], [three, four], [one]]))
+        let content = try XCTUnwrap(vm.uiState.content.success)
+        XCTAssertNil(content.stepTimerSeconds[0])
+        for step in [0, 3] {
+            var cooking = vm.uiState
+            cooking.cook.active = true
+            cooking.cook.currentStep = step
+            let cook = CookView(content: content, state: cooking, vm: vm)
+                .environment(\.stepPhotos, true)
+                .frame(width: 390, height: 1200)
+            XCTAssertNotNil(ImageRenderer(content: cook).uiImage)
+        }
+    }
+
+    /// The gap before a thumbnail is its own: with no photo to show (none, or one that failed to
+    /// load, the same branch) it takes no room at all.
+    func testAThumbnailWithNothingToShowLeavesNoGap() {
+        func width(_ photos: [StepPhoto]) -> CGFloat {
+            let row = HStack(spacing: 0) {
+                Color.red.frame(width: 100, height: 10)
+                StepPhotoThumbnail(photos: photos, size: 56, gap: 12, onOpen: { _ in })
+            }
+            .fixedSize()
+            return ImageRenderer(content: row).uiImage?.size.width ?? -1
+        }
+        XCTAssertEqual(width([]), 100)
+        XCTAssertEqual(width([StepPhoto(url: one, step: 0, number: 1, position: 0)]), 168)
+    }
+
     func testTheFlagIsDeclaredAndOnByDefault() {
         let definition = FlagRegistry.definitions.first { $0.key == "stepPhotos" }
         XCTAssertEqual(definition?.issue, 433)

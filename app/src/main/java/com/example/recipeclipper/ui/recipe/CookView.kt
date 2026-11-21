@@ -334,26 +334,31 @@ private fun CookStep(
             }
             Spacer(Modifier.height(if (shortToggle != null) 0.dp else 8.dp))
             val onLink = { lines: List<Int> -> actions.onIngredientLink(index, lines) }
-            Text(
-                stepText(text, amounts, colors.tertiary, onLink),
-                style = body.copy(fontSize = 21.sp, lineHeight = 30.sp),
-                modifier = Modifier.stepLinkActions(amounts, onLink)
-            )
             val hasTimer = timerSeconds != null || timer != null
-            if (photos.isEmpty()) {
-                if (hasTimer) {
-                    Spacer(Modifier.height(16.dp))
-                    CurrentTimer(index, timerSeconds, timerWords, timer, actions)
+            // Step photos (#433): with a timer, the thumbnail ends the timer's row; with none, it
+            // sits beside the step's text, top right. A photo that fails to load leaves no gap.
+            val photoBesideText = photos.isNotEmpty() && !hasTimer
+            Row {
+                Text(
+                    stepText(text, amounts, colors.tertiary, onLink),
+                    style = body.copy(fontSize = 21.sp, lineHeight = 30.sp),
+                    modifier = (if (photoBesideText) Modifier.weight(1f) else Modifier).stepLinkActions(amounts, onLink)
+                )
+                if (photoBesideText) {
+                    StepPhotoThumbnail(photos, actions.onStepPhotoOpen, Modifier.padding(top = 4.dp), gap = 12.dp)
                 }
-            } else {
-                // Step photos (#433): the thumbnail beside the timer, or in the same place with none.
+            }
+            if (hasTimer) {
                 Spacer(Modifier.height(16.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        if (hasTimer) CurrentTimer(index, timerSeconds, timerWords, timer, actions)
+                if (photos.isEmpty()) {
+                    CurrentTimer(index, timerSeconds, timerWords, timer, actions)
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            CurrentTimer(index, timerSeconds, timerWords, timer, actions)
+                        }
+                        StepPhotoThumbnail(photos, actions.onStepPhotoOpen, gap = 10.dp)
                     }
-                    Spacer(Modifier.width(10.dp))
-                    StepPhotoThumbnail(photos, actions.onStepPhotoOpen)
                 }
             }
             Spacer(Modifier.height(20.dp))
@@ -402,8 +407,7 @@ private fun CookStep(
             )
             // Step photos (#433): a small one, no badge; the row's tap makes the step current.
             if (photos.isNotEmpty()) {
-                Spacer(Modifier.width(10.dp))
-                StepPhotoMini(photos, Modifier.padding(top = 3.dp))
+                StepPhotoMini(photos, Modifier.padding(top = 3.dp), gap = 10.dp)
             }
         }
         // A timer still running on a step you've moved on from stays visible: steps overlap.

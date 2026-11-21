@@ -95,6 +95,9 @@ data class BackupRecipe(
      *  export with photos names it; a plain JSON export, a shared file and older files have none. An
      *  import takes it only with its picture, and only for a recipe that has none. */
     val photo: String? = null,
+    /** The recipe's tips (#432), as written; written only when there are some, so older files
+     *  (and recipes with none) simply have no `tips`, read as none. */
+    val tips: List<String> = emptyList(),
     /** Each step's photos (#433): web image links, one list per step, lined up with [instructions];
      *  empty for none (and absent from the file then, as in older files, which an older app ignores). */
     val stepPhotos: List<List<String>> = emptyList()

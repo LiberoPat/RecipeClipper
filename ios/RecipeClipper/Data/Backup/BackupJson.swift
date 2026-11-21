@@ -7,7 +7,7 @@ import Foundation
 ///   "recipes":     [{ "id", "sourceUrl", "sourceType", "title", "imageUrl", "ingredients",
 ///                     "instructions", "prepTime", "cookTime", "totalTime", "servings",
 ///                     "lastViewedAt", "checkedIngredients", "notes", "language",
-///                     "contentOrigin", "editedAt", "basedOn", "photo", "stepPhotos" }],
+///                     "contentOrigin", "editedAt", "basedOn", "photo", "tips", "stepPhotos" }],
 ///   "lists":       [{ "id", "name", "isFavorites", "isBuiltIn", "sortOrder", "createdAt" }],
 ///   "memberships": [{ "recipeId", "listId", "addedAt" }],
 ///   "pantry":      [{ "id", "name", "quantity", "language", "aisle", "inStock", "alwaysHave",
@@ -134,6 +134,8 @@ enum BackupJson {
                 basedOn: (try r.string(o, "basedOn")).flatMap { $0.isBlank ? nil : $0 },
                 // A path in the zip (#386); one that isn't a plain `photos/` name is no photo, never an error.
                 photo: (try r.string(o, "photo")).flatMap { isPhotoFile($0) ? $0 : nil },
+                // Tips (#432): absent in older files, and for a recipe with none.
+                tips: try r.strings(o, "tips"),
                 // Step photos (#433): web images only, lined up with the steps; anything odd is none, never an error.
                 stepPhotos: StepPhotos.aligned(
                     (o["stepPhotos"] as? [Any]).map(StepPhotos.read) ?? [], (try r.strings(o, "instructions")).count
@@ -445,6 +447,7 @@ enum BackupJson {
             "basedOn": r.basedOn ?? NSNull(),
             "photo": r.photo ?? NSNull(),
         ]
+        if !r.tips.isEmpty { object["tips"] = r.tips }
         // Only when some step has a photo (#433), so a recipe without is written as before.
         if r.stepPhotos.contains(where: { !$0.isEmpty }) { object["stepPhotos"] = r.stepPhotos }
         return object

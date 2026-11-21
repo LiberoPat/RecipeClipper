@@ -98,8 +98,17 @@ data class Recipe(
     val uid: String = "",
     /** Each step's photos as the source gives them (#433): web image links, one list per step,
      *  lined up with [instructions]; empty for a recipe with none. See [StepPhotos]. */
-    val stepPhotos: List<List<String>> = emptyList()
+    val stepPhotos: List<List<String>> = emptyList(),
+    /**
+     * The source's tips (#432): schema.org `HowToTip` entries in `recipeInstructions`, kept apart
+     * from [instructions], each as written. Shown below the method, unnumbered, and never in cook
+     * mode: not a step, not counted in its progress. Empty for most recipes.
+     */
+    val tips: List<String> = emptyList()
 ) {
+    /** The recipe as it read before #432 (the `recipeTips` flag off): its tips as its last steps. */
+    fun withTipsAsSteps(): Recipe = if (tips.isEmpty()) this else copy(instructions = instructions + tips, tips = emptyList())
+
     /** What the screens show as the recipe's picture (#386): its stored photo (with its link behind it, for a missing file), else its link. */
     val displayImage: String?
         get() = photoFile?.let { StoredPhoto.model(it, fallback = image) } ?: image

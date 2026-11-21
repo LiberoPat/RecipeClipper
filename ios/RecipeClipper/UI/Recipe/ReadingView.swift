@@ -110,7 +110,7 @@ struct ReadingView: View {
                     // without has none, and its text keeps the full width.
                     let photos = stepPhotos ? content.photosOf(index) : []
                     VStack(alignment: .leading, spacing: 4) {
-                        HStack(alignment: .top, spacing: 12) {
+                        HStack(alignment: .top, spacing: 0) {
                         layout {
                             Text("\(index + 1)")
                                 .textStyle(Typography.titleMedium)
@@ -124,7 +124,7 @@ struct ReadingView: View {
                                 .modifier(StepLinks(parts: parts, onLink: { vm.onIngredientLink(index, $0) }))
                         }
                         if !photos.isEmpty {
-                            StepPhotoThumbnail(photos: photos, onOpen: vm.onStepPhotoOpen)
+                            StepPhotoThumbnail(photos: photos, gap: 12, onOpen: vm.onStepPhotoOpen)
                                 .padding(.top, 4)
                         }
                         }
@@ -146,6 +146,12 @@ struct ReadingView: View {
                         asWritten: state.asWrittenSteps.contains(index),
                         toggle: { vm.onStepAsWrittenToggle(index) }
                     ))
+                }
+
+                // The source's tips (#432): below the method, unnumbered and as written (never
+                // converted), under a quiet heading. Not steps: cook mode never shows them.
+                if !recipe.tips.isEmpty {
+                    TipsSection(tips: recipe.tips).padding(.top, 24)
                 }
 
                 // The versions saved from this recipe (#354), quietly after the steps.

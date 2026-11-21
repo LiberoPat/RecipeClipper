@@ -14,9 +14,12 @@ struct RecipeDraft: Equatable {
     /// One step per line, as typed in the steps box.
     var instructionsText = ""
     var image = ""
+    /// One tip per line (#432), as typed in the tips box: never a step, and not needed to save.
+    var tipsText = ""
 
     var ingredients: [String] { Self.lines(ingredientsText) }
     var instructions: [String] { Self.lines(instructionsText) }
+    var tips: [String] { Self.lines(tipsText) }
 
     /// The parsers' rule for a recipe: a name, plus ingredients or steps.
     var isValid: Bool {
@@ -34,6 +37,7 @@ struct RecipeDraft: Equatable {
         // The steps' photos (#433) follow their steps through the edit; see StepPhotos.afterEdit.
         // The editor has no field for them: they are never shown or typed here.
         recipe.stepPhotos = StepPhotos.afterEdit(base.instructions, base.stepPhotos, instructions)
+        recipe.tips = tips
         recipe.prepTime = Self.optional(prepTime)
         recipe.cookTime = Self.optional(cookTime)
         recipe.totalTime = Self.optional(totalTime)
@@ -51,7 +55,8 @@ struct RecipeDraft: Equatable {
             totalTime: recipe.totalTime ?? "",
             ingredientsText: recipe.ingredients.joined(separator: "\n"),
             instructionsText: recipe.instructions.joined(separator: "\n"),
-            image: recipe.image ?? ""
+            image: recipe.image ?? "",
+            tipsText: recipe.tips.joined(separator: "\n")
         )
     }
 

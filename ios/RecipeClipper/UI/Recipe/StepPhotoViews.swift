@@ -52,6 +52,8 @@ struct StepPhotoThumbnail: View {
     let photos: [StepPhoto]
     var size: CGFloat = 54
     var radius: CGFloat = 9
+    /// Room before it, taken only while it shows, so a photo that fails to load leaves no gap.
+    var gap: CGFloat = 0
     let onOpen: (Int) -> Void
 
     @State private var failed = false
@@ -91,7 +93,19 @@ struct StepPhotoThumbnail: View {
             .accessibilityHint(Strings.stepPhotoOpenAction)
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("stepPhoto.thumb-\(front.step)")
+            .padding(.leading, gap)
         }
+    }
+}
+
+/// Where cook mode's current card puts the step's thumbnail (#433): beside the step's text, top
+/// right, when the step has no timer; at the end of the timer's row when it has one.
+enum CurrentStepPhoto: Equatable {
+    case none, besideText, besideTimer
+
+    static func placement(hasPhotos: Bool, hasTimer: Bool) -> CurrentStepPhoto {
+        guard hasPhotos else { return .none }
+        return hasTimer ? .besideTimer : .besideText
     }
 }
 
@@ -99,12 +113,15 @@ struct StepPhotoThumbnail: View {
 /// Decorative: the row's tap makes the step current, and VoiceOver reads the row as before.
 struct StepPhotoMiniThumbnail: View {
     let photos: [StepPhoto]
+    /// Room before it, taken only while it shows.
+    var gap: CGFloat = 0
     @State private var failed = false
 
     var body: some View {
         if let front = photos.first, !failed {
             StepPhotoImage(url: front.url, radius: 7, onFailure: { failed = true })
                 .frame(width: 40, height: 40)
+                .padding(.leading, gap)
                 .accessibilityHidden(true)
         }
     }
