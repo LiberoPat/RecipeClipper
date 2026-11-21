@@ -32,7 +32,13 @@ import com.example.recipeclipper.fake.FakeBackupFiles
 import com.example.recipeclipper.fake.FakeBackupRepository
 import com.example.recipeclipper.fake.FakeRecipeRepository
 import com.example.recipeclipper.fake.FakeTourPreferences
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagValues
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.home.HomeScreen
+import com.example.recipeclipper.ui.recipes.LibraryRoot
+import com.example.recipeclipper.ui.recipes.RecipesScreen
+import com.example.recipeclipper.ui.recipes.RecipesViewModel
 import com.example.recipeclipper.ui.home.HomeViewModel
 import com.example.recipeclipper.ui.settings.SettingsScreen
 import com.example.recipeclipper.ui.settings.SettingsSection
@@ -134,6 +140,38 @@ class TooltipsScreenTest {
         compose.onNodeWithText("Show tips again").performClick()
         assertEquals(1, replays)
         assertEquals(emptySet<Tooltip>(), seen())
+    }
+
+    /** Library first (#375): the first screen's tip points at the +, with its own words, and is seen once. */
+    @Test
+    fun withLibraryFirstTheTipPointsAtThePlusAndIsSeenOnce() {
+        val repository = FakeRecipeRepository()
+        val library = RecipesViewModel(repository, FakeAppPreferences())
+        val home = HomeViewModel(repository)
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            CompositionLocalProvider(
+                LocalTooltips provides tooltips,
+                LocalFlagValues provides FlagValues(setOf(Flag.LIBRARY_FIRST))
+            ) {
+                RecipesScreen(
+                    onBack = {}, onOpenRecipe = {}, viewModel = library,
+                    libraryRoot = LibraryRoot(home, onOpenSettings = {}, onResumeCooking = {}, onOpenPlanned = { _, _, _ -> })
+                )
+            }
+        }
+        compose.mainClock.advanceTimeBy(Tooltips.SETTLE_MILLIS / 2)
+        compose.onNodeWithTag("tooltip-home_link").assertDoesNotExist()
+
+        compose.mainClock.advanceTimeBy(Tooltips.SETTLE_MILLIS)
+        compose.mainClock.autoAdvance = true
+        compose.onNodeWithText("Share a recipe link to this app, or tap + to add one.").assertExists()
+        // The old words (Home's Paste a link tile) are gone.
+        compose.onNodeWithText("Share a recipe link to this app, or tap here to paste one.").assertDoesNotExist()
+
+        compose.onNodeWithText("Got it").performClick()
+        compose.onNodeWithTag("tooltip-home_link").assertDoesNotExist()
+        assertEquals(setOf(Tooltip.HOME_LINK), seen())
     }
 
     @Test

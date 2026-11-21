@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -32,6 +33,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navigation
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
@@ -45,6 +48,7 @@ import com.example.recipeclipper.ui.theme.RecipeClipperTheme
  */
 enum class Tab(
     val route: String,
+    /** The first screen (Home, or with `libraryFirst`, #375, the library: see [startRouteOf]). */
     val startRoute: String,
     @StringRes val label: Int,
     @DrawableRes val icon: Int
@@ -70,13 +74,17 @@ internal fun NavDestination?.showsTabBar(): Boolean = this?.route in tabBarRoute
 internal fun NavDestination?.tab(): Tab? =
     this?.hierarchy?.let { chain -> Tab.entries.firstOrNull { tab -> chain.any { it.route == tab.route } } }
 
+/** [tab]'s first screen as the graph was built: the library for Recipes with `libraryFirst` (#375), else Home. */
+internal fun NavHostController.startRouteOf(tab: Tab): String =
+    (graph.findNode(tab.route) as? NavGraph)?.findStartDestination()?.route ?: tab.startRoute
+
 /**
  * Opens [tab] with its own back stack restored. Choosing the tab already open goes back to its
  * first screen instead, as tab bars conventionally do.
  */
 fun NavHostController.selectTab(tab: Tab) {
     if (currentDestination.tab() == tab) {
-        popBackStack(tab.startRoute, inclusive = false)
+        popBackStack(startRouteOf(tab), inclusive = false)
         return
     }
     navigate(tab.route) {
@@ -104,6 +112,12 @@ fun NavHostController.openRoute(route: String) {
         return
     }
     if (currentDestination.tab() != Tab.RECIPES) selectTab(Tab.RECIPES)
+    // The library itself (a file received into Recipes, #149): with `libraryFirst` (#375) it is the
+    // tab's first screen, so go back to it rather than stack a second library on the first.
+    if (route == Routes.RECIPES && startRouteOf(Tab.RECIPES) == Routes.RECIPES) {
+        popBackStack(Routes.RECIPES, inclusive = false)
+        return
+    }
     // A countdown tapped while its recipe is on top (#333) mustn't stack a second copy, whose
     // older twin would keep stale timer state and could save it over the newer progress. By
     // recipe, not by destination: `launchSingleTop` would hand recipe 5's screen recipe 7's id.
@@ -136,7 +150,9 @@ fun AppShell(
     recipes: NavGraphBuilder.(NavHostController) -> Unit = { recipesDestinations(it) },
     week: NavGraphBuilder.(NavHostController) -> Unit = { weekDestinations(it) },
     groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations(it) },
-    pantry: NavGraphBuilder.(NavHostController) -> Unit = { pantryDestinations() }
+    pantry: NavGraphBuilder.(NavHostController) -> Unit = { pantryDestinations() },
+    /** Library first (#375): the Recipes tab opens the library, not Home. */
+    libraryFirst: Boolean = LocalFlagValues.current.isOn(Flag.LIBRARY_FIRST)
 ) {
     val entry by navController.currentBackStackEntryAsState()
     val destination = entry?.destination
@@ -154,7 +170,10 @@ fun AppShell(
     ) { padding ->
         Box(Modifier.padding(padding).consumeWindowInsets(padding)) {
             NavHost(navController = navController, startDestination = Tab.RECIPES.route) {
-                navigation(route = Tab.RECIPES.route, startDestination = Routes.HOME) {
+                navigation(
+                    route = Tab.RECIPES.route,
+                    startDestination = if (libraryFirst) Routes.RECIPES else Routes.HOME
+                ) {
                     recipes(navController)
                 }
                 navigation(route = Tab.WEEK.route, startDestination = Routes.WEEK) {

@@ -99,7 +99,7 @@ internal fun ResumeCard(recipe: RecipeSummary, resume: CookResume?, onResume: ()
 
 /** A running timer's time left, "18:42 left", on the paprika wash. */
 @Composable
-private fun TimerTag(secondsLeft: Int) {
+internal fun TimerTag(secondsLeft: Int) {
     val accent = MaterialTheme.colorScheme.tertiary
     Row(
         verticalAlignment = Alignment.CenterVertically,

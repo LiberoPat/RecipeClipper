@@ -70,7 +70,9 @@ enum class Flag(val key: String) {
     /** Fresh food (#396): Shop for this week in two trips (Buy now, Buy later in the week), and the plan's "cook it earlier?" note. */
     FRESH_FOOD("freshFood"),
     /** Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix. */
-    PLAN_MY_WEEK_PLUS("planMyWeekPlus");
+    PLAN_MY_WEEK_PLUS("planMyWeekPlus"),
+    /** Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone. */
+    LIBRARY_FIRST("libraryFirst");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

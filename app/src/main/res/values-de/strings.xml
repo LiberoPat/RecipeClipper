@@ -697,6 +697,8 @@
     <!-- The tooltips (#190): one small bubble at a time, pointing at a control -->
     <string name="tooltip_got_it">Verstanden</string>
     <string name="tooltip_home_link">Teile einen Rezeptlink mit dieser App oder tippe hier, um ihn einzufügen.</string>
+    <string name="tooltip_library_add">Teile einen Rezeptlink mit dieser App oder tippe auf +, um ein Rezept hinzuzufügen.</string>
+    <string name="library_empty_title">Hier erscheinen deine Rezepte</string>
     <string name="tooltip_recipe_units">„Wie im Rezept“ zeigt jede Menge genau so, wie das Rezept sie angibt. Tippe hier, um alle Rezepte in „Metrisch“ oder „Unzen“ zu sehen; was sich nicht genau umrechnen lässt, bleibt wie im Rezept.</string>
     <string name="tooltip_recipe_start_cooking">Kochmodus: ein Schritt nach dem anderen, mit Timern, und der Bildschirm bleibt an.</string>
     <string name="tooltip_recipe_made_this">Nachgekocht? Füge ein Foto und eine Notiz hinzu oder tippe auf „Als gekocht markieren“.</string>

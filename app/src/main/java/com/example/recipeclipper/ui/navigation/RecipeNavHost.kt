@@ -18,6 +18,7 @@ import com.example.recipeclipper.ui.mealplan.CutOffScreen
 import com.example.recipeclipper.ui.mealplan.MealPlanReviewScreen
 import com.example.recipeclipper.ui.mealplan.MealPlanReviewViewModel
 import com.example.recipeclipper.data.model.RecipeFilter
+import com.example.recipeclipper.ui.recipes.LibraryRoot
 import com.example.recipeclipper.ui.recipes.RecipesScreen
 import com.example.recipeclipper.ui.recipes.RecipesViewModel
 import com.example.recipeclipper.ui.home.HomeScreen
@@ -34,6 +35,8 @@ import com.example.recipeclipper.ui.settings.SettingsScreen
 import com.example.recipeclipper.ui.settings.SettingsSection
 import com.example.recipeclipper.ui.settings.SettingsSectionScreen
 import com.example.recipeclipper.ui.tour.LocalTooltips
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 
 object Routes {
     const val HOME = "home"
@@ -52,8 +55,12 @@ object Routes {
     fun settingsSection(section: SettingsSection) = "settings/${section.route}"
     const val LISTS = "lists"
     const val LIST_DETAIL = "lists/{${ListDetailViewModel.LIST_ID_ARG}}"
+    // `servings` and `startCook` (#375): the library's Today card starts a planned meal on the Recipes
+    // stack, as the Week's own route does on the Week's.
     const val RECIPE =
-        "recipe/{${RecipeViewModel.RECIPE_ID_ARG}}?${RecipeViewModel.COOK_ARG}={${RecipeViewModel.COOK_ARG}}"
+        "recipe/{${RecipeViewModel.RECIPE_ID_ARG}}?${RecipeViewModel.COOK_ARG}={${RecipeViewModel.COOK_ARG}}" +
+            "&${RecipeViewModel.SERVINGS_ARG}={${RecipeViewModel.SERVINGS_ARG}}" +
+            "&${RecipeViewModel.START_COOK_ARG}={${RecipeViewModel.START_COOK_ARG}}"
 
     // The share-target entry: parse, then persist.
     const val IMPORT = "recipe/import?${RecipeViewModel.URL_ARG}={${RecipeViewModel.URL_ARG}}"
@@ -86,6 +93,13 @@ object Routes {
 
     // From a timer notification or Home's "Resume cooking" (#286): the recipe, in cook mode.
     fun cookRecipe(id: Long) = "recipe/$id?${RecipeViewModel.COOK_ARG}=true"
+
+    // The library's Today card (#375): a planned meal at its planned servings, on the Recipes stack so Back
+    // returns to the library, and with `startCook` in cook mode (`weekRecipe` is the Week's own).
+    fun plannedRecipe(id: Long, servings: Int?, startCook: Boolean = false) = "recipe/$id" + listOfNotNull(
+        servings?.let { "${RecipeViewModel.SERVINGS_ARG}=$it" },
+        "${RecipeViewModel.START_COOK_ARG}=true".takeIf { startCook }
+    ).let { if (it.isEmpty()) "" else "?" + it.joinToString("&") }
 
     // "Clip it yourself" (#37), from a page with no recipe data, or opened by itself in the
     // import's place when Reddit blocks the app's read of a post (#213: `blocked`, with a note).
@@ -227,7 +241,9 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     }
 
     composable(Routes.RECIPES) {
-        // The + menu: "Type a recipe" is Home's "+ New recipe"; "Paste a link" is Home's field.
+        // With libraryFirst (#375) this is the tab's first screen: Home's jobs (the card, the ways in, the
+        // gear) are here, and the + opens the Add a recipe sheet. Without, it is pushed from Home.
+        val libraryFirst = LocalFlagValues.current.isOn(Flag.LIBRARY_FIRST)
         RecipesScreen(
             onBack = { navController.popBackStack() },
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
@@ -236,7 +252,14 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onOpenPasted = navController::openPasted,
             onScan = { navController.navigate(Routes.scan(it)) },
             onOpenView = { navController.navigate(Routes.recipesView(it)) },
-            onOpenLists = { navController.navigate(Routes.LISTS) }
+            onOpenLists = { navController.navigate(Routes.LISTS) },
+            libraryRoot = if (!libraryFirst) null else LibraryRoot(
+                viewModel = hiltViewModel(),
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onResumeCooking = { navController.navigate(Routes.cookRecipe(it)) },
+                // Today's meal: on this stack, so Back returns to the library (Home's went to the Week's).
+                onOpenPlanned = { id, servings, cook -> navController.navigate(Routes.plannedRecipe(id, servings, cook)) }
+            )
         )
     }
 
@@ -251,7 +274,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         )
     }
 
-    // Opened from the gear beside the Home title. Any screen could navigate here: open
+    // Opened from the gear beside the Home title (or, with libraryFirst, the Recipes title, #375). Any screen could navigate here: open
     // ViewModels collect AppPreferences.settings, so none is left showing stale units.
     composable(Routes.SETTINGS) {
         SettingsScreen(
@@ -283,6 +306,14 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
         arguments = listOf(
             navArgument(RecipeViewModel.RECIPE_ID_ARG) { type = NavType.LongType },
             navArgument(RecipeViewModel.COOK_ARG) {
+                type = NavType.BoolType
+                defaultValue = false
+            },
+            navArgument(RecipeViewModel.SERVINGS_ARG) {
+                type = NavType.IntType
+                defaultValue = 0
+            },
+            navArgument(RecipeViewModel.START_COOK_ARG) {
                 type = NavType.BoolType
                 defaultValue = false
             }
