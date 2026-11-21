@@ -21,6 +21,7 @@ import com.example.recipeclipper.data.model.Perishable
 import com.example.recipeclipper.data.model.Perishables
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.RecipeDraft
+import com.example.recipeclipper.data.model.SavedLink
 import com.example.recipeclipper.data.needsNotice
 import com.example.recipeclipper.data.remote.MealPlanImport
 import com.example.recipeclipper.di.DefaultDispatcher
@@ -43,6 +44,9 @@ import javax.inject.Inject
  * One recipe of the review (#352). [day] is the day the cook has chosen to plan it on (an epoch
  * day), null to leave it unplanned; [passed] says the answer's own day is already behind us, so
  * the row asks for another. [fits] is false for a kept recipe the free library has no room for.
+ * With Plan my week's choices (#392, #367): [mealTypeId] is the meal type it is planned under, and
+ * [existingId] is set for a recipe the answer named by its link that is already in the library:
+ * Save plans that recipe, never a duplicate.
  */
 data class ReviewItem(
     val index: Int,
@@ -52,8 +56,16 @@ data class ReviewItem(
     val day: Long?,
     val passed: Boolean,
     val ticked: Boolean,
-    val fits: Boolean = true
-)
+    val fits: Boolean = true,
+    val mealTypeId: Long? = null,
+    val existingId: Long? = null
+) {
+    /** The recipe is one the cook has: Save only plans it. */
+    val existing: Boolean get() = existingId != null
+
+    /** Save does something with this row: a new recipe that fits, or an existing one with a day. */
+    val saves: Boolean get() = ticked && if (existing) day != null else fits
+}
 
 /**
  * [room] is how many more recipes the free library holds, null without a limit. [kept] counts the
@@ -68,6 +80,12 @@ data class MealPlanReviewUiState(
     val copied: Boolean = false,
     /** The days the pickers offer: today and the next 13. */
     val days: List<Long> = emptyList(),
+    /** Plan my week's choices are on (#392): each row shows its meal, to change like its day. */
+    val meals: Boolean = false,
+    /** The cook's meal types, for each row's meal picker. */
+    val mealTypes: List<MealType> = emptyList(),
+    /** How many recipes the answer named by a link that matches nothing saved: left out, never made up (#367). */
+    val notFound: Int = 0,
     val room: Int? = null,
     val saving: Boolean = false,
     val saveFailed: Boolean = false,
@@ -82,8 +100,8 @@ data class MealPlanReviewUiState(
 ) {
     val tickedCount: Int get() = items.count { it.ticked }
 
-    /** The kept recipes that will be saved: the ticked ones that fit. */
-    val savingCount: Int get() = items.count { it.ticked && it.fits }
+    /** What Save does: the new recipes ticked that fit, and the ticked existing ones with a day. */
+    val savingCount: Int get() = items.count { it.saves }
 
     /** Some ticked recipes won't be saved for want of room: the review says so and offers Unlock. */
     val overLimit: Boolean get() = items.any { it.ticked && !it.fits }
@@ -113,6 +131,7 @@ class MealPlanReviewViewModel @Inject constructor(
     private val entitlements: Entitlements = Entitlements.Unavailable,
     private val sharedTexts: SharedTextInbox = SharedTextInbox(),
     @DefaultDispatcher private val reading: CoroutineDispatcher = Dispatchers.Default,
+    // Plan my week's choices (#392, #367): null reads the answer as before, dinners and new recipes.
     private val flags: FeatureFlags? = null
 ) : ViewModel() {
 
@@ -131,6 +150,8 @@ class MealPlanReviewViewModel @Inject constructor(
     /** What was read, by [ReviewItem.index]; the rows are these with the cook's choices. */
     private var read: List<MealPlanImport.Item> = emptyList()
 
+    private val meals: Boolean = flags?.isOn(Flag.PLAN_MY_WEEK_PLUS) == true
+
     /** Each recipe's most delicate perishable (#396), by [ReviewItem.index]; empty with the flag off. */
     private var perishables: Map<Int, Perishable> = emptyMap()
 
@@ -143,11 +164,25 @@ class MealPlanReviewViewModel @Inject constructor(
                     Perishables.mostDelicate(item.recipe.ingredients, LanguageWords.forRecipe(item.recipe))?.let { i to it }
                 }.toMap()
             }
+            val types = if (meals) plan.observeMealTypes().first() else emptyList()
+            val saved = if (meals && read.any { it.namesSavedRecipe }) recipes.observeHistory("").first() else emptyList()
+            var notFound = 0
+            val rows = mutableListOf<ReviewItem>()
+            read.forEachIndexed { i, item ->
+                when {
+                    !item.namesSavedRecipe -> rows += rowOf(i, item, types)
+                    // A recipe named by its link is the library's: matched, or left out and counted (#367).
+                    // With the choices off nothing could save it, so it is left out as it always was.
+                    !meals -> Unit
+                    else -> SavedLink.find(item.link.orEmpty(), saved)
+                        ?.let { rows += rowOf(i, item, types, it.id, it.title) } ?: run { notFound++ }
+                }
+            }
             _uiState.update { state ->
                 fitted(
                     state.copy(
-                        loading = false, cutOff = found?.cutOff == true,
-                        items = read.mapIndexed { i, item -> rowOf(i, item) }
+                        loading = false, cutOff = found?.cutOff == true, items = rows,
+                        meals = meals, mealTypes = types, notFound = notFound
                     )
                 )
             }
@@ -158,16 +193,21 @@ class MealPlanReviewViewModel @Inject constructor(
         }
     }
 
-    private fun rowOf(index: Int, item: MealPlanImport.Item): ReviewItem {
+    private fun rowOf(
+        index: Int, item: MealPlanImport.Item, types: List<MealType>, existingId: Long? = null, existingTitle: String? = null
+    ): ReviewItem {
         val named = item.day
         val passed = named != null && named < today
         return ReviewItem(
             index = index,
-            name = item.recipe.name,
+            name = existingTitle ?: item.recipe.name,
             preview = item.recipe.ingredients.take(PREVIEW_LINES).joinToString(", "),
             day = named?.takeIf { !passed },
             passed = passed,
-            ticked = true
+            ticked = true,
+            // The meal the prompt listed, by the name it used; else Dinner (never guessed from the recipe).
+            mealTypeId = if (meals) MealType.idForMeal(item.meal, types) else null,
+            existingId = existingId
         )
     }
 
@@ -186,8 +226,9 @@ class MealPlanReviewViewModel @Inject constructor(
         var left = state.room
         val items = state.items.map { row ->
             val remaining = left
-            val fits = !row.ticked || remaining == null || remaining > 0
-            if (row.ticked && remaining != null && remaining > 0) left = remaining - 1
+            // A recipe the cook already has takes no room.
+            val fits = row.existing || !row.ticked || remaining == null || remaining > 0
+            if (!row.existing && row.ticked && remaining != null && remaining > 0) left = remaining - 1
             row.copy(fits = fits)
         }
         return state.copy(items = items, nudges = nudgesOf(items))
@@ -226,6 +267,11 @@ class MealPlanReviewViewModel @Inject constructor(
         items.map { if (it.index == index) it.copy(day = day) else it }
     }
 
+    /** A row's meal type (#392): the one it is planned under. */
+    fun onMeal(index: Int, typeId: Long) = change { items ->
+        items.map { if (it.index == index) it.copy(mealTypeId = typeId) else it }
+    }
+
     private fun change(edit: (List<ReviewItem>) -> List<ReviewItem>) =
         _uiState.update { fitted(it.copy(items = edit(it.items), saveFailed = false, unlockNotice = null)) }
 
@@ -239,7 +285,22 @@ class MealPlanReviewViewModel @Inject constructor(
             var planned = 0
             var failed = false
             val saved = mutableSetOf<Int>()
-            for (row in state.items.filter { it.ticked && it.fits }) {
+            for (row in state.items.filter { it.ticked && (it.existing || it.fits) }) {
+                val type = row.mealTypeId ?: mealType
+                val existing = row.existingId
+                if (existing != null) {
+                    // Already in the library (#367): planned on its day and meal, never saved again.
+                    val day = row.day
+                    if (day == null) { saved += row.index; continue }
+                    if (type != null && plan.addRecipe(existing, day, type, null)) {
+                        saved += row.index
+                        kept++
+                        planned++
+                    } else {
+                        failed = true
+                    }
+                    continue
+                }
                 val item = read[row.index]
                 val recipe = recipes.addManual(RecipeDraft.of(item.recipe), item.recipe.language, null, fromChat = true)
                 if (recipe == null) { failed = true; continue }
@@ -248,7 +309,7 @@ class MealPlanReviewViewModel @Inject constructor(
                 saved += row.index
                 kept++
                 val day = row.day
-                if (day != null && mealType != null && plan.addRecipe(recipe.id, day, mealType, null)) planned++
+                if (day != null && type != null && plan.addRecipe(recipe.id, day, type, null)) planned++
             }
             _uiState.update { current ->
                 val left = current.items.filter { it.index !in saved }
@@ -267,7 +328,8 @@ class MealPlanReviewViewModel @Inject constructor(
      * The message that asks the AI for the rest of a cut-off week (#352): the days the answer's
      * whole recipes leave out ([CutOffMessage]), in the UI language's [words]. The screen copies it.
      */
-    fun followUp(words: CutOffMessage.Words): String = CutOffMessage.forPlan(read.map { it.day }, words)
+    fun followUp(words: CutOffMessage.Words): String =
+        if (meals) CutOffMessage.forPlanMeals(read.map { it.day to it.meal }, words) else CutOffMessage.forPlan(read.map { it.day }, words)
 
     /** The screen copied [followUp]: the note says to paste it into the chat. */
     fun onCopied() = _uiState.update { it.copy(copied = true) }

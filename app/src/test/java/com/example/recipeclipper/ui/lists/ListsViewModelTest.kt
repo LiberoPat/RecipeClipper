@@ -133,4 +133,157 @@ class ListsViewModelTest {
         assertEquals("", viewModel.uiState.value.newListName)
         assertTrue(repository.createCalls.isEmpty())
     }
+
+    // --- Reordering (#381) ---
+
+    private fun threeLists() = FakeListRepository().apply {
+        lists.value = listOf(list(1, "Favorites"), list(2, "Lunch"), list(3, "Dinner"))
+    }
+
+    private fun ListsViewModel.order() = uiState.value.lists.map { it.id }
+
+    @Test
+    fun `dragging shows the new order at once but stores nothing until the drop`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = threeLists()
+            val viewModel = ListsViewModel(repository)
+            collectEagerly(viewModel.uiState)
+            advanceUntilIdle()
+
+            viewModel.onDragStart(3)
+            viewModel.onDragOver(1)
+            advanceUntilIdle()
+
+            assertEquals(3L, viewModel.uiState.value.draggingId)
+            assertEquals(listOf(3L, 1L, 2L), viewModel.order())
+            assertTrue(repository.reorderCalls.isEmpty())
+
+            viewModel.onDragEnd()
+            advanceUntilIdle()
+
+            assertEquals(listOf(listOf(3L, 1L, 2L)), repository.reorderCalls)
+            assertEquals(null, viewModel.uiState.value.draggingId)
+            assertEquals(listOf(3L, 1L, 2L), viewModel.order())
+        }
+
+    @Test
+    fun `a cover dragged over several in turn takes each place, once stored`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = threeLists()
+            val viewModel = ListsViewModel(repository)
+            collectEagerly(viewModel.uiState)
+            advanceUntilIdle()
+
+            viewModel.onDragStart(1)
+            viewModel.onDragOver(2)
+            viewModel.onDragOver(3)
+            viewModel.onDragEnd()
+            advanceUntilIdle()
+
+            assertEquals(listOf(listOf(2L, 3L, 1L)), repository.reorderCalls)
+        }
+
+    @Test
+    fun `cancelling a drag puts the covers back and stores nothing`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = threeLists()
+            val viewModel = ListsViewModel(repository)
+            collectEagerly(viewModel.uiState)
+            advanceUntilIdle()
+
+            viewModel.onDragStart(2)
+            viewModel.onDragOver(3)
+            viewModel.onDragCancel()
+            advanceUntilIdle()
+
+            assertEquals(listOf(1L, 2L, 3L), viewModel.order())
+            assertEquals(null, viewModel.uiState.value.draggingId)
+            assertTrue(repository.reorderCalls.isEmpty())
+        }
+
+    @Test
+    fun `dropping where it started stores nothing`() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = threeLists()
+        val viewModel = ListsViewModel(repository)
+        collectEagerly(viewModel.uiState)
+        advanceUntilIdle()
+
+        viewModel.onDragStart(2)
+        viewModel.onDragOver(3)
+        viewModel.onDragOver(3) // back over the cover it swapped with: where it started
+        viewModel.onDragEnd()
+        advanceUntilIdle()
+
+        assertTrue(repository.reorderCalls.isEmpty())
+        assertEquals(null, viewModel.uiState.value.draggingId)
+    }
+
+    @Test
+    fun `a drag of nothing, or over nothing, changes nothing`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = threeLists()
+            val viewModel = ListsViewModel(repository)
+            collectEagerly(viewModel.uiState)
+            advanceUntilIdle()
+
+            viewModel.onDragOver(2)
+            viewModel.onDragStart(99)
+            viewModel.onDragEnd()
+            viewModel.onDragStart(1)
+            viewModel.onDragOver(99)
+            advanceUntilIdle()
+
+            assertEquals(listOf(1L, 2L, 3L), viewModel.order())
+            assertTrue(repository.reorderCalls.isEmpty())
+        }
+
+    @Test
+    fun `move earlier and move later store the move at once`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = threeLists()
+            val viewModel = ListsViewModel(repository)
+            collectEagerly(viewModel.uiState)
+            advanceUntilIdle()
+
+            viewModel.onMoveLater(1)
+            advanceUntilIdle()
+            assertEquals(listOf(2L, 1L, 3L), viewModel.order())
+
+            viewModel.onMoveEarlier(3)
+            advanceUntilIdle()
+            assertEquals(listOf(2L, 3L, 1L), viewModel.order())
+            assertEquals(listOf(listOf(2L, 1L, 3L), listOf(2L, 3L, 1L)), repository.reorderCalls)
+        }
+
+    @Test
+    fun `the first cannot move earlier nor the last later`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = threeLists()
+            val viewModel = ListsViewModel(repository)
+            collectEagerly(viewModel.uiState)
+            advanceUntilIdle()
+
+            viewModel.onMoveEarlier(1)
+            viewModel.onMoveLater(3)
+            viewModel.onMoveLater(99)
+            advanceUntilIdle()
+
+            assertTrue(repository.reorderCalls.isEmpty())
+        }
+
+    @Test
+    fun `a list created during a drag goes last and the drag's order still holds`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val repository = threeLists()
+            val viewModel = ListsViewModel(repository)
+            collectEagerly(viewModel.uiState)
+            advanceUntilIdle()
+
+            viewModel.onDragStart(3)
+            viewModel.onDragOver(1)
+            repository.createList("New", null)
+            advanceUntilIdle()
+
+            assertEquals(listOf(3L, 1L, 2L, 100L), viewModel.order())
+        }
 }

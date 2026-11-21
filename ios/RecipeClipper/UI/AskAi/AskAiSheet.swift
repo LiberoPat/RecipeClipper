@@ -31,9 +31,11 @@ struct AskAiSheet: View {
                         hint: state.canAskWhatCanIMake ? Strings.askAiKindMakeHint : Strings.askAiKindMakeEmpty,
                         enabled: state.canAskWhatCanIMake
                     )
-                    kindRow(.planMyWeek, state, name: Strings.askAiKindPlan, hint: Strings.askAiKindPlanHint, enabled: true)
+                    kindRow(.planMyWeek, state, name: Strings.askAiKindPlan, hint: planHint(state), enabled: true)
                 }
                 .padding(.top, 8)
+                // The plan's own choices (#392, #367), under the flag, once it is the chosen prompt.
+                if state.plan && state.kind == .planMyWeek { PlanOptions(vm: vm, state: state) }
                 PromptButtons(
                     enabled: state.canSend, copied: state.copied,
                     prompt: { vm.prompt(words: Strings.askAiWords) }, onCopied: vm.onCopied
@@ -67,6 +69,16 @@ struct AskAiSheet: View {
         .scrollDismissesKeyboard(.interactively)
         .presentationBackground(Palette.background)
         .accessibilityIdentifier("askAi")
+    }
+
+    /// The line under "Plan my week": what the week is made of, by the source chosen (#367); today's line without the flag.
+    private func planHint(_ state: AskAiUiState) -> String {
+        guard state.plan else { return Strings.askAiKindPlanHint }
+        switch state.source {
+        case .new: return Strings.askAiPlanHintNew
+        case .mine: return Strings.askAiPlanHintMine
+        case .mix: return Strings.askAiPlanHintMix
+        }
     }
 
     /// One prompt to choose: a radio row, its hint saying what it will carry.

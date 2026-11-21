@@ -223,6 +223,23 @@ class BackupMergerTest {
         assertEquals("favorites", plan.newLists[0].name)
     }
 
+    @Test fun `new lists go after the lists here, in the file's order, whatever positions it carries (#381)`() {
+        // An old file has no positions (read as 0); a new one has the sender's, which are theirs.
+        val backup = Backup(
+            0, emptyList(),
+            listOf(
+                BackupList("n-c", "Cakes", false, false, 0, 0),
+                BackupList("n-a", "Apps", false, false, 0, 0),
+                BackupList("n-b", "Brunch", false, false, 5, 0)
+            ),
+            emptyList()
+        )
+        val plan = plan(backup, recipes = emptyList(), maxSortOrder = 9)
+
+        assertEquals(listOf("Cakes", "Apps", "Brunch"), plan.newLists.map { it.name })
+        assertEquals(listOf(10, 11, 12), plan.newLists.map { it.sortOrder })
+    }
+
     @Test fun `list names match trimmed and case-insensitively`() {
         val backup = Backup(0, emptyList(), listOf(BackupList("new", "  WEEKNIGHT ", false, false, 0, 0)), emptyList())
         assertTrue(plan(backup, recipes = emptyList()).newLists.isEmpty())

@@ -28,6 +28,12 @@ struct PutAwayItem: Equatable, Identifiable {
 struct PutAwaySheet: Equatable {
     let items: [PutAwayItem]
     var ticked: Set<String>
+
+    /// The "Select all" row's state (#406), over the rows listed.
+    var selectAll: SelectAllState { .of(ticked: items.filter { ticked.contains($0.key) }.count, total: items.count) }
+
+    /// The row shows only with more than one thing to tick.
+    var canSelectAll: Bool { items.count >= SelectAllState.minRows }
 }
 
 /// "For a recipe…" (#422): the row being linked, what was typed to search the cook's recipes, and the
@@ -321,6 +327,13 @@ final class GroceriesViewModel {
     func onPutAwayToggle(_ key: String) {
         guard var sheet = uiState.putAway else { return }
         if sheet.ticked.contains(key) { sheet.ticked.remove(key) } else { sheet.ticked.insert(key) }
+        uiState.putAway = sheet
+    }
+
+    /// "Select all" / "Clear all" (#406): ticks every listed item, or unticks them all when all are ticked. Writes nothing.
+    func onPutAwaySelectAll() {
+        guard var sheet = uiState.putAway else { return }
+        sheet.ticked = sheet.selectAll.ticksAll ? Set(sheet.items.map(\.key)) : []
         uiState.putAway = sheet
     }
 

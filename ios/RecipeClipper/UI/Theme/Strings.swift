@@ -229,6 +229,12 @@ enum Strings {
     static func mealPlanKept(_ n: Int) -> String { String(localized: "mealplan_kept \(n)") }
     static var mealPlanOpenWeek: String { String(localized: "mealplan_open_week") }
     static var mealPlanCutOff: String { String(localized: "mealplan_cut_off") }
+    // Plan my week with choices (#392, #367): the review's meals, saved recipes and their note
+    static var mealPlanIntroMeals: String { String(localized: "mealplan_intro_meals") }
+    static var mealPlanAlready: String { String(localized: "mealplan_already") }
+    static func mealPlanMealFor(_ name: String) -> String { String(localized: "mealplan_meal_for \(name)") }
+    static func mealPlanNotFound(_ n: Int) -> String { String(localized: "mealplan_not_found \(n)") }
+    static var mealPlanPickDay: String { String(localized: "mealplan_pick_day") }
     static var cutOffCopyAction: String { String(localized: "cutoff_copy_action") }
     static var cutOffCopied: String { String(localized: "cutoff_copied") }
     /// The follow-up message's sentences in the UI language, for `CutOffMessage`.
@@ -236,7 +242,8 @@ enum Strings {
         CutOffMessage.Words(
             plan: { days in String(localized: "cutoff_ask_plan \(days)") },
             planRest: String(localized: "cutoff_ask_plan_rest"),
-            recipe: String(localized: "cutoff_ask_recipe")
+            recipe: String(localized: "cutoff_ask_recipe"),
+            planMeals: { pairs in String(localized: "cutoff_ask_plan_meals \(pairs)") }
         )
     }
     static var shareSaved: String { String(localized: "share_saved") }
@@ -342,6 +349,10 @@ enum Strings {
     static var homeResumeCooking: String { String(localized: "home_resume_cooking") }
     static var homeOpenRecipe: String { String(localized: "home_open_recipe") }
     static func homeTimerLeft(_ clock: String) -> String { String(localized: "home_timer_left \(clock)") }
+    static var homeToday: String { String(localized: "home_today") }
+    static func homeTodayOther(_ mealType: String, _ title: String) -> String {
+        String(localized: "home_today_other \(mealType) \(title)")
+    }
 
     // Recipes (#102; it replaced History)
     static var recipesTitle: String { String(localized: "recipes_title") }
@@ -385,6 +396,17 @@ enum Strings {
     // Recipes: the tidy list (#286). The count left of the sort, under search.
     static func recipesListed(_ n: Int) -> String { String(localized: "recipes_listed \(n)") }
     static var sort: String { String(localized: "cd_sort") }
+    // Recipes: quick filter chips (#378) and the rows / grid toggle (#380).
+    static var recipesQuickThirtyOrLess: String { String(localized: "recipes_quick_30_or_less") }
+    static var recipesQuickNotCooked: String { String(localized: "recipes_quick_not_cooked") }
+    static var recipesQuickPantry: String { String(localized: "recipes_quick_pantry") }
+    static var recipesQuickPantryNote: String { String(localized: "recipes_quick_pantry_note") }
+    static func recipesPantryHave(_ have: Int, of total: Int) -> String {
+        String(localized: "recipes_pantry_have \(have) \(total)")
+    }
+    static var recipesNoResultsFilters: String { String(localized: "recipes_no_results_filters") }
+    static var layoutToGrid: String { String(localized: "cd_layout_to_grid") }
+    static var layoutToRows: String { String(localized: "cd_layout_to_rows") }
 
     /// One snackbar message for the whole pending batch, or nil when nothing is pending.
     static func deletedMessage(_ pending: [String]) -> String? {
@@ -475,6 +497,9 @@ enum Strings {
     static var newList: String { String(localized: "action_new_list") }
     /// The last tile on the Lists screen (#286); the plus is drawn above it.
     static var newListTile: String { String(localized: "lists_new_list_tile") }
+    /// VoiceOver's actions on a list's cover (#381): the accessible way to reorder.
+    static var moveListEarlier: String { String(localized: "lists_move_earlier") }
+    static var moveListLater: String { String(localized: "lists_move_later") }
     static var create: String { String(localized: "action_create") }
     static var rename: String { String(localized: "action_rename") }
     static var save: String { String(localized: "action_save") }
@@ -492,6 +517,21 @@ enum Strings {
     static var inAList: String { String(localized: "cd_in_a_list") }
     /// Under the open "+ New list" field (#286): the recipe goes into the list it creates.
     static func newListNote(_ recipe: String) -> String { String(localized: "save_to_list_new_list_note \(recipe)") }
+
+    /// Under the open "+ New list" field when several recipes are selected (#377).
+    static func newListNoteMany(_ n: Int) -> String { String(localized: "save_to_list_new_list_note_many \(n)") }
+    /// A list that holds some, not all, of the selected recipes (#377): its checkbox's spoken value.
+    static var saveToListPartial: String { String(localized: "save_to_list_partial") }
+
+    // A recipe row's menu and selecting several recipes (#376, #377)
+    static var select: String { String(localized: "action_select") }
+    static var addToListAction: String { String(localized: "row_action_add_to_list") }
+    static var share: String { String(localized: "action_share") }
+    static var removeFromList: String { String(localized: "row_action_remove_from_list") }
+    static func recipesSelectedCount(_ n: Int) -> String { String(localized: "recipes_selected_count \(n)") }
+    static func deleteRecipesTitle(_ n: Int) -> String { String(localized: "delete_recipes_title \(n)") }
+    static var deleteRowBody: String { String(localized: "delete_row_body") }
+    static var deleteRowsBody: String { String(localized: "delete_rows_body") }
 
     // List detail
     static var renameListTitle: String { String(localized: "rename_list_title") }
@@ -706,6 +746,8 @@ enum Strings {
     static var pantrySelectItems: String { String(localized: "pantry_select_items") }
     static var pantrySelect: String { String(localized: "pantry_select") }
     static var selectAll: String { String(localized: "action_select_all") }
+    static var clearAll: String { String(localized: "action_clear_all") }
+    static var cdSelectAllSome: String { String(localized: "cd_select_all_some") }
     static var pantryMarkRunOut: String { String(localized: "pantry_mark_run_out") }
     static var exitSelection: String { String(localized: "cd_exit_selection") }
     static func pantrySelectedCount(_ n: Int) -> String { String(localized: "pantry_selected_count \(n)") }
@@ -921,6 +963,27 @@ enum Strings {
     static var askAiKindMakeEmpty: String { String(localized: "ask_ai_kind_make_empty") }
     static var askAiKindPlan: String { String(localized: "ask_ai_kind_plan") }
     static var askAiKindPlanHint: String { String(localized: "ask_ai_kind_plan_hint") }
+    // Plan my week with choices (#392, #367)
+    static var askAiPlanHintNew: String { String(localized: "ask_ai_plan_hint_new") }
+    static var askAiPlanHintMine: String { String(localized: "ask_ai_plan_hint_mine") }
+    static var askAiPlanHintMix: String { String(localized: "ask_ai_plan_hint_mix") }
+    static var askAiPlanMeals: String { String(localized: "ask_ai_plan_meals") }
+    static var askAiPlanMealsNone: String { String(localized: "ask_ai_plan_meals_none") }
+    static var askAiPlanStart: String { String(localized: "ask_ai_plan_start") }
+    static var askAiPlanSource: String { String(localized: "ask_ai_plan_source") }
+    static var askAiPlanSourceNew: String { String(localized: "ask_ai_plan_source_new") }
+    static var askAiPlanSourceMine: String { String(localized: "ask_ai_plan_source_mine") }
+    static var askAiPlanSourceMix: String { String(localized: "ask_ai_plan_source_mix") }
+    static func askAiPlanMixCount(_ n: Int) -> String { String(localized: "ask_ai_plan_mix_count \(n)") }
+    static var askAiPlanMixLess: String { String(localized: "ask_ai_plan_mix_less") }
+    static var askAiPlanMixMore: String { String(localized: "ask_ai_plan_mix_more") }
+    static var askAiPlanFrom: String { String(localized: "ask_ai_plan_from") }
+    static var askAiPlanAllRecipes: String { String(localized: "ask_ai_plan_all_recipes") }
+    static func askAiPlanSent(_ sent: Int, of total: Int) -> String { String(localized: "ask_ai_plan_sent \(sent) \(total)") }
+    static var askAiPlanNoRecipes: String { String(localized: "ask_ai_plan_no_recipes") }
+    static var askAiPlanLong: String { String(localized: "ask_ai_plan_long") }
+    static var askAiPlanUseFavourites: String { String(localized: "ask_ai_plan_use_favourites") }
+    static var askAiPlanSkipCooked: String { String(localized: "ask_ai_plan_skip_cooked") }
     static var askAiCopy: String { String(localized: "ask_ai_copy") }
     static var askAiCopied: String { String(localized: "ask_ai_copied") }
     static var askAiShare: String { String(localized: "ask_ai_share") }
@@ -964,7 +1027,12 @@ enum Strings {
             temperatureCelsius: String(localized: "ai_prompt_temperature_c"),
             temperatureFahrenheit: String(localized: "ai_prompt_temperature_f"),
             writeIn: { String(localized: "ai_prompt_write_in \($0)") },
-            noteOutside: String(localized: "ai_prompt_note_outside")
+            noteOutside: String(localized: "ai_prompt_note_outside"),
+            planMealsIntro: { String(localized: "ai_prompt_plan_meals_intro \($0)") },
+            savedRecipesIntro: String(localized: "ai_prompt_saved_recipes"),
+            useSavedOnly: String(localized: "ai_prompt_use_saved_only"),
+            useSavedMix: { String(localized: "ai_prompt_use_saved_mix \($0)") },
+            replyPlanMeals: String(localized: "ai_prompt_reply_plan_meals \(AskAiPrompt.dayField) \(AskAiPrompt.mealField)")
         )
     }
 }

@@ -151,6 +151,7 @@ final class AppDatabase: @unchecked Sendable {
         allowCookedWithoutPhoto,
         addRunningLow,
         addBasedOn,
+        numberListsInShownOrder,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -464,6 +465,18 @@ final class AppDatabase: @unchecked Sendable {
         try db.execute("ALTER TABLE recipes ADD COLUMN basedOnUid TEXT")
     }
 
+    /// Version 17 (Android's Room version 18, `MIGRATION_17_18`): reorder lists (#381).
+    /// `lists.sortOrder` becomes the one authority for the order lists are shown in (the queries
+    /// used to sort `isBuiltIn DESC` first), so every list is numbered 0, 1, 2... in exactly the
+    /// order it was shown, seeded first: today's order is untouched. Data only; the ranks are
+    /// written one by one, as on Android.
+    private static func numberListsInShownOrder(_ db: SQLiteConnection) throws {
+        let ids = try db.query("SELECT id FROM lists ORDER BY isBuiltIn DESC, sortOrder ASC, id ASC") { $0.int64(0) }
+        for (position, id) in ids.enumerated() {
+            try db.run("UPDATE lists SET sortOrder = ? WHERE id = ?", position, id)
+        }
+    }
+
     private static func addMenus(_ db: SQLiteConnection) throws {
         try db.execute("""
             CREATE TABLE menus (
@@ -504,7 +517,7 @@ final class AppDatabase: @unchecked Sendable {
 
     /// The seeded lists. Only Favorites is protected from deletion, identified by its
     /// `isFavorites` column, never its name or position — all six can be renamed. The rest are
-    /// starting suggestions: `isBuiltIn` means only "seeded, and sorts before user lists".
+    /// starting suggestions: `isBuiltIn` means only "seeded" (they start first, by `sortOrder`; the cook can move any list, #381).
     static let builtInLists = ["Favorites", "Lunch", "Dinner", "Desserts", "Breakfast", "Snacks"]
 
     private static func seedBuiltInLists(_ db: SQLiteConnection) throws {

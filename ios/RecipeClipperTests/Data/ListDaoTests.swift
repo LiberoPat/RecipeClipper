@@ -68,6 +68,74 @@ final class ListDaoTests: XCTestCase {
         XCTAssertEqual(order, 6, "COALESCE(MAX(sortOrder), -1) + 1 after seeded 0...5")
     }
 
+    // MARK: - The cook's own order (#381)
+
+    private func names() async throws -> [String] { try await db.allLists().map(\.name) }
+
+    private func reorder(_ ids: [Int64]) async throws {
+        try await db.write { try ListDao(db: $0).reorder(ids) }
+    }
+
+    func testPositionsAreDistinctAndStartAtZero() async throws {
+        _ = try await create("Aaa")
+        let positions = try await db.snapshotLists().map(\.sortOrder)
+        XCTAssertEqual(positions, Array(0...6))
+    }
+
+    func testAMovedListStaysWhereItWasPut() async throws {
+        _ = try await create("Aaa")
+        let ids = try await db.allLists().map(\.id)
+
+        // The user list to the front, ahead of the seeded ones; Favorites to the back.
+        try await reorder([ids[6]] + ids[1...5] + [ids[0]])
+
+        let lists = try await db.allLists()
+        XCTAssertEqual(lists.map(\.name), ["Aaa", "Lunch", "Dinner", "Desserts", "Breakfast", "Snacks", "Favorites"])
+        XCTAssertEqual(lists.last?.isFavorites, true)
+        try await deleteList(ids[0])
+        let count = try await db.allLists().count
+        XCTAssertEqual(count, 7, "Favorites still cannot be deleted")
+    }
+
+    func testANewListGoesLastAfterAReorder() async throws {
+        try await reorder(try await db.allLists().map(\.id).reversed())
+        _ = try await create("Newest")
+
+        let order = try await names()
+        XCTAssertEqual(order, ["Snacks", "Breakfast", "Desserts", "Dinner", "Lunch", "Favorites", "Newest"])
+    }
+
+    func testAReorderNamingOnlySomeListsKeepsTheRestInOrderAfterThem() async throws {
+        let snacks = try await db.listId(named: "Snacks")
+        let dinner = try await db.listId(named: "Dinner")
+        try await reorder([snacks, dinner, 9999, snacks])
+
+        let order = try await names()
+        XCTAssertEqual(order, ["Snacks", "Dinner", "Favorites", "Lunch", "Desserts", "Breakfast"])
+        let positions = try await db.snapshotLists().map(\.sortOrder)
+        XCTAssertEqual(positions, Array(0...5))
+    }
+
+    func testDeletingAListLeavesTheOthersInTheirOrder() async throws {
+        try await reorder(try await db.allLists().map(\.id).reversed())
+        try await deleteList(try await db.listId(named: "Dinner"))
+        _ = try await create("Newest")
+
+        let order = try await names()
+        XCTAssertEqual(order, ["Snacks", "Breakfast", "Desserts", "Lunch", "Favorites", "Newest"])
+    }
+
+    func testTheOrderIsWhatAnExportWritesAndWhatTheSaveSheetReads() async throws {
+        try await reorder(try await db.allLists().map(\.id).reversed())
+        let recipe = try await addRecipe("https://example.com/a")
+
+        let exported = try await db.snapshotLists().map(\.name)
+        let shown = try await names()
+        let sheet = try await db.allLists(for: recipe).map(\.name)
+        XCTAssertEqual(exported, shown)
+        XCTAssertEqual(sheet, shown)
+    }
+
     // MARK: - Counts and containsRecipe
 
     func testCountsAreDerivedFromMembership() async throws {

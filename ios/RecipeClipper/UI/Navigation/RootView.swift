@@ -97,6 +97,11 @@ struct RootView: View {
                     onOpenPasted: { openPasted($0, push: router.push) },
                     onOpenRecipe: { router.push(.recipe(id: $0)) },
                     onResumeCooking: { router.push(.cookRecipe(id: $0)) },
+                    onOpenPlanned: { id, servings, cook in
+                        // Today's meal (#402): on the Week's stack, as the Week opens a planned recipe.
+                        router.openInWeek(cook ? .startWeekRecipe(id: id, servings: servings) : .weekRecipe(id: id, servings: servings))
+                    },
+                    homeTonight: container.featureFlags.isOn(.homeTonight),
                     onOpenRecipes: { router.push(.recipes) },
                     onOpenLists: { router.push(.lists) },
                     onOpenSettings: { router.push(.settings) },
@@ -169,6 +174,7 @@ struct RootView: View {
                     onOpenPantry: { router.select(.pantry) },
                     recipeTags: container.featureFlags.isOn(.groceryRecipeTags),
                     onOpenRecipe: { router.groceriesPath.append(.weekRecipe(id: $0, servings: $1)) },
+                    selectAll: container.featureFlags.isOn(.pantrySelectAll),
                     makeSendFileVM: container.makeSendFileViewModel
                 )
             }
@@ -220,6 +226,10 @@ struct RootView: View {
             }
         case .weekRecipe(let id, let servings):
             recipe(push: push) { container.makeRecipeViewModel(recipeId: id, url: nil, plannedServings: servings) }
+        case .startWeekRecipe(let id, let servings):
+            recipe(push: push) {
+                container.makeRecipeViewModel(recipeId: id, url: nil, plannedServings: servings, startInCookMode: true)
+            }
         case .mealTypes:
             ScreenHost(container.makeMealTypesViewModel) { vm in MealTypesScreen(vm: vm) }
         case .whatINeed(let weekStart):
@@ -243,7 +253,12 @@ struct RootView: View {
                     oneCookbook: container.featureFlags.isOn(.oneCookbook),
                     saveVM: saveVM,
                     onOpenView: { push(.recipesView($0)) },
-                    onOpenLists: { push(.lists) }
+                    onOpenLists: { push(.lists) },
+                    quickFilters: container.featureFlags.isOn(.recipeFilters),
+                    gridEnabled: container.featureFlags.isOn(.recipesGrid),
+                    rowActions: container.featureFlags.isOn(.rowActions),
+                    multiSelect: container.featureFlags.isOn(.multiSelect),
+                    makePlanVM: container.makeAddToPlanViewModel
                 )
             }
         case .recipesView(let view):
@@ -253,7 +268,12 @@ struct RootView: View {
                     vm: vm,
                     onOpenRecipe: { push(.recipe(id: $0)) },
                     oneCookbook: true,
-                    saveVM: saveVM
+                    saveVM: saveVM,
+                    quickFilters: container.featureFlags.isOn(.recipeFilters),
+                    gridEnabled: container.featureFlags.isOn(.recipesGrid),
+                    rowActions: container.featureFlags.isOn(.rowActions),
+                    multiSelect: container.featureFlags.isOn(.multiSelect),
+                    makePlanVM: container.makeAddToPlanViewModel
                 )
             }
         case .settings:
@@ -273,7 +293,10 @@ struct RootView: View {
             ScreenHost(container.makeDeveloperSettingsViewModel) { vm in DeveloperSettingsScreen(vm: vm) }
         case .lists:
             ScreenHost(container.makeListsViewModel) { vm in
-                ListsScreen(vm: vm, onOpenList: { push(.listDetail(id: $0)) })
+                ListsScreen(
+                    vm: vm, onOpenList: { push(.listDetail(id: $0)) },
+                    reorderEnabled: container.featureFlags.isOn(.reorderLists)
+                )
             }
         case .editRecipe(let id):
             // Saving replaces the edit screen and, when editing, the recipe screen under it.
@@ -285,8 +308,13 @@ struct RootView: View {
             // Full screen, like the recipe and cook mode, so editing isn't a tab of its own.
             .toolbar(.hidden, for: .tabBar)
         case .listDetail(let id):
-            ScreenHost({ container.makeListDetailViewModel(listId: id) }) { vm in
-                ListDetailScreen(vm: vm, onOpenRecipe: { push(.recipe(id: $0)) }, makePrintVM: container.makePrintViewModel)
+            ScreenHost2(makeA: { container.makeListDetailViewModel(listId: id) }, makeB: container.makeSaveToListViewModel) { vm, saveVM in
+                ListDetailScreen(
+                    vm: vm, onOpenRecipe: { push(.recipe(id: $0)) }, makePrintVM: container.makePrintViewModel,
+                    rowActions: container.featureFlags.isOn(.rowActions),
+                    multiSelect: container.featureFlags.isOn(.multiSelect),
+                    saveVM: saveVM, makePlanVM: container.makeAddToPlanViewModel
+                )
             }
         case .clip(let url, let blocked, let check):
             ScreenHost({ container.makeClipViewModel(url: url, blocked: blocked, check: check) }) { vm in
@@ -377,6 +405,7 @@ struct RootView: View {
                 makePhotosVM: container.makeCookedPhotosViewModel,
                 makeSendFileVM: container.makeSendFileViewModel,
                 makeUseUpVM: container.makePantryUseUpViewModel,
+                pantrySelectAll: container.featureFlags.isOn(.pantrySelectAll),
                 makePrintVM: container.makePrintViewModel,
                 makeAskAiVM: container.makeAskAiViewModel
             )

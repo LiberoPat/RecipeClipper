@@ -25,6 +25,12 @@ data class ListRow(
     val containsRecipe: Boolean
 )
 
+/** How many of a set of recipes one list holds (#377): the sheet's tri-state per list. */
+data class ListMemberCountRow(
+    val listId: Long,
+    val memberCount: Int
+)
+
 /** One photo on a list's cover (#286): a recipe in [listId] that has an [imageUrl]. */
 data class ListCoverPhotoRow(
     val listId: Long,
@@ -43,7 +49,7 @@ data class SavedRecipeRow(
 abstract class ListDao {
 
     /**
-     * Lists, built-ins first, each with its recipe count and whether it contains [recipeId].
+     * Lists in the cook's own order (`sortOrder`, #381; seeded lists start first), each with its recipe count and whether it contains [recipeId].
      *
      * One query rather than two, in the same spirit as [RecipeDao.observeHistory]'s empty-query
      * branch: the Lists screen passes [NO_RECIPE], an id no row can have, so `containsRecipe`
@@ -58,7 +64,7 @@ abstract class ListDao {
                EXISTS(SELECT 1 FROM recipe_list_cross_ref c2
                       WHERE c2.listId = l.id AND c2.recipeId = :recipeId) AS containsRecipe
         FROM lists l
-        ORDER BY l.isBuiltIn DESC, l.sortOrder ASC, l.id ASC
+        ORDER BY l.sortOrder ASC, l.id ASC
         """
     )
     abstract fun observeLists(recipeId: Long): Flow<List<ListRow>>
@@ -135,6 +141,34 @@ abstract class ListDao {
     @Query("DELETE FROM recipe_list_cross_ref WHERE recipeId = :recipeId AND listId = :listId")
     abstract suspend fun removeFromList(recipeId: Long, listId: Long)
 
+    /**
+     * Ticking or unticking a list for several recipes at once (#377): all of them or none, in one
+     * transaction. Adding is IGNORE like [addToList] (a recipe already in keeps its `addedAt`).
+     */
+    @Transaction
+    open suspend fun setMembers(recipeIds: List<Long>, listId: Long, inList: Boolean, now: Long) {
+        if (inList) {
+            recipeIds.forEach { addToList(RecipeListCrossRef(it, listId, now)) }
+        } else {
+            recipeIds.forEach { removeFromList(it, listId) }
+        }
+    }
+
+    /**
+     * For each list holding at least one of [recipeIds], how many it holds (#377): the save-to-list
+     * sheet for several recipes shows a list as ticked when it holds all of them, unticked when
+     * none, and indeterminate between.
+     */
+    @Query(
+        """
+        SELECT listId, COUNT(DISTINCT recipeId) AS memberCount
+        FROM recipe_list_cross_ref
+        WHERE recipeId IN (:recipeIds)
+        GROUP BY listId
+        """
+    )
+    abstract fun observeMemberCounts(recipeIds: List<Long>): Flow<List<ListMemberCountRow>>
+
     @Insert
     protected abstract suspend fun insert(list: ListEntity): Long
 
@@ -159,6 +193,37 @@ abstract class ListDao {
             )
         )
         if (recipeId != NO_RECIPE) addToList(RecipeListCrossRef(recipeId, id, now))
+        return id
+    }
+
+    @Query("SELECT id FROM lists ORDER BY sortOrder ASC, id ASC")
+    protected abstract suspend fun idsInOrder(): List<Long>
+
+    @Query("UPDATE lists SET sortOrder = :position WHERE id = :id")
+    protected abstract suspend fun setPosition(id: Long, position: Int)
+
+    /**
+     * The cook's new order (#381): [orderedIds] first, in that order, then any list not named
+     * (one created while a drag was in flight) in the order it already had. Ids that are not
+     * lists are ignored, and every list ends up with a distinct position 0, 1, 2... One
+     * transaction, so the Lists screen sees the move once.
+     */
+    @Transaction
+    open suspend fun reorder(orderedIds: List<Long>) {
+        val current = idsInOrder()
+        val known = current.toSet()
+        val named = orderedIds.filter { it in known }.distinct()
+        val namedSet = named.toSet()
+        (named + current.filterNot { it in namedSet }).forEachIndexed { position, id ->
+            setPosition(id, position)
+        }
+    }
+
+    /** [create] with several recipes (#377): the list and every one of them go in together, or nothing does. */
+    @Transaction
+    open suspend fun createWith(name: String, recipeIds: List<Long>, now: Long): Long {
+        val id = create(name, NO_RECIPE, now)
+        recipeIds.forEach { addToList(RecipeListCrossRef(it, id, now)) }
         return id
     }
 

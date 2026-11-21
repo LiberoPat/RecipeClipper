@@ -95,6 +95,8 @@ final class CookController {
 
     func done(_ current: CookState, content: RecipeSuccess, checked: Set<Int>) -> Done {
         let done = session.done(current, stepCount: content.instructions.count)
+        // Finishing stops the run's timers (#402): no alert or countdown outlives it.
+        for step in done.stopped { alarms.cancel(recipeId: content.recipe.id, step: step) }
         // A finished run finishes again only after starting fresh, so once per cook.
         let finishedCook = done.finished ? session.finishedCook(content, ticked: checked) : nil
         return Done(cook: done.cook, finished: done.finished, finishedCook: finishedCook)

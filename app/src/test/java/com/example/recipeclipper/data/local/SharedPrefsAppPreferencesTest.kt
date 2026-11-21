@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.model.RecipeSort
+import com.example.recipeclipper.data.model.RecipesLayout
 import com.example.recipeclipper.data.model.Tooltip
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -41,6 +42,19 @@ class SharedPrefsAppPreferencesTest {
         file.edit().putString("recipe_sort", "RATING").commit()
 
         assertEquals(RecipeSort.RECENTLY_VIEWED, SharedPrefsAppPreferences(context).recipeSort)
+    }
+
+    @Test fun `recipes layout defaults to rows, round-trips by name under recipes_layout and falls back`() {
+        assertEquals(RecipesLayout.ROWS, SharedPrefsAppPreferences(context).recipesLayout)
+
+        SharedPrefsAppPreferences(context).recipesLayout = RecipesLayout.GRID
+
+        assertEquals("GRID", file.getString("recipes_layout", null))
+        assertEquals(RecipesLayout.GRID, SharedPrefsAppPreferences(context).recipesLayout)
+        assertEquals(RecipesLayout.GRID, SharedPrefsAppPreferences(context).current.recipesLayout)
+
+        file.edit().putString("recipes_layout", "MOSAIC").commit()
+        assertEquals(RecipesLayout.ROWS, SharedPrefsAppPreferences(context).recipesLayout)
     }
 
     @Test fun `the tour's state round-trips under its keys, and the tooltips flow follows every change`() = runBlocking {

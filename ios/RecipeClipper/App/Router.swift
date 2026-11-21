@@ -42,6 +42,13 @@ final class Router {
         path.append(route)
     }
 
+    /// Opens `route` on the Week tab's own stack, on top of what it held (Android's `selectTab(WEEK)`
+    /// then navigate), so Back returns to the week (#402).
+    func openInWeek(_ route: Route) {
+        selectedTab = .week
+        weekPath.append(route)
+    }
+
     /// A tab chosen in the bar. Choosing Recipes while it is open goes back to Home, as tab bars
     /// conventionally do (Android's `selectTab` does the same).
     func select(_ tab: AppTab) {

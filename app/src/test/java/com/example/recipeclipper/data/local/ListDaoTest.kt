@@ -93,6 +93,77 @@ class ListDaoTest {
         )
     }
 
+    // --- The cook's own order (#381) ---
+
+    private suspend fun names() = allLists().map { it.name }
+
+    private suspend fun idOf(name: String) = allLists().single { it.name == name }.id
+
+    @Test
+    fun positionsAreDistinctAndStartAtZero() = runBlocking {
+        lists.create("Aaa", ListDao.NO_RECIPE, now = 10)
+        assertEquals((0..6).toList(), db.backupDao().allLists().map { it.sortOrder })
+    }
+
+    @Test
+    fun aMovedListStaysWhereItWasPut() = runBlocking {
+        lists.create("Aaa", ListDao.NO_RECIPE, now = 10)
+        val ids = allLists().map { it.id }
+
+        // The user list to the front, ahead of the seeded ones; Favorites to the back.
+        lists.reorder(listOf(ids[6]) + ids.subList(1, 6) + ids[0])
+
+        assertEquals(
+            listOf("Aaa", "Lunch", "Dinner", "Desserts", "Breakfast", "Snacks", "Favorites"),
+            names()
+        )
+        // ...and it is still Favorites, and still the one that cannot be deleted.
+        assertTrue(allLists().last().isFavorites)
+        lists.delete(idOf("Favorites"))
+        assertEquals(7, allLists().size)
+    }
+
+    @Test
+    fun aNewListGoesLastAfterAReorder() = runBlocking {
+        val ids = allLists().map { it.id }
+        lists.reorder(ids.reversed())
+        lists.create("Newest", ListDao.NO_RECIPE, now = 10)
+
+        assertEquals(
+            listOf("Snacks", "Breakfast", "Desserts", "Dinner", "Lunch", "Favorites", "Newest"),
+            names()
+        )
+    }
+
+    @Test
+    fun aReorderNamingOnlySomeListsKeepsTheRestInOrderAfterThem() = runBlocking {
+        lists.reorder(listOf(idOf("Snacks"), idOf("Dinner"), 9999L, idOf("Snacks")))
+
+        assertEquals(
+            listOf("Snacks", "Dinner", "Favorites", "Lunch", "Desserts", "Breakfast"),
+            names()
+        )
+        assertEquals((0..5).toList(), db.backupDao().allLists().map { it.sortOrder })
+    }
+
+    @Test
+    fun deletingAListLeavesTheOthersInTheirOrder() = runBlocking {
+        lists.reorder(allLists().map { it.id }.reversed())
+        lists.delete(idOf("Dinner"))
+        lists.create("Newest", ListDao.NO_RECIPE, now = 10)
+
+        assertEquals(listOf("Snacks", "Breakfast", "Desserts", "Lunch", "Favorites", "Newest"), names())
+    }
+
+    @Test
+    fun theOrderIsWhatAnExportWritesAndWhatTheSaveSheetReads() = runBlocking {
+        lists.reorder(allLists().map { it.id }.reversed())
+        val recipe = addRecipe("https://example.com/a")
+
+        assertEquals(names(), db.backupDao().allLists().map { it.name })
+        assertEquals(names(), lists.observeLists(recipe).first().map { it.name })
+    }
+
     // --- Counts and containsRecipe ---
 
     @Test

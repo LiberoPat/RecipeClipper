@@ -1,5 +1,7 @@
 package com.example.recipeclipper.data
 
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.RecipeList
@@ -20,16 +22,26 @@ import javax.inject.Singleton
 class DefaultListRepository @Inject constructor(
     private val listDao: ListDao,
     private val clock: Clock,
-    private val log: ErrorLog
+    private val log: ErrorLog,
+    /** Null (tests that aren't about it) is the flag at its default: on. */
+    private val flags: FeatureFlags? = null
 ) : ListRepository {
 
     override fun observeLists(): Flow<List<RecipeList>> =
-        listDao.observeLists(ListDao.NO_RECIPE).map { rows -> rows.map { it.toDomain() } }
+        listDao.observeLists(ListDao.NO_RECIPE).map { rows -> inShownOrder(rows.map { it.toDomain() }) }
             .orEmptyOnError(log, "observeLists")
 
     override fun observeListsFor(recipeId: Long): Flow<List<RecipeList>> =
-        listDao.observeLists(recipeId).map { rows -> rows.map { it.toDomain() } }
+        listDao.observeLists(recipeId).map { rows -> inShownOrder(rows.map { it.toDomain() }) }
             .orEmptyOnError(log, "observeListsFor")
+
+    /**
+     * The stored order (#381), or with the `reorderLists` flag off the order from before it:
+     * seeded lists first, each group in its stored order (the sort is stable). The two agree
+     * until someone moves a list.
+     */
+    private fun inShownOrder(lists: List<RecipeList>): List<RecipeList> =
+        if (flags?.isOn(Flag.REORDER_LISTS) == false) lists.sortedByDescending { it.isBuiltIn } else lists
 
     override fun observeRecipesIn(listId: Long): Flow<List<RecipeSummary>> =
         listDao.observeRecipesIn(listId).map { rows -> rows.map { it.toDomain() } }
@@ -52,10 +64,27 @@ class DefaultListRepository @Inject constructor(
             }
         }
 
+    override suspend fun setMembershipAll(recipeIds: List<Long>, listId: Long, inList: Boolean) =
+        log.guard("setMembershipAll", Unit) {
+            if (recipeIds.isNotEmpty()) listDao.setMembers(recipeIds, listId, inList, clock.now())
+        }
+
+    override fun observeMemberCounts(recipeIds: List<Long>): Flow<Map<Long, Int>> =
+        listDao.observeMemberCounts(recipeIds).orEmptyOnError(log, "observeMemberCounts")
+            .map { rows -> rows.associate { it.listId to it.memberCount } }
+
+    override suspend fun createListWith(name: String, addRecipeIds: List<Long>): Long =
+        log.guard("createListWith", CREATE_FAILED) {
+            listDao.createWith(name.trim(), addRecipeIds, clock.now())
+        }
+
     override suspend fun createList(name: String, addRecipeId: Long?): Long =
         log.guard("createList", CREATE_FAILED) {
             listDao.create(name.trim(), addRecipeId ?: ListDao.NO_RECIPE, clock.now())
         }
+
+    override suspend fun reorderLists(orderedIds: List<Long>) =
+        log.guard("reorderLists", Unit) { listDao.reorder(orderedIds) }
 
     override suspend fun rename(listId: Long, name: String) =
         log.guard("rename", Unit) { listDao.rename(listId, name.trim()) }

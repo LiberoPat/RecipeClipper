@@ -87,6 +87,8 @@
     <string name="home_share_hint">Ou compartilhe um link com o Recipe Clipper de qualquer app.</string>
     <string name="home_resume_cooking">Retomar a receita</string>
     <string name="home_open_recipe">Abrir a receita</string>
+    <string name="home_today">Hoje</string>
+    <string name="home_today_other">%1$s: %2$s</string>
     <string name="home_timer_left">Faltam %1$s</string>
     <string name="recipes_title">Receitas</string>
     <string name="recipes_empty">Nada por aqui ainda. As receitas que você abrir ficam guardadas aqui, e com + você adiciona uma à mão ou por um link.</string>
@@ -134,6 +136,14 @@
         <item quantity="other">%1$d receitas</item>
     </plurals>
     <string name="cd_sort">Ordenar</string>
+    <string name="recipes_quick_30_or_less">30 min ou menos</string>
+    <string name="recipes_quick_not_cooked">Ainda não feita</string>
+    <string name="recipes_quick_pantry">Com o que tenho na despensa</string>
+    <string name="recipes_quick_pantry_note">Mostra as receitas em que pelo menos metade dos ingredientes está na sua despensa, pelo nome, não pela quantidade.</string>
+    <string name="recipes_pantry_have">Você tem %1$d de %2$d</string>
+    <string name="recipes_no_results_filters">Nenhuma receita corresponde a esses filtros.</string>
+    <string name="cd_layout_to_grid">Ver em grade</string>
+    <string name="cd_layout_to_rows">Ver em lista</string>
     <string name="tag_saved">Salva</string>
     <string name="time_just_now">Agora mesmo</string>
     <string name="time_yesterday">Ontem</string>
@@ -211,6 +221,8 @@
     <string name="lists_title">Listas</string>
     <string name="action_new_list">+  Nova lista</string>
     <string name="lists_new_list_tile">Nova lista</string>
+    <string name="lists_move_earlier">Mover para antes</string>
+    <string name="lists_move_later">Mover para depois</string>
     <string name="action_create">Criar</string>
     <string name="action_rename">Renomear</string>
     <string name="action_save">Salvar</string>
@@ -804,6 +816,7 @@
     <string name="pantry_select_items">Selecionar itens</string>
     <string name="pantry_select">Selecionar</string>
     <string name="action_select_all">Selecionar tudo</string>
+    <string name="action_clear_all">Desmarcar tudo</string>
     <string name="pantry_mark_run_out">Marcar que acabou</string>
     <string name="cd_exit_selection">Parar de selecionar</string>
     <plurals name="pantry_selected_count">
@@ -834,7 +847,7 @@
     <string name="ask_ai_kind_make_hint">Com a sua despensa, primeiro o que vence logo</string>
     <string name="ask_ai_kind_make_empty">A despensa está vazia</string>
     <string name="ask_ai_kind_plan">Planejar minha semana</string>
-    <string name="ask_ai_kind_plan_hint">Uma semana de jantares com seus favoritos, sem repetir o que você cozinhou recentemente</string>
+    <string name="ask_ai_kind_plan_hint">Uma semana de jantares novos, ao seu gosto</string>
     <string name="ask_ai_copy">Copiar prompt</string>
     <string name="ask_ai_copied">Copiado</string>
     <string name="ask_ai_share">Compartilhar</string>
@@ -872,6 +885,61 @@
     <string name="ai_prompt_temperature_f">Dê as temperaturas do forno em °F.</string>
     <string name="ai_prompt_write_in">Escreva em %1$s.</string>
     <string name="ai_prompt_note_outside">Coloque qualquer outra coisa que queira dizer fora do bloco de código.</string>
+    <!-- Long-press menu on a recipe row (#376) and selecting several recipes (#377). -->
+    <string name="action_select">Selecionar</string>
+    <string name="row_action_add_to_list">Adicionar a uma lista</string>
+    <string name="action_share">Compartilhar</string>
+    <string name="row_action_remove_from_list">Remover desta lista</string>
+    <string name="cd_recipe_actions">Ações da receita</string>
+    <string name="save_to_list_partial">Algumas</string>
+    <plurals name="recipes_selected_count">
+        <item quantity="one">%1$d selecionada</item>
+        <item quantity="many">%1$d selecionadas</item>
+        <item quantity="other">%1$d selecionadas</item>
+    </plurals>
+    <plurals name="delete_recipes_title">
+        <item quantity="one">Excluir %1$d receita?</item>
+        <item quantity="many">Excluir %1$d de receitas?</item>
+        <item quantity="other">Excluir %1$d receitas?</item>
+    </plurals>
+    <string name="delete_row_body">A receita será removida das suas receitas e de todas as listas em que estiver, com as fotos que você adicionou. Você pode desfazer por alguns segundos.</string>
+    <string name="delete_rows_body">As receitas serão removidas das suas receitas e de todas as listas em que estiverem, com as fotos que você adicionou. Você pode desfazer por alguns segundos.</string>
+    <plurals name="save_to_list_new_list_note_many">
+        <item quantity="one">%1$d receita vai para a nova lista.</item>
+        <item quantity="many">%1$d de receitas vão para a nova lista.</item>
+        <item quantity="other">%1$d receitas vão para a nova lista.</item>
+    </plurals>
+    <string name="ask_ai_plan_hint_new">Receitas novas para as refeições e os dias que você escolher, ao seu gosto</string>
+    <string name="ask_ai_plan_hint_mine">Refeições planejadas com as receitas que você salvou</string>
+    <string name="ask_ai_plan_hint_mix">Um pouco das suas receitas, um pouco de novas</string>
+    <string name="ask_ai_plan_meals">Refeições</string>
+    <string name="ask_ai_plan_meals_none">Escolha pelo menos uma refeição.</string>
+    <string name="ask_ai_plan_start">Começar em</string>
+    <string name="ask_ai_plan_source">Receitas</string>
+    <string name="ask_ai_plan_source_new">Receitas novas</string>
+    <string name="ask_ai_plan_source_mine">Das minhas receitas</string>
+    <string name="ask_ai_plan_source_mix">Uma mistura</string>
+    <string name="ask_ai_plan_mix_count">Até %1$d minhas, o resto novas</string>
+    <string name="ask_ai_plan_mix_less">Menos minhas</string>
+    <string name="ask_ai_plan_mix_more">Mais minhas</string>
+    <string name="ask_ai_plan_from">Escolher entre</string>
+    <string name="ask_ai_plan_all_recipes">Todas as minhas receitas</string>
+    <string name="ask_ai_plan_sent">Enviando %1$d das suas %2$d receitas, as vistas mais recentemente primeiro.</string>
+    <string name="ask_ai_plan_no_recipes">Você ainda não tem receitas para planejar.</string>
+    <string name="ask_ai_plan_long">Muitas refeições geram uma resposta longa, que os apps de chat podem cortar. Se isso acontecer, compartilhe ou cole o que chegou e o app pedirá o resto.</string>
+    <string name="ask_ai_plan_use_favourites">Usar meus favoritos como ideias</string>
+    <string name="ask_ai_plan_skip_cooked">Não repetir o que cozinhei recentemente</string>
+    <string name="mealplan_intro_meals">Escolha as receitas que quer manter e confira o dia e a refeição de cada uma. As novas são salvas como de um chat; as que já estão nas suas receitas só são planejadas. Nada é salvo até você tocar em Salvar.</string>
+    <string name="mealplan_already">Já está nas suas receitas</string>
+    <string name="mealplan_meal_for">Refeição para %1$s</string>
+    <string name="mealplan_not_found">Deixadas de fora, não encontradas nas suas receitas: %1$d</string>
+    <string name="mealplan_pick_day">Escolha um dia para planejá-la</string>
+    <string name="cutoff_ask_plan_meals">Sua resposta foi cortada. Envie o resto do plano, por favor: uma receita para cada um destes dias e refeições: %1$s. Use o mesmo formato JSON de antes, com \"day\" e \"meal\", em um único bloco de código ```json.</string>
+    <string name="ai_prompt_plan_meals_intro">Planeje uma receita para cada uma destas refeições (%1$s) em cada um destes dias:</string>
+    <string name="ai_prompt_saved_recipes">Minhas receitas salvas, uma por linha como nome | link:</string>
+    <string name="ai_prompt_use_saved_only">Use apenas minhas receitas salvas acima. Não as escreva por extenso: de cada uma, dê só @type \"Recipe\", seu \"name\", seu link exatamente como listado em \"isBasedOn\", e seu dia e refeição. Repita uma receita só se houver menos receitas do que refeições.</string>
+    <string name="ai_prompt_use_saved_mix">Use até %1$d das minhas receitas salvas acima e sugira receitas novas para o resto. Uma receita salva não deve ser escrita por extenso: dê só @type \"Recipe\", seu \"name\", seu link exatamente como listado em \"isBasedOn\", e seu dia e refeição. Escreva cada receita nova por extenso.</string>
+    <string name="ai_prompt_reply_plan_meals">Responda com um array JSON em um único bloco de código ```json: um objeto schema.org Recipe para cada uma destas refeições em cada dia indicado, dia a dia na ordem indicada. Dê a cada objeto duas propriedades extras: \"%1$s\", com a data desse dia exatamente como indicada (AAAA-MM-DD), e \"%2$s\", com o nome da refeição exatamente como indicado.</string>
     <!-- Evening and Tonight reminders (#397) -->
     <string name="meal_reminders_channel_name">Lembretes de refeições</string>
     <string name="meal_reminders_channel_description">As refeições planejadas para amanhã e hoje à noite</string>

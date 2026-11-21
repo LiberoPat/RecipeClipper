@@ -16,6 +16,7 @@ final class FakeAppPreferences: AppPreferences {
         chefMode: Bool = false,
         amountsInSteps: Bool = false,
         recipeSort: RecipeSort = .recentlyViewed,
+        recipesLayout: RecipesLayout = .rows,
         eveningReminder: Bool = true,
         eveningReminderMinute: Int = MealReminders.eveningMinute,
         tonightReminder: Bool = false,
@@ -30,6 +31,7 @@ final class FakeAppPreferences: AppPreferences {
             chefMode: chefMode,
             amountsInSteps: amountsInSteps,
             recipeSort: recipeSort,
+            recipesLayout: recipesLayout,
             eveningReminder: eveningReminder,
             eveningReminderMinute: eveningReminderMinute,
             tonightReminder: tonightReminder,
@@ -45,6 +47,11 @@ final class FakeAppPreferences: AppPreferences {
     var recipeSort: RecipeSort {
         get { subject.value.recipeSort }
         set { subject.value.recipeSort = newValue }
+    }
+
+    var recipesLayout: RecipesLayout {
+        get { subject.value.recipesLayout }
+        set { subject.value.recipesLayout = newValue }
     }
 
     var settings: AnyPublisher<AppSettings, Never> {

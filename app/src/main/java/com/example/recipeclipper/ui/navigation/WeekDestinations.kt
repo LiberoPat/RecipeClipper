@@ -59,6 +59,10 @@ internal fun NavGraphBuilder.tabRecipe(route: String, navController: NavHostCont
             navArgument(RecipeViewModel.SERVINGS_ARG) {
                 type = NavType.IntType
                 defaultValue = 0
+            },
+            navArgument(RecipeViewModel.START_COOK_ARG) {
+                type = NavType.BoolType
+                defaultValue = false
             }
         )
     ) {

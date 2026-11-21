@@ -100,6 +100,8 @@ class CookController(
 
     fun done(current: CookState, content: RecipeContent.Success, checked: Set<Int>): Done {
         val done = session.done(current, content.instructions.size)
+        // Finishing stops the run's timers (#402): no alarm or countdown outlives it.
+        done.stopped.forEach { alarms.cancel(content.recipe.id, it) }
         // A finished run finishes again only after starting fresh, so once per cook.
         val finishedCook = if (done.finished) session.finishedCook(content, checked) else null
         return Done(done.cook, done.finished, finishedCook)

@@ -103,6 +103,48 @@
       "issue": 384
     },
     {
+      "key": "reorderLists",
+      "description": "Reorder lists: a long press on a list's cover on the Lists screen lifts it to be dragged into place (and, for TalkBack or VoiceOver, Move earlier / Move later actions); the order is stored and used wherever lists are shown (Lists, the save-to-list sheet, Recipes) and carried by export and import. Off, lists are in the seeded-first order of before and cannot be moved.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 381
+    },
+    {
+      "key": "homeTonight",
+      "description": "Home's Today card: when nothing is being cooked, today's earliest planned meal not yet cooked (in the meal types' order) with Start cooking, the rest of today's meals on a line under it; a recipe cooked today (a cooking entry dated today, or a finished run) drops off, and so does a meal whose window has passed (breakfast 11:00, lunch 15:00), and with nothing left there is no card. Off, Home always shows the most recent recipe under Continue cooking, as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 402
+    },
+    {
+      "key": "pantrySelectAll",
+      "description": "A Select all / Clear all row at the top of both pantry checklists: Done shopping's put-away sheet and Update the pantry after cooking. A tri-state checkbox that ticks or unticks every row; the sheets' own button still does all the writing. Shown only with two or more tickable rows. Off, the sheets are as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 406
+    },
+    {
+      "key": "recipeFilters",
+      "description": "Recipes: quick filter chips under search (30 min or less, Not cooked yet, Uses what's in my pantry) that combine with each other, the search and the sort; the pantry chip shows how many of a recipe's ingredients you have on each row it keeps. Off, Recipes has no chips.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 378
+    },
+    {
+      "key": "recipesGrid",
+      "description": "Recipes: a toggle beside the sort between the tidy rows and a photo grid (title under each photo, the bookmark kept); the choice is remembered. Off, Recipes is the rows.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 380
+    },
+    {
+      "key": "rowActions",
+      "description": "A long press on a recipe row (Recipes, a view, a list) opens a menu: Add to list, Add to plan, Share, Delete, and in a list Remove from this list. Off, a row only opens its recipe (swipe to delete stays).",
+      "defaults": { "debug": true, "release": true },
+      "issue": 376
+    },
+    {
+      "key": "multiSelect",
+      "description": "Select several recipes in Recipes, a view or a list (a Select action, or Select in the long-press menu): add them to a list, take them off this list, or delete them with one confirmation and one Undo. Off, no Select action or menu entry.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 377
+    },
+    {
       "key": "skipTonight",
       "description": "Skip tonight: a planned meal's long-press menu on Week, and today's planned meals, gain Skip, which asks: push the rest of the week back a day (this meal and every later planned meal, meal types kept), move this meal to the next day with no meal of its type, or remove it from the plan. One undo restores exactly what was there. Off, Week offers Move and Remove only.",
       "defaults": { "debug": true, "release": true },
@@ -125,6 +167,12 @@
       "description": "Recipe tags (#422): in Groceries and in Shop for this week, the recipe a line is for is a small rounded tag tinted with the paprika wash and a book glyph (\"Mushroom omelette · Thu\" when planned), apart from the line's amount and note; up to three show, then the first two and \"+N\". A tap opens the recipe (at the planned servings when it came from the plan), on the current tab. A typed or shared-list line has no tag. Off, the recipes are the muted line under the row as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 422
+    },
+    {
+      "key": "planMyWeekPlus",
+      "description": "Ask an AI's Plan my week with choices: the cook's meal types as chips (Dinner ticked, the last choice remembered), a start day, and a source: new recipes, from my recipes (the library or one list, named by link) or a mix. The reader takes each recipe's meal, an object naming a saved recipe by its link is planned from the library, and the review shows and changes day and meal. Off, the sheet and the review are as before: a week of dinners, new recipes.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 392
     }
   ]
 }

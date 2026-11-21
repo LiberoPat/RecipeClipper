@@ -8,6 +8,7 @@ import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
+import com.example.recipeclipper.ui.common.SelectAllState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -177,5 +178,60 @@ class GroceriesPantryTest {
         vm.onAdd()
         advanceUntilIdle()
         assertEquals(listOf("1 cup milk", "2 eggs"), groceries.items.value.map { it.text })
+    }
+
+    // #406: one tri-state row over the put-away sheet. It only moves ticks: nothing is written
+    // until the sheet's button.
+    @Test
+    fun `select all on the put-away sheet - none, some, all, and back`() = runTest(mainDispatcherRule.dispatcher) {
+        val pantry = FakePantryRepository(listOf(pantryItem(1, "Butter", inStock = false)))
+        groceries.add(listOf("2 tbsp butter", "2 cups flour", "3 onions").map { NewGroceryLine(it, "en") })
+        val vm = GroceriesViewModel(groceries, pantry, calendar)
+        groceries.setChecked(groceries.items.value.map { it.id }, true)
+        advanceUntilIdle()
+        val before = groceries.items.value
+
+        vm.onDoneShopping()
+        // The tracked Butter starts ticked, the new ones not: some.
+        assertEquals(SelectAllState.SOME, vm.uiState.value.putAway!!.selectAll)
+        assertTrue(vm.uiState.value.putAway!!.canSelectAll)
+
+        vm.onPutAwaySelectAll() // not all ticked: ticks every row
+        assertEquals(setOf("Butter" to true, "flour" to true, "onions" to true), vm.sheet().toSet())
+        assertEquals(SelectAllState.ALL, vm.uiState.value.putAway!!.selectAll)
+
+        vm.onPutAwaySelectAll() // all ticked: unticks every row
+        assertEquals(setOf("Butter" to false, "flour" to false, "onions" to false), vm.sheet().toSet())
+        assertEquals(SelectAllState.NONE, vm.uiState.value.putAway!!.selectAll)
+
+        vm.onPutAwaySelectAll() // none: ticks every row
+        assertEquals(SelectAllState.ALL, vm.uiState.value.putAway!!.selectAll)
+
+        // One row's tick afterwards makes it mixed again; select all then ticks the rest.
+        vm.onPutAwayToggle(vm.key("onions"))
+        assertEquals(SelectAllState.SOME, vm.uiState.value.putAway!!.selectAll)
+        vm.onPutAwaySelectAll()
+        assertEquals(SelectAllState.ALL, vm.uiState.value.putAway!!.selectAll)
+
+        // Nothing written by any of it.
+        assertEquals(before, groceries.items.value)
+        assertEquals(listOf(pantryItem(1, "Butter", inStock = false)), pantry.items.value)
+
+        // The button still does all the writing: with none ticked, only the list clears.
+        vm.onPutAwaySelectAll()
+        vm.onPutAwayConfirm()
+        advanceUntilIdle()
+        assertEquals(emptyList<String>(), groceries.items.value.map { it.text })
+        assertEquals(listOf(pantryItem(1, "Butter", inStock = false)), pantry.items.value)
+    }
+
+    @Test
+    fun `the put-away sheet's select all row is for two or more items`() = runTest(mainDispatcherRule.dispatcher) {
+        groceries.add(listOf(NewGroceryLine("2 cups flour", "en")))
+        val vm = GroceriesViewModel(groceries, FakePantryRepository(), calendar)
+        groceries.setChecked(groceries.items.value.map { it.id }, true)
+        advanceUntilIdle()
+        vm.onDoneShopping()
+        assertFalse(vm.uiState.value.putAway!!.canSelectAll)
     }
 }

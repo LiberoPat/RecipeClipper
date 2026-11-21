@@ -8,7 +8,7 @@ struct ListDao {
     /// Passed as `recipeId` by callers that aren't asking about a recipe. No row has it.
     static let noRecipe: Int64 = -1
 
-    /// Lists, built-ins first, each with its recipe count and whether it contains `recipeId`.
+    /// Lists in the cook's own order (`sortOrder`, #381; seeded lists start first), each with its recipe count and whether it contains `recipeId`.
     /// One query rather than two: the Lists screen passes `noRecipe`, so `containsRecipe` is
     /// false for every row.
     func lists(recipeId: Int64) throws -> [ListRecord] {
@@ -20,7 +20,7 @@ struct ListDao {
                    EXISTS(SELECT 1 FROM recipe_list_cross_ref c2
                           WHERE c2.listId = l.id AND c2.recipeId = ?) AS containsRecipe
             FROM lists l
-            ORDER BY l.isBuiltIn DESC, l.sortOrder ASC, l.id ASC
+            ORDER BY l.sortOrder ASC, l.id ASC
             """,
             recipeId, map: ListRecord.init(row:)
         )
@@ -33,7 +33,8 @@ struct ListDao {
             """
             SELECT r.id, r.title, r.imageUrl, r.totalTime, r.lastViewedAt, 1 AS isSaved,
                    r.contentOrigin = 'CLIPPED' AS isClipped, NULL AS lastCookedDay, r.sourceUrl,
-                   r.contentOrigin = 'CHAT' AS isFromChat
+                   r.contentOrigin = 'CHAT' AS isFromChat,
+                   NULL AS prepTime, NULL AS cookTime, NULL AS language
             FROM recipes r
             JOIN recipe_list_cross_ref c ON c.recipeId = r.id
             WHERE c.listId = ?
@@ -104,6 +105,28 @@ struct ListDao {
         try db.run("DELETE FROM recipe_list_cross_ref WHERE recipeId = ? AND listId = ?", recipeId, listId)
     }
 
+    /// Ticking a list for several recipes (#377): insert-or-ignore each, so one already in keeps
+    /// its `addedAt`. Call inside a write: all or none.
+    func addAllToList(recipeIds: [Int64], listId: Int64, addedAt: Int64) throws {
+        for id in recipeIds { try addToList(ListMembership(recipeId: id, listId: listId, addedAt: addedAt)) }
+    }
+
+    /// Unticking a list for several recipes (#377).
+    func removeAllFromList(recipeIds: [Int64], listId: Int64) throws {
+        for id in recipeIds { try removeFromList(recipeId: id, listId: listId) }
+    }
+
+    /// For each list, how many of `recipeIds` it holds (#377); a list with none has no row.
+    func membershipCounts(recipeIds: [Int64]) throws -> [Int64: Int] {
+        guard !recipeIds.isEmpty else { return [:] }
+        let marks = Array(repeating: "?", count: recipeIds.count).joined(separator: ", ")
+        let rows: [(Int64, Int)] = try db.query(
+            "SELECT listId, COUNT(*) FROM recipe_list_cross_ref WHERE recipeId IN (\(marks)) GROUP BY listId",
+            arguments: recipeIds.map { $0 as SQLiteBindable? }, map: { ($0.int64(0), Int($0.int64(1))) }
+        )
+        return Dictionary(uniqueKeysWithValues: rows)
+    }
+
     /// Creates a user list and, unless `recipeId` is `noRecipe`, puts that recipe straight in.
     /// Call inside a write, so a list never exists without the recipe that prompted it.
     func create(name: String, recipeId: Int64, now: Int64) throws -> Int64 {
@@ -119,6 +142,21 @@ struct ListDao {
             try addToList(ListMembership(recipeId: recipeId, listId: id, addedAt: now))
         }
         return id
+    }
+
+    /// The cook's new order (#381): `orderedIds` first, in that order, then any list not named
+    /// (one created while a drag was in flight) in the order it already had. Ids that are not
+    /// lists are ignored, and every list ends up with a distinct position 0, 1, 2... Call inside
+    /// a write, so the Lists screen sees the move once.
+    func reorder(_ orderedIds: [Int64]) throws {
+        let current = try db.query("SELECT id FROM lists ORDER BY sortOrder ASC, id ASC") { $0.int64(0) }
+        let known = Set(current)
+        var seen = Set<Int64>()
+        let named = orderedIds.filter { known.contains($0) && seen.insert($0).inserted }
+        let rest = current.filter { !seen.contains($0) }
+        for (position, id) in (named + rest).enumerated() {
+            try db.run("UPDATE lists SET sortOrder = ? WHERE id = ?", position, id)
+        }
     }
 
     /// Built-ins are renameable: the restriction is on deleting them, not naming them.

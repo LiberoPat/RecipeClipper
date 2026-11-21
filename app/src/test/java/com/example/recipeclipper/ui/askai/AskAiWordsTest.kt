@@ -41,5 +41,10 @@ class AskAiWordsTest {
         assertEquals(english.temperatureFahrenheit, words.temperatureFahrenheit)
         assertEquals(english.writeIn("x"), words.writeIn("x"))
         assertEquals(english.noteOutside, words.noteOutside)
+        assertEquals(english.planMealsIntro("Lunch, Dinner"), words.planMealsIntro("Lunch, Dinner"))
+        assertEquals(english.savedRecipesIntro, words.savedRecipesIntro)
+        assertEquals(english.useSavedOnly, words.useSavedOnly)
+        assertEquals(english.useSavedMix(3), words.useSavedMix(3))
+        assertEquals(english.replyPlanMeals, words.replyPlanMeals)
     }
 }

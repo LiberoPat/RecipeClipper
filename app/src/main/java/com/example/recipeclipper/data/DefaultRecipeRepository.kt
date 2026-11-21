@@ -16,6 +16,7 @@ import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeLink
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.SavedRecipe
 import com.example.recipeclipper.data.model.SampleRecipe
 import com.example.recipeclipper.data.model.StepAlarm
 import com.example.recipeclipper.data.model.UrlCleaner
@@ -401,16 +402,14 @@ class DefaultRecipeRepository @Inject constructor(
         }
     }
 
-    override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? = log.guard("delete", null) {
-        val entity = recipeDao.get(id) ?: return@guard null
-        val crossRefs = recipeDao.crossRefsFor(id)
-        val planEntries = recipeDao.planEntriesFor(id)
-        val menuEntries = recipeDao.menuEntriesFor(id)
-        val cookedPhotos = recipeDao.cookedPhotosFor(id)
-        val versionIds = recipeDao.versionIdsOf(entity.uid)
-        recipeDao.deleteWithLinks(id)
-        RecipeRepository.DeletedRecipe(entity, crossRefs, planEntries, menuEntries, cookedPhotos, versionIds)
-    }
+    override suspend fun delete(id: Long): RecipeRepository.DeletedRecipe? = deleteAll(listOf(id)).firstOrNull()
+
+    override suspend fun deleteAll(ids: List<Long>): List<RecipeRepository.DeletedRecipe> =
+        log.guard("delete", emptyList()) {
+            recipeDao.deleteAll(ids).map {
+                RecipeRepository.DeletedRecipe(it.recipe, it.crossRefs, it.planEntries, it.menuEntries, it.cookedPhotos, it.versionIds)
+            }
+        }
 
     override suspend fun restoreAll(deleted: List<RecipeRepository.DeletedRecipe>): RecipeRepository.RestoreOutcome =
         log.guard("restore", RecipeRepository.RestoreOutcome.FAILED) {
@@ -440,6 +439,10 @@ class DefaultRecipeRepository @Inject constructor(
         return recipeDao.observeHistory(query, listed, cooked, typed, chat).map { rows -> rows.map { it.toDomain() } }
             .orEmptyOnError(log, "observeHistory")
     }
+
+    override fun observeRecipeLines(): Flow<List<SavedRecipe>> =
+        recipeDao.observeRecipeLines().map { rows -> rows.map { SavedRecipe(it.id, it.title, it.language, it.ingredients) } }
+            .orEmptyOnError(log, "observeRecipeLines")
 
     override fun observeRecipeCounts(): Flow<RecipeCounts> =
         recipeDao.observeLibraryCounts().map { RecipeCounts(it.total, it.inList, it.cooked, it.typed, it.chat) }.catch { e ->

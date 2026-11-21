@@ -12,6 +12,17 @@ struct UseUpSheet: Equatable {
     var choices: [Int64: UseUpChoice] = [:]
 
     func choice(_ id: Int64) -> UseUpChoice { choices[id] ?? .keep }
+
+    /// The rows with a checkbox (a worked-out change); asked rows have keep / low / out instead.
+    var tickable: [Int64] {
+        rows.filter { if case .subtract = $0.change { return true } else { return false } }.map(\.item.id)
+    }
+
+    /// The "Select all" row's state (#406), over the rows with a checkbox.
+    var selectAll: SelectAllState { .of(ticked: tickable.filter { ticked.contains($0) }.count, total: tickable.count) }
+
+    /// The row shows only with more than one checkbox to tick.
+    var canSelectAll: Bool { tickable.count >= SelectAllState.minRows }
 }
 
 /// `sheet` is open; `updated` is the Undo snackbar's id, after a confirm that changed something.
@@ -101,6 +112,13 @@ final class PantryUseUpViewModel: Identifiable {
     func onToggle(_ id: Int64) {
         guard var sheet = uiState.sheet else { return }
         if sheet.ticked.contains(id) { sheet.ticked.remove(id) } else { sheet.ticked.insert(id) }
+        uiState.sheet = sheet
+    }
+
+    /// "Select all" / "Clear all" (#406): ticks every worked-out row, or unticks them all when all are ticked. Asked rows keep their choice.
+    func onSelectAll() {
+        guard var sheet = uiState.sheet else { return }
+        sheet.ticked = sheet.selectAll.ticksAll ? Set(sheet.tickable) : []
         uiState.sheet = sheet
     }
 

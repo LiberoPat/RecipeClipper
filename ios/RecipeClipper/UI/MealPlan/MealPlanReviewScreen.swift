@@ -14,9 +14,16 @@ struct MealPlanReviewScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 ScreenTitle(Strings.mealPlanTitle, style: Typography.headlineSmall)
-                Text(Strings.mealPlanIntro)
+                Text(state.meals ? Strings.mealPlanIntroMeals : Strings.mealPlanIntro)
                     .textStyle(Typography.bodyMedium)
                     .foregroundStyle(Palette.muted)
+                if state.notFound > 0 {
+                    // Recipes the answer named by a link that matches nothing saved: left out, never made up (#367).
+                    Text(Strings.mealPlanNotFound(state.notFound))
+                        .textStyle(Typography.bodyMedium)
+                        .foregroundStyle(Palette.muted)
+                        .accessibilityIdentifier("mealplan.notfound")
+                }
                 if state.cutOff {
                     // The answer stopped mid-recipe (#352): say so, and offer a message to ask for the rest.
                     VStack(alignment: .leading, spacing: 6) {
@@ -62,7 +69,7 @@ struct MealPlanReviewScreen: View {
                     ProgressView().tint(Palette.primary)
                 } else {
                     ForEach(state.items) { item in
-                        row(item, days: state.days, nudge: state.nudges[item.index])
+                        row(item, days: state.days, meals: state.meals ? state.mealTypes : [], nudge: state.nudges[item.index])
                         Divider().overlay(Palette.hairline)
                     }
                     Text(Strings.mealPlanKeeping(state.tickedCount, of: state.items.count))
@@ -110,7 +117,7 @@ struct MealPlanReviewScreen: View {
         .accessibilityIdentifier("mealplan.limit")
     }
 
-    private func row(_ item: ReviewItem, days: [Int64], nudge: FreshNudge?) -> some View {
+    private func row(_ item: ReviewItem, days: [Int64], meals: [MealType], nudge: FreshNudge?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .center, spacing: 12) {
                 Button { vm.onTick(item.index) } label: {
@@ -123,7 +130,12 @@ struct MealPlanReviewScreen: View {
                                 .textStyle(Typography.titleMedium)
                                 .foregroundStyle(Palette.onBackground)
                                 .lineLimit(2)
-                            if !item.preview.isEmpty {
+                            if item.existing {
+                                Text(Strings.mealPlanAlready)
+                                    .textStyle(Typography.bodySmall)
+                                    .foregroundStyle(Palette.accentText)
+                                    .accessibilityIdentifier("mealplan.already.\(item.index)")
+                            } else if !item.preview.isEmpty {
                                 Text(item.preview)
                                     .textStyle(Typography.bodySmall)
                                     .foregroundStyle(Palette.muted)
@@ -139,6 +151,16 @@ struct MealPlanReviewScreen: View {
                 .accessibilityAddTraits(item.ticked ? [.isSelected] : [])
                 .accessibilityIdentifier("mealplan.row.\(item.index)")
                 dayMenu(item, days: days)
+            }
+            if !meals.isEmpty {
+                mealMenu(item, types: meals).padding(.leading, 40)
+            }
+            if item.existing && item.ticked && item.day == nil {
+                Text(Strings.mealPlanPickDay)
+                    .textStyle(Typography.bodySmall)
+                    .foregroundStyle(Palette.muted)
+                    .padding(.leading, 40)
+                    .accessibilityIdentifier("mealplan.pickday.\(item.index)")
             }
             if item.passed && item.day == nil {
                 Text(Strings.mealPlanDayPassed)
@@ -159,6 +181,22 @@ struct MealPlanReviewScreen: View {
             }
         }
         .padding(.vertical, 6)
+    }
+
+    /// A row's meal (#392), a button over a menu of the cook's meal types: the one it is planned under.
+    private func mealMenu(_ item: ReviewItem, types: [MealType]) -> some View {
+        let label = types.first { $0.id == item.mealTypeId }?.name ?? types[0].name
+        return Menu {
+            ForEach(types) { type in
+                Button(type.name) { vm.onMeal(item.index, type.id) }
+            }
+        } label: {
+            Text(label)
+                .textStyle(Typography.labelLarge)
+                .foregroundStyle(Palette.primary)
+        }
+        .accessibilityLabel("\(Strings.mealPlanMealFor(item.name)): \(label)")
+        .accessibilityIdentifier("mealplan.meal.\(item.index)")
     }
 
     /// A row's day, a button over a menu: today and the next 13 days, the answer's own later day,

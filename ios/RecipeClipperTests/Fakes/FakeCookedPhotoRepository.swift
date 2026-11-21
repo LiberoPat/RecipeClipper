@@ -47,6 +47,14 @@ final class FakeCookedPhotoRepository: CookedPhotoRepository {
 
     func markCooked(recipeId: Int64) async -> CookedPhoto? { mark(recipeId: recipeId) }
 
+    func markCookedToday(recipeId: Int64) async {
+        if !photos.value.contains(where: { $0.recipeId == recipeId && $0.day == today }) { mark(recipeId: recipeId) }
+    }
+
+    func observeCookedOn(day: Int64) -> AnyPublisher<Set<Int64>, Never> {
+        photos.map { Set($0.filter { $0.day == day }.map(\.recipeId)) }.eraseToAnyPublisher()
+    }
+
     func edit(id: Int64, day: Int64, note: String?) async {
         edits.append((id, day, note))
         photos.value = photos.value.map { p in

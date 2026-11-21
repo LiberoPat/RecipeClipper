@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.local.dao.LibraryCountsRow
 import com.example.recipeclipper.data.local.dao.RecipeDao
 import com.example.recipeclipper.data.local.dao.RecipeLinkRow
 import com.example.recipeclipper.data.local.dao.RecipeSummaryRow
+import com.example.recipeclipper.data.local.dao.SavedRecipeRow
 import com.example.recipeclipper.data.local.entity.MealPlanEntryEntity
 import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
@@ -89,6 +90,7 @@ internal class InMemoryRecipeDao : RecipeDao() {
     override fun observeHistory(): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override fun observeHistory(query: String, listed: Int, cooked: Int, typed: Int, chat: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override fun observeLibraryCounts(): Flow<LibraryCountsRow> = emptyFlow()
+    override fun observeRecipeLines(): Flow<List<SavedRecipeRow>> = emptyFlow()
     override fun observeRecent(limit: Int): Flow<List<RecipeSummaryRow>> = emptyFlow()
     override suspend fun cullHistory(keep: Int, today: Long) {}
     override suspend fun oldestCullable(today: Long): Long? = rows.values

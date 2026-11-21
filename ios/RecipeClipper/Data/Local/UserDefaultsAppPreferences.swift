@@ -18,6 +18,7 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let chefMode = "chef_mode"
         static let amountsInSteps = "amounts_in_steps"
         static let recipeSort = "recipe_sort"
+        static let recipesLayout = "recipes_layout"
     }
 
     private let defaults: UserDefaults
@@ -93,6 +94,11 @@ final class UserDefaultsAppPreferences: AppPreferences {
         set { defaults.set(newValue.rawValue, forKey: Key.recipeSort) }
     }
 
+    var recipesLayout: RecipesLayout {
+        get { RecipesLayout(storedName: defaults.string(forKey: Key.recipesLayout)) }
+        set { defaults.set(newValue.rawValue, forKey: Key.recipesLayout) }
+    }
+
     /// Over `UserDefaults.didChangeNotification` (Android: the SharedPreferences change
     /// listener). The notification says only that something changed, and is also posted for
     /// other suites, so each one re-reads every value and repeats are dropped: the
@@ -117,6 +123,20 @@ extension UserDefaultsAppPreferences: UseUpLog {
                 defaults.removeObject(forKey: UseUpLogFormat.key)
             } else {
                 defaults.set(UseUpLogFormat.encode(newValue), forKey: UseUpLogFormat.key)
+            }
+        }
+    }
+}
+
+/// The meal types "Plan my week" last had ticked (#392), in the same suite as the settings.
+extension UserDefaultsAppPreferences: PlanChoices {
+    var planMealKeys: [String]? {
+        get { PlanChoicesFormat.decode(defaults.string(forKey: PlanChoicesFormat.key)) }
+        set {
+            if let newValue, !newValue.isEmpty {
+                defaults.set(PlanChoicesFormat.encode(newValue), forKey: PlanChoicesFormat.key)
+            } else {
+                defaults.removeObject(forKey: PlanChoicesFormat.key)
             }
         }
     }

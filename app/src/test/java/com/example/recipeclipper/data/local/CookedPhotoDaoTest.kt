@@ -168,4 +168,22 @@ class CookedPhotoDaoTest {
         assertEquals("Less salt", restored.note)
         assertEquals(false, restored.hasPicture)
     }
+
+    // #402: Home's Today card counts a recipe cooked on a day it has an entry dated then.
+    @Test fun finishingARunRecordsTodayOnceAndTheDayListsItsRecipes() = runBlocking {
+        val one = insert(1)
+        val two = insert(2)
+
+        photos.markCookedToday(one)
+        photos.markCookedToday(one)
+        assertEquals(1, photos.observe(one).first().size)
+        assertEquals(setOf(one), photos.observeCookedOn(PlanDays.today(now)).first())
+        assertEquals(emptySet<Long>(), photos.observeCookedOn(PlanDays.today(now) - 1).first())
+
+        // A photo already dated today counts as the day's cooking.
+        photos.add(two, listOf("one"))
+        photos.markCookedToday(two)
+        assertEquals(1, photos.observe(two).first().size)
+        assertEquals(setOf(one, two), photos.observeCookedOn(PlanDays.today(now)).first())
+    }
 }

@@ -80,7 +80,7 @@ struct CullNote: View {
 }
 
 /// Pills left to right, wrapping onto a new line when the next one doesn't fit (Android's FlowRow).
-private struct PillFlow: Layout {
+struct PillFlow: Layout {
     var spacing: CGFloat
     var lineSpacing: CGFloat
 

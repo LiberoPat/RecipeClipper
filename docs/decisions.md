@@ -362,8 +362,10 @@ things, and the three list ViewModels need nothing from the recipe side, so
 - `ui/lists/` and `ui/listdetail/`. Renaming and deleting a list are on the
   list's own screen (overflow menu → dialog), not on the Lists screen, so a
   list is managed from one place — the same shape as deleting a recipe from
-  the recipe screen. Removing a recipe *from* a list is deliberately not
-  offered on the detail screen: membership is edited in the sheet only.
+  the recipe screen. Removing a recipe *from* a list was deliberately not
+  offered on the detail screen (membership edited in the sheet only); since #376 and #377 a row's
+  long-press menu and a selection there offer "Remove from this list" (see "Row actions and
+  selecting several recipes").
 - **Covers (#286, the owner's pick V2; both platforms).** Lists is a two-column
   grid of square covers, in the same order as before (Favorites and the seeded
   lists first), each with the name and count ("Empty" at zero) under it, and
@@ -385,7 +387,7 @@ things, and the three list ViewModels need nothing from the recipe side, so
   a plain VStack rather than a `LazyVGrid`, so every cover is in the
   accessibility tree, and puts one cover to a row at the accessibility text
   sizes, where half the width would break a name mid-word. A list's own screen
-  is unchanged.
+  is unchanged. The covers are in the cook's own order (#381, below), not "built-ins first".
 - `ListDetailViewModel` collects the list into its own `MutableStateFlow` in
   `init` rather than reading it back off `uiState`. `uiState` is
   `stateIn(WhileSubscribed(...))`, so its `value` is the initial state
@@ -2973,7 +2975,49 @@ array in one string (einfachbacken), which no word table can read; and Japanese 
 The owner's pick (2026-10-19): 01 V2 "Resume first" with 02 V1 "Three equal doors". It
 bends the settled link field: an always-visible field became a tile that opens it.
 
-- **The resume card** is Continue cooking's recipe (the most recent, as before). The ViewModel
+- **Today's card (#402, owner, 2026-11-19; `homeTonight`).** The resume card used to be the most
+  recent recipe whether or not anything was being cooked, so a finished recipe still sat under
+  "Continue cooking". Now it is one of two cards (or none):
+  - **Mid-cook** (the recipe below): "Continue cooking" with Resume cooking, as before.
+  - **Otherwise: "Today".** Today's planned meals from Week, **in the meal types' own order** (the
+    order Week uses: Breakfast, Lunch, Dinner, Snack and the cook's own, as reordered; not dinner
+    first), and the card leads with **the earliest meal not yet cooked** (the owner first asked for
+    dinner first, then changed it, since the lead may be breakfast): the recipe's photo (a plain
+    band without one), "Today" over its name, and **Start cooking**. The rest of today's uncooked
+    meals follow, one short line each ("Dinner: Lemon chicken"), in order, each tapping through to
+    its recipe. A planned **note** shows its text, no button (and is never "cooked"). Nothing left
+    to cook today and nothing mid-cook: **no card at all**, and the ways in stay.
+  - **Meal windows** (owner follow-up, 2026-11-19: at 7pm an uncooked lunch must not still lead).
+    By the meal type's built-in key, in local time: **breakfast until 11:00, lunch until 15:00,
+    dinner and snack until the end of the day**; the cook's own meal types have no window. A meal
+    whose window has passed drops off the card entirely (not onto the second line), cooked or
+    not, a note planned under it too. The times are constants in one place on each platform
+    (`MealWindows`, core and iOS, line for line); the end of a window is exclusive (10:59 breakfast
+    shows, 11:00 doesn't). The ViewModel's clock wakes at the earliest of midnight and the next
+    window's end (and within a minute at most), so the card changes by itself at 11:00 and 15:00.
+  - **Cooked today** = the recipe has a `cooked_photos` entry dated today ("I made this" photo,
+    "Mark as cooked", #116, #173), **or a run of it was finished today**: finishing cook mode
+    ("Done — finish") now **records today's cooking** in that same table, once a day (no entry if one
+    is dated today already; no new store, and the entry shows in Your cooks and the Cooked view
+    like any). A recipe planned twice today (lunch and dinner) drops both once cooked.
+  - **Start cooking** opens the recipe **on the Week's stack** at the planned servings, in cook mode:
+    Android `week/recipe/{id}?servings=&startCook=true`, iOS `Route.startWeekRecipe`, and Back
+    returns to the Week. It starts with `CookController.start`: a finished last run starts afresh
+    (the reading view's Start cooking), an unfinished one stays where it was. A tap on the card's
+    photo or name, or on a line, opens the recipe on the Week's stack with no cook flag.
+  - **Live**: it follows the plan, the cooked entries and the day (the ViewModel's clock wakes at
+    midnight, or within a minute if the clock or zone moved), never the screen's own date.
+  - **A finished run is never a resume (#402).** `CookResume.of` is null when every step is done,
+    whatever its timers, and finishing the last step now **stops the run's timers**
+    (`CookSession.done`: the same as starting a finished run afresh): their alarms and countdowns
+    are cancelled (Android ongoing notification, iOS notification and Live Activity), and the saved
+    progress holds no deadline. Until then a finished run with the last step's rest timer still
+    counting was offered as Continue cooking's "Resume cooking". (A finished run opened from a
+    countdown or alert stays in the reading view, #333; with the timers stopped on finish, that is
+    only for a timer started after finishing.)
+  - Off (`homeTonight`): the card is exactly as below, always the most recent recipe.
+- **The resume card** is Continue cooking's recipe (the most recent, as before; with `homeTonight`
+  only while it is being cooked). The ViewModel
   follows that recipe through `observeRecipe(id)` (a repository flow that counts no view) and
   derives a `CookResume`: the recipe is being cooked when cook mode was left on or a step timer
   still runs. Then it shows the step stopped on ("Step 2 of 4", the existing `cook_position`)
@@ -3243,6 +3287,118 @@ off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, 
   leaves Not in a list by itself.
 - Unchanged and still true: the migration count (none: counts, views and the cap are queries), the
   `freeTier` flag's default (off until the store products exist), the unlock's seams and cached state.
+
+## Recipes: search filters and a photo grid (#378, #380, 2026-11-19)
+
+The owner asked for both on 2026-11-19 ("Do 1-8" of the common UX flows list). Two flags, on by
+default in debug and release, on both platforms: `recipeFilters` (#378) and `recipesGrid` (#380).
+Off, Recipes is exactly the screen of "One cookbook" above.
+
+**Quick filter chips (#378).** Under the search field, three plain text pills (the old filter
+pills' look, ink-filled when on): **30 min or less**, **Not cooked yet**, **Uses what's in my
+pantry**. They sit between search and the views strip, on Recipes and on each view's screen (a
+view is the same screen; **Not cooked yet is not offered inside the Cooked view**, where it could
+only empty the list). They are on/off switches, not a radio group (a checkbox for TalkBack, the selected
+trait for VoiceOver when on), and they **combine with each other (AND), with the search text and
+with the sort**: the search is still the one SQL query (`instr(lower(...))`, never `LIKE`, the
+`%` rule untouched), the chips narrow what it answers, then the sort orders what is left. Like the
+views they are questions about stored data, never filing; they are **not remembered** (Recipes
+opens with none on, as the old pills opened on All) and live in the ViewModel, so they survive
+rotation. The count line says what is shown ("2 recipes"); the line, the chips and the toggle stay
+when a chip leaves nothing, and the empty line says "No recipes match these filters." (it wins over
+the search's own).
+
+- **Done in the ViewModel over the observed list, not in the SQL** (owner's "SQL where cheap"):
+  the three rules read stored text (times) or another table's names (the pantry), which SQL can't
+  do; the one that could be SQL, Not cooked yet, reads `lastCookedDay == null`, the column the row
+  already carries: `NOT EXISTS` over `cooked_photos` is exactly `MAX(day) IS NULL`, the Cooked
+  view's `EXISTS` turned round (`RecipeQuickFiltersDaoTest` proves the two partition the library).
+  So no `observeHistory` signature, query parameter or migration changed. The summary rows gained
+  `prepTime`, `cookTime` and `language` (a query change only).
+- **30 min or less** (`RecipeQuickFilters.minutes`, `:core`; Swift port; corpus rows `Mins` and
+  `Quick`): the recipe's **total time if it has one, else prep plus cook, and only when both are
+  present and readable**. Readable is `Durations.minutes`: ISO, a phrase in the recipe's own words
+  and what the app stores back ("1h 30m", "1h 30min", "1時間 30分"), read with the **recipe's**
+  language's tables (a recipe with no stored language, from before #14, as English; a language with
+  no tables, ISO and English's "1h 30m" alone). Anything else is **never matched, never guessed**:
+  "Overnight", "20 to 25 minutes", "1-2 hours", a zero ("PT0S" is absent anyway), a figure past ten
+  million, a time in another language's words. A total that is present but unreadable does **not**
+  fall back to prep plus cook (the site said a total; if we can't read it we don't pretend we can).
+  **30 min or less**: 30 min itself counts (the owner's call, 2026-11-19, over a first draft that
+  was strictly under; the chip says "30 min or less", the code `thirtyOrLess` / `THIRTY_OR_LESS`). Prep plus cook is a
+  floor (resting time isn't in it), which is why a stated total always wins.
+- **Not cooked yet**: no cooking entry, a photo of it (#116) or "Mark as cooked" (#173): the
+  Cooked view's definition, reused (`RecipeSummary.lastCookedDay`, itself `MAX(cooked_photos.day)`).
+- **Uses what's in my pantry** (`RecipeQuickFilters.coverage`; corpus rows `Cover`): the chosen
+  rule is **at least half of the recipe's nameable ingredient lines are Have**. Nameable lines are
+  what Use it up and What I need already read: blank lines and headings ("For the sauce:") dropped
+  (`GrocerySources.buyable`), then each line's `IngredientName.of` in the **recipe's language**
+  (stored, else detected, as What I need's); a line the app can't name ("salt and pepper to
+  taste") is not counted either way. Have is `PantryMatch` and nothing else: the name matched
+  against a pantry item **in the same language**, **in stock or a staple (`alwaysHave`) counts as
+  had**, an item out of stock is Buy, "rice flour" is never "flour", "butter beans" never "butter",
+  and the **quantity is never compared** (a pinch of flour covers a kilo): the chip answers "do you
+  have these things", never "enough". `PantryCoverage.matches` is `total > 0 && have * 2 >= total`
+  (half rounds in the cook's favour: 1 of 2, 2 of 3, 2 of 4), so a recipe with nothing nameable
+  never matches, nor one in a language with no tables.
+  - **Why half and not all.** "All of it" would match almost nothing (nobody has every line); "any
+    one" would match nearly everything (everyone has salt or eggs). Half is the plainest middle the
+    cook can check by eye. The rule is **not a hidden verdict**: with the chip on, **each row it
+    keeps says "You have 6 of 8"** (`recipes_pantry_have`, under the site and time; a paprika line,
+    like Use it up's) and one muted line under the chips says "Shows recipes where at least half of
+    the ingredients are in your pantry, by name, not by amount." Both count the nameable lines, so
+    a recipe of ten lines with two unnameable says "of 8". No model decisions (#104): a name match
+    or nothing, so nothing here can be a confident wrong answer the cook can't see.
+  - **Cost.** Every recipe's lines are read (`observeRecipeLines`: id, title, language and
+    ingredients, one query) **only while the chip is on**, matched with the pantry **off the main
+    thread** (an injected dispatcher on Android, `Task.detached` on iOS) **once per change of the
+    pantry or of a recipe's lines**: a tick or a cook step rewrites a recipe without changing a
+    line and matches nothing again (the same rule as Use it up, #332). While the answer is on its
+    way the list is "loading" (null), never a wrong "no recipes". The chip follows the pantry live.
+  - Ingredient lines are read **as stored** (not scaled or converted): only names matter.
+
+**Grid or rows (#380).** A button **beside the sort** on the line under search (the count stays on
+the left), showing the layout it switches to (the grid's glyph over the rows, the rows' over the
+grid; named "Show as a grid" / "Show as a list" for the screen reader). The grid is the same screen:
+the same header (back, title, search, chips, strip, count, sort), then **square photo tiles**, a
+**title (two lines) under each, then the site and total time as a row has them**, and with the
+pantry chip on, "You have 6 of 8". **Two columns on a phone, more as the width allows** (Android
+`GridCells.Adaptive(140.dp)`, iOS `GridItem(.adaptive(minimum: 150))`: two at 320dp of content, three
+and four on a tablet or in landscape). A recipe with no photo has the blank tile rows have (the same
+hairline-coloured square); PR #404's designed image for it had not landed, and will want the grid's
+placeholder swapped for it (one place per platform: `LibraryGridCell`).
+- **The bookmark is kept as the save control**, on the photo's corner on a round ground-coloured
+  disc (so it reads on any picture): filled for a recipe in a list (the accessibility label "Saved
+  to a list"), outlined and tappable for one in none (opens the save-to-list sheet, `oneCookbook`),
+  with the 48dp / 44pt target of a row's.
+- **No swipe to delete in the grid**: a grid has no row to swipe, and the rows' swipe is untouched.
+  The grid has the rows' other ways instead (#376, #377, wired when the two landed together): a
+  long press on a cell opens the same menu (Add to list, Add to plan, Share, Select, Delete), and
+  while selecting each cell carries a checkbox on its photo and a tap ticks it, through the same
+  `RecipeSelection`, so a selection, its bar and its one Undo behave as they do in the rows. The
+  selection acts on what the chips and the search leave in sight, in either layout (`listed` is
+  the filtered list). Switching layout while selecting keeps the ticks.
+- **Stored as a setting**: key **`recipes_layout`** in `unit_preferences` / `UserDefaults`, the enum
+  by name (`ROWS`, `GRID`), **an unknown or absent name reads as `ROWS`**. A view preference like
+  `recipe_sort`: not in the export file, not in Settings. It applies at once (the ViewModel writes
+  it and updates its state without waiting for the preference's echo) and `settings` keeps every
+  open Recipes screen in step. **With `recipesGrid` off the rows show whatever is stored**, and
+  nothing is lost: turning it back on restores the choice.
+- **Keys and scroll**: grid items are keyed `recipe-<id>` (Android; the header, note and empty line
+  have their own keys, unique across the whole grid, as the LazyColumn rule says); iOS's
+  `ForEach` ids are the recipe ids inside one `LazyVGrid`. Rows keep their keys.
+
+**Tests.** `:core` `RecipeQuickFiltersTest` (minutes, 30 min or less, coverage, combining); the corpus's
+`Mins`, `Quick` and `Cover` rows (Swift generated from the Kotlin); Android `RecipeQuickFiltersDaoTest`
+(real SQLite: times and language in the rows, Not cooked as the Cooked view's complement, the
+`%` search under a chip, the lines query), `RecipesQuickFiltersViewModelTest` (combining with the
+sort, search and each other; the pantry read only while on, matched once per change, nothing shown
+while pending; the layout), `RecipesFiltersGridScreenTest` (the chips, the "You have" lines, the
+note, the empty line, the grid, the toggle, the bookmark), `SharedPrefsAppPreferencesTest`,
+`DatabaseErrorTest`; iOS `RecipesQuickFiltersViewModelTests`, `PreferencesAndSourceTests`,
+`DifferentialCorpusTests`, and `RecipesFiltersGridUITests`. Strings `recipes_quick_*`,
+`recipes_pantry_have`, `recipes_no_results_filters`, `cd_layout_to_*` in all six languages, drafts
+(`docs/translations.md`).
 
 ## A recipe picked from the page's text (#103)
 
@@ -4283,6 +4439,16 @@ offer for the first was replaced and gone. Owner's decisions:
   item went. Spoken, it's "On your grocery list", and its action "Remove from grocery list". At
   the largest text sizes (Android font scale 1.5 and up, iOS accessibility sizes) only the basket
   shows. The Pantry tooltip names it: "The basket tag means it's on your grocery list."
+- **Select all on both pantry checklists** (#406, `pantrySelectAll`; owner, 2026-11-19: the
+  put-away checklist needs one). The first row of Done shopping's sheet (here) and of "Update the
+  pantry" (#147, below) is a tri-state checkbox, "Select all" while anything is unticked and "Clear
+  all" once everything is ticked: tapping it ticks every row, or, when every row is ticked, unticks
+  every row. Checked is everything ticked, indeterminate (iOS: a dash, with the VoiceOver value
+  "Some selected") is some, unchecked none; some and none both read "Select all". It is a
+  convenience only: it moves the sheet's ticks, held in the ViewModel's sheet state (`PutAwaySheet`,
+  `UseUpSheet`), and writes nothing; what Put away or Update writes is unchanged. The row is left out
+  when there is a single row to tick. Android uses `TriStateCheckbox`; iOS a checkbox-style row
+  (`SelectAllRow`). Off, the sheets are as before. Both sheets read the flag in the view layer.
 
 ## Using up the pantry at the end of cooking (#147)
 
@@ -4356,6 +4522,10 @@ can't be worked out **asks each time** (keep, running low or out), never guessed
   on Keep. The snackbar ("Pantry updated") puts the pantry rows back from a snapshot and takes
   off the grocery lines it added. Dismissing the sheet changes nothing; the sheet is in memory,
   so a killed app loses it with nothing changed.
+- **Select all** (#406, `pantrySelectAll`): the same tri-state row as Done shopping's sheet (#146,
+  above) tops this one. It counts only the worked-out rows, the ones with a checkbox: an asked row
+  (keep, running low or out) is a choice, not a tick, so it is never moved by it, and the row is
+  left out unless two or more rows have a checkbox. It writes nothing; the one confirm still does.
 
 ## Reddit posts (#11)
 
@@ -5497,6 +5667,251 @@ editor's or the review's Save** (the free limit as everywhere).
   `PasteTextViewModelsTests` and `PasteAnswerUITests` (iOS, with the clipboard the app's own copy,
   `-uiTestPasteboard`).
 
+## Reorder lists: the cook's own order (#381, 2026-11-19)
+
+The cook drags lists into their own order on the Lists screen (the cover grid), and that order is
+what every place that lists lists shows: Lists, the save-to-list sheet, Recipes' list tiles (they
+read `observeLists`), and an export file. Behind the `reorderLists` flag (on by default in debug and
+release), on both platforms.
+
+- **`lists.sortOrder` is the position, and the only thing lists sort by.** The column was already
+  there (seeded 0 to 5, a new list took max + 1, export and import carried it), but every list query
+  sorted `isBuiltIn DESC` first and `sortOrder` second, so a seeded list could never be moved after
+  a user's. Now `ORDER BY sortOrder, id` everywhere (`ListDao.observeLists`, `BackupDao`'s two list
+  queries; iOS's twins). `isBuiltIn` means only "seeded"; `isFavorites` still guards the delete, and
+  Favorites reorders like any other list.
+- **The migration only numbers.** Room 17 to 18 (`MIGRATION_17_18`, `MigrationTest`; a JVM twin,
+  `ListsRenumberMigrationTest`, runs it on every build) and iOS `user_version` 16 to 17
+  (`numberListsInShownOrder`) renumber every list 0, 1, 2... in exactly the order it was shown
+  (`isBuiltIn DESC, sortOrder, id`), so nobody's order changes on upgrade. Data only: the schema
+  JSON for 18 differs from 17 in the version. The ranks are written one by one, not with a
+  self-referencing `UPDATE`. Old upgrades had left user lists sharing a position with seeded ones
+  (`MIGRATION_1_2` appended Breakfast and Snacks after user lists); the numbering settles that.
+- **A new list goes last** (`COALESCE(MAX(sortOrder), -1) + 1`, as before). Deleting leaves a gap,
+  which nothing minds: only the order counts, and the next `reorder` closes it.
+- **Storing it.** `ListDao.reorder(orderedIds)` (one transaction, so the screen sees one change):
+  the named lists first in that order, then any list not named (one created while a drag was in
+  flight) in the order it had, ids that are not lists ignored, every list ending with a distinct
+  position. `ListRepository.reorderLists`, through `ErrorLog.guard` (iOS: `perform`).
+- **The ViewModel owns the drag.** `ListsViewModel` keeps the stored order (collected itself, not read
+  off `uiState`, the `WhileSubscribed` rule) and a `Drag(id, order)`; `uiState.lists` is the drag's
+  order while one is in flight and `draggingId` says which cover is held. `onDragStart`,
+  `onDragOver(target)` (the held cover takes that cover's place, the ones between shift),
+  `onDragEnd` (stores once, and only if the order changed), `onDragCancel`; and `onMoveEarlier` /
+  `onMoveLater` for the accessible route, stored at once. Nothing is written while the finger is
+  down, so a cancelled drag leaves no trace.
+- **Android's gesture is ours, no library.** `Modifier.gridReorderGestures` (`ListsReorder.kt`) is
+  `detectDragGesturesAfterLongPress` on the `LazyVerticalGrid`, using `layoutInfo.visibleItemsInfo`
+  to find the cover under the finger and the one the held cover's centre is over, and scrolling
+  the grid when the finger is within 72dp of an edge. The held cover rides the finger
+  (`graphicsLayer`: translated by finger minus grab point minus its current cell, 1.05 scale, a
+  shadow, `zIndex`) and the others `animateItem()` to their new places. A tap still opens the list.
+  Chosen over a reorder library (`sh.calvin.reorderable` would do it) because the grid is small, the
+  lazy grid already reports where everything is, and a dependency for one screen was not worth it.
+  The tile's key is `list-<id>` and the new-list tile and header have other keys, so neither is
+  ever dragged over.
+- **iOS uses the system's drag and drop.** `.onDrag` on each cover (the long-press lift, with its
+  haptic) and `.onDrop` with `ListDropDelegate`: `dropEntered` on a cover calls `onDragOver`, a drop on
+  a cover, or on the screen around the covers, calls `onDrop(on:)` (the held cover takes the
+  target's place first, then `onDragEnd`: on a slow runner the lift finished with the finger
+  already over the target and `dropEntered` never came, so nothing moved); leaving the screen mid-drag
+  calls `onDragCancel`. The grid is `CoverGridLayout`, a `Layout`, in place of the rows of
+  `HStack`s: the old rows were keyed by their first cover, so moving a cover between rows rebuilt
+  the one being held and lost the drop target. One `ForEach` in a custom layout keeps every cover's
+  identity as it changes row, animates (`.snappy`), and, being not lazy, keeps every cover in the
+  accessibility tree as before.
+- **Accessible alternative.** Each cover has **Move earlier** / **Move later** (TalkBack's actions
+  menu through `customActions`; VoiceOver's actions through `accessibilityActions`), absent where the
+  move isn't possible (the first can't go earlier). Two strings, `lists_move_earlier` and
+  `lists_move_later`, in six languages on both platforms (drafts for a native speaker).
+- **Flag off.** The cover grid has no drag and no actions, and the repository gives the order from
+  before: a stable sort of the stored order with seeded lists first (`DefaultListRepository`'s
+  `inShownOrder`, iOS's `reorderOn`). The stored positions are kept, so turning the flag back on
+  brings the cook's order back. New lists still go last.
+- **Export and import.** `BackupList.sortOrder` was already in the file (`"sortOrder"`); the export now
+  writes lists in position order, so file order is the cook's order. Import still **merges, never
+  replaces**: a list already here (matched by uid, by name, or Favorites by flag) keeps its place, and
+  a list the file adds goes after the lists here, in the file's order (`maxSortOrder + 1...`), whatever
+  positions the file carries. An older file with none (read as 0) imports the same way.
+- **Not done.** No drag on the Recipes screen's list tiles (Recipes shows the order, #373 is changing
+  that screen); no reordering of meal types, which have their own `sortOrder`.
+- **Tests.** `ListDaoTest` (order, `reorder`, new list last, delete, export order),
+  `ListOrderRepositoryTest` (both readers, the flag), `ListsRenumberMigrationTest` and
+  `MigrationTest` (17 to 18), `ListsViewModelTest`, `ListsScreenTest` (actions, a held-and-dragged
+  cover, a tap), `BackupMergerTest`, `DatabaseErrorTest` on Android; `ListDaoTests`, `ListOrderTests`
+  (including the user_version 16 file), `ListsViewModelTests` and `BackupMergerTests` on iOS, and
+  one iOS UI test, `ListsUITests.testAHeldCoverDraggedOntoAnotherTakesItsPlace`
+  (`press(forDuration:thenDragTo:)`, launched with `-uiTestFlags reorderLists`, because UI tests
+  start with every flag off): it passed three times in a row. The ViewModel owns every rule; the
+  test only proves the system drag reaches it. Android's gesture is checked by `ListsScreenTest`'s
+  touch-input drag.
+
+## Row actions and selecting several recipes (#376, #377, 2026-11-19)
+
+Owner's ask (the "common UX flows" list): act on a recipe from its row, without opening it first,
+and on several at once. Two flags, `rowActions` and `multiSelect` (both on by default; either off
+removes just its entries: the menu, or every Select), on both platforms.
+
+- **A long press on a row opens a menu** (Android: a `DropdownMenu` on the row, from
+  `combinedClickable`'s long click, labelled "Recipe actions" for TalkBack; iOS: `.contextMenu`).
+  On Recipes, an automatic view and a list's own screen (Home has no rows since #371). In this
+  order: **Add to list**, **Add to plan**, **Share**, **Select**, **Remove from this list** (a
+  list's own screen only), then **Delete**, last. Each entry is the existing act, not a new one:
+  - *Add to list* opens the save-to-list sheet for that recipe, which writes at once as ever.
+  - *Add to plan* is the recipe screen's sheet, starting on the recipe's own yield (the servings
+    the recipe screen passes). The label is the existing "Add to plan" (the owner's note said "Add
+    to Week"); the sheet it opens carries that title, and the Week is where it lands.
+  - *Share* sends the text the reading view would: `RecipeRowSupport` (Android; iOS has the same
+    name) reads the recipe **by id with `byIds`, never `open`** (opening counts as a view and moves
+    the row to the top), renders it with `RecipeRenderer` under the user's settings (units, liquids,
+    temperature, amounts in steps and the typed decisions) at the recipe's saved servings, and
+    formats it with `RecipeShareText`: plain text, no source link. The words come from the screen's
+    `shareLabels`, as the recipe screen's do.
+  - *Delete* asks first ("Delete "Chicken Adobo"?"; "Delete 3 recipes?" for a selection), then
+    deletes for good and shows the usual **Undo snackbar**, so unlike the recipe screen's own delete
+    (no undo: its screen is gone) the dialog says "You can undo this for a few seconds"
+    (`delete_row_body`, `delete_rows_body`). A swipe still deletes at once, as before.
+  - *Remove from this list* **is not a deletion** and asks nothing: the recipe stays in Recipes,
+    under Not in a list, and no snackbar says so (snackbars are only for undo). **This changes the
+    older "removing a recipe from a list is deliberately not offered on the detail screen"**: the
+    owner asked for it, only there and only through a row's menu or a selection; membership is still
+    edited in the sheet everywhere else.
+- **Select** is in the long-press menu (that row ticked) and in the header on Recipes and a view
+  (beside the +; a view has no +), and in a list's overflow menu. Selecting is **ViewModel state**
+  (`RecipeSelection`, shared by `RecipesViewModel` and `ListDetailViewModel`), so it survives
+  rotation; it is not in `remember`. While selecting: every row leads with a checkbox and a tap
+  ticks (the whole row is one checkbox for TalkBack); swipes, the long-press menu and the row's
+  bookmark button are off; a bar replaces the header (Android: the Scaffold's top bar, the list's own
+  screen a column above the rows): "N selected" (announced as it changes), **Done**, then **Add to
+  list**, **Remove from this list** (a list's own screen) and **Delete**, each needing one ticked.
+  Back leaves selecting first (Android `BackHandler`); iOS has Done.
+- **What an action acts on is the ticked rows still listed** (`RecipeSelection.effective`): a
+  search that hides a ticked recipe takes it out of the count and out of every action, and it is
+  ticked again when the search clears. Nothing out of sight is deleted or moved (the Pantry's rule,
+  #258). The selection starts empty from the header's Select, has no Select all (not asked for; a
+  follow-up) and ends with Done, Back, or any action that completes (a delete, a Remove).
+- **Add to list for several** reuses the one sheet (`SaveToListViewModel.setRecipes(ids)`): a list
+  holding all of them is ticked, one holding some is **indeterminate** (spoken "Some of them",
+  `save_to_list_partial`), none unticked; a tap on a ticked one removes all of them from it, a tap on
+  any other adds all (so an indeterminate list fills). Each tap is one write, as ever (no Save). "+
+  New list" creates the list with all of them in it, in one transaction, and the note under the field
+  counts them ("3 recipes go into the new list.") instead of naming one.
+- **One confirmation, one transaction, one Undo.** A selection's Delete is one dialog, then
+  `RecipeRepository.deleteAll(ids)`: every recipe in one Room transaction (`RecipeDao.deleteAll`;
+  `delete(id)` is now the one-id case, so there is one code path), reading what each took first. All
+  of it joins the burst's one snackbar ("3 recipes deleted"), a swipe made meanwhile included, and
+  **Undo restores all of it through `restoreAll`**, so **#345's free-tier rule holds unchanged**: if the
+  restore would take a free library past its limit, none comes back, the deletes stand and the screen
+  says "Couldn't restore: your library is full". The burst bookkeeping (captured rows, batch, pending
+  titles, refusal) moved out of `RecipesViewModel` into `RecipeDeletions`, which a list's detail uses
+  too. Deleting an original and its versions together leaves no dangling link (the same
+  `clearOrphanedLinks` as a single delete; an undo links them again).
+- **Membership in bulk** is `ListRepository.setMembershipAll` (one transaction: add is the same
+  INSERT-or-IGNORE as `addToList`, so a recipe already in keeps its `addedAt`; remove deletes the
+  rows), `createListWith` (the list and all its members together, or neither) and
+  `observeMemberCounts` (list id to how many of the recipes it holds, for the tri-state). A recipe
+  that is gone makes the whole write fail, leaving nothing half done (`ListDaoBulkTest`).
+- **Code (Android).** `ui/common/RowActions.kt` (`RowActionSet`, `RowWithMenu`, `RecipeRowMenu`,
+  `recipeRowClicks`, `ConfirmDeleteRecipesDialog`), `ui/recipes/` (`RecipeSelection`,
+  `RecipeDeletions`, `RecipeRowSupport`, `SelectionBar`), the row composables `LibraryRow` and
+  `RecipeRow` (a long click and `selecting`/`selected`), `SaveToListViewModel.setRecipes`,
+  `ListDetailViewModel` (now also given `RecipeRepository` and `AppPreferences`).
+- **iOS differences.** The menu is a `.contextMenu` (`UI/Recipes/RecipeRowMenu.swift`, with the
+  delete alert, the sheets and the selection bar); `RecipeDeletions`, `RecipeSelection` and
+  `RecipeRowSupport` are the same collaborators beside `RecipesViewModel`. The row's checkbox is
+  always in it, zero wide when not selecting (#203, #216: a row's structure never changes with its
+  state). While selecting the navigation bar shows "N selected" and Done (the back button is hidden,
+  so Done is the way out), the tab bar is hidden and the actions sit in a bar at the foot of the
+  screen. With `rowActions` off a held press on a row opens the recipe, as a tap does. Repository
+  writes are one SQLite transaction each (`ListDao.setMembers`, `createWith`, `deleteAll`), the
+  rollback of a failed write is a unit test.
+- **Tests.** Android: `RecipesRowActionsViewModelTest`, `ListDetailRowActionsViewModelTest`,
+  `SaveToListSeveralViewModelTest`, `DefaultRecipeRepositoryBulkDeleteTest`, `ListDaoBulkTest` (real
+  SQLite: all or none), `RecipesRowActionsScreenTest` and `ListDetailRowActionsScreenTest` (the menu,
+  Select, Back, rotation, the one confirmation and the one Undo, the free-tier refusal, the
+  indeterminate row), over the hand-written fakes.
+  iOS: `RecipeRowActionsTests`, `SaveToListSeveralTests`, `RowActionsDataTests` (all or none, the
+  free-tier undo refusal for several) and `RowActionsUITests` (long press, select, delete, Undo).
+
+## Plan my week: meals, a start day, and your own recipes (#392, #367, 2026-11-20)
+
+Ask an AI's **Plan my week** (#353) asked only for seven dinners of new recipes. With the
+`planMyWeekPlus` flag (on by default; off, the sheet, the prompt and the review are exactly as
+before) the cook chooses the meals, the first day, and where the recipes come from, on both
+platforms. These Week planning extras are meant to become Pro (#413): nothing is gated here, but
+the flag is the one thing a gate would wrap.
+
+- **The sheet** (chosen *Plan my week*, `PlanOptions`; iOS the same): **Meals**, the cook's meal
+  types as multi-select chips (`meal_types`, their order, current names; **Dinner ticked** at
+  first; at least one, at most `MAX_RECIPES / PLAN_DAYS` = 10); **Start on**, the Add to plan day
+  strip (today and the next 13); **Recipes**: *New recipes* (today's), *From my recipes* (all of
+  them, or one list, chosen from chips of the lists that hold a recipe) or *A mix* ("Up to N of
+  mine, the rest new", a stepper, 1 to the week's meals, 3 at first); then switches for *Use my
+  favourites as ideas* and *Don't repeat what I cooked lately* (both on, as the prompt always did;
+  neither shown for From my recipes, where they make no sense). The **hint** under the row follows
+  the source ("New recipes for the meals and days you choose, shaped by what you like" and so on;
+  flag off, the reworded `ask_ai_kind_plan_hint`, "A week of new dinners, shaped by what you
+  like": the old line read as favourites only). Copy and Share are off with no meal ticked, and
+  with From my recipes or a mix when the library (or the list) has no recipe.
+- **Remembered:** only the ticked meals, by `MealType.key` (a seeded type's `builtInKey`, else its
+  `uid`; never the name, which changes on rename), in `unit_preferences` / `UserDefaults` under
+  `plan_my_week_meals`, comma-joined (`PlanChoices`, its own interface like `UseUpLog`). A key
+  whose type is gone is dropped; with nothing left, Dinner. **Not remembered:** the start day
+  (it never silently starts in the past; closing the sheet puts it back on today), the source,
+  the list, the count, the switches.
+- **The prompt** (`AskAiPrompt.planMyWeekPlus`, `PlanChoice`): "Plan one recipe for each of these
+  meals (Breakfast, Dinner) on each of these days:", the `PLAN_DAYS` days from the start day as
+  `YYYY-MM-DD (Weekday)`, then (for the cook's own recipes) "My saved recipes, one per line as
+  name | link:" with each recipe's name and **`sourceUrl`**, most recently viewed first, **capped
+  at 40** (the sheet says "Sending 40 of your 112 recipes, the most recently viewed first"; the
+  tour's sample is never named), and the instruction: *From my recipes* "Use only my saved
+  recipes… don't write them out: give just @type "Recipe", its "name", its link exactly as listed
+  in "isBasedOn", and its day and meal" (so no fields, units or oven temperature are asked for);
+  *A mix* "Use up to N of my saved recipes… suggest new recipes for the rest… write every new
+  recipe out in full". The reply format asks for one object per meal per day, day by day, each
+  with **`"day"` and `"meal"`** (the meal's name exactly as listed: the cook's current name).
+  Words are `ai_prompt_*` strings in six languages, `AskAiWordsTest` pins the English ones.
+- **A long answer:** more than 14 recipes to write out (`LONG_ANSWER`; saved ones are named, not
+  written, so From my recipes never warns) makes the sheet say chat apps may cut the answer off;
+  the cut-off road (#385) already copes.
+- **Reading** (`MealPlanImport`, `JsonLdRecipeParser.parseEach` with `deep`): each recipe keeps its
+  `meal` text (`Item.meal`; a wrapper's `meal` is carried down as its `day` is). **An object that
+  names a saved recipe by its link and carries no ingredients or steps is `Item.link`** (the
+  link is `isBasedOn`, a thing's `@id`/`url`, else for a Recipe-typed one `url`; it needs a name;
+  `Item.recipe` is then only a name): never a recipe. An object with a body is a new recipe
+  whatever it links. A `meal` counts like a `day` to tell a plan from a changed recipe (#354).
+  `MAX_RECIPES` is **70** (ten meals a week; was 31), at most 100 000 characters read
+  (`MAX_LENGTH`; `SharedText`'s 50 000 still holds for everything else), 200 JSON values tried.
+- **The review:** every row shows its **day and meal**, both changeable before Save (a meal
+  button over the cook's types). The meal is `MealType.idForMeal`: the type whose *current name*
+  matches the answer's `meal`, case and spaces ignored (the first in the cook's order when two
+  share a name), else **Dinner**; never guessed from the recipe. A link-only object is matched
+  to the library by `SavedLink.find` (the link as written, else cleaned by `UrlCleaner`, as a
+  version's original is found, #354): found, the row says **"Already in your recipes"** under the
+  library's own title, takes **no room under the free limit**, and **Save plans that recipe on its
+  day and meal, never saving it again**; with no day it asks for one and Save skips it. Not found:
+  **left out, never invented**, and the review says "Left out, not found in your recipes: N".
+  A new recipe is saved as from a chat as before (the one `addManual`, so the free limit holds).
+  With the flag off a link-only object is left out silently and every recipe is planned under
+  Dinner.
+- **The cut-off follow-up** (#385's `CutOffMessage`) names **day and meal pairs** when the answer
+  carried meals: the block of seven days from the earliest day read, the meals *the answer
+  named*, the pairs no whole recipe is on ("2026-11-21 (Breakfast), 2026-11-21 (Dinner)…"). A meal
+  the answer never reached is unknown to the review, so it cannot be named; with no meal read, no
+  readable day, or nothing missing it is the days (or "the remaining days") as before.
+- **Code.** Core: `AskAiPrompt` (`PlanSource`, `PlanCandidate`, `PlanChoice`, `candidates`,
+  `recipesToWrite`), `MealType` (`uid`, `key`, `chosenKeys`, `idForMeal`), `SavedLink`,
+  `CutOffMessage.forPlanMeals`. Android `AskAiViewModel` (takes `MealPlanRepository`,
+  `PlanChoices`, `FeatureFlags`), `PlanOptions`, `MealPlanReviewViewModel` (takes the flags);
+  iOS the same names. Strings: 31 new keys in six languages on both platforms.
+- **Tests.** `AskAiPromptTest(s)`, `MealPlanMealsTest(s)` (reader, meal mapping, cut-off pairs,
+  keys), the corpus's `PlanText(...)` rows (generated from the Kotlin; `Meal(...)` gains the
+  meal and link when it has them), `PlanMyWeekViewModelTest` and `AskAiViewModelTests`,
+  `MealPlanReviewMealsTest` and `MealPlanReviewTests`, `PlanMyWeekSheetTest` and
+  `MealPlanReviewScreenTest`.
+- **Not here:** the pantry (#363) and food profile (#364) toggles (neither exists to read yet),
+  and any Pro gate (#413).
+
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
 The owner's report: a card's fraction symbol came out as "%". Measured first, on two cards drawn
@@ -5974,7 +6389,7 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 17** (iOS `user_version` 16): `recipes`
+Room database `recipe_clipper.db`, **version 18** (iOS `user_version` 17): `recipes`
 (with nullable `notes`, `language`, `cookState`, `servingsTarget`, `editedAt` and `basedOnUid`,
 #354, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
 `meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51; `runningLow`, #194), `menus` and
@@ -6020,7 +6435,11 @@ is hosted by Help's page, so its visit is that page's; the index hosts none.
 the same on both): `unit_system`, `convert_liquids`, `temperature_unit`,
 `dark_while_cooking`, `expiry_reminders`, `evening_reminder`, `evening_reminder_minute`,
 `tonight_reminder`, `tonight_reminder_minute` (#397), `chef_mode`, `amounts_in_steps`,
-`recipe_sort` (the Recipes screen's sort), the tour's `tour_sample_added` (#151) and
+`recipe_sort` (the Recipes screen's sort), `recipes_layout` (its rows or photo grid, #380: `ROWS` or
+`GRID`, an unknown name reads as `ROWS`), the tour's `tour_sample_added` (#151) and
+
+`recipe_sort` (the Recipes screen's sort), `plan_my_week_meals` (#392: the meal types ticked in
+Plan my week, `MealType.key`s comma-joined), the tour's `tour_sample_added` (#151) and
 `tooltip_<id>` (#190; #151's `tour_welcome` and `tour_tip_*` are ignored), and `pantry_use_up` (#147: recipe id to when
 its sheet was settled, pruned to 12 h on each write), each enum stored by name, an
 unknown one read as the default. `AppPreferences.settings` (a Flow over the change

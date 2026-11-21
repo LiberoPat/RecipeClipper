@@ -37,7 +37,7 @@ import com.example.recipeclipper.data.model.MealType
         PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class,
         AiDecisionEntity::class, CookedPhotoEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -63,9 +63,10 @@ abstract class RecipeDatabase : RoomDatabase() {
          * every one of these can be renamed.
          *
          * The rest are starting points, not fixtures: they can be deleted like any list the
-         * user makes. They are still flagged `isBuiltIn`, which now means only "seeded, and
-         * sorts before user-created lists" — it stopped meaning "undeletable" when Breakfast
-         * and Snacks were added and the delete guard moved to `isFavorites`.
+         * user makes. They are still flagged `isBuiltIn`, which now means only "seeded" (they
+         * start first, by their `sortOrder`; the cook can move any list, #381) — it stopped
+         * meaning "undeletable" when Breakfast and Snacks were added and the delete guard moved
+         * to `isFavorites`.
          *
          * Breakfast and Snacks are last rather than in meal order so that this list and
          * [MIGRATION_1_2] produce exactly the same ordering. A migration that renumbered the
@@ -423,11 +424,30 @@ abstract class RecipeDatabase : RoomDatabase() {
 
         private const val BASED_ON_SQL = "ALTER TABLE `recipes` ADD COLUMN `basedOnUid` TEXT"
 
+        /**
+         * Reorder lists (#381): `lists.sortOrder` becomes the one authority for the order lists are
+         * shown in (the queries used to sort `isBuiltIn DESC` first). So every list is numbered
+         * 0, 1, 2... in exactly the order it was shown, seeded first, which leaves today's order
+         * untouched. Data only: the column was already there, so the schema does not change. The
+         * ranks are written one by one rather than with a self-referencing UPDATE, whose reads of
+         * `lists` while it is being rewritten are not something to lean on. The same steps are
+         * iOS's `numberListsInShownOrder`.
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val ids = db.query("SELECT id FROM lists ORDER BY isBuiltIn DESC, sortOrder ASC, id ASC")
+                    .use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.getLong(0)) } }
+                ids.forEachIndexed { position, id ->
+                    db.execSQL("UPDATE lists SET sortOrder = ? WHERE id = ?", arrayOf<Any>(position, id))
+                }
+            }
+        }
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17
+            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18
         )
     }
 }

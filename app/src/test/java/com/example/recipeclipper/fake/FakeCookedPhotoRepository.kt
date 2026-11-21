@@ -40,6 +40,13 @@ class FakeCookedPhotoRepository(var today: Long = 20_000L) : CookedPhotoReposito
 
     override suspend fun markCooked(recipeId: Long): CookedPhoto = mark(recipeId)
 
+    override suspend fun markCookedToday(recipeId: Long) {
+        if (photos.value.none { it.recipeId == recipeId && it.day == today }) mark(recipeId)
+    }
+
+    override fun observeCookedOn(day: Long): Flow<Set<Long>> =
+        photos.map { list -> list.filter { it.day == day }.map { it.recipeId }.toSet() }
+
     override suspend fun edit(id: Long, day: Long, note: String?) {
         edits += Triple(id, day, note)
         photos.value = photos.value.map { if (it.id == id) it.copy(day = day, note = CookedPhoto.cleanNote(note)) else it }

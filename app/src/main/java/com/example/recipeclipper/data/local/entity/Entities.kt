@@ -49,10 +49,11 @@ data class RecipeEntity(
 data class ListEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    // Seeded on first run, and sorts before user-created lists. Deliberately NOT "undeletable"
-    // — that is isFavorites' job, and only Favorites is protected.
+    // Seeded on first run (and so starts before user-created lists). Deliberately NOT
+    // "undeletable" — that is isFavorites' job, and only Favorites is protected.
     val isBuiltIn: Boolean,
     val isFavorites: Boolean,       // exactly one row; a column, never a name match
+    /** The cook's own order (#381): 0, 1, 2... the one thing lists are shown by; a new list takes the next. */
     val sortOrder: Int,
     val createdAt: Long,
     /** Stable across devices and exports (#26); survives a rename, unlike [name]. */

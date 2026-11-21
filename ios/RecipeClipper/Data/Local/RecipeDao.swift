@@ -14,7 +14,8 @@ struct RecipeDao {
         contentOrigin = 'CLIPPED' AS isClipped,
         (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
         sourceUrl,
-        contentOrigin = 'CHAT' AS isFromChat
+        contentOrigin = 'CHAT' AS isFromChat,
+        prepTime, cookTime, language
         """
 
     func get(_ id: Int64) throws -> RecipeRecord? {
@@ -316,6 +317,20 @@ struct RecipeDao {
             """
         ) { RecipeCounts(all: $0.int(0), inList: $0.int(1), cooked: $0.int(2), typed: $0.int(3), chat: $0.int(4)) }
             ?? RecipeCounts(all: 0, inList: 0)
+    }
+
+    /// Every recipe's ingredient lines as stored, for "Uses what's in my pantry" (#378): read only
+    /// while that chip is on.
+    func recipeLines() throws -> [SavedRecipe] {
+        try db.query(
+            "SELECT id, title, language, ingredients FROM recipes ORDER BY id",
+            map: { row in
+                SavedRecipe(
+                    id: row.int64(0), title: row.string(1),
+                    language: row.optionalString(2), lines: JSONColumns.decodeStrings(row.string(3))
+                )
+            }
+        )
     }
 
     func recent(limit: Int) throws -> [RecipeSummaryRecord] {

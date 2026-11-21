@@ -19,6 +19,19 @@ enum ClipMessage: Equatable {
     case textUnreadable
 }
 
+extension ClipMessage {
+    /// How long the snackbar stays. One with an action to reach (Undo, Discard, Cancel) gets the
+    /// undo window, 10 s, as Android's `SnackbarDuration.Long` does and as every other undo
+    /// snackbar here; a plain notice keeps 4 s. At 4 s a slow screen reader or runner could lose
+    /// the Undo before the cook (or a UI test) got to it.
+    var snackbarWindow: Duration {
+        switch self {
+        case .removed, .draftRestored, .saveFailed, .unlock: SnackbarTimeout.undo
+        case .photoUnreadable, .missing, .textUnreadable: SnackbarTimeout.duration
+        }
+    }
+}
+
 /// Where the cook is with Cloudflare's check (#220), when the clip view opened for it in the
 /// import's place (Android's ClipCheck). `waiting`: the page is the check, with a note saying
 /// what to do and no clip toolbar; each page it settles on is read, and one with a recipe opens

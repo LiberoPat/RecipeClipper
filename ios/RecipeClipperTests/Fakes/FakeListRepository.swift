@@ -22,8 +22,17 @@ final class FakeListRepository: ListRepository {
     let coverPhotos = CurrentValueSubject<[Int64: [String]], Never>([:])
 
     private(set) var createCalls: [(name: String, recipeId: Int64?)] = []
+    /// Every `createList(name:, addRecipeIds:)` (#377), in order.
+    private(set) var createManyCalls: [(name: String, recipeIds: [Int64])] = []
+    /// Every `setMembershipAll` (#377): each is one transaction in the real repository.
+    private(set) var setMembershipAllCalls: [(recipeIds: [Int64], listId: Int64, inList: Bool)] = []
     private(set) var renameCalls: [(listId: Int64, name: String)] = []
     private(set) var deleteCalls: [Int64] = []
+    /// Every order `reorderLists` was given, in order.
+    private(set) var reorderCalls: [[Int64]] = []
+    /// How long after `reorderLists` returns the new order is published, as the database's
+    /// observation does after a commit (it re-queries on its own queue). Zero: at once.
+    var reorderPublishDelay: Duration = .zero
     private(set) var recipesInQueries: [Int64] = []
 
     private var nextId: Int64 = 100
@@ -67,6 +76,37 @@ final class FakeListRepository: ListRepository {
         membership.send(rows)
     }
 
+    @MainActor func setMembershipAll(recipeIds: [Int64], listId: Int64, inList: Bool) async {
+        setMembershipAllCalls.append((recipeIds, listId, inList))
+        var rows = membership.value
+        for id in recipeIds {
+            let row = Membership(recipeId: id, listId: listId)
+            if inList { rows.insert(row) } else { rows.remove(row) }
+        }
+        membership.send(rows)
+    }
+
+    func observeMembershipCounts(recipeIds: [Int64]) -> AnyPublisher<[Int64: Int], Never> {
+        membership
+            .map { rows in
+                var counts: [Int64: Int] = [:]
+                for row in rows where recipeIds.contains(row.recipeId) { counts[row.listId, default: 0] += 1 }
+                return counts
+            }
+            .eraseToAnyPublisher()
+    }
+
+    @MainActor
+    @discardableResult
+    func createList(name: String, addRecipeIds: [Int64]) async -> Int64 {
+        createManyCalls.append((name, recipeIds: addRecipeIds))
+        let id = nextId
+        nextId += 1
+        lists.send(lists.value + [RecipeList(id: id, name: name, isBuiltIn: false, isFavorites: false, recipeCount: 0)])
+        membership.send(membership.value.union(addRecipeIds.map { Membership(recipeId: $0, listId: id) }))
+        return id
+    }
+
     @MainActor
     @discardableResult
     func createList(name: String, addRecipeId: Int64?) async -> Int64 {
@@ -78,6 +118,25 @@ final class FakeListRepository: ListRepository {
             membership.send(membership.value.union([Membership(recipeId: addRecipeId, listId: id)]))
         }
         return id
+    }
+
+    /// As the SQL does it: the named lists first, in that order, then the rest as they were.
+    @MainActor func reorderLists(_ orderedIds: [Int64]) async {
+        reorderCalls.append(orderedIds)
+        let byId = Dictionary(lists.value.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var seen = Set<Int64>()
+        let named = orderedIds.filter { byId[$0] != nil && seen.insert($0).inserted }
+        let rest = lists.value.map(\.id).filter { !seen.contains($0) }
+        let reordered = (named + rest).compactMap { byId[$0] }
+        if reorderPublishDelay == .zero {
+            lists.send(reordered)
+        } else {
+            let delay = reorderPublishDelay
+            Task { @MainActor in
+                try? await Task.sleep(for: delay)
+                self.lists.send(reordered)
+            }
+        }
     }
 
     @MainActor func rename(listId: Int64, name: String) async {

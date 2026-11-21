@@ -31,6 +31,12 @@ final class RecipeViewModel {
     // Opened from a timer's countdown or alert, the cook link or Home's resume card: back to
     // the cook once the recipe has loaded (CookController.resume, #333: never a restart).
     @ObservationIgnored private var openInCookMode: Bool
+    // Home's Today card (#402): "Start cooking" opens the recipe in cook mode, from the start when
+    // its last run was finished (CookController.start), where it was left otherwise.
+    @ObservationIgnored private var startInCookMode: Bool
+    // Finishing a run records today's cooking (#402), so Home's Today card counts it as cooked;
+    // nil without it (tests that aren't about it).
+    @ObservationIgnored private let cooked: CookedPhotoRepository?
     // The countdowns outside the app (#309), squared with the database after a delete, a
     // re-share or an update (#333); nil without them (tests that aren't about them).
     @ObservationIgnored private let countdowns: TimerCountdownSync?
@@ -79,8 +85,12 @@ final class RecipeViewModel {
         flags: FeatureFlags? = nil,
         entitlements: Entitlements = UnavailableEntitlements(),
         decisions: DecisionRepository? = nil,
-        countdowns: TimerCountdownSync? = nil
+        countdowns: TimerCountdownSync? = nil,
+        cooked: CookedPhotoRepository? = nil,
+        startInCookMode: Bool = false
     ) {
+        self.cooked = cooked
+        self.startInCookMode = startInCookMode
         self.entitlements = entitlements
         versionsOn = { flags?.isOn(.recipeVersions) ?? true }
         self.sleep = sleep
@@ -186,7 +196,11 @@ final class RecipeViewModel {
                 chef.start()
                 if !uiState.notKept { observeVersions(of: recipe.id) }
                 askModel()
-                if openInCookMode {
+                if startInCookMode {
+                    startInCookMode = false
+                    openInCookMode = false
+                    cookMode.start()
+                } else if openInCookMode {
                     openInCookMode = false
                     cookMode.resume()
                 }
@@ -484,6 +498,11 @@ final class RecipeViewModel {
         }
         uiState.cook = done.cook
         cookMode.save()
+        // A finished run is a cooking (#402): recorded once a day, behind the progress write.
+        if done.finished, !uiState.notKept, let cooked {
+            let id = content.recipe.id
+            writes.enqueue { await cooked.markCookedToday(recipeId: id) }
+        }
     }
 
     /// The view has handed `cookFinished` on.

@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.recipeclipper.data.model.MealReminders
 import com.example.recipeclipper.data.model.RecipeSort
+import com.example.recipeclipper.data.model.RecipesLayout
 import com.example.recipeclipper.data.model.TemperatureUnit
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.UnitSystem
@@ -22,7 +23,7 @@ import javax.inject.Singleton
 @Singleton
 class SharedPrefsAppPreferences @Inject constructor(
     @ApplicationContext context: Context
-) : AppPreferences, TourPreferences, UseUpLog {
+) : AppPreferences, TourPreferences, UseUpLog, PlanChoices {
 
     // The file keeps its original name: renaming it would strand every existing user's
     // saved unit choice for no gain.
@@ -107,6 +108,12 @@ class SharedPrefsAppPreferences @Inject constructor(
             prefs.edit { putString(KEY_RECIPE_SORT, value.name) }
         }
 
+    override var recipesLayout: RecipesLayout
+        get() = RecipesLayout.fromStoredName(prefs.getString(KEY_RECIPES_LAYOUT, null))
+        set(value) {
+            prefs.edit { putString(KEY_RECIPES_LAYOUT, value.name) }
+        }
+
     /**
      * Over SharedPreferences' change listener. SharedPreferences holds its listeners weakly, so
      * the listener is a local that `awaitClose` keeps alive for as long as someone collects;
@@ -147,7 +154,16 @@ class SharedPrefsAppPreferences @Inject constructor(
             prefs.edit { if (value.isEmpty()) remove(KEY_USE_UP) else putString(KEY_USE_UP, UseUpLog.encode(value)) }
         }
 
+    override var planMealKeys: List<String>?
+        get() = PlanChoices.decode(prefs.getString(KEY_PLAN_MEALS, null))
+        set(value) {
+            prefs.edit {
+                if (value.isNullOrEmpty()) remove(KEY_PLAN_MEALS) else putString(KEY_PLAN_MEALS, PlanChoices.encode(value))
+            }
+        }
+
     private companion object {
+        const val KEY_PLAN_MEALS = "plan_my_week_meals"
         const val KEY_USE_UP = "pantry_use_up"
         const val KEY_SAMPLE_ADDED = "tour_sample_added"
         const val KEY_SYSTEM = "unit_system"
@@ -162,5 +178,6 @@ class SharedPrefsAppPreferences @Inject constructor(
         const val KEY_CHEF_MODE = "chef_mode"
         const val KEY_AMOUNTS_IN_STEPS = "amounts_in_steps"
         const val KEY_RECIPE_SORT = "recipe_sort"
+        const val KEY_RECIPES_LAYOUT = "recipes_layout"
     }
 }
