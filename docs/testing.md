@@ -41,6 +41,12 @@ not to undo:
 - iOS UI tests that delete and then tap Undo tap it as soon as the snackbar
   shows, and check the row went afterwards: an undo snackbar lasts ten seconds of
   real time (a plain notice four), and waiting for the row first could outlast it.
+  `GroceriesUITests`' Undo tests also launch with `-uiTestHoldUndo`, which keeps
+  an undo snackbar until Undo or leaving the screen: on CI, slow queries (3 to
+  13 s each) come in the first ten minutes after the fresh simulator boots, in
+  whatever class runs then (Groceries opens shard 1), and finding then tapping
+  Undo took past ten seconds. The screen itself idles at once and its tree is
+  small. A test of the window's end (`testADeleteWithoutUndoStands`) never holds.
 - `ClipUITests` gives anything on the web page 60 s, not the usual 10: WebKit
   draws it and answers accessibility queries from its own process, which on a
   busy machine took over 10 s to show the page, and on CI 9 s and then 28 s to

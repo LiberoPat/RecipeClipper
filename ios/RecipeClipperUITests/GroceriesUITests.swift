@@ -6,6 +6,12 @@ final class GroceriesUITests: RecipeUITestCase {
 
     private var tabBar: XCUIElement { app.tabBars.firstMatch }
 
+    /// The tests that tap Undo hold the snackbar until it's used (`-uiTestHoldUndo`). Its ten
+    /// seconds are SnackbarTimeout's and RecipesUITests' (testADeleteWithoutUndoStands); here
+    /// finding and tapping Undo took longer than that on a freshly booted CI simulator, where
+    /// one query once took 9 s (docs/testing.md).
+    private let holdUndo = ["-uiTestHoldUndo"]
+
     /// A line on the list: a button whose label holds its text.
     private func line(_ text: String) -> XCUIElement {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
@@ -32,7 +38,7 @@ final class GroceriesUITests: RecipeUITestCase {
     }
 
     func testATypedItemCanBeDeletedAndBroughtBack() {
-        launch(.standard)
+        launch(.standard, extraArguments: holdUndo)
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()
@@ -40,9 +46,7 @@ final class GroceriesUITests: RecipeUITestCase {
         require(line("milk"), "the typed item")
         require(text("Dairy & eggs"), "the dairy aisle")
 
-        // The snackbar lasts four seconds of real time (SnackbarTimeout), so Undo is tapped as
-        // soon as it shows. Waiting for the row to go first could outlast it when the machine
-        // is busy (several UI test classes in one run), and then Undo was gone: the flake in #91.
+        // Undo is tapped as soon as it shows, and the launch holds the snackbar (holdUndo).
         deleteMilk()
         require(app.buttons["Undo"], "the snackbar").tap()
         require(line("milk"), "the item, back")
@@ -94,7 +98,7 @@ final class GroceriesUITests: RecipeUITestCase {
     /// #146: a tick only ticks; "Done shopping" opens the put-away sheet, and one confirm puts
     /// the ticked ones in the pantry and clears the list, with one Undo for both.
     func testDoneShoppingPutsTickedItemsAwayWithOneUndo() {
-        launch(.empty)
+        launch(.empty, extraArguments: holdUndo)
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()
@@ -155,7 +159,7 @@ final class GroceriesUITests: RecipeUITestCase {
     /// #219: a tick leaves the row where it is; "Clear the whole list" asks first, and Undo
     /// brings the list back.
     func testATickStaysPutAndTheWholeListClearsWithUndo() {
-        launch(.empty)
+        launch(.empty, extraArguments: holdUndo)
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         let field = require(app.textFields["Add an item"], "Add an item")
         field.tap()

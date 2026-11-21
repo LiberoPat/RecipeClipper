@@ -473,7 +473,17 @@ enum SnackbarTimeout {
     @MainActor
     static func run(pending: [String], for window: Duration = undo, sleep: Sleep = Sleeps.real, onTimeout: () -> Void) async {
         guard !pending.isEmpty else { return }
-        do { try await sleep(window) } catch { return }
+        do {
+            // A UI test that taps Undo can hold the window open (`-uiTestHoldUndo`): on a freshly
+            // booted CI simulator one XCTest query took up to 9 s, and finding and tapping Undo
+            // outlasted ten seconds. The snackbar then goes only by Undo or by leaving the screen.
+            #if DEBUG
+            if window == undo && UITestSeeding.holdsUndo {
+                while true { try await sleep(.seconds(3600)) }
+            }
+            #endif
+            try await sleep(window)
+        } catch { return }
         guard !Task.isCancelled else { return }
         onTimeout()
     }
