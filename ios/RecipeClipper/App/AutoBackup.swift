@@ -32,7 +32,7 @@ enum AutoBackupOutcome: Equatable {
 }
 
 /// The automatic copy (#150; Android's `AutoBackup`): the latest export, photos included, as a
-/// zip in the app's iCloud Drive folder ("Recipe Clipper" in Files), keeping the newest three.
+/// zip in the app's iCloud Drive folder ("Pith" in Files), keeping the newest three.
 /// The rules are `AutoBackupPolicy`'s. Nothing is written anywhere else and nothing is sent to
 /// any server: iCloud Drive syncs the folder as it does any document.
 @MainActor
@@ -174,7 +174,7 @@ final class MemoryAutoBackupStore: AutoBackupStore {
 }
 
 /// The app's iCloud Drive folder: `Documents/` in its ubiquity container, which Files shows as
-/// "Recipe Clipper" (`NSUbiquitousContainers` in Info.plist). Needs the iCloud Documents
+/// "Pith" (`NSUbiquitousContainers` in Info.plist). Needs the iCloud Documents
 /// capability and container on the App ID (docs/release.md); without them, or with iCloud Drive
 /// off, the container is nil and the copy says it is unavailable.
 final class ICloudBackupFolder: BackupFolder, @unchecked Sendable {

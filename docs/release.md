@@ -19,7 +19,7 @@ plan is in issues #18 (iOS), #22 (Android), #20–#21 and #23.
    build to a device.
 3. **Register the App Group.** The app and its two extensions share their
    database and settings through `group.com.liberopat.recipeclipper`; without
-   it, sharing to Recipe Clipper on a device can't save anything the app
+   it, sharing to Pith on a device can't save anything the app
    sees. On developer.apple.com → Certificates, Identifiers & Profiles →
    Identifiers → App Groups, add `group.com.liberopat.recipeclipper`, then
    enable the App Groups capability on all three App IDs and tick that group.
@@ -29,7 +29,7 @@ plan is in issues #18 (iOS), #22 (Android), #20–#21 and #23.
    extension's memory in Console (see docs/testing.md).
 4. **Register the iCloud container** (#150, the automatic backup copy). The
    app writes its latest export to `iCloud.com.liberopat.recipeclipper`, whose
-   `Documents` folder Files shows as "Recipe Clipper". On developer.apple.com →
+   `Documents` folder Files shows as "Pith". On developer.apple.com →
    Identifiers → iCloud Containers, add `iCloud.com.liberopat.recipeclipper`,
    then enable the iCloud capability (iCloud Documents; CloudKit isn't needed)
    on the app's App ID, not the extension's, and assign that container. (Xcode's
@@ -37,10 +37,10 @@ plan is in issues #18 (iOS), #22 (Android), #20–#21 and #23.
    already name it; check it did.) Until then the app runs normally and Settings
    says iCloud Drive isn't available. On a device signed in to iCloud with
    iCloud Drive on, open and leave the app, then check Files → iCloud Drive →
-   Recipe Clipper for a `recipe-clipper-backup-….zip`. The folder's name shows
+   Pith for a `pith-backup-….zip` (older copies keep `recipe-clipper-backup-…`). The folder's name shows
    in Files only after a build with a new `CURRENT_PROJECT_VERSION`.
 5. **Reserve the name.** App Store Connect → Apps → + → New App, bundle ID
-   `com.liberopat.recipeclipper`. The name must be unique on the store (#21).
+   `com.liberopat.recipeclipper`, named "Pith" (#414; the text is in docs/store-listing.md). The name must be unique on the store (#21).
 6. **Privacy.** Enter the privacy policy URL (below). In App Privacy, answer
    "Data Not Collected".
 7. **Build numbers.** Raise `CURRENT_PROJECT_VERSION` in `ios/project.yml`

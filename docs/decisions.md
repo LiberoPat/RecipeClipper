@@ -6255,6 +6255,50 @@ the flag is the one thing a gate would wrap.
 - **Not here:** the pantry (#363) and food profile (#364) toggles (neither exists to read yet),
   and any Pro gate (#413).
 
+## Pith (#414, 2026-11-20)
+
+The app is **Pith**, subtitle **"Skip the story. Cook."** (owner, 2026-11-19), with the
+1 Ribbon icon (#360). The Week tab is **Plan**, in the same change: the rest of the app
+already said "plan" (Add to plan, Plan my week, Remove from the plan). Before shipping (the
+owner's): the pending PITH trademark application (USPTO 50168836) and the domains
+(pithrecipes.com, pith.recipes). The store text is in `docs/store-listing.md`.
+
+- **Pith is the name; where the app is offered as an action it says what it does** (owner,
+  2026-11-20: "Pith" alone didn't say it). Android's link/text share target and text-selection
+  entry are `share_target_label`, "Clip recipe to Pith"; iOS's share extension is "Clip Recipe"
+  (`RecipeClipperShare/InfoPlist.xcstrings`), under the Pith icon. Six languages each.
+- **What the cook sees changed.** Android `app_name` (the launcher, the widgets' empty title)
+  and `home_title`; iOS `CFBundleDisplayName` for the app and the widgets (which also name the
+  Live Activity), the iCloud Drive folder's name in Files (`NSUbiquitousContainerName`; Files
+  shows it after a build with a new `CURRENT_PROJECT_VERSION`), and the file type's name ("Pith
+  file"). Every string that said "Recipe Clipper", in six languages on both platforms (a name
+  isn't translated): the Home hint, the share extension's cards, Ask an AI's and Change a
+  recipe's intros, Send as file, the backup errors and prompts, the notifications-off line.
+  The file a shared recipe falls back to is `Pith.recipeclipper`; an export is
+  `pith-YYYY-MM-DD.json` (or `.zip`); the automatic copy is `pith-backup-….zip`. The site report
+  (English by design) says "Pith found no recipe on this page."; a calendar file's `PRODID` is
+  `-//Pith//Meal plan//EN`.
+- **What data depends on never changed:** the package and bundle ids
+  (`com.liberopat.recipeclipper`, `.share`, `.widgets`), the App Group and the iCloud container
+  ids, `recipe_clipper.db`, `unit_preferences`, every settings key, the backup format
+  (`"format": "recipe-clipper-backup"`), the `.recipeclipper` extension, its MIME type and UTI,
+  the `recipeclipper://` scheme, a calendar entry's `UID` (`…@recipe-clipper`, so a calendar
+  that imported a week before doesn't double it), and code names (packages, classes, the
+  `RecipeClipper` targets, the log tag).
+- **Old automatic copies are still the app's own.** `AutoBackupPolicy` (both platforms) takes
+  `recipe-clipper-backup-…` and `pith-backup-…` alike, and keeps the newest three by the time in
+  the name, not the name ("recipe-…" sorts after "pith-…", so name order would keep the old
+  ones forever and delete each new copy).
+- **Plan.** `tab_week` is the tab, the Plan screen's title and the Settings section ("Settings →
+  Plan"): Plan, Plan, Planning, Plan, Piano, Plano, each the word the language's "Add to plan"
+  already used (`docs/translations.md`). The tab named as a place changed with it ("Open Plan",
+  "planned on its day in Plan", "from Plan"). "Week" as a stretch of days stays: the Week/Month
+  toggle, This week, Shop for this week, Save week as menu, Plan my week. Routes (`week/…`),
+  `Tab.WEEK` / `AppTab.week` and their stored names, the `settings/week` route, settings keys and
+  code identifiers stay `week`.
+- **Tests** match the new labels (`AppShellTest`, the walkthroughs, the iOS UI tests' `tab("Plan")`
+  and `buttons["Plan"]`); `AutoBackupPolicyTest(s)` pins the old prefix's copies.
+
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
 The owner's report: a card's fraction symbol came out as "%". Measured first, on two cards drawn

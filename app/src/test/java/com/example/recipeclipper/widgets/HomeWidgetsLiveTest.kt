@@ -126,7 +126,7 @@ class HomeWidgetsLiveTest {
 
         store.setOverride(Flag.WIDGETS.key, false)
         settle()
-        assertEquals(listOf("Recipe Clipper"), host.texts(tonight))
+        assertEquals(listOf("Pith"), host.texts(tonight))
         assertEquals("with the flag off the plan isn't read", 0, plan.meals.subscriptionCount.value)
     }
 

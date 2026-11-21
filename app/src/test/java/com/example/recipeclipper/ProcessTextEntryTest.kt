@@ -21,7 +21,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** "Recipe Clipper" in text-selection menus (#306): offered with the shareText flag, never in the app's own (#334). */
+/** "Pith" in text-selection menus (#306): offered with the shareText flag, never in the app's own (#334). */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
 class ProcessTextEntryTest {
@@ -57,7 +57,7 @@ class ProcessTextEntryTest {
     @Test
     fun theAppsOwnSelectionMenuLeavesItsEntryOut() {
         val menu = PopupMenu(context, View(context)).menu
-        val own = menu.add("Recipe Clipper").setIntent(Intent(context, ProcessTextActivity::class.java))
+        val own = menu.add("Pith").setIntent(Intent(context, ProcessTextActivity::class.java))
         val other = menu.add("Translate").setIntent(
             Intent(Intent.ACTION_PROCESS_TEXT).setClassName("com.example.other", "com.example.other.Translate")
         )

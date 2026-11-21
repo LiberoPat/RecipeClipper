@@ -85,7 +85,7 @@ final class LibraryFirstUITests: RecipeUITestCase {
         require(app.buttons["add.askAi"], "Ask an AI")
         for hint in [
             "A link or a recipe's text", "A card or a cookbook page", "Write it in yourself", "A prompt for any chat app",
-            "Or share a link to Recipe Clipper from any app.",
+            "Or share a link to Pith from any app.",
         ] {
             require(textContaining(hint), hint)
         }
@@ -234,7 +234,7 @@ final class LibraryFirstUITests: RecipeUITestCase {
             require(app.buttons[id], id)
         }
         require(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Scan a recipe'")).firstMatch, "the scan tile")
-        require(text("Or share a link to Recipe Clipper from any app."))
+        require(text("Or share a link to Pith from any app."))
         assertAbsent(search, "nothing to search yet")
         require(libraryAdd, "the + is still the way in")
 
