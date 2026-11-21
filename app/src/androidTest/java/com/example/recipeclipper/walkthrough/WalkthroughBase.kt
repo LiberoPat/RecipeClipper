@@ -118,10 +118,13 @@ abstract class WalkthroughBase {
             }
         }
         flags.forEach { flagStore.setOverride(it, true) }
+        // The clips are written through Home (#286): the library-first start (#375) is off unless a clip asks for it.
+        val libraryFirst = "libraryFirst" in flags
+        flagStore.setOverride("libraryFirst", libraryFirst)
         if (!firstRun) Tooltip.entries.forEach { tour.setTooltipSeen(it, true) }
         shell("cmd statusbar collapse") // a shade an earlier clip (38) left open would keep the focus
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        waitFor(hasText("Paste a link"))
+        waitFor(if (libraryFirst) hasContentDescription("Add a recipe") else hasText("Paste a link"))
         // Two-thirds size: the script scales every clip to 1280 high anyway, and a smaller frame
         // keeps the emulator's encoder up with the screen on a busy machine (at full size it fell
         // behind and lost the ends of clips).
