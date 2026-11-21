@@ -8,6 +8,7 @@ import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeDraft
+import com.example.recipeclipper.data.model.SavedTimer
 import com.example.recipeclipper.data.remote.RecipeSource
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import kotlinx.coroutines.test.runTest
@@ -19,7 +20,8 @@ import org.junit.Test
 /**
  * A recipe's tips (#432) through [DefaultRecipeRepository], over an in-memory DAO: with
  * `recipeTips` on they are stored apart from the steps; off, a fresh parse's tips are its last
- * steps, as before. A recipe saved with its tips as steps simply refreshes on a re-share. iOS:
+ * steps, as before. A recipe saved with its tips as steps refreshes on a re-share and keeps its
+ * cook progress, clamped to the steps left; any other change of steps still drops it. iOS:
  * `RecipeTipsDataTests`.
  */
 class DefaultRecipeRepositoryTipsTest {
@@ -39,6 +41,8 @@ class DefaultRecipeRepositoryTipsTest {
         prepTime = null, cookTime = null, totalTime = null, yield = "24", sourceUrl = url,
         tips = listOf("Use a baking stone.")
     )
+
+    private val timer = SavedTimer(totalSeconds = 600, remainingSeconds = 300, endsAt = null)
 
     private val dao = InMemoryRecipeDao()
     private val source = StagedSource(ParseResult.Success(pies))
@@ -64,17 +68,54 @@ class DefaultRecipeRepositoryTipsTest {
         assertEquals(emptyList<String>(), saved.tips)
     }
 
-    @Test fun `a recipe saved with its tips as steps refreshes on a re-share, its progress going with the old steps`() = runTest {
+    @Test fun `a recipe saved with its tips as steps refreshes on a re-share, keeping its progress`() = runTest {
         val old = repository(tipsOn = false).imported()
-        dao.setCookState(old.id, CookStateJson.encode(CookProgress(active = true, currentStep = 2)))
-        assertNotNull(dao.get(old.id)!!.cookState)
+        val progress = CookProgress(active = true, currentStep = 1, doneSteps = setOf(0), timers = mapOf(1 to timer))
+        dao.setCookState(old.id, CookStateJson.encode(progress))
 
         val refreshed = repository(tipsOn = true).imported()
 
         assertEquals(old.id, refreshed.id)
         assertEquals(listOf("Bake.", "Cool."), refreshed.instructions)
         assertEquals(listOf("Use a baking stone."), refreshed.tips)
+        assertEquals("only the last steps became tips: the indexes still mean the same steps",
+            progress, CookStateJson.decode(dao.get(old.id)!!.cookState))
+    }
+
+    @Test fun `progress that pointed at a former tip row is clamped to the steps left`() = runTest {
+        val old = repository(tipsOn = false).imported()
+        dao.setCookState(old.id, CookStateJson.encode(
+            CookProgress(active = true, currentStep = 2, doneSteps = setOf(0, 1, 2), timers = mapOf(0 to timer, 2 to timer))
+        ))
+
+        repository(tipsOn = true).imported()
+
+        assertEquals(
+            CookProgress(active = true, currentStep = 1, doneSteps = setOf(0, 1), timers = mapOf(0 to timer)),
+            CookStateJson.decode(dao.get(old.id)!!.cookState)
+        )
+    }
+
+    @Test fun `progress still goes when a real step changed as well`() = runTest {
+        val old = repository(tipsOn = false).imported()
+        dao.setCookState(old.id, CookStateJson.encode(CookProgress(active = true, currentStep = 1)))
+        source.result = ParseResult.Success(pies.copy(instructions = listOf("Bake well.", "Cool.")))
+
+        repository(tipsOn = true).imported()
+
         assertNull("the steps changed, so the step indexes no longer mean the same steps", dao.get(old.id)!!.cookState)
+    }
+
+    @Test fun `with no tips, any change of steps still drops the progress`() = runTest {
+        source.result = ParseResult.Success(pies.copy(tips = emptyList()))
+        val repository = repository(tipsOn = true)
+        val first = repository.imported()
+        dao.setCookState(first.id, CookStateJson.encode(CookProgress(active = true, currentStep = 1)))
+        source.result = ParseResult.Success(pies.copy(instructions = listOf("Bake."), tips = emptyList()))
+
+        repository.imported()
+
+        assertNull(dao.get(first.id)!!.cookState)
     }
 
     @Test fun `cook progress stays when only the tips change`() = runTest {
