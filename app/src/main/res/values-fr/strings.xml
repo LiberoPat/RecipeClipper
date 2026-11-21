@@ -381,10 +381,12 @@
     <string name="text_leftovers">Les lignes qui n\'avaient leur place nulle part sont dans Notes, telles quelles.</string>
     <string name="text_not_sorted">Impossible de trouver des ingrédients et des étapes dans le texte : tout est dans Étapes, tel quel. Terminez-la à la main.</string>
     <!-- A recipe written inside an article (#435) -->
-    <string name="error_in_article">Cette page n\'a pas de données de recette, mais son article en écrit une : une liste de quantités, puis la préparation. Vérifiez-la avant de l\'enregistrer.</string>
-    <string name="action_check_article">Vérifier la recette</string>
-    <string name="article_read">Reprise de l\'article telle qu\'elle est écrite. Le nom est le titre de l\'article : remplacez-le par celui du plat. Vérifiez chaque ligne avant d\'enregistrer.</string>
+    <string name="article_read">Reprise de l\'article telle qu\'elle est écrite. Le nom est le titre de la page au-dessus de la recette : remplacez-le par celui du plat si ce n\'est pas lui. Vérifiez chaque ligne avant d\'enregistrer.</string>
     <string name="article_failed">Impossible de retrouver la recette dans l\'article. Revenez en arrière et réessayez, ou saisissez-la ci-dessous.</string>
+    <string name="article_choose_title">Recettes de cet article</string>
+    <string name="article_choose_note">Cette page écrit plus d\'une recette. Choisissez-en une pour la vérifier avant de l\'enregistrer.</string>
+    <string name="article_choose_counts">Ingrédients : %1$d · Étapes : %2$d</string>
+    <string name="article_choose_saved">Enregistrée : touchez pour l\'ouvrir</string>
     <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
     <string name="mealplan_title">Votre semaine</string>
     <string name="mealplan_intro">Choisissez les recettes à garder. Chacune est enregistrée comme « Depuis un chat » et planifiée à son jour dans Planning. Rien n\'est enregistré avant que vous touchiez Enregistrer.</string>

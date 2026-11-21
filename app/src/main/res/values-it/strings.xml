@@ -381,10 +381,12 @@
     <string name="text_leftovers">Le righe che non trovavano posto sono in Note, così come sono.</string>
     <string name="text_not_sorted">Non è stato possibile trovare ingredienti e passaggi nel testo, quindi è tutto in Passaggi, così com\'è: completala a mano.</string>
     <!-- A recipe written inside an article (#435) -->
-    <string name="error_in_article">Questa pagina non ha dati di ricetta, ma il suo articolo ne scrive una: un elenco di quantità, poi il procedimento. Controllala prima di salvarla.</string>
-    <string name="action_check_article">Controlla la ricetta</string>
-    <string name="article_read">Presa dall\'articolo così com\'è scritta. Il nome è il titolo dell\'articolo: cambialo con quello del piatto. Controlla ogni riga prima di salvare.</string>
+    <string name="article_read">Presa dall\'articolo così com\'è scritta. Il nome è il titolo della pagina sopra la ricetta: cambialo con quello del piatto se non lo è. Controlla ogni riga prima di salvare.</string>
     <string name="article_failed">Impossibile ritrovare la ricetta nell\'articolo. Torna indietro e riprova, oppure scrivila qui sotto.</string>
+    <string name="article_choose_title">Ricette in questo articolo</string>
+    <string name="article_choose_note">Questa pagina scrive più di una ricetta. Scegline una per controllarla prima di salvarla.</string>
+    <string name="article_choose_counts">Ingredienti: %1$d · Passaggi: %2$d</string>
+    <string name="article_choose_saved">Salvata: tocca per aprirla</string>
     <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
     <string name="mealplan_title">La tua settimana</string>
     <string name="mealplan_intro">Scegli le ricette da tenere. Ognuna viene salvata come «Da una chat» e pianificata nel suo giorno nel Piano. Non viene salvato nulla finché non tocchi Salva.</string>

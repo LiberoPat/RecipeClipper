@@ -29,8 +29,7 @@ import com.example.recipeclipper.data.model.ParseError
 /**
  * A load that failed: what went wrong, and what can be done about it. Every error offers
  * "Try again"; a page with no recipe also offers "Clip it yourself" (#37) and "Report this
- * site" (#30), and a Reddit post with a photo "Read the photo" (#198). A page whose article holds
- * a recipe as a list of amounts (#435) shows its headline and photo, and offers "Check the recipe".
+ * site" (#30), and a Reddit post with a photo "Read the photo" (#198).
  */
 @Composable
 internal fun RecipeErrorView(
@@ -39,18 +38,15 @@ internal fun RecipeErrorView(
     actions: RecipeActions,
     photoTextEnabled: Boolean,
     onClip: (url: String) -> Unit,
-    onReadPhoto: (PhotoPost) -> Unit,
-    onCheckArticle: (url: String) -> Unit = {}
+    onReadPhoto: (PhotoPost) -> Unit
 ) {
     StatusView(actions.onBack) {
-        (error as? ParseError.NoTranscription)?.let { PostPreview(it.title, it.imageUrl) }
-        val article = (error as? ParseError.InArticle)?.recipe
-        article?.let { PostPreview(it.name, it.image) }
+        (error as? ParseError.NoTranscription)?.let { PostPreview(it) }
         Text(
             error.toMessage(),
             style = MaterialTheme.typography.bodyLarge,
-            // No transcription (#11), or a recipe in an article (#435), is an outcome, not a failure: muted, not red.
-            color = if (error is ParseError.NoTranscription || error is ParseError.InArticle) {
+            // No transcription (#11) is an outcome, not a failure: muted, not red.
+            color = if (error is ParseError.NoTranscription) {
                 MaterialTheme.colorScheme.onSurfaceVariant
             } else {
                 MaterialTheme.colorScheme.error
@@ -63,18 +59,7 @@ internal fun RecipeErrorView(
         Column {
             val clipUrl = state.clipUrl
             val photoPost = state.photoPost?.takeIf { photoTextEnabled }
-            if (article != null) {
-                // A recipe in an article (#435): Try again, and beside it the editor, filled in
-                // from the page, for the cook to check.
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
-                        Text(stringResource(R.string.action_try_again))
-                    }
-                    Button(onClick = { onCheckArticle(article.sourceUrl) }, shape = RoundedCornerShape(12.dp)) {
-                        Text(stringResource(R.string.action_check_article))
-                    }
-                }
-            } else if (photoPost != null) {
+            if (photoPost != null) {
                 // A post with a photo (#198): Try again, and beside it the
                 // photo read on the device, for the cook to check.
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -130,7 +115,8 @@ internal fun RecipeErrorView(
 internal fun ParseError.toMessage(): String = when (this) {
     ParseError.NoRecipeFound -> stringResource(R.string.error_no_recipe_found)
     is ParseError.NoTranscription -> stringResource(R.string.error_no_transcription)
-    is ParseError.InArticle -> stringResource(R.string.error_in_article)
+    // Never shown: a recipe written inside an article (#435) opens the editor or the chooser.
+    is ParseError.InArticle -> stringResource(R.string.error_no_recipe_found)
     is ParseError.Blocked -> stringResource(R.string.error_blocked, httpStatus)
     ParseError.Offline -> stringResource(R.string.error_offline)
     is ParseError.FetchFailed -> stringResource(
@@ -147,14 +133,14 @@ internal fun ParseError.toMessage(): String = when (this) {
 /**
  * A Reddit post with no recipe as text: its title and photo above the note, so the user sees
  * what they shared (the recipe may well be legible in the photo itself). Not the ReadingView:
- * there is nothing to scale, tick or cook. A page whose article holds a recipe (#435) the same.
+ * there is nothing to scale, tick or cook.
  */
 @Composable
-private fun PostPreview(title: String, imageUrl: String?) {
-    imageUrl?.let { image ->
+private fun PostPreview(post: ParseError.NoTranscription) {
+    post.imageUrl?.let { image ->
         AsyncImage(
             model = image,
-            contentDescription = title,
+            contentDescription = post.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
@@ -163,7 +149,7 @@ private fun PostPreview(title: String, imageUrl: String?) {
         )
         Spacer(Modifier.height(16.dp))
     }
-    Text(title, style = MaterialTheme.typography.headlineSmall)
+    Text(post.title, style = MaterialTheme.typography.headlineSmall)
     Spacer(Modifier.height(12.dp))
 }
 

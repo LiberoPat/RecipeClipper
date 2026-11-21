@@ -178,8 +178,9 @@ import java.io.File
  * page or box, and a confidence after the box if wanted).
  *
  * `Article("<html>")` rows (#435) pin [ArticleRecipeParser.parse]: a page (its attributes
- * single-quoted) at `https://example.com/a`, as the name, ingredients, steps and language of the
- * recipe written inside its article (nil, [], [], nil: none); write only the page.
+ * single-quoted) at `https://example.com/a`, as the headline, then the names, ingredients and steps
+ * of each recipe written inside its article, and their language (nil, [], [], [], nil: none);
+ * write only the page.
  *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
@@ -394,9 +395,12 @@ class DifferentialCorpusTest {
             val html = unescape(m.groupValues[2])
             val url = "https://example.com/a"
             val found = ArticleRecipeParser.parse(Jsoup.parse(html, url), url)
-            val result = found?.let { "${q(it.name)}, ${list(it.ingredients)}, ${list(it.steps)}, ${q(it.language)}" }
-                ?: "nil, [], [], nil"
-            return m.groupValues[1] + "Article(${q(html)}, $result),"
+            val headline = found.firstOrNull()?.headline?.let(::q) ?: "nil"
+            val language = found.firstOrNull()?.language?.let(::q) ?: "nil"
+            val names = list(found.map { it.name })
+            val ingredients = found.joinToString(", ", "[", "]") { list(it.ingredients) }
+            val steps = found.joinToString(", ", "[", "]") { list(it.steps) }
+            return m.groupValues[1] + "Article(${q(html)}, $headline, $names, $ingredients, $steps, $language),"
         }
         siteRow.find(line)?.let { m ->
             val (host, html) = m.groupValues[2] to unescape(m.groupValues[3])

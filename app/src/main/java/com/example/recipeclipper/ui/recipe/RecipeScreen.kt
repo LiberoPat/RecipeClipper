@@ -57,8 +57,9 @@ fun RecipeScreen(
     onOpenRecipe: (recipeId: Long) -> Unit = {},
     // "Read the photo" (#198): a Reddit post with no recipe text, read on the device.
     onReadPhoto: (PhotoPost) -> Unit = {},
-    // A recipe written inside an article (#435): the editor, filled from the page, to check.
-    onCheckArticle: (url: String) -> Unit = {},
+    // Recipes written inside the page's article (#435): the editor on the one, or the chooser
+    // over several, in this screen's place. The page's link and how many.
+    onArticle: (url: String, count: Int) -> Unit = { _, _ -> },
     photoTextEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel(),
@@ -101,6 +102,9 @@ fun RecipeScreen(
     }
     LaunchedEffect(state.humanCheckPage) {
         state.humanCheckPage?.let(onHumanCheck)
+    }
+    LaunchedEffect(state.articleRecipes) {
+        state.articleRecipes?.let { onArticle(it.first().sourceUrl, it.size) }
     }
 
     val content = state.content
@@ -219,7 +223,7 @@ fun RecipeScreen(
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                     is RecipeContent.Error -> RecipeErrorView(
-                        content.error, state, actions, photoTextEnabled, onClip, onReadPhoto, onCheckArticle
+                        content.error, state, actions, photoTextEnabled, onClip, onReadPhoto
                     )
                 }
             }

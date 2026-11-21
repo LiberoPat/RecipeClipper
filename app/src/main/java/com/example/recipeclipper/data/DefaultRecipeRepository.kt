@@ -220,33 +220,39 @@ class DefaultRecipeRepository @Inject constructor(
         }
         if (result.error != ParseError.NoRecipeFound) return result
         val page = rendered.page?.page ?: fetched.page
-        return page?.let { extractFromPage(it, url) } ?: inArticle(rendered.page?.article ?: fetched.article, url) ?: result
+        val articles = rendered.page?.articles?.takeIf { it.isNotEmpty() } ?: fetched.articles
+        return page?.let { extractFromPage(it, url) } ?: inArticle(articles, url) ?: result
     }
 
-    /** The last few recipes found written inside an article (#435), by cleaned link, for the editor. */
-    private val articles = object : LinkedHashMap<String, ArticleRecipe>(8, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArticleRecipe>?): Boolean = size > 8
+    /** The recipes last found written inside a few articles (#435), by cleaned page link, for the editor. */
+    private val articleCache = object : LinkedHashMap<String, List<ArticleRecipe>>(8, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<ArticleRecipe>>?): Boolean = size > 8
     }
 
     /**
-     * A page with no recipe data whose article holds one (#435, behind `articleRecipes`):
-     * `Error(InArticle)`, for the screen to offer it in the editor, remembered for [articleRecipe].
-     * Null, and the page stays [ParseError.NoRecipeFound], when the flag is off or there is none.
+     * A page with no recipe data whose article holds recipes (#435, behind `articleRecipes`):
+     * `Error(InArticle)`, each under its own link ([ArticleRecipe.link]), for the import to open in
+     * the editor or a chooser, remembered for [articleRecipes]. Null, and the page stays
+     * [ParseError.NoRecipeFound], when the flag is off or there are none.
      */
-    private fun inArticle(article: ArticleRecipe?, url: String): ParseResult.Error? {
-        if (article == null || flags?.isOn(Flag.ARTICLE_RECIPES) != true) return null
-        val found = article.copy(sourceUrl = url)
-        synchronized(articles) { articles[url] = found }
-        return ParseResult.Error(ParseError.InArticle(found))
+    private fun inArticle(found: List<ArticleRecipe>, url: String): ParseResult.Error? {
+        if (found.isEmpty() || flags?.isOn(Flag.ARTICLE_RECIPES) != true) return null
+        val linked = found.mapIndexed { i, recipe -> recipe.copy(sourceUrl = ArticleRecipe.link(url, i)) }
+        synchronized(articleCache) { articleCache[url] = linked }
+        return ParseResult.Error(ParseError.InArticle(linked))
     }
 
-    override suspend fun articleRecipe(sharedUrl: String): ArticleRecipe? {
-        if (flags?.isOn(Flag.ARTICLE_RECIPES) != true) return null
+    override suspend fun articleRecipes(sharedUrl: String): List<ArticleRecipe> {
+        if (flags?.isOn(Flag.ARTICLE_RECIPES) != true) return emptyList()
         val url = UrlCleaner.clean(sharedUrl)
-        synchronized(articles) { articles[url] }?.let { return it }
-        // After process death the editor's link is all there is: read the page again.
+        synchronized(articleCache) { articleCache[url] }?.let { return it }
+        // After process death the route's link is all there is: read the page again.
         val error = (fetchWithFallbacks(url) as? ParseResult.Error)?.error
-        return (error as? ParseError.InArticle)?.recipe
+        return (error as? ParseError.InArticle)?.recipes.orEmpty()
+    }
+
+    override suspend fun savedIds(links: List<String>): Map<String, Long> = log.guard("savedIds", emptyMap()) {
+        links.mapNotNull { link -> recipeDao.findByUrl(UrlCleaner.clean(link))?.let { link to it.id } }.toMap()
     }
 
     /**
@@ -268,7 +274,7 @@ class DefaultRecipeRepository @Inject constructor(
                 page == null -> if (challenged) ParseResult.Error(ParseError.HumanCheck) else null
                 challenged || trusted -> {
                     val noRecipe = ParseResult.Error(ParseError.NoRecipeFound)
-                    page.page?.let { extractFromPage(it, url) } ?: inArticle(page.article, url) ?: noRecipe
+                    page.page?.let { extractFromPage(it, url) } ?: inArticle(page.articles, url) ?: noRecipe
                 }
                 else -> null
             }
@@ -305,11 +311,15 @@ class DefaultRecipeRepository @Inject constructor(
 
     override suspend fun importPage(sharedUrl: String, html: String): ParseResult {
         val url = UrlCleaner.clean(sharedUrl)
-        val parsed = withContext(Dispatchers.Default) { BlogRecipeSource.parsePage(html, url) }.result
+        val fetched = withContext(Dispatchers.Default) { BlogRecipeSource.parsePage(html, url) }
+        val parsed = fetched.result
         if (parsed !is ParseResult.Success && CloudflareChallenge.isChallengePage(html)) {
             return ParseResult.Error(ParseError.HumanCheck)
         }
         hostOf(url)?.let(clearedHosts::record)
+        // Past the check with no recipe data: the recipes written inside its article (#435), from
+        // the page the visible view already has, as for a share.
+        if (parsed is ParseResult.Error && parsed.error == ParseError.NoRecipeFound) return inArticle(fetched.articles, url) ?: parsed
         if (parsed !is ParseResult.Success) return parsed
         return log.guard("importPage save", ParseResult.Error(ParseError.SaveFailed)) {
             save(parsed.recipe.copy(sourceUrl = url), clock.now())

@@ -102,14 +102,20 @@ class FakeRecipeRepository : RecipeRepository {
         return saveClipResult ?: ParseResult.Success(recipe.copy(id = 1))
     }
 
-    /** Staged answer for [articleRecipe] (#435); every link it was asked for, in order. */
-    var articleRecipeResult: ArticleRecipe? = null
-    val articleRecipeCalls = mutableListOf<String>()
+    /** Staged answer for [articleRecipes] (#435); every link it was asked for, in order. */
+    var articleRecipesResult: List<ArticleRecipe> = emptyList()
+    val articleRecipesCalls = mutableListOf<String>()
 
-    override suspend fun articleRecipe(sharedUrl: String): ArticleRecipe? {
-        articleRecipeCalls += sharedUrl
-        return articleRecipeResult
+    override suspend fun articleRecipes(sharedUrl: String): List<ArticleRecipe> {
+        articleRecipesCalls += sharedUrl
+        return articleRecipesResult
     }
+
+    /** What [savedIds] answers from (#435): saved links to their ids. */
+    val savedLinks = mutableMapOf<String, Long>()
+
+    override suspend fun savedIds(links: List<String>): Map<String, Long> =
+        links.mapNotNull { link -> savedLinks[link]?.let { link to it } }.toMap()
 
     /** Staged answers for [importPage] (#220), by the page's HTML; a page not staged is still
      *  the check. Every (url, html) it was called with, in order. */

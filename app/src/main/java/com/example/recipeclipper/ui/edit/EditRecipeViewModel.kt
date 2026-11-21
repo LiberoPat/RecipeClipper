@@ -10,6 +10,7 @@ import com.example.recipeclipper.data.TimerCountdownSync
 import com.example.recipeclipper.data.PhotoTextResult
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.model.ArticleRecipe
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
@@ -147,7 +148,7 @@ data class EditRecipeUiState(
  *
  * With a page's link ([ARTICLE_URL_ARG], #435) it is the review of a recipe written inside that
  * page's article: the list of amounts and the method after it, as written, with the headline as
- * the name and `og:image` as the photo, from [RecipeRepository.articleRecipe]. Nothing is saved
+ * the name and `og:image` as the photo, from [RecipeRepository.articleRecipes]. Nothing is saved
  * until Save; then it is kept under the page's link as the user's version (CLIPPED, like #37's
  * clips and a Reddit photo's read), so a re-share opens it and never replaces it.
  */
@@ -198,6 +199,12 @@ class EditRecipeViewModel @Inject constructor(
     private val articleUrl: String? = savedStateHandle.get<String>(ARTICLE_URL_ARG)
         ?.takeIf { it.isNotBlank() && recipeId == null && scanPages == null && photo == null && sharedText == null }
 
+    /** Which of the page's recipes (#435), from 0 in page order. */
+    private val articleIndex: Int = savedStateHandle.get<Int>(ARTICLE_INDEX_ARG) ?: 0
+
+    /** The link the article's recipe is saved under ([ArticleRecipe.link]), once read. */
+    private var articleLink: String? = null
+
     /** What is read: the post's pictures, or the scan's pages. */
     private val pictures: PhotoPost? =
         photo ?: scanPages?.let { PhotoPost(url = "", title = "", imageUrls = it) }
@@ -242,8 +249,9 @@ class EditRecipeViewModel @Inject constructor(
     /** The article's recipe (#435) into the fields, as written. */
     private fun readArticle(url: String) {
         viewModelScope.launch {
-            val article = repository.articleRecipe(url)
+            val article = repository.articleRecipes(url).getOrNull(articleIndex)
             photoLanguage = article?.language
+            articleLink = article?.sourceUrl
             _uiState.update {
                 it.copy(
                     loading = false,
@@ -420,7 +428,7 @@ class EditRecipeViewModel @Inject constructor(
                 return@launch
             }
             if (articleUrl != null) {
-                saveArticle(articleUrl, state.draft)
+                saveArticle(articleLink ?: ArticleRecipe.link(articleUrl, articleIndex), state.draft)
                 return@launch
             }
             val saved = if (scanPages != null || sharedText != null) {
@@ -533,8 +541,9 @@ class EditRecipeViewModel @Inject constructor(
         /** Text shared in (#306): the key it waits under in [SharedTextInbox] (#334). */
         const val SHARED_TEXT_ARG = "key"
 
-        /** A recipe written inside an article (#435): the page's link. */
+        /** A recipe written inside an article (#435): the page's link, and the recipe's place on it. */
         const val ARTICLE_URL_ARG = "article"
+        const val ARTICLE_INDEX_ARG = "index"
 
         /** The shared text itself, kept in saved state once taken, so the review survives process death. */
         const val SHARED_TEXT_STATE = "sharedText"

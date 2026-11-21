@@ -51,9 +51,7 @@ class DefaultRecipeRepositoryExtractionTest {
     private val dao = InMemoryRecipeDao()
     private val model = FakePageRecipeExtractor(picks)
     private val flags = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = false)
-        // The model's pick only: this page's list and steps would otherwise be offered as a
-        // recipe written inside an article (#435) when the model finds nothing.
-        .apply { set(Flag.LLM_EXTRACTION, true); set(Flag.ARTICLE_RECIPES, false) }
+        .apply { set(Flag.LLM_EXTRACTION, true) }
     private val repository = DefaultRecipeRepository(source, dao, Clock { 1L }, NoLog, extractor = model, flags = flags)
 
     private suspend fun import(): ParseResult = repository.importFromUrl(url)
