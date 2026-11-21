@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.ArticleRecipe
 import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.ParseResult
@@ -55,6 +56,14 @@ interface RecipeRepository {
      * (#107), which the clip screen doesn't leave.
      */
     suspend fun saveClip(recipe: Recipe): ParseResult
+
+    /**
+     * The recipe written inside [sharedUrl]'s article (#435), for the editor to open filled in:
+     * the one the last import of that link found (`Error(InArticle)`), else, after process
+     * death, the page fetched and read again. Null when the page no longer holds one, or the
+     * `articleRecipes` flag is off. Never saves anything.
+     */
+    suspend fun articleRecipe(sharedUrl: String): ArticleRecipe?
 
     /**
      * A page the cook opened in the app's visible browser to pass Cloudflare's check (#220),

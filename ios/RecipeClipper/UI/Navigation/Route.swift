@@ -48,6 +48,9 @@ enum Route: Hashable {
     /// Text shared in (#306): the same editor, filled from its reading, done once in the share
     /// extension (#334), split or as written (Android's `edit/text?key=`).
     case textRecipe(SharedText.Reading)
+    /// A recipe written inside an article (#435): the same editor, filled from the page's list of
+    /// amounts and its method (Android's `edit/article?article=`, which carries only the link).
+    case articleRecipe(ArticleRecipe)
     /// A week of recipes shared in (#352): the meal-plan review, over the text (Android's
     /// `mealplan?key=`). Saving replaces it with Week when any recipe was planned.
     case mealPlan(String)

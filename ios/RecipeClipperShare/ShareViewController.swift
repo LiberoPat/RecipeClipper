@@ -39,13 +39,15 @@ final class ShareViewController: UIViewController {
         let shareText = defaults.map(DefaultsShareTextSwitch.init)
         // A week of recipes in the text is left for the app's meal-plan review (#352).
         let mealPlan = defaults.map(DefaultsMealPlanSwitch.init)
+        // A recipe written inside an article is left for the app's editor (#435).
         let viewModel = ShareImportViewModel(
             repository: repository, connectivity: PathConnectivity(),
             makeReceiveList: { db.flatMap(makeReceiveList) },
             redditOn: { reddit?.isOn ?? true }, pendingClip: defaults.map(PendingClip.init),
             pendingScan: defaults.map { PendingScan(defaults: $0, pages: ScanPages.shared()) },
             shareTextOn: { shareText?.isOn ?? true }, pendingText: defaults.map(PendingText.init),
-            mealPlanOn: { mealPlan?.isOn ?? true }, pendingPlan: defaults.map(PendingPlan.init)
+            mealPlanOn: { mealPlan?.isOn ?? true }, pendingPlan: defaults.map(PendingPlan.init),
+            pendingArticle: defaults.map(PendingArticle.init)
         )
         return (viewModel, repository)
     }
@@ -78,7 +80,11 @@ final class ShareViewController: UIViewController {
         let source = RoutingRecipeSource(
             blog: BlogRecipeSource(), reddit: RedditRecipeSource(), redditOn: { reddit.isOn }
         )
-        return DefaultRecipeRepository(db: db, source: source, clock: SystemClock(), library: library)
+        // A recipe written inside an article (#435), by the app's mirrored `articleRecipes` flag.
+        let article = DefaultsArticleRecipesSwitch(defaults: defaults)
+        return DefaultRecipeRepository(
+            db: db, source: source, clock: SystemClock(), library: library, articleOn: { article.isOn }
+        )
     }
 
     /// "Add this list" (#149) over the same database.

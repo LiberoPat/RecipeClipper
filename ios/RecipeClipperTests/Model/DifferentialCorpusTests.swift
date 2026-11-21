@@ -67,6 +67,9 @@ import XCTest
 // `Heads("<markup>", ["line"]),`.
 // Site-rule rows (#120): a host, a page's markup, JSON-LD's lines and steps, then SiteRules.ingredients
 // and SiteRules.steps for that host. Write only `Site("delish.com", "<markup>", ["line"], ["step"]),`.
+// Article rows (#435): a page with no recipe data (attributes single-quoted), at https://example.com/a,
+// then ArticleRecipeParser.parse's name, ingredients, steps and language (nil, [], [], nil: none).
+// Write only `Article("<html>"),`.
 // Trailing-text rows (#99): a grocery line, then GroceryDecisions.split's core and trailing text,
 // or nil. Write only `Trail("2 eggs, beaten"),`.
 // Calendar rows (#52): a summary's text, then MealPlanIcs.contentLine("SUMMARY", text), escaped
@@ -288,6 +291,13 @@ final class DifferentialCorpusTests: XCTestCase {
         init(_ host: String, _ html: String, _ lines: [String], _ steps: [String], _ refined: [String], _ refinedSteps: [String]) {
             self.host = host; self.html = html; self.lines = lines; self.steps = steps
             self.refined = refined; self.refinedSteps = refinedSteps
+        }
+    }
+
+    private struct Article {
+        let html: String; let name: String?; let ingredients: [String]; let steps: [String]; let language: String?
+        init(_ html: String, _ name: String?, _ ingredients: [String], _ steps: [String], _ language: String?) {
+            self.html = html; self.name = name; self.ingredients = ingredients; self.steps = steps; self.language = language
         }
     }
 
@@ -2011,6 +2021,26 @@ final class DifferentialCorpusTests: XCTestCase {
         Site("bbcgoodfood.com", "<div class='tasty-recipes-ingredients'><p><strong>Dough:</strong></p><ul><li>2 cups flour</li></ul></div>", ["2 cups flour"], ["Mix."], ["Dough:", "2 cups flour"], ["Mix."]),
     ]
 
+    private static let articles: [Article] = [
+        Article("<html lang='en'><body><article><h1>Soup</h1><ul><li>2 onions</li><li>1 l stock</li><li>3 carrots</li></ul><p>Chop everything.</p><p>Simmer for 20 minutes.</p></article></body></html>", "Soup", ["2 onions", "1 l stock", "3 carrots"], ["Chop everything.", "Simmer for 20 minutes."], "en"),
+        Article("<html lang='en'><body><article><h1>Soup</h1><ul><li>2 onions</li><li>1 l stock</li></ul><p>Simmer.</p></article></body></html>", nil, [], [], nil),
+        Article("<html lang='en'><body><article><h1>Soup</h1><ul><li>2 onions</li><li>1 l stock</li><li>3 carrots</li><li>Salt</li><li>Pepper</li><li>Parsley</li></ul><p>Simmer.</p></article></body></html>", nil, [], [], nil),
+        Article("<html lang='en'><body><article><h1>Soup</h1><ul><li>2 onions</li><li>1 l stock</li><li>3 carrots</li><li>Salt</li><li>Pepper</li></ul><p>Simmer.</p></article></body></html>", "Soup", ["2 onions", "1 l stock", "3 carrots", "Salt", "Pepper"], ["Simmer."], "en"),
+        Article("<html lang='en'><body><article><h1>Reading</h1><ul><li><a href='/a'>10 soups</a></li><li><a href='/b'>5 cakes</a></li><li><a href='/c'>3 salads</a></li></ul><p>Enjoy.</p></article></body></html>", nil, [], [], nil),
+        Article("<html lang='en'><body><nav><ul><li>10 soups</li><li>5 cakes</li><li>3 salads</li></ul></nav><main><h1>Soup</h1><p>Simmer it.</p></main></body></html>", nil, [], [], nil),
+        Article("<html lang='en'><body><article><h1>Soup</h1><ul><li>Tips<ul><li>2 onions</li><li>1 l stock</li><li>3 carrots</li></ul></li></ul><p>Simmer.</p></article></body></html>", nil, [], [], nil),
+        Article("<html lang='en'><body><article><h1>Soup</h1><ul><li>2 onions</li><li>1 l stock</li><li>3 carrots</li></ul><div><p>Chop everything.</p><figure><figcaption>Photo: soup</figcaption></figure><p>Simmer.</p></div><h2>More</h2><p>Not a step.</p></article></body></html>", "Soup", ["2 onions", "1 l stock", "3 carrots"], ["Chop everything.", "Simmer."], "en"),
+        Article("<html lang='en'><body><article><h1>Soup</h1><ul><li>2 onions</li><li>1 l stock</li><li>3 carrots</li></ul><p>Method:</p><ol><li>Chop.</li><li>Simmer.</li></ol><p>Notes:</p><p>Keeps 3 days.</p></article></body></html>", "Soup", ["2 onions", "1 l stock", "3 carrots"], ["Chop.", "Simmer."], "en"),
+        Article("<html lang='en'><body><article><h1>Soup</h1><ul><li>2 onions</li><li>1 l stock</li><li>3 carrots</li></ul><ul><li>1 cup rice</li></ul><p>Simmer.</p></article></body></html>", nil, [], [], nil),
+        Article("<html lang='en'><head><meta property='og:title' content='Soup &amp; bread'><meta property='og:image' content='/soup.jpg'></head><body><article><ul><li>2&nbsp;onions</li><li>1 l stock &amp; water</li><li>3 carrots</li></ul><p>Chop<br>then simmer.</p></article></body></html>", "Soup & bread", ["2 onions", "1 l stock & water", "3 carrots"], ["Chop then simmer."], "en"),
+        Article("<html><body><article><h1>Sopa de verduras</h1><p>Para cuatro personas necesitamos lo siguiente, y es muy fácil de preparar en casa con los ingredientes de la nevera.</p><ul><li>2 cebollas</li><li>1 litro de caldo</li><li>3 zanahorias</li><li>Sal</li></ul><p>Picamos las verduras y las cocemos durante 20 minutos.</p></article></body></html>", "Sopa de verduras", ["2 cebollas", "1 litro de caldo", "3 zanahorias", "Sal"], ["Picamos las verduras y las cocemos durante 20 minutos."], "es"),
+        Article("<html lang='de'><body><article><h1>Gemüsesuppe</h1><ul><li>200 g Möhren</li><li>2 EL Öl</li><li>1 l Brühe</li></ul><p>Zubereitung:</p><p>Das Gemüse schneiden und 20 Minuten köcheln lassen.</p></article></body></html>", "Gemüsesuppe", ["200 g Möhren", "2 EL Öl", "1 l Brühe"], ["Das Gemüse schneiden und 20 Minuten köcheln lassen."], "de"),
+        Article("<html lang='ja'><body><article><h1>味噌汁</h1><ul><li>豆腐 1丁</li><li>味噌 大さじ2</li><li>だし汁 400ml</li></ul><p>だし汁を温めて豆腐を入れる。</p><p>味噌を溶き入れる。</p></article></body></html>", "味噌汁", ["豆腐 1丁", "味噌 大さじ2", "だし汁 400ml"], ["だし汁を温めて豆腐を入れる。", "味噌を溶き入れる。"], "ja"),
+        Article("<html lang='nl'><body><article><h1>Soep</h1><ul><li>2 uien</li><li>1 l bouillon</li><li>3 wortels</li></ul><p>Alles 20 minuten laten sudderen.</p></article></body></html>", nil, [], [], nil),
+        Article("<html lang='en'><body><article><h1>Soup</h1><ul><li>2 onions</li><li>1 l stock</li><li>3 carrots</li></ul><h2>Method</h2><p>Simmer.</p></article></body></html>", "Soup", ["2 onions", "1 l stock", "3 carrots"], ["Simmer."], "en"),
+        Article("<html lang='en'><body><main><h1>Soup</h1><section><ul><li>2 onions</li><li>1 l stock</li><li>3 carrots</li></ul></section><section><p>Chop.</p></section><aside><p>Sign up for our newsletter.</p></aside><p>Simmer.</p></main><footer><p>© 2026</p></footer></body></html>", "Soup", ["2 onions", "1 l stock", "3 carrots"], ["Chop.", "Simmer."], "en"),
+    ]
+
     private static let trails: [Trail] = [
         Trail("2 eggs (dfsafs -", "2 eggs", "(dfsafs -"),
         Trail("2 ears of corn, shucked", "2 ears of corn", ", shucked"),
@@ -3334,6 +3364,16 @@ final class DifferentialCorpusTests: XCTestCase {
             let url = "https://www.\(row.host)/r"
             XCTAssertEqual(SiteRules.ingredients(html: row.html, url: url, lines: row.lines), row.refined, row.host)
             XCTAssertEqual(SiteRules.steps(url: url, steps: row.steps), row.refinedSteps, row.host)
+        }
+    }
+
+    func testArticleRecipesMatchKotlin() {
+        for row in Self.articles {
+            let found = ArticleRecipeParser.parse(html: row.html, url: "https://example.com/a")
+            XCTAssertEqual(found?.name, row.name, row.html)
+            XCTAssertEqual(found?.ingredients ?? [], row.ingredients, row.html)
+            XCTAssertEqual(found?.steps ?? [], row.steps, row.html)
+            XCTAssertEqual(found?.language, row.language, row.html)
         }
     }
 

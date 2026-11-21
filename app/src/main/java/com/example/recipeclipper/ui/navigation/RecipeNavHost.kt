@@ -133,6 +133,12 @@ object Routes {
     fun editPhoto(post: PhotoPost) = "edit/photo?${EditRecipeViewModel.PHOTO_URL_ARG}=${Uri.encode(post.url)}" +
         "&${EditRecipeViewModel.PHOTO_TITLE_ARG}=${Uri.encode(post.title)}" +
         "&${EditRecipeViewModel.PHOTO_IMAGES_ARG}=${Uri.encode(post.imageUrls.joinToString("\n"))}"
+    // A recipe written inside an article (#435): the same editor, filled from the page's list of
+    // amounts and its method, found by the page's link (the repository remembers what it read).
+    const val EDIT_ARTICLE = "edit/article?${EditRecipeViewModel.ARTICLE_URL_ARG}={${EditRecipeViewModel.ARTICLE_URL_ARG}}"
+
+    fun editArticle(url: String) = "edit/article?${EditRecipeViewModel.ARTICLE_URL_ARG}=${Uri.encode(url)}"
+
     // "Scan a recipe" (#226): the same editor, filled from the cook's own pages (local URIs).
     const val SCAN = "edit/scan?${EditRecipeViewModel.SCAN_PAGES_ARG}={${EditRecipeViewModel.SCAN_PAGES_ARG}}"
 
@@ -405,6 +411,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
                 }
             },
             onReadPhoto = { navController.navigate(Routes.editPhoto(it)) },
+            onCheckArticle = { navController.navigate(Routes.editArticle(it)) },
             planViewModel = hiltViewModel(),
             groceriesViewModel = hiltViewModel(),
             photosViewModel = hiltViewModel(),
@@ -427,6 +434,24 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onBack = { navController.popBackStack() },
             // The checked recipe replaces both the editor and the post's error screen, as a
             // saved clip does, so Back from it goes where the share came from.
+            onSaved = { id ->
+                navController.navigate(Routes.recipe(id)) {
+                    popUpTo(Routes.IMPORT) { inclusive = true }
+                }
+            }
+        )
+    }
+
+    composable(
+        route = Routes.EDIT_ARTICLE,
+        arguments = listOf(
+            navArgument(EditRecipeViewModel.ARTICLE_URL_ARG) { type = NavType.StringType; defaultValue = "" }
+        )
+    ) {
+        EditRecipeScreen(
+            onBack = { navController.popBackStack() },
+            // As a Reddit photo's (#198): the checked recipe replaces the editor and the page's
+            // screen, so Back from it goes where the share came from.
             onSaved = { id ->
                 navController.navigate(Routes.recipe(id)) {
                     popUpTo(Routes.IMPORT) { inclusive = true }

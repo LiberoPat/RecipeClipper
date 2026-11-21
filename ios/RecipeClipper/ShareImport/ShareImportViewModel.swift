@@ -29,6 +29,9 @@ enum ShareImportUiState: Equatable {
     /// Text holding a week of recipes with days (#352): left for the app (`PendingPlan`), whose
     /// review the cook checks it in (never saved unreviewed).
     case planInApp
+    /// A page whose recipe is written inside its article (#435): left for the app
+    /// (`PendingArticle`), whose editor the cook checks it in (never saved unchecked).
+    case articleInApp
 }
 
 /// The share extension's one screen. The import itself is `RecipeRepository.importFromUrl`, the
@@ -57,6 +60,8 @@ final class ShareImportViewModel {
     /// text is left for the app; nil leaves nothing.
     @ObservationIgnored private let mealPlanOn: () -> Bool
     @ObservationIgnored private let pendingPlan: PendingPlan?
+    /// Where a recipe written inside an article is left for the app (#435); nil leaves nothing.
+    @ObservationIgnored private let pendingArticle: PendingArticle?
     /// The images a share carried, staged as a scan's pages (#226), when it had no link.
     @ObservationIgnored private var scanPages: [String] = []
     @ObservationIgnored private let clock: Clock
@@ -83,8 +88,10 @@ final class ShareImportViewModel {
         redditOn: @escaping () -> Bool = { true }, pendingClip: PendingClip? = nil,
         pendingScan: PendingScan? = nil, shareTextOn: @escaping () -> Bool = { false },
         pendingText: PendingText? = nil, clock: Clock = SystemClock(),
-        mealPlanOn: @escaping () -> Bool = { false }, pendingPlan: PendingPlan? = nil
+        mealPlanOn: @escaping () -> Bool = { false }, pendingPlan: PendingPlan? = nil,
+        pendingArticle: PendingArticle? = nil
     ) {
+        self.pendingArticle = pendingArticle
         self.repository = repository
         self.connectivity = connectivity
         self.makeReceiveList = makeReceiveList
@@ -139,6 +146,7 @@ final class ShareImportViewModel {
                 pendingClip?.clear()
                 pendingText?.clear()
                 pendingPlan?.clear()
+                pendingArticle?.clear()
                 pendingScan.put(scanPages, at: clock.now())
                 uiState = .scanInApp
                 return
@@ -157,11 +165,12 @@ final class ShareImportViewModel {
             return
         }
         uiState = .loading
-        // A new share moves on from any post, images or text left for the app before.
+        // A new share moves on from any post, images, text or article left for the app before.
         pendingClip?.clear()
         pendingScan?.clear()
         pendingText?.clear()
         pendingPlan?.clear()
+        pendingArticle?.clear()
         loadTask = Task { [weak self, repository, input] in
             let result = await repository.importFromUrl(input.url, renderedPage: input.page)
             guard !Task.isCancelled, let self else { return }
@@ -175,6 +184,12 @@ final class ShareImportViewModel {
                 if RedditUrls.clipsWhenBlocked(input.url, error: error, redditOn: redditOn()) {
                     pendingClip?.put(input.url, at: clock.now())
                     uiState = .clipInApp
+                    return
+                }
+                // A recipe written inside the article (#435): the editor needs the app.
+                if case .inArticle(let article) = error, let pendingArticle {
+                    pendingArticle.put(article, at: clock.now())
+                    uiState = .articleInApp
                     return
                 }
                 uiState = .failed(error)
@@ -194,6 +209,7 @@ final class ShareImportViewModel {
             pendingClip?.clear()
             pendingScan?.clear()
             pendingText?.clear()
+            pendingArticle?.clear()
             pendingPlan.put(text, at: clock.now())
             uiState = .planInApp
             return true
@@ -205,6 +221,7 @@ final class ShareImportViewModel {
             pendingScan?.clear()
             pendingText?.clear()
             pendingPlan?.clear()
+            pendingArticle?.clear()
             uiState = .failed(.cutOff)
             return true
         }
@@ -213,6 +230,7 @@ final class ShareImportViewModel {
         pendingClip?.clear()
         pendingScan?.clear()
         pendingPlan?.clear()
+        pendingArticle?.clear()
         pendingText.put(reading, at: clock.now())
         uiState = .textInApp
         return true

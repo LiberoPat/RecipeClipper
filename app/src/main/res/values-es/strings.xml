@@ -380,6 +380,11 @@
     <string name="text_read">Ordenado a partir del texto que compartiste. Revisa cada línea, sobre todo las cantidades, antes de guardar.</string>
     <string name="text_leftovers">Las líneas que no encajaban en ningún sitio están en Notas, tal cual.</string>
     <string name="text_not_sorted">No se encontraron ingredientes ni pasos en el texto, así que está todo en Pasos, tal cual: termínala a mano.</string>
+    <!-- A recipe written inside an article (#435) -->
+    <string name="error_in_article">Esta página no tiene datos de receta, pero su artículo escribe una: una lista de cantidades y luego la preparación. Revísala antes de guardarla.</string>
+    <string name="action_check_article">Revisar la receta</string>
+    <string name="article_read">Tomada del artículo tal como está escrita. El nombre es el titular del artículo: cámbialo por el del plato. Revisa cada línea antes de guardar.</string>
+    <string name="article_failed">No se volvió a encontrar la receta en el artículo. Vuelve atrás e inténtalo de nuevo, o escríbela abajo.</string>
     <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
     <string name="mealplan_title">Tu semana</string>
     <string name="mealplan_intro">Elige las recetas que quieres conservar. Cada una se guarda como «De un chat» y se planifica en su día en Plan. No se guarda nada hasta que toques Guardar.</string>

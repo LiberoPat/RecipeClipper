@@ -1,5 +1,6 @@
 package com.example.recipeclipper.data.model
 
+import com.example.recipeclipper.data.remote.ArticleRecipeParser
 import com.example.recipeclipper.data.remote.CardHeadings
 import com.example.recipeclipper.data.remote.CheckReason
 import com.example.recipeclipper.data.remote.JsonLdRecipeParser
@@ -176,6 +177,10 @@ import java.io.File
  * page and box, through split, repeated and unsorted lines; write only the lines (`nil` for no
  * page or box, and a confidence after the box if wanted).
  *
+ * `Article("<html>")` rows (#435) pin [ArticleRecipeParser.parse]: a page (its attributes
+ * single-quoted) at `https://example.com/a`, as the name, ingredients, steps and language of the
+ * recipe written inside its article (nil, [], [], nil: none); write only the page.
+ *
  * Only these sections are generated here, plus the Swift test's `systems` list and the
  * header comment naming it, both written from [systems] below. The other sections of the
  * Swift file (stripHtml, yields, URLs, formatting, clocks, JSON-LD) are left exactly as they are.
@@ -276,6 +281,8 @@ class DifferentialCorpusTest {
     private val siteRow = Regex(
         """^(\s*)Site\("([a-z0-9.-]+)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]"""
     )
+    // An article row (#435): a page with no recipe data.
+    private val articleRow = Regex("""^(\s*)Article\("((?:[^"\\]|\\.)*)"""")
     // A splitter row (#208): free text, a Reddit post's or a photo's.
     private val splitRow = Regex("""^(\s*)Split\("((?:[^"\\]|\\.)*)"""")
     // A shared-text row (#306): text shared into the app.
@@ -382,6 +389,14 @@ class DifferentialCorpusTest {
             val page = Jsoup.parse(html)
             val refined = if (kind == "Wprm") WprmIngredients.refine(page, lines) else CardHeadings.refine(page, lines)
             return m.groupValues[1] + "$kind(${q(html)}, ${list(lines)}, ${list(refined)}),"
+        }
+        articleRow.find(line)?.let { m ->
+            val html = unescape(m.groupValues[2])
+            val url = "https://example.com/a"
+            val found = ArticleRecipeParser.parse(Jsoup.parse(html, url), url)
+            val result = found?.let { "${q(it.name)}, ${list(it.ingredients)}, ${list(it.steps)}, ${q(it.language)}" }
+                ?: "nil, [], [], nil"
+            return m.groupValues[1] + "Article(${q(html)}, $result),"
         }
         siteRow.find(line)?.let { m ->
             val (host, html) = m.groupValues[2] to unescape(m.groupValues[3])

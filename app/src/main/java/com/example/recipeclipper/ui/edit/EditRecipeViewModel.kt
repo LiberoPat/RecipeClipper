@@ -107,7 +107,13 @@ data class EditRecipeUiState(
      *  the cook types; saved with the recipe. Only shared text's review shows it. */
     val note: String = "",
     /** Whether the split left lines out, so the review says where they went. */
-    val leftovers: Boolean = false
+    val leftovers: Boolean = false,
+    /** This editor is the review of a recipe written inside an article (#435): "Check the recipe",
+     *  saved as a clip under the page's link. */
+    val article: Boolean = false,
+    /** The article's recipe was found and fills the fields (true), or the page no longer holds one
+     *  (false); null when this isn't an article's review, or while it is being read. */
+    val articleFound: Boolean? = null
 ) {
     /** The [checks]' lines, each with why. */
     val flags: List<LineFlag> get() = checks.map { it.flag }
@@ -138,6 +144,12 @@ data class EditRecipeUiState(
  * splitter, in the text's language ([SharedText.read]), or, when it doesn't split, every line as
  * a step to finish by hand. Saved as a typed-in recipe, like a scan; nothing until Save. A chat's
  * recipe JSON (#350) is saved as from a chat (CHAT, #355): the same, with its own label and view.
+ *
+ * With a page's link ([ARTICLE_URL_ARG], #435) it is the review of a recipe written inside that
+ * page's article: the list of amounts and the method after it, as written, with the headline as
+ * the name and `og:image` as the photo, from [RecipeRepository.articleRecipe]. Nothing is saved
+ * until Save; then it is kept under the page's link as the user's version (CLIPPED, like #37's
+ * clips and a Reddit photo's read), so a re-share opens it and never replaces it.
  */
 @HiltViewModel
 class EditRecipeViewModel @Inject constructor(
@@ -182,14 +194,18 @@ class EditRecipeViewModel @Inject constructor(
     private val sharedText: String? = sharedEntry?.text ?: savedStateHandle.get<String>(SHARED_TEXT_STATE)
         ?.takeIf { it.isNotBlank() && recipeId == null && scanPages == null && photo == null }
 
+    /** A recipe written inside an article (#435): the page's link; null when this isn't its review. */
+    private val articleUrl: String? = savedStateHandle.get<String>(ARTICLE_URL_ARG)
+        ?.takeIf { it.isNotBlank() && recipeId == null && scanPages == null && photo == null && sharedText == null }
+
     /** What is read: the post's pictures, or the scan's pages. */
     private val pictures: PhotoPost? =
         photo ?: scanPages?.let { PhotoPost(url = "", title = "", imageUrls = it) }
 
     private val _uiState = MutableStateFlow(
         EditRecipeUiState(
-            isNew = recipeId == null, loading = recipeId != null || sharedText != null,
-            photo = pictures, scan = scanPages != null, shared = sharedText != null
+            isNew = recipeId == null, loading = recipeId != null || sharedText != null || articleUrl != null,
+            photo = pictures, scan = scanPages != null, shared = sharedText != null, article = articleUrl != null
         )
     )
     val uiState: StateFlow<EditRecipeUiState> = _uiState.asStateFlow()
@@ -218,6 +234,28 @@ class EditRecipeViewModel @Inject constructor(
             readPhoto(pictures)
         } else if (sharedText != null) {
             readText(sharedText, sharedEntry?.reading)
+        } else if (articleUrl != null) {
+            readArticle(articleUrl)
+        }
+    }
+
+    /** The article's recipe (#435) into the fields, as written. */
+    private fun readArticle(url: String) {
+        viewModelScope.launch {
+            val article = repository.articleRecipe(url)
+            photoLanguage = article?.language
+            _uiState.update {
+                it.copy(
+                    loading = false,
+                    articleFound = article != null,
+                    draft = if (article == null) it.draft else RecipeDraft(
+                        name = article.name,
+                        image = article.image.orEmpty(),
+                        ingredientsText = article.ingredients.joinToString("\n"),
+                        instructionsText = article.steps.joinToString("\n")
+                    )
+                )
+            }
         }
     }
 
@@ -381,6 +419,10 @@ class EditRecipeViewModel @Inject constructor(
                 savePhoto(post, state.draft)
                 return@launch
             }
+            if (articleUrl != null) {
+                saveArticle(articleUrl, state.draft)
+                return@launch
+            }
             val saved = if (scanPages != null || sharedText != null) {
                 repository.addManual(
                     state.draft, scannedLanguage(state.draft), state.note.takeIf { it.isNotBlank() }, fromChat, basedOn
@@ -412,6 +454,31 @@ class EditRecipeViewModel @Inject constructor(
         )
         // Reddit declares no language: the photo's words (#208), then the checked recipe's,
         // decide, else English (#14's rule).
+        val recipe = content.copy(
+            language = LanguageWords.resolve(photoLanguage, null) {
+                LanguageWords.detectionText(content.name, content.ingredients)
+            }
+        )
+        val result = repository.saveClip(recipe)
+        _uiState.update {
+            when {
+                result !is ParseResult.Success -> it.copy(saving = false, saveFailed = true)
+                !result.kept -> it.copy(saving = false, libraryFull = true)
+                else -> it.copy(saving = false, savedId = result.recipe.id)
+            }
+        }
+    }
+
+    /** The checked recipe, under the article's link, as the user's version (#435). */
+    private suspend fun saveArticle(url: String, draft: RecipeDraft) {
+        val content = draft.applyTo(
+            Recipe(
+                name = "", image = null, ingredients = emptyList(), instructions = emptyList(),
+                prepTime = null, cookTime = null, totalTime = null, yield = null,
+                sourceUrl = url
+            )
+        )
+        // The language whose words found the list, else the checked recipe's, else English.
         val recipe = content.copy(
             language = LanguageWords.resolve(photoLanguage, null) {
                 LanguageWords.detectionText(content.name, content.ingredients)
@@ -465,6 +532,9 @@ class EditRecipeViewModel @Inject constructor(
 
         /** Text shared in (#306): the key it waits under in [SharedTextInbox] (#334). */
         const val SHARED_TEXT_ARG = "key"
+
+        /** A recipe written inside an article (#435): the page's link. */
+        const val ARTICLE_URL_ARG = "article"
 
         /** The shared text itself, kept in saved state once taken, so the review survives process death. */
         const val SHARED_TEXT_STATE = "sharedText"
