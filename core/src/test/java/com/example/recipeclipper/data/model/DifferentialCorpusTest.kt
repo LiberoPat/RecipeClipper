@@ -91,7 +91,8 @@ import java.io.File
  * the app keeps it (`https`), or nil (no image); write only the address.
  *
  * `Parse("block")` rows (#266) pin [JsonLdRecipeParser.parse]'s text: one ld+json block as the
- * recipe's name (nil: no recipe), ingredients, steps and yield; write only the block.
+ * recipe's name (nil: no recipe), ingredients, steps and yield, then its tips (#432) when it has
+ * any; write only the block.
  *
  * `Dur("time")` rows (#179) pin [Durations.format]: a prep, cook or total time
  * as a site (or the tour's sample) writes it, as the app shows it, or nil (hidden); write only
@@ -346,8 +347,10 @@ class DifferentialCorpusTest {
         parseRow.find(line)?.let { m ->
             val block = unescape(m.groupValues[2])
             val r = JsonLdRecipeParser.parse(listOf(block), "https://src/parse")
-            val parsed = r?.let { "${q(it.name)}, ${list(it.ingredients)}, ${list(it.instructions)}, ${it.yield?.let(::q) ?: "nil"}" }
-                ?: "nil, [], [], nil"
+            val parsed = r?.let {
+                "${q(it.name)}, ${list(it.ingredients)}, ${list(it.instructions)}, ${it.yield?.let(::q) ?: "nil"}" +
+                    if (it.tips.isEmpty()) "" else ", tips: ${list(it.tips)}"
+            } ?: "nil, [], [], nil"
             return m.groupValues[1] + "Parse(${q(block)}, $parsed),"
         }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }

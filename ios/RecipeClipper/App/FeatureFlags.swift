@@ -78,6 +78,8 @@ enum Flag: String, CaseIterable {
     case proUnlock
     /// Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone; needs `oneCookbook`.
     case libraryFirst
+    /// Recipe tips (#432): HowToTip entries kept apart from the steps, below the method, never in cook mode; off, they are the last steps.
+    case recipeTips
 }
 
 /// One flag as `shared/flags.json` declares it.

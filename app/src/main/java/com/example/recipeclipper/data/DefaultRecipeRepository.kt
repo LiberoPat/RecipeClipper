@@ -195,7 +195,20 @@ class DefaultRecipeRepository @Inject constructor(
      * on-device model may pick one out of its text ([extractFromPage]; the rendered page's
      * text if there is one).
      */
-    private suspend fun fetchWithFallbacks(url: String): ParseResult {
+    private suspend fun fetchWithFallbacks(url: String): ParseResult = withTipsPerFlag(fetchAnyWay(url))
+
+    /**
+     * [result] with the `recipeTips` flag applied (#432): on, the parser's tips stay apart; off,
+     * they are the recipe's last steps, as before.
+     */
+    private fun withTipsPerFlag(result: ParseResult): ParseResult =
+        if (result is ParseResult.Success && flags?.isOn(Flag.RECIPE_TIPS) != true) {
+            result.copy(recipe = result.recipe.withTipsAsSteps())
+        } else {
+            result
+        }
+
+    private suspend fun fetchAnyWay(url: String): ParseResult {
         // A Reddit post (#11) is read only from its listing: no rendered page, no page text.
         val readsPages = source.readsRenderedPage(url)
         val host = hostOf(url)
@@ -274,7 +287,7 @@ class DefaultRecipeRepository @Inject constructor(
 
     override suspend fun importPage(sharedUrl: String, html: String): ParseResult {
         val url = UrlCleaner.clean(sharedUrl)
-        val parsed = withContext(Dispatchers.Default) { BlogRecipeSource.parsePage(html, url) }.result
+        val parsed = withTipsPerFlag(withContext(Dispatchers.Default) { BlogRecipeSource.parsePage(html, url) }.result)
         if (parsed !is ParseResult.Success && CloudflareChallenge.isChallengePage(html)) {
             return ParseResult.Error(ParseError.HumanCheck)
         }

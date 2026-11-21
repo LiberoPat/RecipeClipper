@@ -87,6 +87,15 @@ Sans compte. Sans abonnement.*, *Kostenlos. Ohne Werbung. Ohne Konto. Ohne Abo.*
 pubblicità. Senza account. Senza abbonamento.*, *Grátis. Sem anúncios. Sem conta. Sem assinatura.*),
 which the store listing will repeat, so it should read as the listing would.
 
+## Recipe tips, 2026-11-21 (#432)
+
+One string on both platforms, `heading_tips`, a draft by Claude for a native speaker to check: the
+quiet heading over a recipe's tips below the method, the editor's tips box, and (in capitals) the
+heading in a shared recipe's text: *Consejos*, *Astuces*, *Tipps*, *Consigli*, *Dicas*. Check that
+each reads as a recipe page's own "Tips" section would in that language (French recipe sites also
+say *Conseils*), and that the capitals (*CONSEJOS*, *ASTUCES*, *TIPPS*, *CONSIGLI*, *DICAS*) sit well
+beside the shared text's other two headings.
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,

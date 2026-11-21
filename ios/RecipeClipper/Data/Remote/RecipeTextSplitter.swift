@@ -11,6 +11,36 @@ struct SplitRecipe: Hashable, Codable {
     let cookTime: String?
     let totalTime: String?
     var language: String? = nil
+    /// A chat's schema.org Recipe's tips (#432, HowToTip): never from split text.
+    var tips: [String] = []
+
+    /// With the `recipeTips` flag off (#432): the tips as the last steps, as before.
+    func withTipsAsSteps() -> SplitRecipe {
+        guard !tips.isEmpty else { return self }
+        return SplitRecipe(
+            ingredients: ingredients, instructions: instructions + tips, yield: yield, prepTime: prepTime,
+            cookTime: cookTime, totalTime: totalTime, language: language
+        )
+    }
+}
+
+extension SplitRecipe {
+    private enum CodingKeys: String, CodingKey {
+        case ingredients, instructions, yield, prepTime, cookTime, totalTime, language, tips
+    }
+
+    /// Decoded by hand only so a value saved before #432, with no `tips`, still reads (as none).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        ingredients = try c.decode([String].self, forKey: .ingredients)
+        instructions = try c.decode([String].self, forKey: .instructions)
+        yield = try c.decodeIfPresent(String.self, forKey: .yield)
+        prepTime = try c.decodeIfPresent(String.self, forKey: .prepTime)
+        cookTime = try c.decodeIfPresent(String.self, forKey: .cookTime)
+        totalTime = try c.decodeIfPresent(String.self, forKey: .totalTime)
+        language = try c.decodeIfPresent(String.self, forKey: .language)
+        tips = try c.decodeIfPresent([String].self, forKey: .tips) ?? []
+    }
 }
 
 /// Turns free text laid out as a recipe (a Reddit post body, or a comment with the recipe or a

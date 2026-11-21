@@ -95,7 +95,7 @@ extension RecipeRecord {
             ingredients: ingredients, instructions: instructions, prepTime: prepTime, cookTime: cookTime,
             totalTime: totalTime, servings: servings, lastViewedAt: lastViewedAt,
             checkedIngredients: checkedIngredients, notes: notes, language: language,
-            contentOrigin: contentOrigin, editedAt: editedAt, basedOn: basedOnUid
+            contentOrigin: contentOrigin, editedAt: editedAt, basedOn: basedOnUid, tips: tips
         )
     }
 }

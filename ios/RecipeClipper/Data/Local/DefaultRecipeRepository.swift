@@ -22,6 +22,8 @@ final class DefaultRecipeRepository: RecipeRepository {
     private let extractionOn: () -> Bool
     /// The `recipeVersions` flag (#354), read at each save; the share extension leaves it off.
     private let versionsOn: () -> Bool
+    /// Recipe tips (#432): off (the default for tests not about it), a fresh parse's tips are its last steps.
+    private let tipsOn: () -> Bool
 
     /// How a failed fetch waits before its single retry. Injected so a test doesn't really wait;
     /// throws on cancellation, as `Task.sleep` does.
@@ -54,9 +56,11 @@ final class DefaultRecipeRepository: RecipeRepository {
         extractor: PageRecipeExtractor = NoPageRecipeExtractor(),
         extractionOn: @escaping () -> Bool = { false },
         photos: PhotoStore? = nil,
-        versionsOn: @escaping () -> Bool = { false }
+        versionsOn: @escaping () -> Bool = { false },
+        tipsOn: @escaping () -> Bool = { false }
     ) {
         self.versionsOn = versionsOn
+        self.tipsOn = tipsOn
         self.photos = photos
         self.library = library
         self.extractor = extractor
@@ -138,6 +142,17 @@ final class DefaultRecipeRepository: RecipeRepository {
     /// cook to pass in the app's visible browser. A host that passed lately (`ClearedHosts`) is
     /// rendered first, since its plain fetch would only be refused.
     private func fetchWithFallbacks(_ url: String, renderedPage: String?) async -> ParseResult {
+        withTipsPerFlag(await fetchAnyWay(url, renderedPage: renderedPage))
+    }
+
+    /// `result` with the `recipeTips` flag applied (#432): on, the parser's tips stay apart; off,
+    /// they are the recipe's last steps, as before.
+    private func withTipsPerFlag(_ result: ParseResult) -> ParseResult {
+        guard case .success(let recipe) = result, !tipsOn() else { return result }
+        return .success(recipe.withTipsAsSteps())
+    }
+
+    private func fetchAnyWay(_ url: String, renderedPage: String?) async -> ParseResult {
         // A Reddit post (#11) is read only from its listing: no rendered page, no page text.
         let readsPages = source.readsRenderedPage(url: url)
         let renderedPage = readsPages ? renderedPage : nil
@@ -226,7 +241,7 @@ final class DefaultRecipeRepository: RecipeRepository {
 
     func importPage(_ sharedUrl: String, html: String) async -> ParseResult {
         let url = UrlCleaner.clean(sharedUrl)
-        let parsed = BlogRecipeSource.parse(html: html, url: url)
+        let parsed = withTipsPerFlag(BlogRecipeSource.parse(html: html, url: url))
         guard case .success(var recipe) = parsed else {
             if CloudflareChallenge.isChallengePage(html) { return .error(.humanCheck) }
             if let host = Self.host(of: url) { clearedHosts.record(host) }

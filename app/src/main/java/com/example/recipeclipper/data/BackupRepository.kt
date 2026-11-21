@@ -171,7 +171,8 @@ internal fun RecipeEntity.toBackup() = BackupRecipe(
     language = language,
     contentOrigin = contentOrigin,
     editedAt = editedAt,
-    basedOn = basedOnUid
+    basedOn = basedOnUid,
+    tips = tips
 )
 
 /** A pantry item as the export file holds it, and as the Pantry's shared file sends it (#149). */

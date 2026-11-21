@@ -180,7 +180,7 @@ object SharedText {
             if (recipe != null) {
                 val split = SplitRecipe(
                     recipe.ingredients, recipe.instructions, recipe.yield,
-                    recipe.prepTime, recipe.cookTime, recipe.totalTime, recipe.language
+                    recipe.prepTime, recipe.cookTime, recipe.totalTime, recipe.language, recipe.tips
                 )
                 val basedOn = JsonLdRecipeParser.isBasedOn(listOf(text.substring(i, end)))
                 return Reading(split, sorted = true, name = recipe.name, fromChat = true, basedOn = basedOn)
