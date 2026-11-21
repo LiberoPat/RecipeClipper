@@ -314,8 +314,12 @@ enum AskAiPrompt {
         text("cookTime", recipe.cookTime)
         text("totalTime", recipe.totalTime)
         fields.append("  \"recipeIngredient\": " + array(recipe.ingredients.map { "    \(quote($0))" }))
+        // The tips (#432) after the steps, as HowToTip, so a changed recipe brings them back as tips.
         fields.append("  \"recipeInstructions\": "
-            + array(recipe.instructions.map { "    {\"@type\": \"HowToStep\", \"text\": \(quote($0))}" }))
+            + array(
+                recipe.instructions.map { "    {\"@type\": \"HowToStep\", \"text\": \(quote($0))}" }
+                    + recipe.tips.map { "    {\"@type\": \"HowToTip\", \"text\": \(quote($0))}" }
+            ))
         return "{\n\(fields.joined(separator: ",\n"))\n}"
     }
 

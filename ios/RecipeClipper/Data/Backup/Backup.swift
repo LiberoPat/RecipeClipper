@@ -103,6 +103,9 @@ struct BackupRecipe: Equatable {
     /// export with photos names it; a plain JSON export, a shared file and older files have none. An
     /// import takes it only with its picture, and only for a recipe that has none.
     var photo: String? = nil
+    /// The recipe's tips (#432), as written; written only when there are some, so older files
+    /// (and recipes with none) simply have no `tips`, read as none.
+    var tips: [String] = []
 }
 
 struct BackupList: Equatable {

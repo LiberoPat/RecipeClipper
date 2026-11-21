@@ -153,6 +153,7 @@ final class AppDatabase: @unchecked Sendable {
         addBasedOn,
         numberListsInShownOrder,
         addPhotoFile,
+        addTips,
     ]
 
     /// Brings `db` up to `target` (the current version unless a test asks to stop early, to
@@ -482,6 +483,14 @@ final class AppDatabase: @unchecked Sendable {
     /// (#386), `recipes.photoFile`, the name of a file in the photo store. Null for every existing recipe.
     private static func addPhotoFile(_ db: SQLiteConnection) throws {
         try db.execute("ALTER TABLE recipes ADD COLUMN photoFile TEXT")
+    }
+
+    /// Version 19 (Android's Room version 20, `MIGRATION_19_20`): a recipe's tips (#432),
+    /// `recipes.tips`, the source's HowToTip entries as a JSON list, kept apart from the steps;
+    /// `[]` for every existing recipe. Stored recipes are not rewritten: one saved with its tips
+    /// as steps keeps them until a re-share refreshes it.
+    private static func addTips(_ db: SQLiteConnection) throws {
+        try db.execute("ALTER TABLE recipes ADD COLUMN tips TEXT NOT NULL DEFAULT '[]'")
     }
 
     private static func addMenus(_ db: SQLiteConnection) throws {
