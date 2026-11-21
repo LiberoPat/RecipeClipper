@@ -53,8 +53,20 @@ class AppShellTest {
         ) { Text("stub:list ${it.arguments?.getLong(ListDetailViewModel.LIST_ID_ARG)}") }
         composable(
             Routes.RECIPE,
-            arguments = listOf(navArgument(RecipeViewModel.RECIPE_ID_ARG) { type = NavType.LongType })
-        ) { Text("stub:recipe ${it.arguments?.getLong(RecipeViewModel.RECIPE_ID_ARG)}") }
+            arguments = listOf(
+                navArgument(RecipeViewModel.RECIPE_ID_ARG) { type = NavType.LongType },
+                navArgument(RecipeViewModel.SERVINGS_ARG) { type = NavType.IntType; defaultValue = 0 },
+                navArgument(RecipeViewModel.START_COOK_ARG) { type = NavType.BoolType; defaultValue = false }
+            )
+        ) {
+            // The Today card's meal (#375) carries its servings and a start-cooking flag.
+            val servings = it.arguments?.getInt(RecipeViewModel.SERVINGS_ARG)?.takeIf { s -> s > 0 }
+            val start = it.arguments?.getBoolean(RecipeViewModel.START_COOK_ARG) == true
+            Text(
+                "stub:recipe ${it.arguments?.getLong(RecipeViewModel.RECIPE_ID_ARG)}" +
+                    (servings?.let { s -> " x$s" } ?: "") + if (start) " start" else ""
+            )
+        }
         composable(
             Routes.IMPORT,
             arguments = listOf(navArgument(RecipeViewModel.URL_ARG) {
@@ -87,15 +99,16 @@ class AppShellTest {
         composable(Routes.PANTRY) { Text("stub:pantry") }
     }
 
-    private fun show() {
+    /** With [libraryFirst] (#375) the Recipes tab's first screen is the library, not Home. */
+    private fun show(libraryFirst: Boolean = false) {
         compose.setContent {
             nav = rememberNavController()
             AppShell(
                 nav, recipes = { stubRecipes() }, week = { stubWeek() },
-                groceries = { stubGroceries() }, pantry = { stubPantry() }
+                groceries = { stubGroceries() }, pantry = { stubPantry() }, libraryFirst = libraryFirst
             )
         }
-        compose.onNodeWithText("stub:home").assertIsDisplayed()
+        compose.onNodeWithText(if (libraryFirst) "stub:recipes" else "stub:home").assertIsDisplayed()
     }
 
     private fun onNav(action: NavHostController.() -> Unit) {
@@ -273,5 +286,123 @@ class AppShellTest {
         assertNull(recipeIdIn(Routes.import("https://example.com/recipe/5")))
         assertNull(recipeIdIn(Routes.RECIPES))
         assertNull(recipeIdIn("recipe/5/extra"))
+    }
+
+    // Library first (#375): the Recipes tab opens the library; Home is not on the stack.
+
+    @Test
+    fun withLibraryFirstTheRecipesTabOpensTheLibraryAndHomeIsNeverShown() {
+        show(libraryFirst = true)
+
+        compose.onNodeWithText("stub:home").assertDoesNotExist()
+        tab("Recipes").assertIsSelected()
+        bar().assertIsDisplayed()
+
+        // Another tab and back: still the library.
+        tab("Plan").performClick()
+        compose.onNodeWithText("stub:week").assertIsDisplayed()
+        tab("Recipes").performClick()
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
+        compose.onNodeWithText("stub:home").assertDoesNotExist()
+    }
+
+    @Test
+    fun withLibraryFirstChoosingTheOpenTabAgainPopsToTheLibrary() {
+        show(libraryFirst = true)
+        onNav { navigate(Routes.LISTS) }
+        onNav { navigate(Routes.list(4)) }
+        onNav { navigate(Routes.recipe(7)) }
+        bar().assertDoesNotExist()
+        onNav { popBackStack() }
+
+        tab("Recipes").performClick()
+
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
+        tab("Recipes").assertIsSelected()
+        // The library is the root: nothing under it.
+        compose.runOnIdle { assertEquals(Routes.RECIPES, nav.currentDestination?.route) }
+        onNav { navigate(Routes.SETTINGS) }
+        onNav { popBackStack() }
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
+    }
+
+    @Test
+    fun withLibraryFirstAShareLandsInRecipesOverTheLibraryAndBackReturnsToIt() {
+        show(libraryFirst = true)
+        tab("Pantry").performClick()
+        compose.onNodeWithText("stub:pantry").assertIsDisplayed()
+
+        onNav { openRoute(Routes.import("https://example.com/soup")) }
+
+        compose.onNodeWithText("stub:import https://example.com/soup").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(Tab.RECIPES, nav.currentDestination.tab()) }
+        bar().assertDoesNotExist()
+
+        onNav { popBackStack() }
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
+        tab("Recipes").assertIsSelected()
+    }
+
+    @Test
+    fun withLibraryFirstAShareWhileOnARecipeStacksOnTopOfItAndBackReturnsThere() {
+        show(libraryFirst = true)
+        onNav { navigate(Routes.recipe(5)) }
+
+        onNav { openRoute(Routes.import("https://example.com/soup")) }
+        compose.onNodeWithText("stub:import https://example.com/soup").assertIsDisplayed()
+        onNav { popBackStack() }
+        compose.onNodeWithText("stub:recipe 5").assertIsDisplayed()
+        onNav { popBackStack() }
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
+    }
+
+    @Test
+    fun withLibraryFirstOpeningTheRecipesRouteGoesBackToTheLibraryNotOnTopOfIt() {
+        show(libraryFirst = true)
+        onNav { navigate(Routes.LISTS) }
+
+        // A received file's "Recipes" (MainActivity): the library itself, once.
+        onNav { openRoute(Routes.RECIPES) }
+
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
+        compose.runOnIdle {
+            assertEquals(Routes.RECIPES, nav.currentDestination?.route)
+            assertTrue(nav.previousBackStackEntry?.destination?.route != Routes.RECIPES)
+        }
+    }
+
+    @Test
+    fun withHomeStillThereOpeningTheRecipesRoutePushesTheLibraryOverIt() {
+        show()
+
+        onNav { openRoute(Routes.RECIPES) }
+
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
+        onNav { popBackStack() }
+        compose.onNodeWithText("stub:home").assertIsDisplayed()
+    }
+
+    // The Today card's Start cooking (#375) opens on the Recipes stack, so Back returns to the library.
+    @Test
+    fun startCookingOpensTheMealOnTheRecipesStackAndBackReturnsToTheLibrary() {
+        show(libraryFirst = true)
+
+        onNav { navigate(Routes.plannedRecipe(5, 6, startCook = true)) }
+
+        compose.onNodeWithText("stub:recipe 5 x6 start").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(Tab.RECIPES, nav.currentDestination.tab()) }
+        bar().assertDoesNotExist()
+        onNav { popBackStack() }
+        compose.onNodeWithText("stub:recipes").assertIsDisplayed()
+        tab("Recipes").assertIsSelected()
+    }
+
+    @Test
+    fun theCardsRoutesCarryOnlyWhatTheyNeed() {
+        assertEquals("recipe/5", Routes.plannedRecipe(5, null))
+        assertEquals("recipe/5?servings=4", Routes.plannedRecipe(5, 4))
+        assertEquals("recipe/5?servings=4&startCook=true", Routes.plannedRecipe(5, 4, startCook = true))
+        assertEquals("recipe/5?startCook=true", Routes.plannedRecipe(5, null, startCook = true))
+        assertEquals(5L, recipeIdIn(Routes.plannedRecipe(5, 4, startCook = true)))
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 /// The app's root: four tabs (#47), each with its own NavigationStack, so each keeps its own
-/// place; the Recipes stack is the first.
+/// place; the Recipes stack is the first, and starts on the library with `libraryFirst` (#375), else on Home.
 /// Every destination gets its ViewModel from the container, once per stack entry (ScreenHost),
 /// and takes it as a parameter so a screen never builds its own.
 struct RootView: View {
@@ -14,6 +14,8 @@ struct RootView: View {
         tabs
             // The tooltips (#190): every screen's TooltipHost reads them from here.
             .environment(container.tooltips)
+            // The first tip's words depend on what the tab opens on (#375).
+            .environment(\.libraryFirst, libraryFirst)
             // A designed image for a recipe with no photo (#403), read by every image slot.
             .environment(\.noPhotoImage, container.featureFlags.isOn(.noPhotoImage))
             // A file sent from another Pith (#149) opens its sheet over whatever is on
@@ -29,7 +31,7 @@ struct RootView: View {
                 switch added {
                 case .groceries: router.select(.groceries)
                 case .pantry: router.select(.pantry)
-                case .recipes: router.openInRecipes(.recipes)
+                case .recipes: if libraryFirst { router.showLibrary() } else { router.openInRecipes(.recipes) }
                 }
             })
             // A new user's sample recipe (#151, #190), in the UI's language (English if the sample
@@ -90,34 +92,66 @@ struct RootView: View {
         }
     }
 
+    /// Library first (#375): the Recipes tab opens the library, with Home's jobs in it; Home is gone.
+    private var libraryFirst: Bool { container.featureFlags.libraryFirst }
+
     private var recipesStack: some View {
         NavigationStack(path: $router.path) {
-            ScreenHost(container.makeHomeViewModel) { vm in
-                HomeScreen(
-                    vm: vm,
-                    onOpenUrl: { router.push(.importUrl($0)) },
-                    onOpenPasted: { openPasted($0, push: router.push) },
-                    onOpenRecipe: { router.push(.recipe(id: $0)) },
-                    onResumeCooking: { router.push(.cookRecipe(id: $0)) },
-                    onOpenPlanned: { id, servings, cook in
-                        // Today's meal (#402): on the Week's stack, as the Week opens a planned recipe.
-                        router.openInWeek(cook ? .startWeekRecipe(id: id, servings: servings) : .weekRecipe(id: id, servings: servings))
-                    },
-                    homeTonight: container.featureFlags.isOn(.homeTonight),
-                    onOpenRecipes: { router.push(.recipes) },
-                    onOpenLists: { router.push(.lists) },
-                    onOpenSettings: { router.push(.settings) },
-                    oneCookbook: container.featureFlags.isOn(.oneCookbook),
-                    onNewRecipe: { router.push(.editRecipe(id: nil)) },
-                    onScan: scanHandler(push: router.push),
-                    makeAskAiVM: container.makeAskAiViewModel
-                )
+            Group {
+                if libraryFirst { libraryRoot } else { homeRoot }
             }
             .navigationDestination(for: Route.self) { route in
                 destination(route, push: router.push, replace: { router.replace(last: $0, with: $1) })
             }
         }
         .tint(Palette.accentText)
+    }
+
+    /// The library as the Recipes tab's first screen (#375): the compact card, the + sheet, the gear.
+    private var libraryRoot: some View {
+        ScreenHost3(
+            makeA: { container.makeRecipesViewModel() }, makeB: container.makeSaveToListViewModel,
+            makeC: container.makeHomeViewModel
+        ) { vm, saveVM, homeVM in
+            recipesScreen(
+                vm: vm, saveVM: saveVM, push: router.push,
+                root: LibraryRoot(
+                    vm: homeVM,
+                    onOpenSettings: { router.push(.settings) },
+                    onResumeCooking: { router.push(.cookRecipe(id: $0)) },
+                    // Today's meal: on this stack, so Back returns to the library (Home's went to the Week's).
+                    onOpenPlanned: { id, servings, cook in
+                        router.push(cook ? .startWeekRecipe(id: id, servings: servings) : .weekRecipe(id: id, servings: servings))
+                    },
+                    homeTonight: container.featureFlags.isOn(.homeTonight),
+                    makeAskAiVM: container.makeAskAiViewModel
+                )
+            )
+        }
+    }
+
+    private var homeRoot: some View {
+        ScreenHost(container.makeHomeViewModel) { vm in
+            HomeScreen(
+                vm: vm,
+                onOpenUrl: { router.push(.importUrl($0)) },
+                onOpenPasted: { openPasted($0, push: router.push) },
+                onOpenRecipe: { router.push(.recipe(id: $0)) },
+                onResumeCooking: { router.push(.cookRecipe(id: $0)) },
+                onOpenPlanned: { id, servings, cook in
+                    // Today's meal (#402): on the Week's stack, as the Week opens a planned recipe.
+                    router.openInWeek(cook ? .startWeekRecipe(id: id, servings: servings) : .weekRecipe(id: id, servings: servings))
+                },
+                homeTonight: container.featureFlags.isOn(.homeTonight),
+                onOpenRecipes: { router.push(.recipes) },
+                onOpenLists: { router.push(.lists) },
+                onOpenSettings: { router.push(.settings) },
+                oneCookbook: container.featureFlags.isOn(.oneCookbook),
+                onNewRecipe: { router.push(.editRecipe(id: nil)) },
+                onScan: scanHandler(push: router.push),
+                makeAskAiVM: container.makeAskAiViewModel
+            )
+        }
     }
 
     /// Recipes · Week · Groceries · Pantry, the owner's order (#47). The selection goes through
@@ -229,24 +263,7 @@ struct RootView: View {
             ScreenHost({ container.makeWhatINeedViewModel(weekStart: weekStart) }) { vm in WhatINeedScreen(vm: vm, shopForWeek: container.featureFlags.isOn(.shopForWeek)) }
         case .recipes:
             ScreenHost2(makeA: { container.makeRecipesViewModel() }, makeB: container.makeSaveToListViewModel) { vm, saveVM in
-                // The + menu: "Type a recipe" is Home's "+ New recipe"; "Paste a link" is Home's field.
-                RecipesScreen(
-                    vm: vm,
-                    onOpenRecipe: { push(.recipe(id: $0)) },
-                    onNewRecipe: { push(.editRecipe(id: nil)) },
-                    onOpenUrl: { push(.importUrl($0)) },
-                    onOpenPasted: { openPasted($0, push: push) },
-                    onScan: scanHandler(push: push),
-                    oneCookbook: container.featureFlags.isOn(.oneCookbook),
-                    saveVM: saveVM,
-                    onOpenView: { push(.recipesView($0)) },
-                    onOpenLists: { push(.lists) },
-                    quickFilters: container.featureFlags.isOn(.recipeFilters),
-                    gridEnabled: container.featureFlags.isOn(.recipesGrid),
-                    rowActions: container.featureFlags.isOn(.rowActions),
-                    multiSelect: container.featureFlags.isOn(.multiSelect),
-                    makePlanVM: container.makeAddToPlanViewModel
-                )
+                recipesScreen(vm: vm, saveVM: saveVM, push: push, root: nil)
             }
         case .recipesView(let view):
             // One cookbook (#345): an automatic view, with the save-to-list bookmark on its rows.
@@ -343,6 +360,31 @@ struct RootView: View {
             CutOffScreen()
                 .toolbar(.hidden, for: .tabBar)
         }
+    }
+
+    /// The Recipes screen. The + menu: "Type a recipe" is Home's "+ New recipe"; "Paste a link" is Home's
+    /// field. With `root` (#375) it is the Recipes tab's first screen, and the + opens the Add a recipe sheet.
+    private func recipesScreen(
+        vm: RecipesViewModel, saveVM: SaveToListViewModel, push: @escaping (Route) -> Void, root: LibraryRoot?
+    ) -> some View {
+        RecipesScreen(
+            vm: vm,
+            onOpenRecipe: { push(.recipe(id: $0)) },
+            onNewRecipe: { push(.editRecipe(id: nil)) },
+            onOpenUrl: { push(.importUrl($0)) },
+            onOpenPasted: { openPasted($0, push: push) },
+            onScan: scanHandler(push: push),
+            oneCookbook: container.featureFlags.isOn(.oneCookbook),
+            saveVM: saveVM,
+            onOpenView: { push(.recipesView($0)) },
+            onOpenLists: { push(.lists) },
+            quickFilters: container.featureFlags.isOn(.recipeFilters),
+            gridEnabled: container.featureFlags.isOn(.recipesGrid),
+            rowActions: container.featureFlags.isOn(.rowActions),
+            multiSelect: container.featureFlags.isOn(.multiSelect),
+            makePlanVM: container.makeAddToPlanViewModel,
+            libraryRoot: root
+        )
     }
 
     /// Where pasted text leads (#372, `PastedTextRouter`): the routes a share opens, from inside

@@ -27,8 +27,9 @@ the commands; iOS test commands and the simulator rules are in
   real Hilt graph, database and network stack, launched from the launcher and
   by a shared link (an `ACTION_SEND` intent to a `.invalid` host, which must
   reach the import screen and its Try again). It clears the settings first, so
-  every tooltip is unseen (#190): the launcher opens Home and its first tooltip
-  shows in its own window until Got it.
+  every tooltip is unseen (#190): the launcher opens the library (Home, with
+  `libraryFirst` off, #375) and its first tooltip, at the +, shows in its own window
+  until Got it.
 
 Waits that flaked under load (#91, and the nightly iOS UI tests), and what
 not to undo:
@@ -501,7 +502,8 @@ calls it. Share itself
 opens the system chooser, so the tests stop at `RecipeViewModel.shareText()`.
 
 Still without Android UI tests: the Settings screen. The iOS UI tests
-(`ios/RecipeClipperUITests`) cover Home, Recipes (+ → Type a recipe, search, swipe-to-delete, the
+(`ios/RecipeClipperUITests`) cover Home (flags off), the library as the first screen (`LibraryFirstUITests`, #375: launched with
+`flags: ["libraryFirst"]`, which the helpers `atRoot`, `openRecipes`, `pasteLink` and `backToHome` follow), Recipes (+ → Type a recipe, search, swipe-to-delete, the
 batched undo), Settings, list detail, the save-to-list sheet with the bookmark
 it fills, the source credit, the import error screens (including "Report this
 site" opening Safari) and cook mode (`CookModeUITests`, on the `cook` seed
@@ -819,17 +821,20 @@ both.
   as of September 2026). `DEVELOPER_DIR` selects Xcode 27 explicitly. It runs
   `RecipeClipperTests` on the image's iPhone 17 / iOS 27.0 simulator and
   uploads the `.xcresult` on failure.
-- **iOS UI tests** (`ios-ui-tests.yml`), about 50 minutes: nightly at 03:00
+- **iOS UI tests** (`ios-ui-tests.yml`), about 30-35 minutes: nightly at 03:00
   UTC and on demand (Actions → iOS UI tests → Run workflow, or
   `gh workflow run ios-ui-tests.yml --ref <branch>`). The suite was one job of
-  about two hours, so it runs as **three parallel shards** (a matrix, `fail-fast`
-  off, 90 minutes each). Each shard builds for testing itself (the three builds
-  overlap, about four minutes, which beats one build plus uploading and downloading
-  its products), then tests on a simulator it creates and boots first, and deletes
-  after. The result named `iOS UI tests` is a last small job that needs every shard,
-  so a run passes only if the whole suite did; a failed shard uploads its
-  `.xcresult` as `ios-ui-test-results-<shard>`. The workflow still runs one run at a
-  time. Each
+  about two hours, so it runs as **five parallel shards** (a matrix, `fail-fast`
+  off, 90 minutes each; three shards took 51 minutes). Each shard builds for testing
+  itself (the builds overlap, about four minutes, which beats one build plus uploading
+  and downloading its products), then tests on a simulator it creates and boots first,
+  and deletes after. The result named `iOS UI tests` is a last small job that needs
+  every shard, so a run passes only if the whole suite did; a failed shard uploads its
+  `.xcresult` as `ios-ui-test-results-<shard>`. One run per branch at a time
+  (`concurrency: ios-ui-tests-<ref>`), so different pull requests test side by side
+  (owner, 2026-11-20). A pull request that changes nothing iOS-related (the CI's
+  "Detect iOS changes" says so and skips the iOS unit tests) doesn't need this run
+  to merge. Each
   test has five minutes (ten at most), so a stuck one fails alone, and no
   diagnostics are collected from the simulator (after a failure that timed
   out at ten minutes, every time). If the

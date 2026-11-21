@@ -826,6 +826,8 @@
     <!-- The tooltips (#190): one small bubble at a time, pointing at a control -->
     <string name="tooltip_got_it">Got it</string>
     <string name="tooltip_home_link">Share a recipe link to this app, or tap here to paste one.</string>
+    <string name="tooltip_library_add">Share a recipe link to this app, or tap + to add one.</string>
+    <string name="library_empty_title">Your recipes go here</string>
     <string name="tooltip_recipe_units">As written shows every amount exactly as the recipe gives it. Tap to show every recipe in Metric or Ounces; anything that can\'t be converted exactly stays as written.</string>
     <string name="tooltip_recipe_start_cooking">Cook mode: one step at a time, with timers, and the screen stays on.</string>
     <string name="tooltip_recipe_made_this">Made it? Add a photo and a note, or Mark as cooked.</string>

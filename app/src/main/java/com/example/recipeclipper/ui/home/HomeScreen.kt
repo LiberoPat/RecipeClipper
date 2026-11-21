@@ -232,7 +232,7 @@ fun HomeScreen(
  * the way of a share. Either answer puts it away for good; Settings keeps the folder row.
  */
 @Composable
-private fun BackupFolderCard(onChoose: () -> Unit, onDismiss: () -> Unit) {
+internal fun BackupFolderCard(onChoose: () -> Unit, onDismiss: () -> Unit) {
     Column(Modifier.padding(top = 24.dp)) {
         Hairline()
         Spacer(Modifier.height(16.dp))

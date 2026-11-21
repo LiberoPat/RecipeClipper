@@ -201,8 +201,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   Cook mode follows the system theme unless "Dark while cooking" (off by
   default) is on. Don't restore an always-dark cook mode without asking.
 - **Settings:** exclusive choices are radio rows, independent toggles are
-  switches, never a bare ✓. Reached from the gear beside the Home title;
-  another entry point is the owner's call.
+  switches, never a bare ✓. Reached from the gear beside the Recipes title
+  (Home's, with `libraryFirst` off); another entry point is the owner's call.
 - **Recipes** (#345, V4): under search, one strip of cards: Lists first (#371: opens the
   Lists screen, Back to Recipes), then the automatic views (Not in a list, Cooked, Typed by
   you, From a chat; each its own screen), in place of V1's All / In a list / Not in a list pills
@@ -215,6 +215,12 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   its first ingredient names in italic on one of five warm tints chosen by its uid (the title's
   first letter at 64 dp and below), never a stock image. One component per platform; the
   Lists cover of an empty list keeps the outlined bookmark tile.
+- **Library first** (#375, `libraryFirst`, needs `oneCookbook`): the Recipes tab opens the library
+  and there is **no Home**. Above search, a compact card (Home's, below: only when something is
+  being cooked or planned today; Start cooking opens on the Recipes stack, so Back returns here
+  and the card scrolls away with the list); the + opens an "Add a recipe" sheet (Paste a link,
+  Scan, Type, Ask an AI); the gear sits beside the title; an empty library shows the four ways in
+  as tiles with Restore. The first-run tip points at the +. Off, Home:
 - **Home** (#286, #402): one card at the top. Mid-cook (cook mode left on, or a
   timer running on an unfinished run; never a finished run): "Continue cooking" with
   Resume cooking. Otherwise (`homeTonight`) "Today": the earliest of today's planned
@@ -228,8 +234,9 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   viewed" shelf** (#371): both repeated Recipes, whose default sort is
   Recently viewed. Search is on Recipes only.
 - **Bottom tabs** (#47): Recipes · Plan · Groceries · Pantry (Plan is `week`
-  in code, routes and stored names, #414); Settings is not a tab. Each keeps its own back stack; the bar hides on the reading view and
-  in cook mode.
+  in code, routes and stored names, #414); Settings is not a tab. Each keeps
+  its own back stack; the bar hides on the reading view and in cook mode. The
+  open tab again goes to its first screen (library or Home).
 - **A grocery tick only ticks** (#146): it restocks the pantry only through
   "Done shopping". The pantry is used up (#147) only through "Update the
   pantry" after cooking ends, never on a tick. Snackbars are only for undo.

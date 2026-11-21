@@ -379,6 +379,24 @@ struct ScreenHost2<A: AnyObject, B: AnyObject, Content: View>: View {
     }
 }
 
+/// Three ViewModels for one entry (the library as the Recipes tab's first screen, #375: the
+/// library, the save-to-list sheet and what Home used to hold).
+struct ScreenHost3<A: AnyObject, B: AnyObject, C: AnyObject, Content: View>: View {
+    private final class Box { var a: A?; var b: B?; var c: C? }
+    @State private var box = Box()
+    let makeA: () -> A
+    let makeB: () -> B
+    let makeC: () -> C
+    @ViewBuilder let content: (A, B, C) -> Content
+
+    var body: some View {
+        let a = box.a ?? { let v = makeA(); box.a = v; return v }()
+        let b = box.b ?? { let v = makeB(); box.b = v; return v }()
+        let c = box.c ?? { let v = makeC(); box.c = v; return v }()
+        content(a, b, c)
+    }
+}
+
 /// Vertical padding for a control whose label sits inside a min height. At the default sizes
 /// the min height already clears the label, and padding there would only move it by a
 /// sub-pixel rounding step; at the accessibility sizes, where a label can wrap and outgrow
