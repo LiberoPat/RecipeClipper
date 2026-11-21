@@ -49,8 +49,7 @@ final class PantryViewModelTests: XCTestCase {
         let pantry = FakePantryRepository()
         let vm = await viewModel(pantry)
         vm.onDraftChange(" rice ")
-        vm.onAddTyped()
-        await settleMain()
+        await vm.onAddTyped()?.value
 
         let rice = pantry.items.value.first
         XCTAssertEqual(rice?.name, "rice")
@@ -65,8 +64,7 @@ final class PantryViewModelTests: XCTestCase {
         let pantry = FakePantryRepository([item(1, "Rice", inStock: false)])
         let vm = await viewModel(pantry)
         vm.onDraftChange("rice")
-        vm.onAddTyped()
-        await settleMain()
+        await vm.onAddTyped()?.value
         XCTAssertEqual(pantry.items.value.count, 1)
         XCTAssertEqual(pantry.items.value.first?.inStock, true)
     }
@@ -75,8 +73,7 @@ final class PantryViewModelTests: XCTestCase {
     private func added(_ typed: String, _ pantry: FakePantryRepository = FakePantryRepository()) async -> PantryItem? {
         let vm = await viewModel(pantry)
         vm.onDraftChange(typed)
-        vm.onAddTyped()
-        await settleMain()
+        await vm.onAddTyped()?.value
         XCTAssertEqual(vm.uiState.draft, "")
         XCTAssertEqual(pantry.items.value.count, 1)
         return pantry.items.value.first

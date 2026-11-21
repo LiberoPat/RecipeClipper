@@ -21,9 +21,14 @@ final class ClipUITests: RecipeUITestCase {
     /// are quick. So anything on the page gets a longer wait than the app's own views.
     private let pageTimeout: TimeInterval = 60
 
+    /// The page answers a tap only once it has had the clip's state (the armed step, the photo
+    /// picking), pushed when `clipper.js` says it is in; until then its text can already be on
+    /// screen and in the tree, and a tap on it goes unheard (run 44863294496, #395). The web view's
+    /// value turns "ready" once the state is in, so every touch of the page waits for that first.
     @discardableResult
     private func onPage(_ element: XCUIElement, _ what: String) -> XCUIElement {
-        require(element, what, within: pageTimeout)
+        requireState(page, "value == 'ready'", "the page, answering taps", within: pageTimeout)
+        return require(element, what, within: pageTimeout)
     }
 
     private func fieldButton(_ field: String) -> XCUIElement { app.buttons["clip.field.\(field)"] }

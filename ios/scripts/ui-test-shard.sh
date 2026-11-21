@@ -14,8 +14,9 @@
 # in two, or if a `func test...` in the folder isn't claimed by a class it found.
 #
 # --update-weights reads the "Test Case ... passed (N seconds)" lines of full-run logs
-# (`gh run view <id> --log > run.log`), sums them per class, averages across the logs given and
-# rewrites the weights file. See docs/testing.md.
+# (`gh run view <id> --log > run.log`), sums them per class (a test that ran again after a failure
+# counts its last run only), averages across the logs given and rewrites the weights file. See
+# docs/testing.md.
 
 exec python3 -I - "$0" "$@" <<'PY'
 import collections
@@ -126,14 +127,18 @@ def pack(classes, count):
 
 
 def update_weights(logs):
-    pattern = re.compile(r"Test Case '-\[%s\.(\w+) \w+\]' (?:passed|failed|skipped) \(([\d.]+) seconds\)" % TARGET)
+    pattern = re.compile(r"Test Case '-\[%s\.(\w+) (\w+)\]' (?:passed|failed|skipped) \(([\d.]+) seconds\)" % TARGET)
     per_log = []
     for path in logs:
-        sums = collections.defaultdict(float)
+        # Per test, its last run: a retried test (-retry-tests-on-failure) logs one line a try.
+        last = {}
         for line in open(path, encoding="utf-8", errors="replace"):
             m = pattern.search(line)
             if m:
-                sums[m.group(1)] += float(m.group(2))
+                last[(m.group(1), m.group(2))] = float(m.group(3))
+        sums = collections.defaultdict(float)
+        for (cls, _), seconds in last.items():
+            sums[cls] += seconds
         if not sums:
             die("%s has no 'Test Case ... (N seconds)' lines" % path)
         per_log.append(sums)

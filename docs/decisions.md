@@ -2258,7 +2258,12 @@ its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
   native code pushes the draft's marks, the armed field and the clear count back with one
   declarative `RC.sync(...)`, so add, undo and removal all redraw from state. Mark ids come
   from the draft, so an undo can show a mark again. Marks don't survive a page reload
-  (rotation on Android, a restored draft); the draft does.
+  (rotation on Android, a restored draft); the draft does. The script says `ready` once it is
+  in (#395): iOS injects it at document end and pushes the state then, not at `didFinish`,
+  which waits for every image and frame, so a slow picture or ad no longer leaves the page deaf
+  to taps; in a debug build the web view's accessibility value reads "ready" from the first
+  push (what `ClipUITests` waits for). Android injects at `onPageFinished` and pushes at once, so it
+  ignores the message.
 - **Links to other pages are blocked** in the clip view (redirects and fragment jumps load, and
   so does a page sending itself back to its own path when no one tapped, as Reddit's check does,
   #213; an app's own `intent:` or `reddit:` link never loads), so a clip is always saved under
