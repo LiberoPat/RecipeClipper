@@ -11,11 +11,12 @@ final class FreeTierViewModelTests: XCTestCase {
         prepTime: nil, cookTime: nil, totalTime: nil, yield: nil, sourceUrl: "https://a.com/soup"
     )
 
-    /// These tests are the swap at 20 (#107), so `oneCookbook` (#345, the cap at 50) is off; its own
-    /// rules are `OneCookbookTests`' and `OneCookbookViewModelTests`'.
+    /// These tests are the swap at 20 (#107), so `oneCookbook` (#345, the cap at 50) is off, and so is
+    /// `proUnlock` (#413, no limit at all); their own rules are `OneCookbookTests`', `OneCookbookViewModelTests`'
+    /// and `ProUnlockTests`'.
     private func flags(freeTier: Bool) -> FeatureFlags {
         FeatureFlags(
-            store: MemoryFeatureFlagStore(freeTier ? ["freeTier": true, "oneCookbook": false] : ["oneCookbook": false]),
+            store: MemoryFeatureFlagStore(freeTier ? ["freeTier": true, "oneCookbook": false, "proUnlock": false] : ["oneCookbook": false]),
             isDebug: false
         )
     }
@@ -94,7 +95,7 @@ final class FreeTierViewModelTests: XCTestCase {
 
         let vm = settings(flags(freeTier: true), store)
         XCTAssertEqual(vm.unlockRow, UnlockRow(unlocked: false, price: "$2.99"))
-        XCTAssertEqual(vm.sections, SettingsSection.allCases)
+        XCTAssertEqual(vm.sections, SettingsSection.allCases.filter { $0 != .pro })
         vm.onUnlock()
         await settleMain()
         XCTAssertEqual(vm.unlockRow?.unlocked, true)

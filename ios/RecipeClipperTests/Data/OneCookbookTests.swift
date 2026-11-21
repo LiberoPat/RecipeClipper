@@ -230,7 +230,7 @@ final class OneCookbookTests: XCTestCase {
         let suite = "OneCookbookTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        let flags = FeatureFlags(store: MemoryFeatureFlagStore(["freeTier": true, "oneCookbook": true]), isDebug: false)
+        let flags = FeatureFlags(store: MemoryFeatureFlagStore(["freeTier": true, "oneCookbook": true, "proUnlock": false]), isDebug: false)
         let mirror = DefaultsLibraryLimit(defaults: defaults)
         let policy = LibraryPolicy(flags: flags, entitlements: FakeEntitlements(), mirror: mirror)
         XCTAssertEqual(policy.limit, .capped(max: 50))
