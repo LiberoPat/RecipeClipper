@@ -194,15 +194,17 @@ final class PantryViewModel {
     /// Adds what was typed, in stock, with the amount it starts with as its quantity (#302,
     /// `PantryEntry.split`). A name already here is put back in stock instead, taking a typed
     /// amount; with none, it keeps its own.
-    func onAddTyped() {
+    /// Returns the writes so a test can await them (nil: nothing typed).
+    @discardableResult
+    func onAddTyped() -> Task<Void, Never>? {
         let typed = uiState.draft.kTrimmed
-        guard !typed.isEmpty else { return }
+        guard !typed.isEmpty else { return nil }
         uiState.draft = ""
         let language = LanguageWords.forTag(phoneLanguage())?.language ?? LanguageWords.english.language
         let entry = PantryEntry.split(typed, words: LanguageWords.forTag(language))
         let today = calendar.today()
         let existing = PantryList.sameName(items, name: entry.name, language: language)
-        Task {
+        return Task {
             if let existing {
                 if let quantity = entry.quantity {
                     await pantry.edit(existing.id, PantryEdit(

@@ -31,7 +31,7 @@ struct GroceriesScreen: View {
                     OutlinedField(
                         label: Strings.groceriesAddHint,
                         text: Binding(get: { vm.uiState.draft }, set: vm.onDraftChange),
-                        onSubmit: vm.onAddTyped
+                        onSubmit: { vm.onAddTyped() }
                     )
                     if state.isEmpty {
                         Text(Strings.groceriesEmpty)

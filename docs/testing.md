@@ -46,6 +46,15 @@ not to undo:
   answer one query. It also waits for each snackbar to go before the next
   tap: the snackbar leaves by itself after four seconds, sliding down across
   the field buttons, and a tap that met it there was lost.
+- `ClipUITests` touches the page only once the web view's value reads "ready"
+  (the clip's state is in, #395): the page's text reached the tree well before
+  the page answered taps, and a tap in between went unheard.
+- Under-load waits from #395: the photo picker gets 60 s to list the
+  simulator's photos (a fresh simulator fills its grid slowly);
+  `RecipesUITests` looks for the undo snackbar before the row's going, and
+  waits longer than the ten-second window for it to end; ViewModel tests
+  await the task an action returns (`onAddTyped`) rather than a count of
+  yields, which a first use of a language's tables outlasted.
 - `ShareUITests` dismisses the share sheet by tapping in the free part of the
   screen beside it, never at the very top. On iOS 27 the iPhone's share sheet
   is a popover starting just under the status bar, and a tap in the status bar

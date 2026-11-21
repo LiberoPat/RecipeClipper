@@ -12,13 +12,16 @@ final class RecipesUITests: RecipeUITestCase {
         search.typeText(query)
     }
 
-    /// Swipes a row away. A long swipe may complete the delete on its own; otherwise it reveals
-    /// the Delete action, which is tapped.
+    /// Swipes a row away and waits for its undo snackbar. A long swipe may complete the delete on
+    /// its own; otherwise it reveals the Delete action, which is tapped. The snackbar is looked for
+    /// first, the row's going after: the snackbar lasts its ten seconds from the delete, and on CI
+    /// one query for the row took nine, so a test that waited for the row first found the
+    /// snackbar gone (run 42800777142, #395).
     private func swipeDelete(_ title: String) {
         require(row(title)).swipeLeft()
         let action = app.buttons["Delete"]
         if action.waitForExistence(timeout: 2) { action.tap() }
-        requireGone(row(title), "\(title) to be swiped away")
+        require(text("Deleted \"\(title)\""), "the undo snackbar")
     }
 
     func testNewestFirst() {
@@ -208,8 +211,6 @@ final class RecipesUITests: RecipeUITestCase {
         openRecipes()
 
         swipeDelete("Banana Bread")
-
-        require(text("Deleted \"Banana Bread\""))
         app.buttons["Undo"].tap()
 
         require(row("Banana Bread"), "the row restored")
@@ -225,7 +226,6 @@ final class RecipesUITests: RecipeUITestCase {
         openRecipes()
 
         swipeDelete("Chicken Adobo")
-        require(text("Deleted \"Chicken Adobo\""))
         app.buttons["Undo"].tap()
 
         requireState(row("Chicken Adobo"), "label CONTAINS 'Saved to a list'", "Adobo back with its bookmark")
@@ -287,8 +287,9 @@ final class RecipesUITests: RecipeUITestCase {
         openRecipes()
 
         swipeDelete("Banana Bread")
-        require(text("Deleted \"Banana Bread\""))
-        requireGone(text("Deleted \"Banana Bread\""), "the snackbar to time out")
+        requireGone(row("Banana Bread"), "Banana Bread to be swiped away")
+        // The undo window is ten seconds: waiting `timeout` (also ten) for it to end raced it.
+        requireGone(text("Deleted \"Banana Bread\""), "the snackbar to time out", within: 30)
 
         assertAbsent(row("Banana Bread"))
         back()

@@ -3,7 +3,9 @@
 //
 // The page reports what happens on it; native code decides everything. Messages to native are
 // JSON strings: {type:"selection", text}, {type:"tag", field, id}, {type:"image", src},
-// {type:"noImage"}.
+// {type:"noImage"}, and {type:"ready"} once, as soon as this script is in: iOS injects it at
+// document end and pushes the state then, rather than waiting for every image and frame to load
+// (Android injects it once the page has loaded and pushes at once, so it ignores this).
 // Native calls:
 //   RC.sync({marks:[{id, field, label}], newId, photo:{src, label} | null, armed, clear})
 //     Shows exactly these marks and hides every other. `newId`, if it names a mark not seen
@@ -495,4 +497,5 @@
   window.addEventListener('resize', rerender);
   window.addEventListener('load', rerender);
   if (window.ResizeObserver) new ResizeObserver(rerender).observe(document.body);
+  post({ type: 'ready' });
 })();
