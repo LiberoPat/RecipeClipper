@@ -325,10 +325,10 @@ internal fun SwitchRow(
     description: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
     // A locked Week extra (#413): the Pro badge after the title; the caller's onCheckedChange opens the Pro screen.
-    proBadge: Boolean = false,
-    modifier: Modifier = Modifier
+    proBadge: Boolean = false
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
