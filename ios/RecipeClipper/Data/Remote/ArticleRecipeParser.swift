@@ -1,7 +1,7 @@
 import Foundation
 
-/// Finds a recipe written inside an article (#435): no recipe data and no headings, just a list of
-/// amounts followed by the method in paragraphs. **Only when the page has a list of amounts**,
+/// Finds the recipes written inside an article (#435): no recipe data, just a list of amounts
+/// followed by the method in paragraphs, once or a few times. **Only where the page has a list of amounts**,
 /// never from prose alone. Pure: HTML in, data out, over the same `HtmlTree` the microdata parser
 /// reads. Android's `ArticleRecipeParser`, rule for rule (its comment has the rules); pinned by the
 /// differential corpus's `Article` rows and `ArticleRecipeParserTests`.
@@ -13,8 +13,11 @@ enum ArticleRecipeParser {
     /// An item longer than this is a sentence, not an ingredient line.
     static let maxItem = 200
 
-    /// At most this many steps are taken.
+    /// At most this many steps are taken for one recipe.
     static let maxSteps = 40
+
+    /// At most this many recipes are read from one page.
+    static let maxRecipes = 6
 
     /// At most this many paragraphs and items are read to tell the article's language.
     private static let detectionBlocks = 300
@@ -30,33 +33,49 @@ enum ArticleRecipeParser {
 
     private static let headings: Set<String> = ["h1", "h2", "h3", "h4", "h5", "h6"]
 
-    static func parse(html: String, url: String) -> ArticleRecipe? {
+    /// The page's recipes written inside its article, in page order; empty when there are none.
+    static func parse(html: String, url: String) -> [ArticleRecipe] {
         let tree = HtmlTree(html)
         let elements = tree.elements
         func first(_ name: String, in range: Range<Int>) -> Int? { range.first { elements[$0].name == name } }
         let all = 1..<elements.count
         let body = first("body", in: all)
         let bodyRange = body.map { tree.descendants(of: $0) } ?? all
-        guard let name = title(tree) else { return nil }
         let root = first("article", in: bodyRange) ?? first("main", in: bodyRange) ?? body ?? 0
         let inRoot = tree.descendants(of: root)
 
         let detection = inRoot.filter { elements[$0].name == "p" || elements[$0].name == "li" }
             .prefix(detectionBlocks).map { tree.text(of: $0) }.joined(separator: "\n")
         let language = LanguageWords.resolve(declared: nil, page: JsonLdRecipeParser.pageLanguage(html: html)) { detection }
-        guard let words = LanguageWords.forTag(language) else { return nil }
-
-        guard let list = inRoot.first(where: { (elements[$0].name == "ul" || elements[$0].name == "ol") &&
-            isAmountList($0, root: root, tree: tree, words: words) })
-        else { return nil }
-        let ingredients = items(list, tree).map { tree.text(of: $0) }.filter { !$0.isEmpty }
-        let steps = SiteRules.steps(url: url, steps: stepsAfter(list, root: root, tree: tree, words: words)).filter { !$0.isEmpty }
-        if steps.isEmpty { return nil }
+        guard let words = LanguageWords.forTag(language) else { return [] }
+        let headline = title(tree)
         let image = meta("og:image", tree).flatMap { WebImageUrl.of(URL(string: $0, relativeTo: URL(string: url))?.absoluteString) }
-        return ArticleRecipe(
-            name: name, image: image, ingredients: ingredients, steps: steps,
-            language: String(language.split(separator: "-", omittingEmptySubsequences: false).first ?? ""), sourceUrl: url
-        )
+        let primary = String(language.split(separator: "-", omittingEmptySubsequences: false).first ?? "")
+
+        var recipes: [ArticleRecipe] = []
+        var readAsSteps = Set<Int>()
+        for list in inRoot where elements[list].name == "ul" || elements[list].name == "ol" {
+            if recipes.count >= maxRecipes { break }
+            if readAsSteps.contains(list) || !isAmountList(list, root: root, tree: tree, words: words) { continue }
+            let steps = SiteRules.steps(url: url, steps: stepsAfter(list, root: root, tree: tree, words: words, readAsSteps: &readAsSteps))
+                .filter { !$0.isEmpty }
+            if steps.isEmpty { continue }
+            guard let name = headingAbove(list, in: inRoot, tree: tree) ?? headline else { continue }
+            recipes.append(ArticleRecipe(
+                name: name, image: image, ingredients: items(list, tree).map { tree.text(of: $0) }.filter { !$0.isEmpty },
+                steps: steps, language: primary, sourceUrl: url, headline: headline ?? name
+            ))
+        }
+        return recipes
+    }
+
+    /// The text of the last heading before `list` in the article.
+    private static func headingAbove(_ list: Int, in root: Range<Int>, tree: HtmlTree) -> String? {
+        for i in stride(from: list - 1, through: root.lowerBound, by: -1) where headings.contains(tree.elements[i].name) {
+            let text = tree.text(of: i)
+            if !text.isEmpty { return text }
+        }
+        return nil
     }
 
     private static func meta(_ property: String, _ tree: HtmlTree) -> String? {
@@ -110,18 +129,21 @@ enum ArticleRecipeParser {
         text.isEmpty ? nil : RecipeTextSplitter.header(RecipeTextSplitter.Line(text: text), words: words)?.section
     }
 
-    /// The method after `list`: see Android's class comment.
-    private static func stepsAfter(_ list: Int, root: Int, tree: HtmlTree, words: LanguageWords) -> [String] {
+    /// The method after `list` (see Android's class comment); each `<ol>` read goes in `readAsSteps`.
+    private static func stepsAfter(
+        _ list: Int, root: Int, tree: HtmlTree, words: LanguageWords, readAsSteps: inout Set<Int>
+    ) -> [String] {
+        var read = readAsSteps
+        defer { readAsSteps = read }
         var steps: [String] = []
         // False once the steps end.
         func visit(_ element: Int) -> Bool {
             if steps.count >= maxSteps { return false }
             let name = tree.elements[element].name
-            // A steps heading ("Preparación") is passed over; any other ends the steps.
-            if headings.contains(name) { return section(tree.text(of: element), words) == .instructions }
-            if name == "ul" { return false }
+            if headings.contains(name) || name == "ul" { return false }
             if passedOver.contains(name) { return true }
             if name == "ol" {
+                read.insert(element)
                 for item in items(element, tree) {
                     let text = tree.text(of: item)
                     if !text.isEmpty && steps.count < maxSteps { steps.append(text) }

@@ -43,9 +43,9 @@ struct FetchedPage {
     var result: ParseResult
     var page: PageText? = nil
     var challenge = false
-    /// With `page`: a recipe written inside the page's article (`ArticleRecipeParser`, #435), for
-    /// the cook to check.
-    var article: ArticleRecipe? = nil
+    /// With `page`: the recipes written inside the page's article (`ArticleRecipeParser`, #435),
+    /// for the cook to check.
+    var articles: [ArticleRecipe] = []
 }
 
 /// The on-device model reading a page with no recipe data (#103), beside `StepShortener`:
@@ -221,6 +221,10 @@ protocol RecipeRepository: AnyObject {
     /// library). Past the check, the host is remembered, so its next import renders first.
     func importPage(_ sharedUrl: String, html: String) async -> ParseResult
 
+    /// The saved recipe's id for each of `links` one is saved under (cleaned), for the chooser over
+    /// a page's recipes (#435).
+    func savedIds(links: [String]) async -> [String: Int64]
+
     /// "Update from source" (#29): fetches the recipe's link again and replaces the user's
     /// version with the site's, keeping the id, note and list membership, and making it PARSED.
     /// On any failure nothing changes and the cause is returned.
@@ -338,6 +342,8 @@ enum RestoreOutcome: Equatable {
 
 extension RecipeRepository {
     func forget(_ deleted: DeletedRecipe) async {}
+
+    func savedIds(links: [String]) async -> [String: Int64] { [:] }
 
     /// Undoes one `delete`.
     @discardableResult

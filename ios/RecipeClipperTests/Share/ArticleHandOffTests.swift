@@ -22,20 +22,20 @@ final class ArticleHandOffTests: XCTestCase {
     func testTheArticlesRecipeIsLeftForTheAppsEditor() async {
         let pending = pending()
         let vm = ShareImportViewModel(
-            repository: ReconnectCountingRepository(.error(.inArticle(article))), clock: DataTestClock(5_000),
+            repository: ReconnectCountingRepository(.error(.inArticle([article]))), clock: DataTestClock(5_000),
             pendingArticle: pending
         )
         vm.start(with: SharedInput(url: url))
         await vm.currentLoad?.value
 
         XCTAssertEqual(vm.uiState, .articleInApp)
-        XCTAssertEqual(pending.take(now: 5_000 + PendingArticle.window), article)
+        XCTAssertEqual(pending.take(now: 5_000 + PendingArticle.window), [article])
         XCTAssertNil(pending.take(now: 5_000), "taken once")
     }
 
     func testANewShareClearsTheArticleLeftBefore() async {
         let pending = pending()
-        pending.put(article, at: 5_000)
+        pending.put([article], at: 5_000)
         var recipe = Recipe(
             name: "Scones", image: nil, ingredients: ["2 cups flour"], instructions: ["Mix."],
             prepTime: nil, cookTime: nil, totalTime: nil, yield: nil, sourceUrl: "https://example.com/scones"
@@ -52,15 +52,33 @@ final class ArticleHandOffTests: XCTestCase {
     }
 
     func testWithNowhereToLeaveItTheCardSaysWhy() async {
-        let vm = ShareImportViewModel(repository: ReconnectCountingRepository(.error(.inArticle(article))))
+        let vm = ShareImportViewModel(repository: ReconnectCountingRepository(.error(.inArticle([article]))))
         vm.start(with: SharedInput(url: url))
         await vm.currentLoad?.value
-        XCTAssertEqual(vm.uiState, .failed(.inArticle(article)))
+        XCTAssertEqual(vm.uiState, .failed(.inArticle([article])))
+    }
+
+    func testSeveralAreAllLeftForTheAppsChooser() async {
+        let pending = pending()
+        var second = article
+        second.name = "Crema de tomate"
+        second.sourceUrl = url + "?pith_recipe=2"
+        let vm = ShareImportViewModel(
+            repository: ReconnectCountingRepository(.error(.inArticle([article, second]))), clock: DataTestClock(5_000),
+            pendingArticle: pending
+        )
+        vm.start(with: SharedInput(url: url))
+        await vm.currentLoad?.value
+        XCTAssertEqual(vm.uiState, .articleInApp)
+        let left = pending.take(now: 5_000)
+        XCTAssertEqual(left, [article, second])
+        XCTAssertEqual(left.map(Route.article), .articleChoice([article, second]))
+        XCTAssertEqual(Route.article([article]), .articleRecipe(article))
     }
 
     func testAnOlderHandOffIsDropped() {
         let pending = pending()
-        pending.put(article, at: 1_000)
+        pending.put([article], at: 1_000)
         XCTAssertNil(pending.take(now: 1_000 + PendingArticle.window + 1))
     }
 }

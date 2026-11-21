@@ -21,10 +21,11 @@ struct RecipeScreen: View {
     var onClipBlocked: (String) -> Void = { _ in }
     /// Cloudflare's check wants a person (#220): opens the page visibly in the import's place.
     var onHumanCheck: (String) -> Void = { _ in }
+    /// Recipes written inside the shared page's article (#435): the editor or the chooser, in this
+    /// screen's place.
+    var onArticle: ([ArticleRecipe]) -> Void = { _ in }
     /// Opens the editor on a Reddit post's photos, read on the device (#198).
     var onReadPhoto: (PhotoPost) -> Void = { _ in }
-    /// Opens the editor on a recipe written inside the page's article, to check (#435).
-    var onCheckArticle: (ArticleRecipe) -> Void = { _ in }
     /// The `photoText` flag (#198): "Read the photo" shows only behind it.
     var photoTextEnabled = false
     /// Makes "Your cooks" (#116); nil leaves it out.
@@ -85,7 +86,7 @@ struct RecipeScreen: View {
             case .error(let error):
                 RecipeErrorView(
                     error: error, state: state, vm: vm, photoTextEnabled: photoTextEnabled,
-                    onClip: onClip, onReadPhoto: onReadPhoto, onCheckArticle: onCheckArticle
+                    onClip: onClip, onReadPhoto: onReadPhoto
                 )
             }
         }
@@ -152,6 +153,9 @@ struct RecipeScreen: View {
         }
         .onChange(of: state.humanCheckPage, initial: true) { _, url in
             if let url { onHumanCheck(url) }
+        }
+        .onChange(of: state.articleRecipes, initial: true) { _, articles in
+            if let articles { onArticle(articles) }
         }
         .sheet(isPresented: $sheetOpen) {
             SaveToListSheet(vm: saveVM)

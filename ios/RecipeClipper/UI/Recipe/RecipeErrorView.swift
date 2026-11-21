@@ -2,9 +2,7 @@ import SwiftUI
 
 /// A load that failed (Android's `RecipeErrorView`): what went wrong, and what can be done about
 /// it. Every error offers "Try again"; a page with no recipe also offers "Clip it yourself" (#37)
-/// and "Report this site" (#30), and a Reddit post with a photo "Read the photo" (#198). A page
-/// whose article holds a recipe as a list of amounts (#435) shows its headline and photo, and
-/// offers "Check the recipe".
+/// and "Report this site" (#30), and a Reddit post with a photo "Read the photo" (#198).
 struct RecipeErrorView: View {
     let error: ParseError
     let state: RecipeUiState
@@ -15,8 +13,6 @@ struct RecipeErrorView: View {
     let onClip: (String) -> Void
     /// Opens the editor on a Reddit post's photos, read on the device (#198).
     let onReadPhoto: (PhotoPost) -> Void
-    /// Opens the editor on a recipe written inside the page's article, to check (#435).
-    var onCheckArticle: (ArticleRecipe) -> Void = { _ in }
 
     @Environment(\.openURL) private var openURL
 
@@ -25,14 +21,10 @@ struct RecipeErrorView: View {
             if case .noTranscription(let title, let imageUrl, _) = error {
                 PostPreview(title: title, imageUrl: imageUrl)
             }
-            if case .inArticle(let article) = error {
-                PostPreview(title: article.name, imageUrl: article.image)
-            }
             Text(Strings.message(for: error))
                 .textStyle(Typography.bodyLarge)
-                // No transcription, or a recipe in an article (#435), is an outcome, not a failure:
-                // muted, not red.
-                .foregroundStyle(error.isOutcome ? Palette.muted : Palette.error)
+                // No transcription is an outcome, not a failure: muted, not red.
+                .foregroundStyle(error.isNoTranscription ? Palette.muted : Palette.error)
             // Every error offers "Try again", no-recipe included: a café or hotel captive
             // portal serves its login page, which parses as a page with no recipe, and
             // the same link works once you're through it.
@@ -47,14 +39,7 @@ struct RecipeErrorView: View {
     @ViewBuilder
     private var errorActions: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if case .inArticle(let article) = error {
-                // A recipe in an article (#435): Try again, and beside it the editor, filled in
-                // from the page, for the cook to check.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 12) { checkArticleActions(article) }
-                    VStack(alignment: .leading, spacing: 12) { checkArticleActions(article) }
-                }
-            } else if let photoPost = state.photoPost, photoTextEnabled {
+            if let photoPost = state.photoPost, photoTextEnabled {
                 // A post with a photo (#198): Try again, and beside it the photo read on the
                 // device, for the cook to check. Stacked when the words don't fit side by side.
                 ViewThatFits(in: .horizontal) {
@@ -84,15 +69,6 @@ struct RecipeErrorView: View {
     }
 
     @ViewBuilder
-    private func checkArticleActions(_ article: ArticleRecipe) -> some View {
-        Button(Strings.tryAgain, action: vm.onRetry)
-            .buttonStyle(OutlinedActionStyle())
-        Button(Strings.checkArticle) { onCheckArticle(article) }
-            .buttonStyle(PrimaryButtonStyle())
-            .accessibilityIdentifier("recipe.checkArticle")
-    }
-
-    @ViewBuilder
     private func readPhotoActions(_ post: PhotoPost) -> some View {
         Button(Strings.tryAgain, action: vm.onRetry)
             .buttonStyle(OutlinedActionStyle())
@@ -105,7 +81,7 @@ struct RecipeErrorView: View {
 /// A Reddit post with no recipe as text: its title and photo above the note, so the user sees
 /// what they shared (the recipe may well be legible in the photo itself). Not the ReadingView:
 /// there is nothing to scale, tick or cook.
-private struct PostPreview: View {
+struct PostPreview: View {
     let title: String
     let imageUrl: String?
 
@@ -135,11 +111,9 @@ private struct PostPreview: View {
 }
 
 private extension ParseError {
-    var isOutcome: Bool {
-        switch self {
-        case .noTranscription, .inArticle: return true
-        default: return false
-        }
+    var isNoTranscription: Bool {
+        if case .noTranscription = self { return true }
+        return false
     }
 }
 

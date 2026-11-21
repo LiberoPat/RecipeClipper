@@ -45,6 +45,13 @@ final class FakeRecipeRepository: RecipeRepository {
         return importPageResults[html] ?? .error(.humanCheck)
     }
 
+    /// What `savedIds` answers from (#435): saved links to their ids.
+    var savedLinks: [String: Int64] = [:]
+
+    @MainActor func savedIds(links: [String]) async -> [String: Int64] {
+        links.reduce(into: [:]) { ids, link in if let id = savedLinks[link] { ids[link] = id } }
+    }
+
     @MainActor func saveClip(_ recipe: Recipe) async -> ParseResult {
         saveClipCalls.append(recipe)
         if let saveClipResult { return saveClipResult }

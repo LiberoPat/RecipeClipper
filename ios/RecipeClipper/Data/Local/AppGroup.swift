@@ -129,10 +129,11 @@ enum PlanHandOff: HandOffKind {
 }
 typealias PendingPlan = PendingHandOff<PlanHandOff>
 
-/// A recipe written inside a shared page's article (#435), as the share extension read it: the
-/// editor's check needs the app (never saved unchecked), which opens the editor filled in with it.
+/// The recipes written inside a shared page's article (#435), as the share extension read them:
+/// the editor's check needs the app (never saved unchecked), which opens the editor on the one, or
+/// the chooser over several.
 enum ArticleHandOff: HandOffKind {
-    typealias Value = ArticleRecipe
+    typealias Value = [ArticleRecipe]
     static let valueKey = "pending_article"
     static let atKey = "pending_article_at"
 }

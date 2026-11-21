@@ -49,8 +49,15 @@ enum Route: Hashable {
     /// extension (#334), split or as written (Android's `edit/text?key=`).
     case textRecipe(SharedText.Reading)
     /// A recipe written inside an article (#435): the same editor, filled from the page's list of
-    /// amounts and its method (Android's `edit/article?article=`, which carries only the link).
+    /// amounts and its method (Android's `edit/article?article=&index=`, which carries only the link).
     case articleRecipe(ArticleRecipe)
+    /// Several recipes written inside one article (#435): the chooser (Android's `article/choose?url=`).
+    case articleChoice([ArticleRecipe])
+
+    /// The route for recipes written inside an article (#435): the editor on one, the chooser over several.
+    static func article(_ articles: [ArticleRecipe]) -> Route {
+        articles.count == 1 ? .articleRecipe(articles[0]) : .articleChoice(articles)
+    }
     /// A week of recipes shared in (#352): the meal-plan review, over the text (Android's
     /// `mealplan?key=`). Saving replaces it with Week when any recipe was planned.
     case mealPlan(String)

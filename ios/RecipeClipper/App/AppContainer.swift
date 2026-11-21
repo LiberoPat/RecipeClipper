@@ -536,11 +536,16 @@ final class AppContainer {
         return featureFlags.isOn(.shareText) && featureFlags.isOn(.mealPlanImport) ? text : nil
     }
 
-    /// The recipe written inside an article that the share extension left (#435), if it did so
+    /// The recipes written inside an article that the share extension left (#435), if it did so
     /// within `PendingArticle.window`, and only while the articleRecipes flag is on.
-    func takePendingArticle() -> ArticleRecipe? {
-        guard let article = pendingArticle?.take(now: clock.now()) else { return nil }
-        return featureFlags.isOn(.articleRecipes) ? article : nil
+    func takePendingArticle() -> [ArticleRecipe]? {
+        guard let articles = pendingArticle?.take(now: clock.now()), !articles.isEmpty else { return nil }
+        return featureFlags.isOn(.articleRecipes) ? articles : nil
+    }
+
+    /// The chooser over several recipes written inside one article (#435).
+    func makeArticleChoiceViewModel(articles: [ArticleRecipe]) -> ArticleChoiceViewModel {
+        ArticleChoiceViewModel(articles: articles, repository: recipeRepository)
     }
 
     /// The editor over a recipe written inside an article (#435), to check.

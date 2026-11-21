@@ -97,6 +97,9 @@ struct ClipUiState: Equatable {
     var readBlocked = false
     /// Opened for the cook to pass Cloudflare's check (#220); nil for every other clip.
     var check: ClipCheck? = nil
+    /// Past the check, the page's article holds recipes (#435): the view opens the editor on the
+    /// one, or the chooser over several, in its place.
+    var articleRecipes: [ArticleRecipe]? = nil
 
     /// The address the page loads: `url`, except a Reddit link on another of Reddit's hosts,
     /// which loads from www.reddit.com (`RedditUrls.clipPageUrl`, #213). The clip is still saved
@@ -283,7 +286,7 @@ final class ClipViewModel {
     /// repository. A recipe opens as an import would (`savedRecipeId`); the check still showing
     /// keeps waiting; a page past it with no recipe offers the clip.
     func onPageLoaded(_ html: String) {
-        guard uiState.check == .waiting else { return }
+        guard uiState.check == .waiting, uiState.articleRecipes == nil else { return }
         checkTask?.cancel()
         checkTask = Task { [weak self, repository, url] in
             let result = await repository.importPage(url, html: html)
@@ -297,6 +300,9 @@ final class ClipViewModel {
                 uiState.libraryFull = true
             case .error(.humanCheck):
                 break
+            case .error(.inArticle(let articles)):
+                drafts.remove(url)
+                uiState.articleRecipes = articles
             case .error(.saveFailed):
                 uiState.notice = notice(.saveFailed)
             case .error:

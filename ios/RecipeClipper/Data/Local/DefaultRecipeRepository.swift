@@ -192,18 +192,34 @@ final class DefaultRecipeRepository: RecipeRepository {
             return extracted
         }
         guard articleOn() else { return parsed }
-        let article = rendered?.page?.article ?? fetched.article
-            ?? renderedPage.flatMap { ArticleRecipeParser.parse(html: $0, url: url) }
-        return inArticle(article, url: url) ?? parsed
+        var articles = rendered?.page?.articles ?? []
+        if articles.isEmpty { articles = fetched.articles }
+        if articles.isEmpty, let renderedPage { articles = ArticleRecipeParser.parse(html: renderedPage, url: url) }
+        return inArticle(articles, url: url) ?? parsed
     }
 
-    /// A page with no recipe data whose article holds one (#435, behind `articleRecipes`):
-    /// `.inArticle`, for the screen to offer it in the editor. Nil, and the page stays
-    /// `.noRecipeFound`, when the flag is off or there is none. Android's `inArticle`.
-    private func inArticle(_ article: ArticleRecipe?, url: String) -> ParseResult? {
-        guard articleOn(), var found = article else { return nil }
-        found.sourceUrl = url
-        return .error(.inArticle(found))
+    /// A page with no recipe data whose article holds recipes (#435, behind `articleRecipes`):
+    /// `.inArticle`, each under its own link (`ArticleRecipe.link`), for the import to open in the
+    /// editor or a chooser. Nil, and the page stays `.noRecipeFound`, when the flag is off or there
+    /// are none. Android's `inArticle`.
+    private func inArticle(_ found: [ArticleRecipe], url: String) -> ParseResult? {
+        guard articleOn(), !found.isEmpty else { return nil }
+        let linked = found.enumerated().map { i, recipe -> ArticleRecipe in
+            var linked = recipe
+            linked.sourceUrl = ArticleRecipe.link(url, index: i)
+            return linked
+        }
+        return .error(.inArticle(linked))
+    }
+
+    func savedIds(links: [String]) async -> [String: Int64] {
+        let found = try? await db.read { conn -> [String: Int64] in
+            let dao = RecipeDao(db: conn)
+            var ids: [String: Int64] = [:]
+            for link in links { if let row = try dao.findByUrl(UrlCleaner.clean(link)) { ids[link] = row.id } }
+            return ids
+        }
+        return found ?? [:]
     }
 
     /// What one render came to (Android's `Rendered`). `page` is the rendered page parsed, when
@@ -224,7 +240,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         if case .success = page.result { return page.result }
         guard rendered.challenged || rendered.trusted else { return nil }
         if let text = page.page, let extracted = await extractFromPage(text, url: url) { return extracted }
-        return inArticle(page.article, url: url) ?? .error(.noRecipeFound)
+        return inArticle(page.articles, url: url) ?? .error(.noRecipeFound)
     }
 
     /// One load of `url` in the off-screen browser, capped at `renderTimeout`, or at
@@ -245,10 +261,14 @@ final class DefaultRecipeRepository: RecipeRepository {
 
     func importPage(_ sharedUrl: String, html: String) async -> ParseResult {
         let url = UrlCleaner.clean(sharedUrl)
-        let parsed = BlogRecipeSource.parse(html: html, url: url)
+        let fetched = BlogRecipeSource.parsePage(html: html, url: url)
+        let parsed = fetched.result
         guard case .success(var recipe) = parsed else {
             if CloudflareChallenge.isChallengePage(html) { return .error(.humanCheck) }
             if let host = Self.host(of: url) { clearedHosts.record(host) }
+            // Past the check with no recipe data: the recipes written inside its article (#435),
+            // from the page the visible view already has, as for a share.
+            if case .error(.noRecipeFound) = parsed, let found = inArticle(fetched.articles, url: url) { return found }
             return parsed
         }
         if let host = Self.host(of: url) { clearedHosts.record(host) }

@@ -89,15 +89,16 @@ which the store listing will repeat, so it should read as the listing would.
 
 ## A recipe written inside an article, 2026-11-21 (#435)
 
-Drafts written by Claude, for a native speaker to check: `error_in_article`, `action_check_article`
-and `article_read` on both platforms, `article_failed` on Android only (its editor reads the page
-again after process death) and `share_article_in_app` on iOS only (the share extension's card).
-The button reuses each language's "Check the recipe" (*Revisar la receta*, *Vérifier la recette*,
-*Rezept prüfen*, *Controlla la ricetta*, *Conferir a receita*). The words to check: "the article
-writes one out" (*su artículo escribe una*, *son article en écrit une*, *ihr Artikel schreibt eines
-aus*, *il suo articolo ne scrive una*, *o artigo dela traz uma*) and "the name is the article's
-headline: change it to the dish's" (*cámbialo por el del plato*, *remplacez-le par celui du plat*,
-*Ändere ihn in den des Gerichts*, *cambialo con quello del piatto*, *troque pelo nome do prato*).
+Drafts written by Claude, for a native speaker to check: `article_read` (the editor's note) and the
+chooser's `article_choose_title`, `article_choose_note`, `article_choose_counts` and
+`article_choose_saved` on both platforms, `article_failed` on Android only (its editor reads the
+page again after process death) and `share_article_in_app` on iOS only (the share extension's card).
+The counts avoid plurals on purpose ("Ingredients: 6 · Steps: 5": *Ingredientes / Pasos*,
+*Ingrédients / Étapes*, *Zutaten / Schritte*, *Ingredienti / Passaggi*, *Ingredientes / Passos*).
+The words to check: "the page's heading above the recipe: change it to the dish's if it isn't"
+(*cámbialo por el del plato si no lo es*, *remplacez-le par celui du plat si ce n'est pas lui*,
+*Ändere ihn in den des Gerichts, falls er das nicht ist*, *cambialo con quello del piatto se non lo
+è*, *troque pelo nome do prato se não for*) and "This page writes out more than one recipe".
 
 ## Where the words live
 

@@ -187,8 +187,8 @@ final class ShareImportViewModel {
                     return
                 }
                 // A recipe written inside the article (#435): the editor needs the app.
-                if case .inArticle(let article) = error, let pendingArticle {
-                    pendingArticle.put(article, at: clock.now())
+                if case .inArticle(let articles) = error, let pendingArticle {
+                    pendingArticle.put(articles, at: clock.now())
                     uiState = .articleInApp
                     return
                 }

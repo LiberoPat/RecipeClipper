@@ -71,7 +71,12 @@ enum Strings {
     static var textNotSorted: String { String(localized: "text_not_sorted") }
     static var textLeftovers: String { String(localized: "text_leftovers") }
     // A recipe written inside an article (#435)
-    static var checkArticle: String { String(localized: "action_check_article") }
+    static var articleChooseTitle: String { String(localized: "article_choose_title") }
+    static var articleChooseNote: String { String(localized: "article_choose_note") }
+    static var articleChooseSaved: String { String(localized: "article_choose_saved") }
+    static func articleChooseCounts(_ ingredients: Int, _ steps: Int) -> String {
+        String(localized: "article_choose_counts \(ingredients) \(steps)")
+    }
     static var articleRead: String { String(localized: "article_read") }
     static var photoFailed: String { String(localized: "photo_failed") }
     static var photoCheckHeading: String { String(localized: "photo_check_heading") }
@@ -297,7 +302,8 @@ enum Strings {
         switch error {
         case .noRecipeFound: return errorNoRecipeFound
         case .noTranscription: return errorNoTranscription
-        case .inArticle: return String(localized: "error_in_article")
+        // Never shown in the app: a recipe in an article (#435) opens the editor or the chooser.
+        case .inArticle: return errorNoRecipeFound
         case .blocked(let status): return errorBlocked(status)
         case .humanCheck: return String(localized: "error_human_check")
         case .cutOff: return String(localized: "error_cut_off")
