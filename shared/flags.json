@@ -197,6 +197,12 @@
       "description": "Ask an AI's Plan my week with choices: the cook's meal types as chips (Dinner ticked, the last choice remembered), a start day, and a source: new recipes, from my recipes (the library or one list, named by link) or a mix. The reader takes each recipe's meal, an object naming a saved recipe by its link is planned from the library, and the review shows and changes day and meal. Off, the sheet and the review are as before: a week of dinners, new recipes.",
       "defaults": { "debug": true, "release": true },
       "issue": 392
+    },
+    {
+      "key": "libraryFirst",
+      "description": "Library first (#375): the Recipes tab opens the library, not Home. The Today / Continue cooking card sits compact above search while there is something to cook, the library's + opens an Add a recipe sheet (Paste a link, Scan a recipe, Type a recipe, Ask an AI), the Settings gear sits beside the Recipes title, and an empty library shows the four ways in as tiles. Needs oneCookbook (its views strip carries the Lists card): with that off the tab keeps opening Home. Off, the Recipes tab opens Home as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 375
     }
   ]
 }

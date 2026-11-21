@@ -28,8 +28,18 @@ struct RecipesScreen: View {
     var multiSelect = false
     /// Makes the Add to plan sheet's ViewModel, once a row's menu first needs it; nil leaves the item out.
     var makePlanVM: (() -> AddToPlanViewModel)? = nil
+    /// Library first (#375): this is the Recipes tab's first screen, not a page pushed from Home. No Back, the
+    /// gear and a + that opens the Add a recipe sheet beside the title, Today's card above search, and the
+    /// four ways in when there is nothing yet. Nil, the screen is as before.
+    var libraryRoot: LibraryRoot? = nil
 
     @State private var scanSource: ScanSource?
+    /// The library as the first screen (#375): the + 's sheet, what to do once it has gone, the
+    /// restore's file picker and the Ask an AI sheet's ViewModel (made on first use).
+    @State private var addSheetOpen = false
+    @State private var afterAddSheet: (() -> Void)?
+    @State private var restoring = false
+    @State private var askAiVM: AskAiViewModel?
     /// What a row's menu has open: the save-to-list, plan and share sheets.
     @State private var rowMenu = RowMenuPresenter()
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
@@ -65,6 +75,9 @@ struct RecipesScreen: View {
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
+        // The library as the first screen (#375) has its title row, gear and + in the page; the bar shows
+        // only while selecting, for Done.
+        .toolbar(libraryRoot != nil && !state.selecting ? .hidden : .automatic, for: .navigationBar)
         // Selecting (#377): Done leaves it (Back would leave the screen, so it is hidden meanwhile).
         .navigationBarBackButtonHidden(state.selecting)
         .toolbar(state.selecting ? .hidden : .automatic, for: .tabBar)
@@ -77,11 +90,11 @@ struct RecipesScreen: View {
                 }
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
-                if multiSelect && !state.selecting && state.canSelect {
+                if multiSelect && !state.selecting && state.canSelect && libraryRoot == nil {
                     Button(Strings.select) { vm.onStartSelecting() }
                         .accessibilityIdentifier("recipes.select")
                 }
-                if state.view == nil && !state.selecting {
+                if state.view == nil && !state.selecting && libraryRoot == nil {
                 Menu {
                     Button(Strings.typeRecipe, action: onNewRecipe)
                     Button(Strings.pasteLink, action: vm.onPasteLink)
@@ -110,6 +123,60 @@ struct RecipesScreen: View {
                 onCancel: vm.onLinkDismissed
             )
         }
+        // The + 's sheet (#375): the four ways in, each going where Home's tile did once the sheet is away.
+        .sheet(isPresented: $addSheetOpen, onDismiss: {
+            let action = afterAddSheet
+            afterAddSheet = nil
+            action?()
+        }) {
+            AddRecipeSheet(
+                onPasteLink: vm.onPasteLink,
+                onScan: onScan,
+                onTypeRecipe: onNewRecipe,
+                onAskAi: libraryRoot.flatMap(askAiAction),
+                onChoose: { action in
+                    afterAddSheet = action
+                    addSheetOpen = false
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        // Ask an AI (#351): a prompt to copy or share; the sheet starts over each time.
+        .sheet(isPresented: Binding(
+            get: { libraryRoot?.vm.uiState.askAiOpen ?? false },
+            set: { open in
+                if !open {
+                    askAiVM?.onReset()
+                    libraryRoot?.vm.onAskAiDismissed()
+                }
+            }
+        )) {
+            if let askAiVM, let root = libraryRoot {
+                AskAiSheet(vm: askAiVM, onOpenPasted: { target in
+                    // The sheet closes, then the answer opens where a share of it would.
+                    askAiVM.onReset()
+                    root.vm.onAskAiDismissed()
+                    openPasted(target)
+                })
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        // The same picker as Settings' Import.
+        .fileImporter(isPresented: $restoring, allowedContentTypes: [.json, .plainText, .zip]) { result in
+            switch result {
+            case .success(let url): libraryRoot?.vm.onRestorePicked(url)
+            case .failure: libraryRoot?.vm.onRestorePickFailed()
+            }
+        }
+        // The tour's tooltip points at the + (#375): the library is the first screen it shows on. None
+        // while a sheet or the file picker is up.
+        .rootTooltipHost(
+            libraryRoot != nil,
+            blocked: addSheetOpen || restoring || state.pastingLink || state.selecting
+                || (libraryRoot?.vm.uiState.askAiOpen ?? false)
+        )
         .overlay(alignment: .bottom) {
             if state.restoreRefused {
                 // The Undo the full free library refused (#345): its own outcome, said once.
@@ -233,13 +300,64 @@ struct RecipesScreen: View {
     /// what an empty list says. A few rows of the list, or the head of the grid's page.
     @ViewBuilder
     private func headerItems(_ state: RecipesUiState) -> some View {
+        // Nothing of the cook's yet (the sample, #151, aside): the ways in take the list's place (#375).
+        let emptyLibrary = libraryRoot != nil && state.view == nil && (libraryRoot?.vm.uiState.libraryEmpty ?? false)
         VStack(alignment: .leading, spacing: 12) {
-            ScreenTitle(state.view.map(RecipeFilterPills.name) ?? Strings.recipesTitle, style: Typography.headlineSmall)
+            if let root = libraryRoot {
+                rootTitleRow(state, root)
+            } else {
+                ScreenTitle(state.view.map(RecipeFilterPills.name) ?? Strings.recipesTitle, style: Typography.headlineSmall)
+            }
             if let view = state.view { ViewNote(view: view) }
-            SearchField(query: state.query, onQueryChange: vm.onQueryChange)
+            // Today's card (#375), above search, scrolling away with the list.
+            if let root = libraryRoot, !state.selecting {
+                LibraryCard(state: root.vm.uiState, root: root, onOpenRecipe: onOpenRecipe)
+            }
+            if emptyLibrary, let root = libraryRoot {
+                EmptyLibraryView(
+                    onPasteLink: vm.onPasteLink, onScan: onScan, onTypeRecipe: onNewRecipe,
+                    onAskAi: askAiAction(root), restore: root.vm.uiState.restore,
+                    onRestore: root.vm.canRestore ? { restoring = true } : nil
+                )
+            } else {
+                SearchField(query: state.query, onQueryChange: vm.onQueryChange)
+            }
         }
-        .padding(.bottom, vm.showsSortLine || state.showsFilter || (oneCookbook && state.showsViewsStrip) ? 0 : 12)
+        .padding(.top, libraryRoot == nil ? 0 : 12)
+        .padding(.bottom, !emptyLibrary && (vm.showsSortLine || state.showsFilter || (oneCookbook && state.showsViewsStrip)) ? 0 : 12)
         .listRowSeparator(.hidden)
+
+        if !emptyLibrary {
+            headerRest(state)
+        }
+    }
+
+    /// The title with its gear and + (#375), and Select (#377) between them.
+    private func rootTitleRow(_ state: RecipesUiState, _ root: LibraryRoot) -> some View {
+        HStack(spacing: 4) {
+            ScreenTitle(Strings.recipesTitle)
+            if multiSelect && !state.selecting && state.canSelect {
+                Button(Strings.select) { vm.onStartSelecting() }
+                    .buttonStyle(TextActionStyle())
+                    .accessibilityIdentifier("recipes.select")
+            }
+            LibraryTopActions(onOpenSettings: root.onOpenSettings, onAdd: { addSheetOpen = true })
+        }
+    }
+
+    /// The Ask an AI entry (#351), with its sheet's ViewModel made on first use; nil with the flag off.
+    private func askAiAction(_ root: LibraryRoot) -> (() -> Void)? {
+        root.makeAskAiVM.map { make in
+            {
+                askAiVM = askAiVM ?? make()
+                root.vm.onAskAi()
+            }
+        }
+    }
+
+    /// The views strip or pills, the chips, the sort line and what an empty list says.
+    @ViewBuilder
+    private func headerRest(_ state: RecipesUiState) -> some View {
 
         if oneCookbook {
             // One cookbook (#345): the views, then the lists, in place of the pills.

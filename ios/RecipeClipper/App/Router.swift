@@ -58,6 +58,13 @@ final class Router {
         selectedTab = tab
     }
 
+    /// The library itself (a received file's "Recipes", #149), when it is the tab's first screen (#375,
+    /// `libraryFirst`): back to it, not a second one pushed over it.
+    func showLibrary() {
+        selectedTab = .recipes
+        path = []
+    }
+
     /// A route that must land in Recipes regardless of which tab is open (a share, a tapped
     /// timer notification): switch tab first, then push on top of whatever the Recipes stack
     /// already held (Android's `openRoute`). A countdown tapped while its recipe is on top

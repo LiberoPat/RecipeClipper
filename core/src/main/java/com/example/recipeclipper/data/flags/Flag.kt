@@ -80,7 +80,9 @@ enum class Flag(val key: String) {
     /** Recipe tags (#422): a grocery line's recipe is a small tappable tag, apart from its amount, in Groceries and Shop for this week. */
     GROCERY_RECIPE_TAGS("groceryRecipeTags"),
     /** Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix. */
-    PLAN_MY_WEEK_PLUS("planMyWeekPlus");
+    PLAN_MY_WEEK_PLUS("planMyWeekPlus"),
+    /** Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone; needs [ONE_COOKBOOK]. */
+    LIBRARY_FIRST("libraryFirst");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
