@@ -8,15 +8,22 @@ struct RecipeDao {
 
     /// Shared by every summary query. "Saved" is derived: a recipe is saved when at least one
     /// list contains it. There is deliberately no isSaved column.
-    private static let summaryColumns = """
-        id, title, imageUrl, totalTime, lastViewedAt,
+    private static let summaryHead = """
+        id, title, \(RecipeImageSql.plain) AS imageUrl, totalTime, lastViewedAt,
         EXISTS(SELECT 1 FROM recipe_list_cross_ref c WHERE c.recipeId = recipes.id) AS isSaved,
         contentOrigin = 'CLIPPED' AS isClipped,
         (SELECT MAX(p.day) FROM cooked_photos p WHERE p.recipeId = recipes.id) AS lastCookedDay,
         sourceUrl,
         contentOrigin = 'CHAT' AS isFromChat,
-        prepTime, cookTime, language
+        prepTime, cookTime, language, uid
         """
+
+    /// The summary columns, with no ingredient lines (column 12 is NULL): a row's image is the
+    /// title's letter (#403), which needs only the uid and language.
+    private static let summaryColumns = summaryHead + ", NULL AS ingredients"
+
+    /// The same with the ingredient lines, for Home's card (#403): its image is the first names.
+    private static let recentColumns = summaryHead + ", ingredients"
 
     func get(_ id: Int64) throws -> RecipeRecord? {
         try db.queryOne("SELECT \(RecipeRecord.columns) FROM recipes WHERE id = ?", id, map: RecipeRecord.init(row:))
@@ -43,13 +50,13 @@ struct RecipeDao {
         try db.run(
             """
             INSERT INTO recipes (\(RecipeRecord.columns))
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             r.id == 0 ? nil : r.id, r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
             JSONColumns.encode(r.checkedIngredients), r.notes, r.uid, r.language, r.cookState, r.servingsTarget,
-            r.contentOrigin, r.editedAt, r.basedOnUid
+            r.contentOrigin, r.editedAt, r.basedOnUid, r.photoFile
         )
         return db.lastInsertRowId
     }
@@ -336,7 +343,7 @@ struct RecipeDao {
     func recent(limit: Int) throws -> [RecipeSummaryRecord] {
         try db.query(
             """
-            SELECT \(Self.summaryColumns)
+            SELECT \(Self.recentColumns)
             FROM recipes
             ORDER BY lastViewedAt DESC, id DESC
             LIMIT ?

@@ -11,8 +11,11 @@ data class ExistingRecipe(
     val uid: String,
     val sourceUrl: String,
     val hasNotes: Boolean,
+
     /** In at least one list, or typed in by hand (#102): outside the history cap either way. */
-    val isListed: Boolean
+    val isListed: Boolean,
+    /** It has its own stored picture (#386): an import fills only a recipe with none. */
+    val hasPhoto: Boolean = false
 )
 
 /** A list already on this phone. Pass them in display order: a name match takes the first. */
@@ -39,6 +42,9 @@ data class NewList(
 )
 
 data class NoteUpdate(val recipeId: Long, val notes: String)
+
+/** A recipe here with no picture of its own gains the file's (#386): [file] is the package's path to it. */
+data class PhotoUpdate(val recipeId: Long, val file: String)
 
 /** A pantry item already on this phone (#51). */
 data class ExistingPantryItem(val uid: String, val name: String, val language: String?)
@@ -85,7 +91,8 @@ data class ImportPlan(
     val newMealTypes: List<NewMealType> = emptyList(),
     val newPlanEntries: List<NewPlanEntry> = emptyList(),
     val newMenus: List<NewMenu> = emptyList(),
-    val newCookedPhotos: List<NewCookedPhoto> = emptyList()
+    val newCookedPhotos: List<NewCookedPhoto> = emptyList(),
+    val photoUpdates: List<PhotoUpdate> = emptyList()
 )
 
 /**
@@ -174,7 +181,13 @@ object BackupMerger {
         capsEveryRecipe: Boolean = false,
         existingCookedPhotoUids: Set<String> = emptySet(),
         /** The pictures the package holds, by path in the zip; null takes every file as there. */
-        availablePhotoFiles: Set<String>? = null
+        availablePhotoFiles: Set<String>? = null,
+        /**
+         * A new list that no recipe coming in ends up in is not created (#387): a Paprika import files
+         * recipes by their categories, and a recipe the free limit leaves out files nowhere, so a
+         * category of such recipes makes no empty list. A backup keeps its lists whole (false).
+         */
+        dropEmptyNewLists: Boolean = false
     ): ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         val existingByUrl = HashMap<String, ExistingRecipe>()
@@ -185,6 +198,9 @@ object BackupMerger {
         val newByUrl = LinkedHashMap<String, BackupRecipe>()
         val matched = LinkedHashMap<Long, ExistingRecipe>()
         val importedNote = HashMap<Long, String>()      // existing id -> first non-blank note
+        val importedPhoto = HashMap<Long, String>()     // existing id -> first picture in the package (#386)
+        fun photoOf(recipe: BackupRecipe): String? =
+            recipe.photo?.takeIf { availablePhotoFiles == null || it in availablePhotoFiles }
 
         for (recipe in backup.recipes) {
             val url = UrlCleaner.clean(recipe.sourceUrl)
@@ -193,12 +209,14 @@ object BackupMerger {
             if (existing != null) {
                 matched[existing.id] = existing
                 if (note != null) importedNote.putIfAbsent(existing.id, note)
+                if (!existing.hasPhoto) photoOf(recipe)?.let { importedPhoto.putIfAbsent(existing.id, it) }
                 recipeTargets[recipe.id] = Target.Existing(existing.id)
                 continue
             }
             val first = newByUrl[url]
             if (first != null) {
                 if (first.notes == null && note != null) newByUrl[url] = first.copy(notes = note)
+                if (newByUrl.getValue(url).photo == null) photoOf(recipe)?.let { newByUrl[url] = newByUrl.getValue(url).copy(photo = it) }
                 recipeTargets[recipe.id] = Target.New(first.id)
                 continue
             }
@@ -208,7 +226,8 @@ object BackupMerger {
                 sourceUrl = url,
                 sourceType = recipe.sourceType.takeIf { it in KNOWN_SOURCE_TYPES } ?: "BLOG",
                 checkedIngredients = recipe.checkedIngredients.filterTo(HashSet()) { it in recipe.ingredients.indices },
-                notes = note
+                notes = note,
+                photo = photoOf(recipe)
             )
             recipeTargets[recipe.id] = Target.New(uid)
         }
@@ -307,6 +326,10 @@ object BackupMerger {
             .filter { !it.hasNotes && importedNote[it.id] != null }
             .map { NoteUpdate(it.id, importedNote.getValue(it.id)) }
 
+        val photoUpdates = matched.values
+            .filter { !it.hasPhoto && importedPhoto[it.id] != null }
+            .map { PhotoUpdate(it.id, importedPhoto.getValue(it.id)) }
+
         // --- Pantry: by uid, then by name in the same language; what's here stands.
         val takenPantryUids = existingPantry.mapTo(HashSet()) { it.uid }
         val pantryNames = existingPantry.mapTo(HashSet()) { nameKey(it.name) to it.language }
@@ -396,15 +419,23 @@ object BackupMerger {
             NewCookedPhoto(photo.copy(note = photo.note?.trim()?.takeIf { it.isNotEmpty() }), recipe)
         }
 
+        // A recipe left out by the cap (#345) takes no list membership with it.
+        val keptMemberships = memberships.filter { it.recipe is Target.Existing || it.recipe in written }
+        // A new list nothing came into is not made (#387), when asked.
+        val keptLists = if (dropEmptyNewLists) {
+            val used = keptMemberships.mapNotNullTo(HashSet()) { (it.list as? Target.New)?.uid }
+            newListsByName.values.filter { it.uid in used }
+        } else {
+            newListsByName.values.toList()
+        }
         return ImportPlan(
             newRecipes = linkedRecipes,
             noteUpdates = noteUpdates,
-            newLists = newListsByName.values.toList(),
-            // A recipe left out by the cap (#345) takes no list membership with it.
-            memberships = memberships.filter { it.recipe is Target.Existing || it.recipe in written },
+            newLists = keptLists,
+            memberships = keptMemberships,
             summary = ImportSummary(
                 recipesAdded = newRecipes.size,
-                listsAdded = newListsByName.size,
+                listsAdded = keptLists.size,
                 recipesAlreadyHere = matched.size,
                 recipesSkipped = skipped,
                 pantryAdded = newPantry.size,
@@ -420,7 +451,8 @@ object BackupMerger {
             newMealTypes = newTypesByName.values.toList(),
             newPlanEntries = newPlanEntries,
             newMenus = newMenus,
-            newCookedPhotos = newCookedPhotos
+            newCookedPhotos = newCookedPhotos,
+            photoUpdates = photoUpdates
         )
     }
 

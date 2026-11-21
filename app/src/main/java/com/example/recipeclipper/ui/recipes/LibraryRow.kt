@@ -58,7 +58,7 @@ internal fun LibraryRow(
             // Drawn only: the row itself is the toggle, so it reads as one checkbox.
             Checkbox(checked = selected, onCheckedChange = null, modifier = Modifier.padding(end = 10.dp))
         }
-        RecipeThumbnail(recipe.imageUrl)
+        RecipeThumbnail(recipe.imageUrl, recipe.noPhoto)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(
                 recipe.title,

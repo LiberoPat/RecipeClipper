@@ -184,6 +184,100 @@ enum Strings {
         return parts.joined(separator: " ")
     }
 
+    // Settings → Your recipes: import from Paprika (#382)
+    static var paprikaImportTitle: String { String(localized: "paprika_import_title") }
+    static var paprikaImportDescription: String { String(localized: "paprika_import_description") }
+    static var paprikaImporting: String { String(localized: "paprika_importing") }
+    static var paprikaFilingTitle: String { String(localized: "paprika_filing_title") }
+    static var paprikaFilingDescription: String { String(localized: "paprika_filing_description") }
+
+    /// What an import from Paprika did, one sentence per count that isn't zero: imported (or "nothing
+    /// new" / "nothing could be read"), already here, left out for the limit, entries that weren't
+    /// recipes or couldn't be read, and that the pictures inside the file weren't kept.
+    static func paprikaSummary(_ s: PaprikaSummary, importedKey source: ImportSource = .paprika) -> String {
+        var parts: [String] = []
+        if s.imported > 0 {
+            parts.append(source == .recipeKeeper
+                ? String(localized: "recipekeeper_imported \(s.imported)")
+                : String(localized: "paprika_imported \(s.imported)"))
+        } else if s.skippedForLimit == 0 && s.alreadyHere > 0 {
+            parts.append(String(localized: "paprika_imported_nothing"))
+        } else if s.skippedForLimit == 0 {
+            parts.append(String(localized: "paprika_nothing_found"))
+        }
+        if s.alreadyHere > 0 && (s.imported > 0 || s.skippedForLimit > 0) {
+            parts.append(String(localized: "backup_already_here \(s.alreadyHere)"))
+        }
+        if s.skippedForLimit > 0, let free = s.freeLimit {
+            parts.append(String(localized: "backup_skipped_free \(s.skippedForLimit) \(free)"))
+        } else if s.skippedForLimit > 0 {
+            parts.append(String(localized: "backup_skipped \(s.skippedForLimit) \(historyLimit)"))
+        }
+        if s.notRecipes > 0 { parts.append(String(localized: "paprika_not_recipes \(s.notRecipes)")) }
+        if s.unreadable > 0 { parts.append(String(localized: "paprika_unreadable \(s.unreadable)")) }
+        if s.photosLeftOut > 0 { parts.append(String(localized: "paprika_photos_left_out \(s.photosLeftOut)")) }
+        if s.listsMade > 0 { parts.append(String(localized: "paprika_lists_made \(s.listsMade)")) }
+        return parts.joined(separator: " ")
+    }
+
+    // Settings → Your recipes: import from Recipe Keeper (#390)
+    static var recipeKeeperImportTitle: String { String(localized: "recipekeeper_import_title") }
+    static var recipeKeeperImportDescription: String { String(localized: "recipekeeper_import_description") }
+    static var recipeKeeperImporting: String { String(localized: "recipekeeper_importing") }
+
+    // Settings → Your recipes: import from Mealie (#391)
+    static var mealieImportTitle: String { String(localized: "mealie_import_title") }
+    static var mealieImportDescription: String { String(localized: "mealie_import_description") }
+    static var mealieImporting: String { String(localized: "mealie_importing") }
+
+    /// What an import from Mealie did: `paprikaSummary`'s sentences, with Mealie's own words.
+    static func mealieSummary(_ s: MealieSummary) -> String {
+        var parts: [String] = []
+        if s.imported > 0 {
+            parts.append(String(localized: "mealie_imported \(s.imported)"))
+        } else if s.skippedForLimit == 0 && s.alreadyHere > 0 {
+            parts.append(String(localized: "mealie_imported_nothing"))
+        } else if s.skippedForLimit == 0 {
+            parts.append(String(localized: "mealie_nothing_found"))
+        }
+        if s.alreadyHere > 0 && (s.imported > 0 || s.skippedForLimit > 0) {
+            parts.append(String(localized: "backup_already_here \(s.alreadyHere)"))
+        }
+        if s.skippedForLimit > 0, let free = s.freeLimit {
+            parts.append(String(localized: "backup_skipped_free \(s.skippedForLimit) \(free)"))
+        } else if s.skippedForLimit > 0 {
+            parts.append(String(localized: "backup_skipped \(s.skippedForLimit) \(historyLimit)"))
+        }
+        if s.notRecipes > 0 { parts.append(String(localized: "mealie_not_recipes \(s.notRecipes)")) }
+        if s.unreadable > 0 { parts.append(String(localized: "mealie_unreadable \(s.unreadable)")) }
+        if s.photosLeftOut > 0 { parts.append(String(localized: "mealie_photos_left_out \(s.photosLeftOut)")) }
+        if s.listsMade > 0 { parts.append(String(localized: "mealie_lists_made \(s.listsMade)")) }
+        return parts.joined(separator: " ")
+    }
+
+    static func message(for error: MealieError) -> String {
+        switch error {
+        case .notAMealieFile: return String(localized: "mealie_error_not_mealie")
+        case .damaged: return String(localized: "mealie_error_damaged")
+        case .tooLarge: return String(localized: "mealie_error_too_large")
+        case .readFailed: return String(localized: "backup_error_read_failed")
+        case .saveFailed: return String(localized: "backup_error_save_failed")
+        }
+    }
+
+    /// Why an import from another app failed, in words; `source` picks Recipe Keeper's own "too large".
+    static func message(for error: PaprikaError, source: ImportSource = .paprika) -> String {
+        switch error {
+        case .notAPaprikaFile: return String(localized: "paprika_error_not_paprika")
+        case .notARecipeKeeperFile: return String(localized: "recipekeeper_error_not_recipekeeper")
+        case .damaged: return String(localized: "paprika_error_damaged")
+        case .tooLarge:
+            return source == .recipeKeeper ? String(localized: "recipekeeper_error_too_large") : String(localized: "paprika_error_too_large")
+        case .readFailed: return String(localized: "backup_error_read_failed")
+        case .saveFailed: return String(localized: "backup_error_save_failed")
+        }
+    }
+
     static func message(for error: BackupError) -> String {
         switch error {
         case .notABackup: return String(localized: "backup_error_not_a_backup")

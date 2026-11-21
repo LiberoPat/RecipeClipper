@@ -15,6 +15,10 @@ final class FreshFoodUITests: RecipeUITestCase {
     }
 
     private func plan(_ title: String, on day: Int64) {
+        // The day strip's button brings the day to the top. A swipe moves about 660 pt and the list shows
+        // about 500, so swiping to a button below the fold can skip past it (it landed 3 pt under the
+        // header on one machine and past the window on CI's).
+        if day != today { require(app.buttons["stripDay-\(day)"], "the strip's day").tap() }
         let add = app.buttons["addToDay-\(day)"]
         for _ in 0 ..< 8 where !add.isHittable { app.swipeUp() }
         require(add, "+ Add on the day").tap()

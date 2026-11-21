@@ -70,7 +70,7 @@ struct LibraryCard: View {
     var body: some View {
         if let latest = state.continueCooking, let resume = state.resume {
             CompactCard(
-                imageUrl: latest.imageUrl, label: Strings.sectionContinueCooking, title: latest.title,
+                imageUrl: latest.imageUrl, noPhoto: latest.noPhoto, label: Strings.sectionContinueCooking, title: latest.title,
                 button: Strings.homeResumeCooking, onButton: { root.onResumeCooking(latest.id) },
                 onOpen: { onOpenRecipe(latest.id) }
             ) {
@@ -80,6 +80,7 @@ struct LibraryCard: View {
             let lead = today.lead
             CompactCard(
                 imageUrl: lead.imageUrl,
+                noPhoto: lead.recipeId == nil ? nil : lead.noPhoto,
                 label: lead.mealType.isEmpty ? Strings.homeToday : "\(Strings.homeToday) · \(lead.mealType)",
                 title: lead.title,
                 button: lead.recipeId == nil ? nil : Strings.startCooking,
@@ -108,12 +109,15 @@ struct LibraryCard: View {
 
 private struct CompactCard<Line: View>: View {
     let imageUrl: String?
+    /// What the designed image (#403) is made from; nil (a planned note) is the plain block.
+    let noPhoto: NoPhotoSource?
     let label: String
     let title: String
     let button: String?
     let onButton: () -> Void
     let onOpen: (() -> Void)?
     @ViewBuilder let line: () -> Line
+    @Environment(\.noPhotoImage) private var noPhotoImage
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -152,9 +156,14 @@ private struct CompactCard<Line: View>: View {
         .accessibilityIdentifier("library.card")
     }
 
-    /// The photo, or a plain themed block: never a stock image.
+    /// The photo; with none, the recipe's designed image (#403) or a plain themed block: never a stock image.
     @ViewBuilder private var thumbnail: some View {
-        if let image = imageUrl, let url = URL(string: image) {
+        if noPhotoImage, let noPhoto {
+            RecipeImage(url: imageUrl, recipe: noPhoto)
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .accessibilityHidden(true)
+        } else if let image = imageUrl, let url = URL(string: image) {
             Color.clear
                 .frame(width: 64, height: 64)
                 .overlay { CachedAsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Palette.hairline } }

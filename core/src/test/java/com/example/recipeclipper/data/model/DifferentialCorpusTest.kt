@@ -80,6 +80,10 @@ import java.io.File
  * measured for paper (each its space above, its lines' heights and whether it keeps with the
  * next), as the pieces placed, `P(block, page, first, end)`; write only the height and the blocks.
  *
+ * `NoPh("title", "uid", [lines])` rows (#403) pin [NoPhoto]: the monogram's letter (nil: none), up to
+ * three ingredient names and the tint index, for that title, uid and ingredient lines; write only
+ * those three (optionally `, lang: "de"`).
+ *
  * `Ics("text")` rows (#52) pin [MealPlanIcs.contentLine]: the text as an .ics SUMMARY line,
  * escaped and folded at 75 octets; write only the text.
  *
@@ -200,6 +204,10 @@ class DifferentialCorpusTest {
     )
     // A pantry-entry row (#302): the text typed into "Add to the pantry", optionally its language.
     private val entryRow = Regex("""^(\s*)Entry\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
+    // A no-photo image row (#403): a title, a uid, the ingredient lines, optionally their language.
+    private val noPhotoRow = Regex(
+        """^(\s*)NoPh\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
+    )
     // A perishables row (#396): an ingredient line, optionally its language.
     private val freshRow = Regex("""^(\s*)Fresh\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // A What I need amounts row (#302): a pantry item's quantity and name, the week's lines, optionally their language.
@@ -346,6 +354,16 @@ class DifferentialCorpusTest {
         pantryRow.find(line)?.let { p -> return pantryRow(p) }
         useUpRow.find(line)?.let { m -> return useUpRow(m) }
         entryRow.find(line)?.let { m -> return entryRow(m) }
+        noPhotoRow.find(line)?.let { m ->
+            val title = unescape(m.groupValues[2])
+            val uid = unescape(m.groupValues[3])
+            val lines = literal.findAll(m.groupValues[4]).map { unescape(it.groupValues[1]) }.toList()
+            val language = m.groupValues[5].ifEmpty { null }
+            val lang = if (language == null) "" else ", lang: ${q(language)}"
+            val art = NoPhoto.art(NoPhotoSource(uid, title, language ?: "en", lines), 3)
+            return m.groupValues[1] + "NoPh(${q(title)}, ${q(uid)}, ${list(lines)}$lang, " +
+                "${art.initial?.let { q(it) } ?: "nil"}, ${list(art.labels)}, ${art.tint}),"
+        }
         freshRow.find(line)?.let { m -> return freshRow(m) }
         needRow.find(line)?.let { m -> return needRow(m) }
         useItRow.find(line)?.let { m -> return useItRow(m) }

@@ -76,6 +76,19 @@ struct TodayMeal: Equatable {
     let title: String
     let imageUrl: String?
     let servings: Int?
+    /// What its no-photo image is drawn from (#403): the recipe's uid, language and ingredient
+    /// lines; none for a note.
+    var recipeUid: String? = nil
+    var language: String? = nil
+    var ingredients: [String] = []
+
+    /// The designed image for a recipe with no photo (#403); a recipe whose uid is not known is tinted by its id.
+    var noPhoto: NoPhotoSource {
+        NoPhotoSource(
+            uid: recipeUid ?? "recipe-\(recipeId.map(String.init) ?? "")", title: title,
+            language: language, ingredients: ingredients
+        )
+    }
 }
 
 /// Home's Today card (#402): `lead`, the earliest meal today not yet cooked, and the `others`
@@ -106,7 +119,8 @@ struct TodayCard: Equatable {
                 guard let title = text, !title.isEmpty else { return nil }
                 return TodayMeal(
                     entryId: meal.id, mealType: names[meal.mealTypeId] ?? "", recipeId: meal.recipeId,
-                    title: title, imageUrl: meal.imageUrl, servings: meal.servings
+                    title: title, imageUrl: meal.imageUrl, servings: meal.servings,
+                    recipeUid: meal.recipeUid, language: meal.language, ingredients: meal.ingredients
                 )
             }
         return left.first.map { TodayCard(lead: $0, others: Array(left.dropFirst())) }

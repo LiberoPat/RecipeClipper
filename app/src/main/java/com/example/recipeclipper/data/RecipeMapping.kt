@@ -32,7 +32,8 @@ internal fun Recipe.toEntity(viewedAt: Long) = RecipeEntity(
     cookState = CookStateJson.encode(cook),
     servingsTarget = servingsTarget,
     contentOrigin = origin.name,
-    editedAt = editedAt
+    editedAt = editedAt,
+    photoFile = photoFile
 )
 
 internal fun RecipeEntity.toDomain() = Recipe(
@@ -54,7 +55,9 @@ internal fun RecipeEntity.toDomain() = Recipe(
     cook = CookStateJson.decode(cookState),
     servingsTarget = servingsTarget,
     origin = ContentOrigin.fromName(contentOrigin),
-    editedAt = editedAt
+    editedAt = editedAt,
+    photoFile = photoFile,
+    uid = uid
 )
 
 internal fun ListRow.toDomain() = RecipeList(
@@ -79,5 +82,7 @@ internal fun RecipeSummaryRow.toDomain() = RecipeSummary(
     isFromChat = isFromChat,
     prepTime = prepTime,
     cookTime = cookTime,
-    language = language
+    language = language,
+    uid = uid.orEmpty(),
+    ingredients = ingredients.orEmpty()
 )

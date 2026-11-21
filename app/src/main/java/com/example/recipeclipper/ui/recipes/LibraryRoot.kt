@@ -48,7 +48,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.ui.common.RecipeImage
+import com.example.recipeclipper.ui.common.noPhotoImageOn
 import com.example.recipeclipper.ui.edit.ScanRecipeButton
 import com.example.recipeclipper.ui.home.CookResume
 import com.example.recipeclipper.ui.home.HomeUiState
@@ -118,6 +121,7 @@ internal fun LibraryCard(state: HomeUiState, root: LibraryRoot, homeTonight: Boo
     when {
         latest != null && resume != null -> CompactCard(
             imageUrl = latest.imageUrl,
+            noPhoto = latest.noPhoto,
             label = stringResource(R.string.section_continue_cooking),
             title = latest.title,
             button = stringResource(R.string.home_resume_cooking),
@@ -129,6 +133,7 @@ internal fun LibraryCard(state: HomeUiState, root: LibraryRoot, homeTonight: Boo
             val type = lead.mealType.takeIf { it.isNotBlank() }
             CompactCard(
                 imageUrl = lead.imageUrl,
+                noPhoto = lead.noPhoto.takeIf { lead.recipeId != null },
                 label = stringResource(R.string.home_today) + (type?.let { " · $it" } ?: ""),
                 title = lead.title,
                 button = stringResource(R.string.action_start_cooking).takeIf { lead.recipeId != null },
@@ -142,6 +147,8 @@ internal fun LibraryCard(state: HomeUiState, root: LibraryRoot, homeTonight: Boo
 @Composable
 private fun CompactCard(
     imageUrl: String?,
+    /** What the designed image (#403) is made from; null (a planned note) is the plain block. */
+    noPhoto: NoPhotoSource?,
     label: String,
     title: String,
     button: String?,
@@ -162,12 +169,16 @@ private fun CompactCard(
                 if (onOpen != null) Modifier.clip(RoundedCornerShape(10.dp)).clickable(role = Role.Button, onClick = onOpen) else Modifier
             )
         ) {
-            // The photo, or a plain themed block: never a stock image.
+            // The photo; with none, the recipe's designed image (#403, `noPhotoImage`) or a plain themed
+            // block: never a stock image.
             val thumb = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp))
-            if (imageUrl != null) {
+            val plain: @Composable (Modifier) -> Unit = { Box(it.background(colors.tertiary.copy(alpha = 0.12f))) }
+            if (noPhoto != null && noPhotoImageOn()) {
+                RecipeImage(model = imageUrl, recipe = noPhoto, contentDescription = null, modifier = thumb, whenOff = plain)
+            } else if (imageUrl != null) {
                 AsyncImage(model = imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = thumb)
             } else {
-                Box(thumb.background(colors.tertiary.copy(alpha = 0.12f)))
+                plain(thumb)
             }
             Column(Modifier.weight(1f)) {
                 Text(

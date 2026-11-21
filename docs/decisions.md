@@ -377,8 +377,10 @@ things, and the three list ViewModels need nothing from the recipe side, so
   A cover is a mosaic of up to four photos from the list's recipes, most
   recently added first: four make a 2×2, one fills the square, two sit side by
   side, three put the newest on the left half and the next two stacked on the
-  right, so no cover has empty cells. A list with no photo (or no recipe) gets
-  a plain hairline tile with an outlined bookmark, not a stock image. The photos
+  right, so no cover has empty cells. A list with recipes but no photo shows
+  those recipes' designed images in the same mosaic, and an empty list a plain
+  hairline tile with an outlined bookmark (#403, below; with `noPhotoImage` off,
+  any list with no photo gets the tile), never a stock image. The photos
   come from a new query (`ListDao.observeCoverPhotos`, iOS
   `ListDao.coverPhotos`), not a column: no migration. It caps each list with a
   correlated `LIMIT` because API 26's SQLite predates window functions; a
@@ -3028,7 +3030,8 @@ bends the settled link field: an always-visible field became a tile that opens i
   every 250 ms as cook mode does, never written; "Resume cooking" opens
   `recipe/{id}?cook=true` (which resumes, never restarts: #333). Otherwise it shows only the name and **"Open recipe"** (decided
   here: the plain wording). The photo and name also open the recipe, as the Continue cooking
-  row did. A recipe with no photo gets a short band in the paprika wash, never a stock image.
+  row did. A recipe with no photo gets its designed image, 112 dp tall (#403, below; a short band in
+  the paprika wash with `noPhotoImage` off), never a stock image.
   A newer recipe never shows the last one's place, even for a moment.
 - **Add a recipe:** Paste a link opens the Recipes screen's dialog (Android `PasteLinkDialog`,
   iOS the same alert), whose Go is enabled only for what `UrlInput` reads as a link, so
@@ -5492,6 +5495,353 @@ exactly), on both platforms.
   off, none in the month view); `WeekShoppingMenuTests` and `WeekUITests` (iOS); the walkthroughs
   tap "Shop for this week".
 
+## Import from Paprika (#382, 2026-11-19)
+
+The owner asked for a one-time import from another recipe app, starting with Paprika's export
+(`.paprikarecipes`). Settings, Your recipes gains **Import from Paprika** beside Export and Import
+(the same status line under them: progress, then a summary or the cause), behind the `paprikaImport`
+flag (on by default in debug and release), on both platforms. Other apps' formats are separate issues.
+
+- **The format** (field names from the open-source libpaprika crate's `Recipe`, not from an export of
+  ours: see "Not verified"): a zip with one `<name>.paprikarecipe` entry per recipe, each a
+  gzip-compressed JSON object: `name`, `ingredients` and `directions` as newline-separated text,
+  `notes`, `servings`, `prep_time`, `cook_time`, `total_time`, `source`, `source_url`, `image_url`,
+  `categories` (names), `photo_data` (base64 JPEG), `uid`, `created`, and more that are ignored. A
+  missing, null or unknown field is simply absent; a number where text goes keeps its digits.
+- **Reading.** Android: `PaprikaArchive` and `PaprikaRecipeParser` in `:core` (`java.util.zip`'s
+  `ZipFile` over a copy of the picked file in the cache, which is deleted after; `GZIPInputStream`;
+  `org.json`). iOS: `PaprikaZipReader` (Apple's Compression framework, which reads the raw DEFLATE
+  both a zip entry and a gzip body hold, over the memory-mapped file; the zip structure and the gzip
+  header and checksum are read by hand, as `BackupArchive` does, so there is still no third-party
+  dependency) and `PaprikaRecipeParser` (Foundation only, so `CoreImportsTests` covers it). The
+  reader is outside the pure files on iOS only because of Compression.
+- **A stranger's file is not believed** (`PaprikaLimits`, the same numbers on both platforms): at most
+  10 000 entries, 32 MiB unpacked per entry, 2 GiB unpacked in all, a 2 GiB file. An entry's declared size
+  over the cap is refused without unpacking; the real size is counted as it unpacks and stops at the
+  cap (a 700-byte fixture that unpacks to 40 MB is dropped as one unreadable entry); the entry count
+  and the total are refused for the whole file (`TOO_LARGE`, nothing imported). An entry's name is only
+  compared (`isRecipeEntry`: a file called `*.paprikarecipe`, not hidden, not under `__MACOSX/`), never
+  used as a path; nothing is written to disk but Android's cache copy of the file itself.
+- **What is counted.** Entries that aren't recipes (folders, macOS copies, a readme) are ignored, not
+  counted. A JSON object with no name, or with neither ingredients nor steps (the parsers' rule), is
+  **not a recipe**: skipped and counted. An entry that isn't gzip, isn't UTF-8, isn't JSON, isn't an
+  object, is nested too deep, or is over a cap is **unreadable**: counted, and the rest still import.
+  A file that isn't a zip, or is a zip with no recipe entry, is `NOT_A_PAPRIKA_FILE`; one cut short or with
+  a broken directory is `DAMAGED`; both import nothing. `PaprikaError` is a cause, the screen picks the words.
+- **Never invent, text as written.** Names, lines, notes and servings are Paprika's, trimmed; lines
+  are split on newlines, blanks dropped (as the editor's `RecipeDraft.lines`). Times go through
+  `Durations.format` with the words of the recipe's language (detected from its own name and
+  ingredients as for any recipe with none declared, never the phone's): a whole-string phrase
+  ("1 hour 30 minutes") renders like ISO ("1h 30m"), a zero total is absent, anything else
+  ("Overnight") stays as written. `source_url` is kept only if it is a real web link (`WebImageUrl`),
+  cleaned by `UrlCleaner`; `image_url` only as a web picture link.
+- **Identity: how a second import adds nothing.** The key is the recipe's cleaned `source_url`; else
+  `manual:paprika-<uid>` (Paprika's id lower-cased, only if it is plain `[A-Za-z0-9-]{1,64}`, so an id
+  can't smuggle a link or a path into the key); else `manual:paprika-h<hash>`, an FNV-1a (64 bits) of
+  the name, ingredients and steps, for a file with no ids (pinned in both platforms' tests). The key
+  is the recipe's `sourceUrl`, so a recipe that is already here by that key, shared, clipped or
+  imported before, is **already here**: it keeps its content, ticks and last view, and only gains
+  Paprika's note if it has none (`BackupMerger`, import "merges, never replaces or deletes"). A
+  recipe twice in one file counts as already here too, the first winning.
+- **Never re-fetched.** A recipe with a link is `EDITED` (with `editedAt` the import's time), the
+  cook's version: a re-share of its link opens it as imported without fetching, and "Update from
+  source" is the way to the site's. One with no link is `MANUAL` with its `manual:` key: it appears
+  under Typed by you, which is what Paprika's typed-in recipes are, and the old clean-up (with
+  `oneCookbook` off) never removes it. Both are exactly the values a backup keeps (#29).
+- **The one limit.** The recipes become a `Backup` (with the lists and memberships of #387 when the
+  switch is on) and go through `BackupDao.importBackup`, the route every import takes (`BackupMerger`, `capsEveryRecipe`: #345), in one
+  transaction: at the free limit what fits comes in (in the file's order: the first recipe is the most
+  recently viewed, a millisecond apart, so Recipes keeps the file's order, listed ones first as for any
+  import), the rest are counted in `skippedForLimit` with "the free app keeps 50 recipes" (the existing
+  strings), and **nothing old is removed**. Unlimited, every recipe comes in. A database failure writes
+  nothing (`SAVE_FAILED`). The result is `PaprikaSummary`: imported, already here, skipped for the limit,
+  not recipes, unreadable, pictures left out (#386) and lists made (#387).
+- **Photos come through** (#386, the owner's decision after the first version left them out): each
+  recipe's `photo_data` (else the first of `photos`' `data`) is the recipe's own stored photo, see "A
+  recipe's own photo" below. The archive reader hands each picture to the photo store as it reads
+  the recipe (so none waits in memory for the rest of the file); a picture over 8 MiB decoded, not
+  base64, or not an image is **left out and counted** (`photosLeftOut`), never the recipe. A recipe
+  already here with no photo of its own gains the file's; one with a photo keeps it. Pictures no
+  recipe ends up with (already here, left out by the limit, a failed write) are deleted again. The
+  file name is the store's (a fresh uuid), never the entry's. `image_url` is still kept as the recipe's
+  web link, under the stored photo.
+- **Categories become lists** (#387, the owner's decision; "Lists are deliberate" is kept by this
+  being the cook's choice): a switch under the Import from Paprika row, **"Put recipes in lists by their
+  Paprika categories"**, on by default, this visit's choice (not a saved setting). With it on, each
+  category puts the recipe in the list of that name: one already here with the same name, trimmed
+  and case-insensitive (the seeded Dinner is found by "dinner"), else a new list; categories that
+  differ only in case are one list, the first spelling kept; blank ones are none. Paprika's own
+  `on_favorites` flag (a boolean or a number that isn't 0) files the recipe in Favorites, found by
+  `isFavorites`, never by name: a category called "Favorites" is a list of its own. A recipe already
+  here gains the lists too; adding is insert-or-ignore, so an `addedAt` is never rewritten and nothing
+  is taken out of a list. A recipe the free limit leaves out is filed nowhere, and a new list none of the
+  recipes that came in belong to is not made (`BackupMerger`'s `dropEmptyNewLists`, which a backup
+  import leaves off). The summary says how many lists were made. A repeat of a recipe in the same file
+  adds its categories to the first's. `source`, `description`, `rating`, `difficulty`,
+  `nutritional_info`, `scale` and `created` are not kept.
+- **Strings.** 15 in six languages on both platforms (`paprika_*`; drafts for a native speaker,
+  `docs/translations.md`); the already-here and free-limit sentences are the backup's.
+- **Tests.** The shared fixtures `shared/fixtures/paprika/*.paprikarecipes` (made by
+  `tools/paprika-fixtures/make_fixtures.py`: valid, truncated, bad entries, a declared 4 GB entry, a
+  small file that unpacks to 40 MB, one with pictures that are good, not images, not base64 and too big) are read by `PaprikaArchiveTest` and `PaprikaZipReaderTests` with the
+  same counts, the parser by `PaprikaRecipeParserTest`/`PaprikaRecipeParserTests`, the mapping by
+  `PaprikaImportTest`/`PaprikaImportTests`, the repository (identity, a second import, a recipe already
+  here, the free limit, failures) by `DefaultPaprikaImportRepositoryTest` over an in-memory DAO and
+  `PaprikaImportRepositoryTests` over in-memory SQLite, and the Settings state and words by
+  `SettingsPaprikaImportViewModelTest`, `SettingsPaprikaImportScreenTest` and `SettingsPaprikaImportTests`;
+  lists and photos in the repository tests above. Nothing here is under the differential corpus's scope.
+- **Not verified.** A real Paprika export (the fixtures follow the format as libpaprika documents it, not
+  a file Paprika made; the fixtures' pictures are not images, so a real decoder only meets a real picture
+  in the by-hand run), the system file picker choosing a `.paprikarecipes` file from Drive or iCloud on a
+  phone, and a very large export (hundreds of MB) on a low-memory phone.
+
+## Import from Recipe Keeper (#390, 2026-11-19)
+
+The owner asked for Recipe Keeper next (Mealie and AnyList are separate issues). Settings, Your recipes
+gains **Import from Recipe Keeper** under Import from Paprika, behind the `recipeKeeperImport` flag (on
+by default in debug and release), on both platforms. It is **the Paprika import's route with another
+reader**: the same repository, `PaprikaImport.toBackup`, `BackupDao.importBackup`, `BackupMerger`, the one
+`LibraryLimit`, the stored photo (#386), the categories-to-lists switch (#387) and the summary, so every
+rule in "Import from Paprika" holds here (merge, never replace or delete; at the free limit what fits
+comes in and the rest is counted; the user's version is never refetched; a cancelled or failed write
+leaves nothing). What follows is only what differs.
+
+- **What was generalised, lightly.** `ImportSource` (`paprika`, `recipeKeeper`) says which reader reads the
+  file and the prefix of a recipe's own key; `PaprikaImportRepository.import(uri, filing, source)` and
+  `PaprikaFiles.read(uri, source)` take it (iOS: `importPaprika(_:filing:source:)`, `read(_:source:)`, each with a
+  Paprika default so #383's callers did not change). The Recipe Keeper reader hands back the same
+  `PaprikaRecipe`/`PaprikaContents`/`PaprikaRead` (so `PaprikaSummary` too), and `PaprikaError` gained
+  `NOT_A_RECIPE_KEEPER_FILE`. Names still say Paprika where #383 put them: renaming was left out to keep this
+  diff reviewable. In Settings the **one switch** ("Put recipes in lists by their categories", its title no
+  longer says Paprika) serves both rows and shows when either is on; it is this visit's choice for both.
+- **The format** (no published spec: from the open-source importers RecipeSage's and Mealie's, Norish's
+  notes on a real 488-recipe export, and a sample page one of them tests with; see "Not verified"). The
+  export is `RecipeKeeper_YYYYMMDD_HHMMSS.zip`: `recipes.html`, at the root or inside one wrapper folder, and
+  `images/<recipeId>_<N>.jpg`. Each recipe is a `div.recipe-details`, read **by `itemprop` only**, because the
+  visible labels are translated ("Portate", "Porzioni") and the itemprops are not. The HTML is not
+  strict (`<meta>` never closed, attributes unquoted, `itemprop=photo0/` whose value is "photo0/"), so
+  it is read leniently: Jsoup on Android, `HtmlTree` (the microdata parser's Jsoup stand-in) on iOS. A value
+  is a `<meta>`'s `content`, else the element's text (the first `recipeCourse` is a `<span>`, any more are `<meta>`).
+- **Fields kept** (`RecipeKeeperParser`, in `:core`; iOS's twin is Foundation only and sits under
+  `CoreImportsTests`): `name`; `recipeIngredients` (one `<p>` per line, blanks dropped; a line whose whole text is
+  bold is a heading, stored as a line **ending in a colon** as `IngredientHeading` reads them, a colon added if it
+  has none; a bold word inside a line is no heading); `recipeDirections` (one `<p>` per step, blanks dropped, a
+  leading `1. ` to `999. ` and its space stripped and nothing else: "2 minutes before…" and "2.5 cups" stay);
+  `recipeYield` as written ("Serves 6-8", "4 persone": no number invented, so a recipe with no leading number
+  has no stepper, as for any); `prepTime` and `cookTime` as the ISO text Recipe Keeper writes, through the
+  existing time rules (`PT0S` is none, `PT1H` is "1h"; no total time is made up: the old importers' prep plus
+  cook is a number the cook did not see); `recipeNotes` (its `<p>`s joined with newlines); `recipeSource`
+  **only when it is an http(s) link** (Recipe Keeper writes "Recipe Keeper" or "n/a" for a typed-in recipe), cleaned
+  by `UrlCleaner`; `recipeIsFavourite` `True`; the photos. Not kept: nutrition, rating, share id, serving size
+  (the app has no field for them, and nothing is guessed).
+- **Lists** (the switch on): `recipeCourse`, `recipeCategory` and `recipeCollection` values are all list names, in
+  that order, then the #387 rules as for Paprika's categories (found by trimmed, case-insensitive name,
+  else made; a recipe the limit leaves out is filed nowhere). `recipeIsFavourite` files it in Favorites by
+  `isFavorites`, never by name. A course is a list like a category (the owner's wording, "by the switch"); a
+  cook who keeps seeded lists will find "Dessert" beside "Desserts", which is the cook's to merge.
+- **Identity: how a second import adds nothing.** The cleaned source link; else `manual:recipekeeper-<recipeId>`
+  (lower-cased, only if plain `[A-Za-z0-9-]{1,64}`); else `manual:recipekeeper-h<hash>` of name and text, the
+  same FNV-1a as Paprika's. The prefix keeps a Paprika recipe and a Recipe Keeper one with the same text
+  apart. Two blocks with one `recipeId` in a file are one recipe (the first wins, the second's lists join).
+  A recipe with a link is `EDITED`, one without is `MANUAL` (Typed by you), as for Paprika.
+- **Photos** (#386). `photo0`, `photo1`, … are sorted by their number; the first that can be stored is the
+  recipe's own, so a missing or broken `photo0` falls back to `photo1` (at most 10 tried). A `src` is
+  resolved against the page's folder inside the zip and **only ever compared with entry names**: `.` and
+  `..` are folded away, a `..` that would leave the zip, a scheme (`https:`, `file:`), an absolute path, a
+  backslash or a drive letter is no picture, a percent-encoded name is read decoded, case is ignored. A recipe
+  none of whose pictures could be stored counts one in `photosLeftOut`; the recipe comes in.
+- **A stranger's file is not believed**: the caps are `PaprikaLimits` (10 000 entries, 32 MiB for the page, 8 MiB
+  a picture, 2 GiB unpacked in all, a 2 GiB file; an entry's declared size is a claim and the real size is
+  counted as it unpacks). Unlike Paprika's per-recipe entries the page is one entry, so a page over its cap
+  is `TOO_LARGE` for the whole file and nothing is imported; a picture over its cap is left out and counted.
+  `recipes.html` is the shallowest such entry (not `__MACOSX/`, not hidden); no page, or a page with no
+  `div.recipe-details`, is `NOT_A_RECIPE_KEEPER_FILE`; a cut-short zip is `DAMAGED`. The page is decoded as
+  UTF-8 leniently (a stray byte costs a character, not the library) with a BOM stripped. A block with no
+  name, or with neither ingredients nor steps, is **not a recipe** (counted); there are no per-entry
+  "unreadable" counts. Deep nesting cannot overflow: Jsoup on Android, a flat tree on iOS (whose open-element
+  search is capped at the nearest 128, so a million unclosed `<div>`s cost seconds, not hours; shared with the
+  microdata fallback). A page that lies about its size reads as `TOO_LARGE` on Android and `DAMAGED` on iOS
+  (the inflater only says it failed); both import nothing.
+- **Strings.** 6 plus the generalised switch title in six languages on both platforms (`recipekeeper_*`; drafts
+  for a native speaker, `docs/translations.md`); the picker takes any file (a plain `.zip` has no type of its own).
+- **Tests.** `shared/fixtures/recipekeeper/*.zip`, made by `tools/recipekeeper-fixtures/make_fixtures.py` (valid:
+  a real-export-style page with unquoted attributes, bold and colon headings, numbered steps with empty
+  paragraphs, an Italian recipe with translated labels, a favourite, a course given twice, a non-URL source,
+  a `PT0S` time, a recipe repeated by id, a recipe with no id, a percent-encoded picture name, a missing
+  picture and one that is not an image; also a wrapper folder with a BOM and macOS junk; not Recipe
+  Keeper's; truncated; a 40 MB page; a page claiming 4 GB; pictures that are too big or claim to be; 100 000
+  nested divs), read by `RecipeKeeperArchiveTest`/`RecipeKeeperZipReaderTests` with the same counts; the parser
+  by `RecipeKeeperParserTest`/`RecipeKeeperParserTests`; the mapping by `RecipeKeeperImportTest`/`RecipeKeeperImportTests`;
+  the repository by `DefaultRecipeKeeperImportRepositoryTest` (in-memory DAO) and `RecipeKeeperImportRepositoryTests`
+  (in-memory SQLite); the Settings state and words by `SettingsRecipeKeeperImportViewModelTest`,
+  `SettingsRecipeKeeperImportScreenTest` and `SettingsRecipeKeeperImportTests`.
+- **Not verified.** A real export: no Recipe Keeper account or file was available, so the fixtures follow what
+  the importers above document (the sample page one of them uses is the model for the markup), not a file
+  Recipe Keeper made. Whether `recipeCollection` is a `<meta>` as categories are (no real export had one; the parser
+  reads any element carrying the itemprop, `<meta>` or text), a recipe whose yield is a bare number, and the
+  system picker choosing the `.zip` from Drive or iCloud on a phone.
+
+## Import from Mealie (#391, 2026-11-19)
+
+The owner asked for Mealie (self-hosted) next, on top of the Paprika import (#382) and its pictures
+(#386) and lists (#387). Settings, Your recipes gains **Import from Mealie** below Paprika's row, with
+the one shared switch ("Put recipes in lists by their categories", on by default, this visit's
+choice; the owner folded Mealie's own switch into it when the three importers landed together, so
+Paprika, Recipe Keeper and Mealie share it, and it shows when any of the three rows does) and the same status line, behind the `mealieImport` flag (on by default in debug and release),
+on both platforms. Everything that is not named here is the Paprika section's: the guarded archive, the
+one limit, `BackupDao.importBackup` and `BackupMerger`, "never re-fetched", the stored photo, the counts.
+
+- **The link import already works.** Verified in Mealie's source (`mealie/routes/spa/__init__.py`, at
+  `0e923e3`, version 3.31): a public recipe's page (`/g/<group>/r/<slug>`) and a shared one
+  (`/g/<group>/shared/r/<token>`) are served with an `application/ld+json` schema.org `Recipe` written
+  into the HTML's `<head>` by the server (name, description, `image`, ISO `prepTime` / `cookTime` /
+  `totalTime`, `recipeYield`, `recipeIngredient` as text lines, `recipeInstructions` as plain strings,
+  `recipeCategory`, `keywords`), so no JavaScript is needed. `shared/fixtures/pages/mealie-pasta-e-ceci.html`
+  is made to that shape and `MealiePageTest` / `MealiePageTests` read it through the ordinary link
+  import. A private recipe's page asks for a login and stays out of reach, as every login page does. A
+  server's recipe with no `description` or categories is the same page with those keys empty. **Not
+  verified against a running server.**
+- **Three kinds of file, one reader** (`MealieArchive` in `:core`, `MealieZipReader` on iOS, which reuses
+  `PaprikaZipReader`'s zip structure and inflating): the **bulk export** (Data Management > Recipes >
+  Export: a zip of `recipes/<slug>/<slug>.json`, no pictures; `mealie_export.py` copies only `.json`),
+  **one recipe's Download** (`<slug>.json` and `original.webp` at the zip's root, written by
+  `routes/recipe/shared_routes.py` from `recipe.model_dump_json()`, which is why its keys are
+  snake_case), and a **bare `.json`** (the recipe page's JSON editor and the API write camelCase). The
+  zip is told from a bare file by its first four bytes, not its name. Entries are found by what they are
+  (`*.json`, a picture ending `.webp`, `.jpg`, `.jpeg` or `.png`; not hidden, not under `__MACOSX/`), and a
+  name is only ever compared, never used as a path.
+- **A picture belongs to the recipe whose JSON is in its folder** (nearest up the path, so
+  `recipes/<slug>/images/original.webp` goes to `recipes/<slug>/<slug>.json`); a lone recipe's zip
+  gives it any picture wherever it sits; of several, one whose name starts "original" wins, else the
+  first; a picture that fits no recipe is ignored. It goes to the photo store as that recipe is read
+  and is a recipe's own photo (#386): a WebP is decoded by `BitmapFactory` on Android and ImageIO
+  on iOS and stored as the JPEG every photo is. A picture that is over 8 MiB, not an image or not stored is
+  left out and counted, the recipe stays.
+- **The same guards as #382** (`MealieLimits`: 10 000 entries, 32 MiB a JSON entry, 2 GiB in all and
+  for the file, 8 MiB a picture): a declared size over the cap is refused unpacked, the real size is
+  counted as it unpacks (the fixture `mealie-bomb.zip` says its entry is 100 bytes and unpacks to 40
+  MB), entries and totals over the caps refuse the whole file (`TOO_LARGE`), a broken directory is
+  `DAMAGED`. **Counts:** a JSON that is Mealie-shaped with no name, or neither ingredients nor steps, and
+  any JSON that is not Mealie's (another app's, schema.org) are **not recipes**, skipped and counted; a
+  file that isn't UTF-8 or JSON, is nested too deep or over a cap is **unreadable**, counted, the rest
+  import. A zip with no JSON, or none of them Mealie's, and a bare file that isn't a Mealie recipe, are
+  `NOT_A_MEALIE_FILE`; nothing is imported.
+- **Detection** (`MealieRecipeParser`; Mealie's own `parse_mealie_export` uses the same test to take
+  a pasted dump): a non-blank `slug`, `recipeIngredient` (or `recipe_ingredient`) a list of objects with
+  at least one `referenceId` / `reference_id`, and **no `@context` or `@type`**. An empty ingredient
+  list can't show a reference, so it needs a `recipeInstructions` list beside it. **A schema.org file
+  is not read here, by decision**: it is a recipe page's data, which the link import reads; a bare one
+  says "That isn't a Mealie export ... To bring in a recipe from a Mealie page, share its link", and
+  inside a zip it is counted as not a recipe. (Parsing it with the JSON-LD parser would have made this row
+  a second, different way to import a link.)
+- **Fields.** Both key styles are read (`recipeIngredient` / `recipe_ingredient`, `orgURL` /
+  `orgUrl` / `org_url`, ...). `name` is the title. **Ingredients are never rebuilt from `quantity` and
+  `unit`**: before Mealie 3.1 a line that was never parsed was stored with `quantity` 1 and its text in
+  `note`, and `display` (Mealie computes it from the quantity) reads "1 2 cups red lentils". A line is
+  its `originalText`, else, **for a line with a food or a unit**, Mealie's own `display`, else the
+  food's name and the note; **a line with neither food nor unit is its `note`** (or nothing, and is
+  dropped), never its `display`. A `title` puts a heading line ("For the sauce:", a colon added if there
+  is none) before the line. Lines are single lines (Mealie's line breaks become spaces); the text is as
+  Mealie holds it (its steps may carry Markdown, left as written, like every text from a file).
+  **Steps:** the app has no step headings (`IngredientHeading` is for ingredients), so *a step's `title` is
+  put in front of its text* ("Sauce: Whisk the cream."); a step that is only a title is put in front of
+  the next step that has text, and a trailing one is dropped. **Yield:** `recipeYield` text, else
+  `recipeServings` as a number (4.0 is "4", 2.5 is "2.5", 0 is none); `recipeYieldQuantity` is not read.
+  **Times:** `prepTime`, `performTime` (Mealie's cook time; `cookTime` is read as its legacy name) and
+  `totalTime` as text, through the time rules; with no text, a `prepTimeSeconds`-style number
+  (`prep_time_seconds`, `perform_time_seconds`, `total_time_seconds`) becomes `PT<n>S` and goes through
+  the same rules ("PT5400S" is "1h 30m"). **Notes:** each `{title, text}` is a paragraph of the
+  recipe's note (title, a line break, text; title alone or text alone also), the paragraphs apart by a
+  blank line. **Source:** `orgURL`, a web link cleaned by `UrlCleaner`, else none (the picture's link,
+  `image`, is a token for Mealie's server and is not kept). **Not kept, listed:** `description` (the
+  app has no place for it; a later place would be its own decision), rating, nutrition, tools, assets,
+  comments, `extras`, dates, and the household and user ids.
+- **Identity** (`MealieImport.identity`): the cleaned `orgURL`, else `manual:mealie-<slug>` (a plain
+  slug, `[A-Za-z0-9_-]{1,100}`, lower-cased), else `manual:mealie-<id>` (a plain id), else
+  `manual:mealie-h<hash>`, the FNV-1a of the name, ingredients and steps (the Paprika hash's text, the same on
+  both platforms). A recipe with a link is `EDITED`, one without is `MANUAL` and appears under Typed by
+  you, exactly as Paprika's.
+- **Lists:** each category and each tag is a list of that name (the merger finds one here by the
+  trimmed, case-insensitive name, else makes it; categories and tags that differ only in case are one
+  list, the first spelling kept). **Mealie's favourites belong to a user and are not in a recipe's file,
+  so nothing is filed into Favorites.** The rest is #387: a repeat in the file adds its lists to the
+  first, a recipe the free limit leaves out is filed nowhere, no empty list is made.
+- **Strings.** 15 in six languages on both platforms (`mealie_*`; drafts for a native speaker,
+  `docs/translations.md`), the already-here and free-limit sentences the backup's. The not-a-recipe line
+  says "isn't a Mealie recipe, or has no name, ingredients or steps".
+- **Code shared with Paprika's, and not.** Mealie's types (`MealieError`, `MealieLimits`,
+  `MealieSummary`, ...) and the lists loop in `MealieImport` are written beside Paprika's, not
+  generalised, to leave the Paprika layer alone while other importers were being added; merging them
+  into one importer layer is a clean-up for when more than two exist. iOS widened `PaprikaZipReader`'s
+  `Entry`, `centralDirectory`, `contents(of:)`, `inflate`, `u16` and `u32` from `private` to internal so
+  the Mealie reader uses the one zip implementation.
+- **Tests.** `MealieRecipeParserTest` / `MealieRecipeParserTests` (each field, both key styles, the pre-3.1
+  lines, detection, schema.org), `MealieArchiveTest` / `MealieZipReaderTests` (the fixtures in
+  `shared/fixtures/mealie/`, made by `tools/mealie-fixtures/make_fixtures.py`: the bulk export, a recipe's
+  download with its WebP, the same with the picture in the bulk layout, bare camelCase and pre-3.1 JSON,
+  a schema.org file, and the hostile ones: truncated, bad entries, a declared 4 GB entry, a 40 MB bomb that
+  declares 100 bytes, pictures that are good, not images, too big and stray; the WebP is encoded by the
+  script, and the iOS test decodes it through the real photo store), `MealieImportTest` /
+  `MealieImportTests` (identity, times, lists), `DefaultMealieImportRepositoryTest` over an in-memory DAO
+  and `MealieImportRepositoryTests` over in-memory SQLite (second import, already here, the limit,
+  failures, pictures), `SettingsMealieImportViewModelTest`, `SettingsMealieImportScreenTest` and
+  `SettingsMealieImportTests` (state and words), and `MealiePageTest` / `MealiePageTests` (the link).
+- **Not verified.** A real Mealie export (the fixtures follow the schema in Mealie's source, they are
+  not files a server wrote; a real server's `recipes/<slug>/` may hold more files than `<slug>.json`, which
+  are ignored, or counted as not recipes if they are JSON), a real Mealie page's HTML (above), the system file picker choosing a
+  `.zip` or `.json` from Drive or iCloud, and a very large export on a low-memory phone.
+
+## A recipe's own photo (#386, 2026-11-19)
+
+The owner's decision, from the Paprika import: a recipe can have a picture of its own, stored on the
+phone, not only a web link. Both platforms, no flag (it changes nothing until something stores one;
+the Paprika import is the first user, behind `paprikaImport`).
+
+- **A column, a file.** `recipes.photoFile`, the name of a file in the photo store (Android
+  `filesDir/cooked_photos/`, iOS `CookedPhotos/` beside the database: the store "I made this" uses, so
+  its downscale to 2048 px and JPEG rules, and its random-uuid names, apply). Room 18 to 19
+  (`MIGRATION_18_19`, `MigrationTest`, schema `19.json` committed; numbered after #381's list renumbering,
+  so a database from 17 gets both), iOS `user_version` 17 to 18 (`addPhotoFile`): a nullable column, every recipe comes across with none. **It is not a cooking**: no
+  `cooked_photos` row, so the Cooked view, "I made this" and the cull's protections never see it.
+  `PhotoStore.importBytes` / `importData` stores picture bytes in hand: refused if over 8 MiB, not an
+  image, or declaring over 100 megapixels; a fresh name, never one from a file.
+- **Shown wherever the recipe's picture shows, in preference to `imageUrl`.** One string names it to
+  the image loader (`StoredPhoto`, core / `Data/Model`): `photo://<file name>` (only a plain name; a
+  name with a path in it is none). The list queries return it in place of the link
+  (`COALESCE('photo://' || photoFile, imageUrl)`: Recipes, a list's rows and cover, a planned meal), the
+  recipe screen and the print use `Recipe.displayImage`, and the image loader turns the string into the file
+  (Android: `StoredPhotoMapper`, registered in `RecipeApp`'s Coil loader; iOS: `ImageLoader`, which reads
+  `photo://` from the photo store's folder). The editor still shows and saves only the web link
+  (`Recipe.image`).
+- **A missing file shows the link as before, never a blank.** A phone restored from Android's own backup
+  has the rows without the files (as for "I made this" photos), and a store can be cleared. So the model
+  carries the link behind the photo: `photo://<name>#<web link>` (the link's own fragment cut; `StoredPhoto`
+  builds it, `RecipeImageSql` builds the same in SQL, `photo://<name>` alone when there is no link). It is
+  decided in one place per platform, when the picture is loaded, not when the row is read: Android's
+  `StoredPhotoMapper` answers the file if `File.isFile`, else the link (which Coil's own mappers then
+  handle), else nothing; iOS's `ImageLoader` reads the file if it exists, else loads the link, else throws
+  and the view keeps its placeholder. That is a stat, never a decode on the main thread, and it holds for
+  rows, covers, planned meals, the recipe screen and the print (Android's `cached` check and iOS's
+  `cachedData` follow the same rule). The column is never cleared by a miss: an import may bring the file
+  back, and the next load shows it.
+- **Kept, deleted, restored.** A re-share, "Update from source" and an edit never change it
+  (`keepingUserState`; iOS's `update` doesn't write the column). Deleting a recipe deletes the row; its
+  file stays while the Undo may still come (the delete's snapshot is the whole row, so Undo brings the
+  name back) and goes with `forget`, once the delete stands; every other delete path (the cull, the free
+  swap) leaves the file to the **sweep**, which at each start removes files no cooking and no recipe names
+  (`CookedPhotoDao.recipePhotoFileNames`), after its 10-minute grace.
+- **Export, import and the automatic copy.** `BackupRecipe.photo` (`"photo"` in the file: a path
+  `photos/recipe-<row id>.jpg` in the zip, only for a recipe whose file is here; absent in a plain JSON
+  export, a shared file (#149) and older files, which an older app ignores). The same zip as "I made this" photos
+  (`BackupArchive`), so the automatic backup copy (#150) carries them too. An import takes the picture
+  only with its file and only for a recipe with none: a new recipe gets it, a recipe already here with
+  none gains it (`PhotoUpdate`; it never replaces one). The Android backup include list is unchanged:
+  photo files stay out of Google's Auto Backup, as the cooked ones do.
+- **Tests.** `StoredPhotoTest`/`StoredPhotoTests`, `StoredPhotoMapperTest` (file there, file missing with a link, missing with none, the file coming back) and the iOS `ImageLoader` tests of the same three; `RecipePhotoTest` (Room) and
+  `RecipePhotoTests` (SQLite): lists show it, a re-share and an edit keep it, Undo and `forget`, the sweep,
+  never a cooking, the export round trip, a photo without its picture, a recipe with none gains the
+  file's; `MigrationTest` 18 to 19 and 17 to 19 (device) and the iOS 17 to 18 and 16 to 18 migration tests.
+
 ## Fresh food: shop in two trips, and cook the delicate meals first (#396, 2026-11-19)
 
 The owner named shopping and then cooking through the week as the hardest part of the app, and fresh
@@ -6291,6 +6641,80 @@ existing test passes unchanged.
   an unhandled `cookFinished` on Android but leaves it on iOS (the screen hands it on at once,
   so it is never there). Neither is visible to a cook.
 
+## A designed image for a recipe with no photo (#403, 2026-11-19)
+
+The owner picked design 4 ("Ingredient label") from the no-photo mockups, with lettering on
+small thumbnails. Both platforms, behind the `noPhotoImage` flag (on by default; off, every slot
+is the blank tile or band it was).
+
+- **The logic is `NoPhoto`** (`core` `data/model/NoPhoto.kt`, iOS `Data/Model/NoPhoto.swift`,
+  pinned by `NoPh` rows in the differential corpus, regenerated from the Kotlin):
+  - `initial(title, language)`: the first letter of the title, uppercased, after a leading
+    article from `shared/tables/<language>/articles.json` (an entry ending in an apostrophe,
+    "l'", needs no space after it). An article that would leave no letter stays ("The" is T).
+    "5-Ingredient Pasta" is I. A title with no letter has none.
+  - `labels(ingredients, language, max)`: up to `max` ingredient names in order, read by
+    `IngredientName` (so the amount, unit and preparation are gone) and shown as the line
+    writes them (`written`: its own capitals, hyphen and apostrophe: "Zucker", "d'olives",
+    "all-purpose flour"; else the lowercase name as read). Skipped: a heading
+    (`IngredientHeading`), a line `IngredientName` cannot name ("salt and pepper", "juice of 1
+    lemon": never guessed), a staple from `staples.json` (matched whole after the same
+    normalising, never at the end of a longer name: "bell pepper" stays) and a name already
+    taken. Nothing is translated or invented. A language with no tables gives none.
+  - `tintIndex(uid)`: FNV-1a over the uid's UTF-8 bytes, modulo five, so a recipe has one
+    colour on both platforms, everywhere, after a rename. A recipe not stored yet is tinted by
+    its link. A recipe's own `uid` reaches the screens through `RecipeSummary`, `Recipe`,
+    `PlannedMeal` and the covers' rows.
+- **The drawing is one component per platform:** Android `RecipeImagePlaceholder` / `RecipeImage`
+  (`ui/common/RecipeImagePlaceholder.kt`), iOS `RecipeImagePlaceholder` / `RecipeImage`
+  (`UI/Common/RecipeImagePlaceholder.swift`). The style is picked by the size it is given, not
+  the screen: the shorter side 64 dp/pt or less is the monogram (Fraunces, 56% of the side);
+  larger is the label, in Fraunces italic at 18% of the side (never under 10), centred, the
+  first name only; a surface at least 1.5 times wider than tall (Home's band at 112, the
+  reading view's banner at 150) sets up to three names low and left at 21 (25 from 140 tall),
+  joined by a half-faded dot. No ingredient lines gives the monogram; no letter either, a plain
+  tint tile. The five tints (paprika, saffron, sage, cocoa, rose) are theme tokens, light and
+  on ink (`NoPhotoTint`, `LocalNoPhotoTints`; iOS `Tokens.noPhotoLight/OnInk`,
+  `Palette.noPhotoTint`), the mockup's values. The italic is the real Fraunces Italic
+  (`res/font/fraunces_italic.ttf`, iOS `Resources/Fonts/fraunces-italic.ttf`, in `UIAppFonts`,
+  PostScript name `Fraunces-Italic`): one instance of the published variable font (weight 400,
+  optical size 36, no soft or wonky forms) subset to Latin, 55 KB, under the same OFL as the
+  upright (`OFL-Fraunces.txt` says so). Android registers it in the `Fraunces` family as its
+  italic; iOS falls back to the slanted upright only if the font did not register. The upright
+  is the published file, unsubset.
+- **Where it shows:** Recipes and list rows, Home's Recently viewed (84), Week rows (44), the
+  Lists covers, Home's Continue cooking band (112 with no photo, 136 with one) and the reading
+  view's banner (150 with no photo, 200 with one). A photo that fails to load shows the same
+  (`RecipeImage`: Coil's `onError`, iOS `CachedAsyncImage.onFailure`, which also fires when the
+  bytes do not decode). Not changed: the Reddit post's pictures, the clip view and the scan
+  and photo reviews (they are the page's, not a recipe's image), print (the PDF keeps its
+  photo or none), and the widgets, which draw no recipe images. A Lists cover's own photo that
+  fails to load shows its recipe's image too: the cover rows carry the recipe's uid, title,
+  language and ingredient lines beside the address (`CoverPhoto`, `ListDao.observeCoverPhotos`).
+- **Lists covers (changes #286's rule, the owner's OK):** a list with any photo shows photos
+  alone, as before; a list whose recipes all lack one shows up to four of their images in the
+  usual 2×2/1/2/3 layout, newest added first (`ListDao.observeCoverPlaceholders`, iOS
+  `coverPlaceholders`, a second query like the photos', no migration); an empty list keeps the
+  outlined-bookmark tile ("nothing saved here yet").
+- **Landing with the photo work (batch 2: #383's stored photos #386, #389's reorderable covers,
+  #402's Today card).** A recipe's own stored picture is a `photo://<file>[#<link>]` model; every
+  recipe image goes through `RecipeImage`, so a stored photo whose file is gone and whose link
+  fails falls back to the designed image like any other failed load (`RecipeImagePlaceholderTest`,
+  `testAStoredPhotoWhoseFileIsGoneReportsItsFailure`). The Lists cover rows carry the `photo://`
+  model with the recipe's uid, title, language and lines (`CoverPhoto`), and a recipe with a stored
+  photo is not a "no photo" recipe in the placeholder query (`photoFile IS NULL` and no link).
+  Dragging a cover (#381) is untouched: `ListCoverTile` takes the cover's photos and placeholders
+  beside the drag modifier and the move actions. **Home's Today card** shows the lead recipe's
+  photo at 136, else its designed image at 112 (the Continue cooking band; a planned note keeps
+  the plain band, and so does the flag off): `PlannedMeal` and `TodayMeal` carry the recipe's
+  uid, language and ingredient lines (`MealPlanDao.observeDays` / iOS `days` select `r.ingredients`
+  too). **The Recipes photo grid (#380)** cell is a `RecipeImage` square, the designed image in
+  place of the blank tile.
+- **Decorative:** no semantics of its own (Android `clearAndSetSemantics`, iOS hidden from
+  VoiceOver), so what is announced is what was announced before; no new strings.
+- Android reads the flag through `LocalFlagValues` (`noPhotoImageOn()`), iOS through an
+  environment value `noPhotoImage` set once in `RootView`.
+
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 
 `CLAUDE.md` had grown back to about 750 lines, and it is loaded into every session,
@@ -6377,9 +6801,9 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 18** (iOS `user_version` 17): `recipes`
-(with nullable `notes`, `language`, `cookState`, `servingsTarget`, `editedAt` and `basedOnUid`,
-#354, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
+Room database `recipe_clipper.db`, **version 19** (iOS `user_version` 18): `recipes`
+(with nullable `notes`, `language`, `cookState`, `servingsTarget`, `editedAt`, `basedOnUid`,
+#354, and `photoFile`, #386, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
 `meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51; `runningLow`, #194), `menus` and
 `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never
 exported), `cooked_photos` (#116, cascading; no `fileName` for "Mark as cooked", #173). Recipes, lists, the plan, grocery,

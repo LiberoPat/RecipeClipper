@@ -7,13 +7,17 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -35,6 +39,33 @@ private val MutedOnInk = Color(0xFFA39A90)
 private val HairlineOnInk = Color(0xFF3A342F)
 private val PaprikaTextOnInk = Color(0xFFE2735A)
 
+/**
+ * One of the five warm tints of a recipe with no photo (#403): the ground of its image and the
+ * colour of the words on it.
+ */
+@Immutable
+class NoPhotoTint(val ground: Color, val ink: Color)
+
+// Paprika, saffron, sage, cocoa and rose: NoPhoto.tintIndex picks one by the recipe's uid. The
+// on-ink set is the dark variant: a dim ground with a light word, the same hue.
+internal val NoPhotoTintsLight = listOf(
+    NoPhotoTint(Color(0xFFF5E1D8), Color(0xFF9C391F)),
+    NoPhotoTint(Color(0xFFF5E9D1), Color(0xFF875710)),
+    NoPhotoTint(Color(0xFFE7EADC), Color(0xFF4D5A2E)),
+    NoPhotoTint(Color(0xFFEEE3D9), Color(0xFF69442F)),
+    NoPhotoTint(Color(0xFFF3E0DF), Color(0xFF8B3D47))
+)
+internal val NoPhotoTintsOnInk = listOf(
+    NoPhotoTint(Color(0xFF3C241D), Color(0xFFEF9C82)),
+    NoPhotoTint(Color(0xFF392D19), Color(0xFFE6C07A)),
+    NoPhotoTint(Color(0xFF2A2F22), Color(0xFFBAC69B)),
+    NoPhotoTint(Color(0xFF33271F), Color(0xFFD9B89F)),
+    NoPhotoTint(Color(0xFF38232A), Color(0xFFE6A4AD))
+)
+
+/** The tints for the scheme in use: light, or on ink (system dark, and cook mode's "Dark while cooking"). */
+val LocalNoPhotoTints = staticCompositionLocalOf { NoPhotoTintsLight }
+
 // The fonts are variable files; weight is picked per entry. Below API 26 Android ignores the
 // variation and uses the file's default weight, which reads fine but not bold.
 @OptIn(ExperimentalTextApi::class)
@@ -47,7 +78,10 @@ private fun variable(resId: Int, weight: FontWeight) = Font(
 val Fraunces = FontFamily(
     variable(R.font.fraunces, FontWeight.Normal),
     variable(R.font.fraunces, FontWeight.SemiBold),
-    variable(R.font.fraunces, FontWeight.Bold)
+    variable(R.font.fraunces, FontWeight.Bold),
+    // The no-photo label's italic (#403): the real Fraunces Italic, one subset instance (weight 400,
+    // Latin), not a slanted upright.
+    Font(R.font.fraunces_italic, FontWeight.Normal, FontStyle.Italic)
 )
 
 val Karla = FontFamily(
@@ -167,5 +201,7 @@ fun RecipeClipperTheme(forceDark: Boolean = false, content: @Composable () -> Un
         }
     }
 
-    MaterialTheme(colorScheme = scheme, typography = AppTypography, content = content)
+    CompositionLocalProvider(LocalNoPhotoTints provides if (dark) NoPhotoTintsOnInk else NoPhotoTintsLight) {
+        MaterialTheme(colorScheme = scheme, typography = AppTypography, content = content)
+    }
 }

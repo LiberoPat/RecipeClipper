@@ -25,10 +25,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.PantryCoverage
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.ui.common.RecipeImage
 import com.example.recipeclipper.ui.common.recipeRowClicks
 import com.example.recipeclipper.ui.recipe.sourceCreditText
 
@@ -61,16 +61,13 @@ internal fun LibraryGridCell(
     ) {
         Box {
             val shape = RoundedCornerShape(10.dp)
-            if (recipe.imageUrl != null) {
-                AsyncImage(
-                    model = recipe.imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(shape)
-                )
-            } else {
-                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(shape).background(MaterialTheme.colorScheme.outlineVariant))
-            }
+            // The photo, or the recipe's designed image when it has none or the photo fails (#403).
+            RecipeImage(
+                model = recipe.imageUrl,
+                recipe = recipe.noPhoto,
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(shape)
+            )
             if (selecting) {
                 // Drawn only: the cell itself is the toggle, so it reads as one checkbox.
                 Badge(Modifier.align(Alignment.TopStart).padding(6.dp)) {

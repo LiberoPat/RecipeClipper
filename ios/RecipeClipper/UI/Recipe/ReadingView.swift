@@ -13,6 +13,7 @@ struct ReadingView: View {
     /// The step-number column grows with the numbers in it (titleMedium follows .headline).
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.noPhotoImage) private var noPhotoImage
     /// Only whether the keyboard is up for the note, so the cooking bar steps aside for it.
     @FocusState private var editingNotes: Bool
 
@@ -24,8 +25,13 @@ struct ReadingView: View {
         ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if let image = recipe.image, let url = URL(string: image) {
-                    RecipePhoto(url: url, name: recipe.name)
+                if let image = recipe.displayImage, let url = URL(string: image) {
+                    RecipePhoto(url: url, source: recipe.noPhoto, name: recipe.name)
+                        .padding(.bottom, 16)
+                } else if noPhotoImage {
+                    // No photo: the recipe's designed image (#403), 150 pt so the ingredients
+                    // stay close to the top.
+                    RecipePhoto(url: nil, source: recipe.noPhoto, name: recipe.name)
                         .padding(.bottom, 16)
                 }
                 Text(recipe.name)
@@ -224,21 +230,18 @@ private struct NotesSection: View {
 }
 
 private struct RecipePhoto: View {
-    let url: URL
+    let url: URL?
+    let source: NoPhotoSource
     let name: String
 
     var body: some View {
-        Rectangle()
-            .fill(Palette.hairline)
-            .frame(height: 200)
-            .overlay {
-                CachedAsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Color.clear
-                }
-            }
+        // The photo at 200 pt; its designed image (#403) at 150, for no photo or one that fails.
+        RecipeImage(url: url?.absoluteString, recipe: source, style: .label)
+            .frame(maxWidth: .infinity)
+            .frame(height: url == nil ? 150 : 200)
+            .clipped()
             .clipShape(RoundedRectangle(cornerRadius: 16))
+            .accessibilityHidden(url == nil)
             .accessibilityLabel(name)
     }
 }

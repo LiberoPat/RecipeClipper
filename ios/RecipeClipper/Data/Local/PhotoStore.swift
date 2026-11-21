@@ -8,6 +8,11 @@ protocol PhotoStore: AnyObject {
     /// Turns the picture (library or camera data) upright, downscales it to
     /// `photoMaxEdge` on its long edge and writes it as a JPEG; its new file name, or nil.
     func importPicture(_ data: Data) async -> String?
+    /// `importPicture` for a recipe's own picture whose bytes are in hand (#386: a Paprika file's
+    /// `photo_data`), checked to decode as an image and no longer than `recipePhotoMaxBytes`: its new
+    /// name (a fresh random one, never a name from the file), or nil, and the caller leaves that
+    /// photo out and keeps the recipe. Synchronous: the file reader calls it entry by entry.
+    func importData(_ data: Data) -> String?
     /// Copies a file that is already a stored photo (one from a backup) in; its new name, or nil.
     func adopt(_ file: URL) async -> String?
     func path(_ name: String) -> String
@@ -20,6 +25,11 @@ protocol PhotoStore: AnyObject {
 
 /// The long edge of a stored photo: sharp on any phone screen, a few hundred KB.
 let photoMaxEdge = 2048
+/// The most a recipe's picture may be before it is decoded (#386): far more than a phone photo
+/// downscaled for a file, so a hostile one can't make the app decode a huge image.
+let recipePhotoMaxBytes = 8 * 1024 * 1024
+/// The most pixels a picture may declare (#386): about a 100-megapixel photo.
+let photoMaxPixels = 100_000_000
 /// A file this young may belong to an add still being written: the sweep leaves it.
 let photoSweepGraceMillis: Int64 = 10 * 60 * 1000
 
@@ -39,8 +49,20 @@ final class FilePhotoStore: PhotoStore {
         self.init(directory: URL(fileURLWithPath: databasePath).deletingLastPathComponent().appendingPathComponent("CookedPhotos"))
     }
 
-    func importPicture(_ data: Data) async -> String? {
+    func importPicture(_ data: Data) async -> String? { process(data, maxPixels: nil) }
+
+    func importData(_ data: Data) -> String? {
+        guard !data.isEmpty, data.count <= recipePhotoMaxBytes else { return nil }
+        return process(data, maxPixels: photoMaxPixels)
+    }
+
+    /// Decodes `data`, upright and at most `photoMaxEdge`, and stores it; nil if it declares more
+    /// than `maxPixels` (a picture from a stranger's file; the phone's own photos have no cap).
+    private func process(_ data: Data, maxPixels: Int?) -> String? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        if let maxPixels, let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+           let width = properties[kCGImagePropertyPixelWidth] as? Int, let height = properties[kCGImagePropertyPixelHeight] as? Int,
+           width * height > maxPixels { return nil }
         // The thumbnail API applies the EXIF orientation and never upscales past the original.
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,

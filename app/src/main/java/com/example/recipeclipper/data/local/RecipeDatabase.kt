@@ -37,7 +37,7 @@ import com.example.recipeclipper.data.model.MealType
         PantryItemEntity::class, MenuEntity::class, MenuEntryEntity::class, ShortStepEntity::class,
         AiDecisionEntity::class, CookedPhotoEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -443,11 +443,23 @@ abstract class RecipeDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * A recipe's own stored picture (#386): `recipes.photoFile`, the name of a file in the photo
+         * store; null for every existing recipe. The same SQL is iOS's `addPhotoFile`.
+         */
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(PHOTO_FILE_SQL)
+            }
+        }
+
+        private const val PHOTO_FILE_SQL = "ALTER TABLE `recipes` ADD COLUMN `photoFile` TEXT"
+
         /** Every migration, in order: what the app and the tests open the database with. */
         val ALL_MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18
+            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19
         )
     }
 }

@@ -50,7 +50,7 @@ struct LibraryRow: View {
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
                 : AnyLayout(HStackLayout(spacing: 14))
             layout {
-                RecipeThumbnail(url: recipe.imageUrl)
+                RecipeThumbnail(url: recipe.imageUrl, recipe: recipe.noPhoto)
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(recipe.title)

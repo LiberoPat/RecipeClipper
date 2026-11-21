@@ -66,6 +66,8 @@ class DefaultBackupRepositoryTest {
             writes++
             if (refs.none { it.recipeId == crossRef.recipeId && it.listId == crossRef.listId }) refs += crossRef
         }
+        override suspend fun fillPhotoFile(id: Long, file: String) = Unit
+        override suspend fun recipePhotoFiles() = recipes.mapNotNull { it.photoFile }
         override suspend fun fillNote(id: Long, notes: String) {
             writes++
             val i = recipes.indexOfFirst { it.id == id }

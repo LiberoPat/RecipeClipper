@@ -57,7 +57,7 @@ object RecipePrint {
         note: String?,
         labels: Labels = Labels.ENGLISH
     ): List<Block> = buildList {
-        recipe.image?.takeIf { it.isNotBlank() }?.let { add(Block.Photo(it)) }
+        recipe.displayImage?.takeIf { it.isNotBlank() }?.let { add(Block.Photo(it)) }
         add(Block.Title(recipe.name))
         sourceDomain?.takeIf { it.isNotBlank() }?.let { add(Block.Credit(it)) }
         RecipeShareText.metaLines(recipe, servings, labels.share).forEach { add(Block.Meta(it)) }

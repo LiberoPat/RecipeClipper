@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "language": "ja",
+  "about": "Words skipped at the start of a recipe's title before its first letter is taken for the no-photo monogram (#403): \"The Best Lasagna\" is B, \"Der Apfelkuchen\" is A. Lowercase; an entry ending in an apostrophe (\"l'\") matches with no space after it. A title that is only an article keeps it. Never merged across languages.",
+  "articles": []
+}

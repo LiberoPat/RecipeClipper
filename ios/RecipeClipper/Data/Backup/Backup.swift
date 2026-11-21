@@ -99,6 +99,10 @@ struct BackupRecipe: Equatable {
     /// The `id` of the recipe this one is a version of (#354), or nil. Absent in older files. An
     /// import keeps it only if that recipe is here after it.
     var basedOn: String? = nil
+    /// The recipe's own picture (#386): its path in the zip (`photos/…`, `BackupArchive`), or nil. An
+    /// export with photos names it; a plain JSON export, a shared file and older files have none. An
+    /// import takes it only with its picture, and only for a recipe that has none.
+    var photo: String? = nil
 }
 
 struct BackupList: Equatable {

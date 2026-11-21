@@ -28,11 +28,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import com.example.recipeclipper.ui.common.NoPhotoStyle
+import com.example.recipeclipper.ui.common.RecipeImage
+import com.example.recipeclipper.ui.common.noPhotoImageOn
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.StepTimers
@@ -58,7 +59,8 @@ internal fun ReadingView(
     var editingNotes by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     // The list's items: the top bar, the photo if any, the title block, then one per line.
-    val firstLine = if (recipe.image != null) 3 else 2
+    val hasBanner = recipe.displayImage != null || noPhotoImageOn()
+    val firstLine = if (hasBanner) 3 else 2
     val firstStep = firstLine + content.ingredients.size + 1
     val jump = state.ingredientJump
     // A step's ingredient link (#254): scroll to its lines, or back to the step.
@@ -81,15 +83,18 @@ internal fun ReadingView(
                 ReadingTopBar(recipe, state, actions, isSaved, photoCount)
             }
 
-            recipe.image?.let { image ->
+            if (hasBanner) {
                 item {
-                    AsyncImage(
-                        model = image,
+                    // The photo at 200 dp. With none (or one that fails to load) the recipe's
+                    // designed image (#403), 150 dp so the ingredients stay close to the top.
+                    RecipeImage(
+                        model = recipe.displayImage,
+                        recipe = recipe.noPhoto,
                         contentDescription = recipe.name,
-                        contentScale = ContentScale.Crop,
+                        style = NoPhotoStyle.Label,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp)
+                            .height(if (recipe.displayImage != null) 200.dp else 150.dp)
                             .clip(RoundedCornerShape(16.dp))
                     )
                     Spacer(Modifier.height(16.dp))

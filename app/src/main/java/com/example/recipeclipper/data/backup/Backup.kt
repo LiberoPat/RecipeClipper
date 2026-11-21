@@ -90,7 +90,11 @@ data class BackupRecipe(
     val editedAt: Long? = null,
     /** The [id] of the recipe this one is a version of (#354), or null. Absent in older files. An
      *  import keeps it only if that recipe is here after it. */
-    val basedOn: String? = null
+    val basedOn: String? = null,
+    /** The recipe's own picture (#386): its path in the zip (`photos/…`, [BackupArchive]), or null. An
+     *  export with photos names it; a plain JSON export, a shared file and older files have none. An
+     *  import takes it only with its picture, and only for a recipe that has none. */
+    val photo: String? = null
 )
 
 data class BackupList(
