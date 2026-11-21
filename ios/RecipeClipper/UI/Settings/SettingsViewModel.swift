@@ -14,8 +14,11 @@ struct SettingsUiState: Equatable {
     /// Turning reminders on was refused (notifications not allowed): the switch stays off and
     /// says why, until it is turned on successfully.
     var expiryRemindersDenied = false
-    /// The evening-before reminder of tomorrow's meals (#397), and its time (minutes since midnight).
+    /// The evening-before reminder of tomorrow's meals (#397) as stored, and its time (minutes since
+    /// midnight). What runs and shows under Pro (#413) is `SettingsViewModel.eveningReminderOn`.
     var eveningReminder = true
+    /// Whether the cook ever set the evening switch (#413).
+    var eveningReminderChosen = false
     var eveningReminderMinute = MealReminders.eveningMinute
     /// The optional afternoon Tonight reminder, and its time.
     var tonightReminder = false
@@ -145,6 +148,7 @@ final class SettingsViewModel {
     @ObservationIgnored private let autoBackup: AutoBackup?
     @ObservationIgnored private let paprika: PaprikaImportRepository?
     @ObservationIgnored private let mealie: MealieImportRepository?
+    @ObservationIgnored private let pro: ProAccess
     @ObservationIgnored private let clock: Clock
     @ObservationIgnored private var autoBackupSubscription: AnyCancellable?
 
@@ -159,8 +163,10 @@ final class SettingsViewModel {
         autoBackup: AutoBackup? = nil,
         clock: Clock = SystemClock(),
         paprika: PaprikaImportRepository? = nil,
-        mealie: MealieImportRepository? = nil
+        mealie: MealieImportRepository? = nil,
+        pro: ProAccess = UngatedProAccess()
     ) {
+        self.pro = pro
         self.paprika = paprika
         self.mealie = mealie
         self.autoBackup = autoBackup
@@ -229,6 +235,7 @@ final class SettingsViewModel {
             darkWhileCooking: settings.darkWhileCooking,
             expiryReminders: settings.expiryReminders,
             eveningReminder: settings.eveningReminder,
+            eveningReminderChosen: settings.eveningReminderChosen,
             eveningReminderMinute: settings.eveningReminderMinute,
             tonightReminder: settings.tonightReminder,
             tonightReminderMinute: settings.tonightReminderMinute,
@@ -237,9 +244,30 @@ final class SettingsViewModel {
         )
     }
 
-    /// The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag.
+    /// The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag, Pro only with `proUnlock`.
     var sections: [SettingsSection] {
-        SettingsSection.allCases.filter { ($0 != .unlimited || unlockRow != nil) && ($0 != .week || showsWeekReminders) }
+        SettingsSection.allCases.filter {
+            ($0 != .unlimited || unlockRow != nil) && ($0 != .week || showsWeekReminders) && ($0 != .pro || showsPro)
+        }
+    }
+
+    /// The Pro row (#413): only with the `proUnlock` flag; `isPro` says "Unlocked" on it.
+    var showsPro: Bool { pro.state.gated }
+    var isPro: Bool { pro.state.isPro }
+
+    /// Without Pro the Week reminders that are off carry the Pro badge and open the Pro screen (#413).
+    var remindersLocked: Bool { pro.state.locked }
+
+    /// The reminders as they run (#413, `ProReminders`): without Pro the evening one's default "on" is
+    /// not the cook's, so it shows off; one the cook switched on stays on.
+    var eveningReminderOn: Bool {
+        ProReminders.runs(on: uiState.eveningReminder, chosen: uiState.eveningReminderChosen, pro: pro.state)
+    }
+    var tonightReminderOn: Bool { ProReminders.runs(on: uiState.tonightReminder, chosen: true, pro: pro.state) }
+
+    /// The Week page says notifications are off: refused just now, or a running reminder they block.
+    var weekRemindersBlocked: Bool {
+        uiState.weekRemindersDenied || (!uiState.notificationsAllowed && (eveningReminderOn || tonightReminderOn))
     }
 
     /// The Week section (#397): only with the `eveningReminders` flag on.
@@ -250,6 +278,9 @@ final class SettingsViewModel {
     /// says why. Returns the work so a test can await it.
     @discardableResult
     func onWeekReminderChange(_ kind: MealReminderKind, _ on: Bool) -> Task<Void, Never>? {
+        // Without Pro (#413) a reminder that is off doesn't go on: its switch opens the Pro screen instead.
+        let shown = kind == .evening ? eveningReminderOn : tonightReminderOn
+        if on && remindersLocked && !shown { return nil }
         guard on else {
             setWeekReminder(kind, false)
             return nil
@@ -267,6 +298,7 @@ final class SettingsViewModel {
         case .evening:
             preferences.eveningReminder = on
             uiState.eveningReminder = on
+            uiState.eveningReminderChosen = true
         case .tonight:
             preferences.tonightReminder = on
             uiState.tonightReminder = on
@@ -378,10 +410,11 @@ final class SettingsViewModel {
         uiState.chefMode = enabled
     }
 
-    /// The "Unlimited recipes" row (#107): nil while the `freeTier` flag is off. Unlocked counts
-    /// Developer settings' override too. Read through the observable flags and store.
+    /// The "Unlimited recipes" row (#107): nil while the `freeTier` flag is off, or `proUnlock` on (#413:
+    /// the free tier is gone, and the Pro row sells the unlock). Unlocked counts Developer settings'
+    /// override too. Read through the observable flags and store.
     var unlockRow: UnlockRow? {
-        guard let flags, flags.isOn(.freeTier) else { return nil }
+        guard let flags, flags.isOn(.freeTier), !flags.isOn(.proUnlock) else { return nil }
         let store = entitlements.state
         return UnlockRow(
             unlocked: store.unlocked || flags.unlockedOverride, pending: store.pending, price: store.price,

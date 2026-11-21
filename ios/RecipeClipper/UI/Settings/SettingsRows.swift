@@ -156,10 +156,12 @@ struct SwitchRow: View {
     let title: String
     let description: String
     @Binding var isOn: Bool
+    /// A locked Week extra (#413): the Pro badge after the title; the binding's set opens the Pro screen.
+    var proBadge = false
 
     var body: some View {
         Toggle(isOn: $isOn) {
-            TitleAndDescription(title: title, description: description)
+            TitleAndDescription(title: title, description: description, proBadge: proBadge)
         }
         .toggleStyle(StackedWhenLargeToggleStyle())
         .tint(Palette.primary)
@@ -189,9 +191,17 @@ private struct StackedWhenLargeToggleStyle: ToggleStyle {
 private struct TitleAndDescription: View {
     let title: String
     let description: String?
+    var proBadge = false
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title).textStyle(Typography.bodyLarge).foregroundStyle(Palette.onBackground)
+            if proBadge {
+                HStack(spacing: 8) {
+                    Text(title).textStyle(Typography.bodyLarge).foregroundStyle(Palette.onBackground)
+                    ProBadge()
+                }
+            } else {
+                Text(title).textStyle(Typography.bodyLarge).foregroundStyle(Palette.onBackground)
+            }
             if let description {
                 Text(description).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
             }

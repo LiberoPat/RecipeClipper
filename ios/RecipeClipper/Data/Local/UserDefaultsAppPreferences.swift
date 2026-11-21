@@ -58,6 +58,9 @@ final class UserDefaultsAppPreferences: AppPreferences {
         set { defaults.set(newValue, forKey: Key.eveningReminder) }
     }
 
+    // Only the switch writes the key, so its presence is the cook's own choice (#413).
+    var eveningReminderChosen: Bool { defaults.object(forKey: Key.eveningReminder) != nil }
+
     // A stored time outside the day (a damaged file) reads as the default.
     var eveningReminderMinute: Int {
         get { Self.minute(defaults.object(forKey: Key.eveningReminderMinute), MealReminders.eveningMinute) }

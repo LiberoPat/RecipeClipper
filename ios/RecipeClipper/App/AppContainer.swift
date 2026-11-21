@@ -53,6 +53,8 @@ final class AppContainer {
     let entitlements: Entitlements
     /// Which library limit applies (#107), mirrored for the repositories and the extension.
     let libraryPolicy: LibraryPolicy
+    /// Pro (#413): the one place the Week extras learn whether they are open (the flag, the store, the override).
+    let proAccess: ProAccess
     /// "I made this" (#116): the user's own photos; nil (most tests) leaves the section out.
     let cookedPhotoRepository: CookedPhotoRepository?
     /// The automatic backup copy in iCloud Drive (#150); the live app only (nil under XCTest).
@@ -142,6 +144,7 @@ final class AppContainer {
         self.decisionRepository = decisionRepository
         self.entitlements = entitlements ?? UnavailableEntitlements()
         libraryPolicy = LibraryPolicy(flags: self.featureFlags, entitlements: self.entitlements, mirror: libraryMirror)
+        proAccess = DefaultProAccess(flags: self.featureFlags, entitlements: self.entitlements)
         firstRunTour = FirstRunTour(preferences: tourPreferences, recipes: recipeRepository)
         tooltips = TooltipsViewModel(preferences: tourPreferences)
     }
@@ -183,7 +186,7 @@ final class AppContainer {
     func startMealReminders(_ scheduler: MealReminderScheduler) {
         let coordinator = MealReminderCoordinator(
             mealPlan: mealPlanRepository, recipes: recipeRepository, preferences: preferences,
-            flags: featureFlags, scheduler: scheduler, clock: clock
+            flags: featureFlags, scheduler: scheduler, clock: clock, pro: proAccess
         )
         coordinator.start()
         mealReminders = coordinator
@@ -370,8 +373,13 @@ final class AppContainer {
         WeekViewModel(
             plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar,
             skipOn: { [featureFlags] in featureFlags.isOn(.skipTonight) },
-            groceries: groceryRepository, freshFood: featureFlags.isOn(.freshFood)
+            groceries: groceryRepository, freshFood: featureFlags.isOn(.freshFood), pro: proAccess
         )
+    }
+
+    /// The Pro screen (#413): every locked Week extra, and Settings' Pro row, open it.
+    func makeProViewModel() -> ProViewModel {
+        ProViewModel(pro: proAccess)
     }
 
     func makeAddToPlanViewModel() -> AddToPlanViewModel {
@@ -421,10 +429,10 @@ final class AppContainer {
         let preferences = preferences, clock = clock
         let pasted = pastedTextRouter
         let mealPlan = mealPlanRepository, choices = planChoices
-        return { [featureFlags] in
+        return { [featureFlags, proAccess] in
             AskAiViewModel(
                 pantry: pantry, lists: lists, recipes: recipes, preferences: preferences, clock: clock, pasted: pasted,
-                mealPlan: mealPlan, choices: choices, planPlus: { featureFlags.isOn(.planMyWeekPlus) }
+                mealPlan: mealPlan, choices: choices, planPlus: { featureFlags.isOn(.planMyWeekPlus) }, pro: proAccess
             )
         }
     }
@@ -472,7 +480,8 @@ final class AppContainer {
     func makeWhatINeedViewModel(weekStart: Int64) -> WhatINeedViewModel {
         WhatINeedViewModel(
             weekStart: weekStart, groceries: groceryRepository, pantry: pantryRepository, preferences: preferences,
-            decisions: decisionRepository, calendar: planCalendar, freshFood: featureFlags.isOn(.freshFood)
+            decisions: decisionRepository, calendar: planCalendar, freshFood: featureFlags.isOn(.freshFood),
+            pro: proAccess
         )
     }
 
@@ -526,7 +535,7 @@ final class AppContainer {
         MealPlanReviewViewModel(
             text: text, recipes: recipeRepository, plan: mealPlanRepository, calendar: planCalendar,
             limit: { [libraryPolicy] in libraryPolicy.limit }, entitlements: entitlements,
-            freshFood: featureFlags.isOn(.freshFood), planPlus: featureFlags.isOn(.planMyWeekPlus)
+            freshFood: featureFlags.isOn(.freshFood), planPlus: featureFlags.isOn(.planMyWeekPlus), pro: proAccess
         )
     }
 
@@ -564,7 +573,7 @@ final class AppContainer {
             preferences: preferences, backups: backupRepository, files: backupFiles, appVersion: appInfo.appVersion,
             flags: featureFlags, notificationPermission: notificationPermission,
             shortSteps: shortStepRepository, entitlements: entitlements, autoBackup: autoBackup, clock: clock,
-            paprika: paprikaImportRepository, mealie: mealieImportRepository
+            paprika: paprikaImportRepository, mealie: mealieImportRepository, pro: proAccess
         )
     }
 

@@ -20,7 +20,9 @@ final class FakeAppPreferences: AppPreferences {
         eveningReminder: Bool = true,
         eveningReminderMinute: Int = MealReminders.eveningMinute,
         tonightReminder: Bool = false,
-        tonightReminderMinute: Int = MealReminders.tonightMinute
+        tonightReminderMinute: Int = MealReminders.tonightMinute,
+        /// Whether the evening switch was ever set (#413); setting `eveningReminder` sets it too.
+        eveningReminderChosen: Bool = false
     ) {
         subject = CurrentValueSubject(AppSettings(
             unitSystem: unitSystem,
@@ -35,7 +37,8 @@ final class FakeAppPreferences: AppPreferences {
             eveningReminder: eveningReminder,
             eveningReminderMinute: eveningReminderMinute,
             tonightReminder: tonightReminder,
-            tonightReminderMinute: tonightReminderMinute
+            tonightReminderMinute: tonightReminderMinute,
+            eveningReminderChosen: eveningReminderChosen
         ))
     }
 
@@ -85,8 +88,15 @@ final class FakeAppPreferences: AppPreferences {
 
     var eveningReminder: Bool {
         get { subject.value.eveningReminder }
-        set { subject.value.eveningReminder = newValue }
+        set {
+            var next = subject.value
+            next.eveningReminder = newValue
+            next.eveningReminderChosen = true
+            subject.value = next
+        }
     }
+
+    var eveningReminderChosen: Bool { subject.value.eveningReminderChosen }
 
     var eveningReminderMinute: Int {
         get { subject.value.eveningReminderMinute }

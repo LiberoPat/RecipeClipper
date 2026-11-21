@@ -2,8 +2,8 @@ import Foundation
 
 /// Settings' sections (#286; Android's `SettingsSection`), in the index's order: each is a row
 /// there, with its current value, and a page of its own (`Route.settingsSection`). `unlimited`
-/// shows only with the `freeTier` flag, `week` (the evening and Tonight reminders, #397) only with
-/// `eveningReminders`.
+/// shows only with the `freeTier` flag and `proUnlock` off, `pro` (#413, the Pro screen itself) only
+/// with `proUnlock`, `week` (the evening and Tonight reminders, #397) only with `eveningReminders`.
 enum SettingsSection: String, CaseIterable, Hashable {
     case units
     case ovenTemperature = "oven-temperature"
@@ -14,6 +14,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     case yourRecipes = "your-recipes"
     case help
     case unlimited
+    case pro
 
     var title: String {
         switch self {
@@ -26,6 +27,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .yourRecipes: Strings.settingsSectionYourRecipes
         case .help: Strings.settingsSectionHelp
         case .unlimited: Strings.unlimitedTitle
+        case .pro: Strings.proTitle
         }
     }
 
@@ -41,6 +43,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .yourRecipes: "icloud"
         case .help: "info.circle"
         case .unlimited: "infinity"
+        case .pro: "star"
         }
     }
 

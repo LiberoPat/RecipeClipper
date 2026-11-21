@@ -8,7 +8,7 @@ import Observation
 enum Flag: String, CaseIterable {
     /// Chef mode (#100): the Settings switch for short steps written on the device.
     case chefMode
-    /// The free tier (#107): 50 recipes (20 with `oneCookbook` off), and the one-time unlock for unlimited ones.
+    /// The free tier (#107): 50 recipes (20 with `oneCookbook` off), and the one-time unlock for unlimited ones; ignored while `proUnlock` is on.
     case freeTier
     /// A recipe picked from the page's text by the on-device model when the page has no recipe data (#103).
     case llmExtraction
@@ -74,6 +74,8 @@ enum Flag: String, CaseIterable {
     case groceryRecipeTags
     /// Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix.
     case planMyWeekPlus
+    /// Pro (#413): no library limit for anyone, and the one-time unlock holds the Week planning extras, shown locked until bought.
+    case proUnlock
     /// Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone; needs `oneCookbook`.
     case libraryFirst
 }
@@ -209,8 +211,8 @@ final class FeatureFlags {
     /// The store key of `unlockedOverride`; the same on Android.
     static let unlockedOverrideKey = "override.unlocked"
 
-    /// Developer settings' "Unlocked" (#107): the unlock counts as bought, to test the unlimited
-    /// library without a store. Kept in the same store under a key that is no flag's, so Reset
+    /// Developer settings' "Pro (unlocked)" (#107, #413): the unlock counts as bought, to test Pro (or,
+    /// with `proUnlock` off, the unlimited library) without a store. Kept in the same store under a key that is no flag's, so Reset
     /// clears it too.
     var unlockedOverride: Bool { overrides[Self.unlockedOverrideKey] == true }
 

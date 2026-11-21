@@ -28,6 +28,8 @@ struct HomeScreen: View {
     /// Makes "Ask an AI"'s sheet (#351); nil (the askAi flag off, or tests) leaves the tile out.
     /// Made on first use and kept for the screen's life.
     var makeAskAiVM: (() -> AskAiViewModel)? = nil
+    /// The Pro screen (#413): Ask an AI's locked Plan my week choices open it.
+    var onOpenPro: () -> Void = {}
 
     @State private var restoring = false
     @State private var askAiVM: AskAiViewModel?
@@ -173,6 +175,10 @@ struct HomeScreen: View {
                     askAiVM.onReset()
                     vm.onAskAiDismissed()
                     openPasted(target)
+                }, onOpenPro: {
+                    askAiVM.onReset()
+                    vm.onAskAiDismissed()
+                    onOpenPro()
                 })
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)

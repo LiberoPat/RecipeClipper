@@ -13,6 +13,8 @@ struct SettingsSectionScreen: View {
     let vm: SettingsViewModel
     /// "Show tips again" (#190).
     var onShowTips: () -> Void = {}
+    /// The Pro screen (#413): a locked Week reminder's switch opens it.
+    var onOpenPro: () -> Void = {}
     @State private var importing = false
     @State private var importingPaprika = false
     @State private var importingRecipeKeeper = false
@@ -114,6 +116,8 @@ struct SettingsSectionScreen: View {
             .accessibilityIdentifier("settings.showTips")
             .tooltipAnchor(.settingsShowTips)
         case .unlimited: unlimitedRows
+        // Pro (#413) is its own screen, ProScreen, at this section's route: never drawn here.
+        case .pro: EmptyView()
         }
     }
 }
@@ -155,13 +159,13 @@ private extension SettingsSectionScreen {
         let state = vm.uiState
         reminderRows(
             .evening, title: Strings.eveningReminderTitle, description: Strings.eveningReminderDescription,
-            on: state.eveningReminder, minute: state.eveningReminderMinute
+            on: vm.eveningReminderOn, minute: state.eveningReminderMinute
         )
         reminderRows(
             .tonight, title: Strings.tonightReminderTitle, description: Strings.tonightReminderDescription,
-            on: state.tonightReminder, minute: state.tonightReminderMinute
+            on: vm.tonightReminderOn, minute: state.tonightReminderMinute
         )
-        if state.weekRemindersBlocked {
+        if vm.weekRemindersBlocked {
             Text(Strings.expiryRemindersDenied)
                 .textStyle(Typography.bodySmall)
                 .foregroundStyle(Palette.error)
@@ -175,9 +179,13 @@ private extension SettingsSectionScreen {
     @ViewBuilder
     func reminderRows(_ kind: MealReminderKind, title: String, description: String, on: Bool, minute: Int) -> some View {
         let id = kind == .evening ? "evening" : "tonight"
+        // Without Pro (#413): a reminder that is off carries the badge, and switching it on opens the
+        // Pro screen; one the cook had on stays on, to retime or turn off.
+        let proBadge = vm.remindersLocked && !on
         SwitchRow(
             title: title, description: description,
-            isOn: Binding(get: { on }, set: { vm.onWeekReminderChange(kind, $0) })
+            isOn: Binding(get: { on }, set: { if $0 && proBadge { onOpenPro() } else { vm.onWeekReminderChange(kind, $0) } }),
+            proBadge: proBadge
         )
         .accessibilityIdentifier("settings.\(id)Reminder")
         if on {

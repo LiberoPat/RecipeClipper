@@ -1,8 +1,9 @@
 import Foundation
 import Observation
 
-/// Which `LibraryLimit` applies (#107): the `freeTier` flag, then the unlock, bought or the
-/// Developer settings override. Android's `DefaultLibraryPolicy`.
+/// Which `LibraryLimit` applies (#107, #345, #413): the `proUnlock`, `oneCookbook` and `freeTier` flags,
+/// then the unlock, bought or the Developer settings override. With `proUnlock` on no limit is ever the
+/// free tier's, and the share extension reads that from the mirror too. Android's `DefaultLibraryPolicy`.
 ///
 /// The repository reads the limit from `mirror` (the App Group suite), not from here, because
 /// the share extension saves recipes in its own process and never sees the flags or StoreKit.
@@ -24,7 +25,8 @@ final class LibraryPolicy {
         LibraryLimit.of(
             freeTier: flags.isOn(.freeTier),
             unlocked: entitlements.state.unlocked || flags.unlockedOverride,
-            oneCookbook: flags.isOn(.oneCookbook)
+            oneCookbook: flags.isOn(.oneCookbook),
+            proUnlock: flags.isOn(.proUnlock)
         )
     }
 

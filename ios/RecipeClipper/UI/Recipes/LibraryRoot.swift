@@ -15,6 +15,8 @@ struct LibraryRoot {
     var homeTonight = true
     /// "Ask an AI" (#351): nil (the askAi flag off) leaves it out of the sheet.
     var makeAskAiVM: (() -> AskAiViewModel)?
+    /// The Pro screen (#413): Ask an AI's locked Plan my week choices open it.
+    var onOpenPro: () -> Void = {}
 }
 
 /// The gear and the + beside the title (#375): Settings, and the Add a recipe sheet.

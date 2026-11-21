@@ -158,6 +158,10 @@ struct RecipesScreen: View {
                     askAiVM.onReset()
                     root.vm.onAskAiDismissed()
                     openPasted(target)
+                }, onOpenPro: {
+                    askAiVM.onReset()
+                    root.vm.onAskAiDismissed()
+                    root.onOpenPro()
                 })
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)

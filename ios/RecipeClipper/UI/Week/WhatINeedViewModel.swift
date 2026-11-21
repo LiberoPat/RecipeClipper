@@ -27,6 +27,7 @@ final class WhatINeedViewModel {
     private(set) var uiState: WhatINeedUiState
 
     @ObservationIgnored private let groceries: GroceryRepository
+    @ObservationIgnored private let pro: ProAccess
     @ObservationIgnored private var subscription: AnyCancellable?
     /// Loading the week, then following the pantry. Tests await it.
     @ObservationIgnored private(set) var loading: Task<Void, Never>?
@@ -35,8 +36,10 @@ final class WhatINeedViewModel {
     /// `freshFood` (#396): today and the flag; without both, To buy stays one list.
     init(
         weekStart: Int64, groceries: GroceryRepository, pantry: PantryRepository, preferences: AppPreferences,
-        decisions: DecisionRepository? = nil, calendar: PlanCalendar? = nil, freshFood: Bool = false
+        decisions: DecisionRepository? = nil, calendar: PlanCalendar? = nil, freshFood: Bool = false,
+        pro: ProAccess = UngatedProAccess()
     ) {
+        self.pro = pro
         uiState = WhatINeedUiState(weekStart: weekStart)
         self.groceries = groceries
         loading = Task { [weak self] in
@@ -67,13 +70,27 @@ final class WhatINeedViewModel {
         }
     }
 
+    /// Without Pro (#413): `trips` is still worked out but not used, so To buy is one list and "Add to
+    /// groceries" adds all of it (nothing is left unbought); when the split would have put something
+    /// later, one locked line says so and opens the Pro screen. Read live.
+    var splitLocked: Bool { pro.state.locked }
+
+    /// The two trips as the screen shows them: nil while locked or with nothing to buy later.
+    var shownTrips: ShopTrips? { uiState.trips.flatMap { !splitLocked && !$0.later.isEmpty ? $0 : nil } }
+
+    /// Locked, and the split would have something to buy later: the one locked line.
+    var showsSplitTeaser: Bool { splitLocked && !(uiState.trips?.later.isEmpty ?? true) }
+
+    /// The Buy rows that "Add to groceries" adds: Buy now's with two trips shown, else all of them.
+    var buyNow: [NeedRow] { shownTrips?.now ?? uiState.needs?.buy ?? [] }
+
     /// Every Buy line onto the grocery list, through the same path as the grocery sheet (#50). With
     /// two trips (#396) it is Buy now's lines only: the later ones have their own button
     /// (`onAddLaterToGroceries`), so a cook who shops once adds both and one who shops twice adds
     /// the second group on the second trip.
     func onAddBuyToGroceries() {
         guard !uiState.added else { return }
-        let lines = Self.lines(of: uiState.buyNow)
+        let lines = Self.lines(of: buyNow)
         guard !lines.isEmpty else { return }
         uiState.added = true
         Task { await groceries.add(lines) }
@@ -82,7 +99,7 @@ final class WhatINeedViewModel {
     /// Buy later in the week's lines onto the grocery list (#396), once.
     func onAddLaterToGroceries() {
         guard !uiState.addedLater else { return }
-        let lines = Self.lines(of: (uiState.trips?.later ?? []).map(\.row))
+        let lines = Self.lines(of: (shownTrips?.later ?? []).map(\.row))
         guard !lines.isEmpty else { return }
         uiState.addedLater = true
         Task { await groceries.add(lines) }
