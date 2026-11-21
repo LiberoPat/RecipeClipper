@@ -925,9 +925,11 @@ and test on a device. `NewerVersionAvailable` for jsoup: it is held at 1.17.2
 because newer releases need core library desugaring on Android, fetch through
 `java.net.http.HttpClient` on the JVM (so unit tests stop exercising the
 device's code path), and change `Element.text()`, which the iOS port mirrors.
-The toolchain upgrade of September 2026 (#23) cleared the other 14. Do not
-silence them with a baseline: the day one of them matters, it should still be
-visible. CI (`check_lint.py`) allows only the version-advisory ids.
+The toolchain upgrade of September 2026 (#23) cleared the other 14, and #401
+(November 2026) the next eight (Gradle 9.9.2 alone, AGP 9.4.1 still being
+compatible; lifecycle, webkit, genai-prompt, text recognition, Robolectric,
+kotlinx-serialization). Do not silence them with a baseline: the day one of
+them matters, it should still be visible. CI (`check_lint.py`) allows only the version-advisory ids.
 
 Compose 1.12's lint checks found three real issues in that upgrade, all fixed:
 the date format now reads `LocalLocale` (`NonObservableLocale`), cook mode's

@@ -2715,7 +2715,7 @@ Part of #99: the model writes words, code owns every number.
     Spanish, Korean; **no Portuguese**. Returns suggestions sorted by confidence.
   - *Summarization* (`genai-summarization:1.0.0-beta1`): bulleted summaries of articles and
     chats; the wrong shape for one step.
-  - *Prompt API* (`genai-prompt:1.0.0-beta4`): free prompts to Gemini Nano, under 4,000 tokens,
+  - *Prompt API* (`genai-prompt:1.0.0-beta5`): free prompts to Gemini Nano, under 4,000 tokens,
     on fewer phones (nano-v2 to v4 lists).
   All three: `checkFeatureStatus()` (Prompt: `checkStatus()`) returns `UNAVAILABLE`,
   `DOWNLOADABLE`, `DOWNLOADING` or `AVAILABLE`; `downloadFeature(callback)` fetches the model;
@@ -3486,7 +3486,7 @@ ones).
 
 **The APIs, as checked on 2026-09-25:**
 
-- **Android: ML Kit GenAI's Prompt API** (`com.google.mlkit:genai-prompt:1.0.0-beta4`,
+- **Android: ML Kit GenAI's Prompt API** (`com.google.mlkit:genai-prompt:1.0.0-beta5`,
   `Generation.getClient()`, `checkStatus()`, `download()`, `generateContent(generateContentRequest(
   TextPart(…)) { temperature = 0f; topK = 1; maxOutputTokens = 4096 })`). Input under 4,000
   tokens; 4,096 output tokens is the most `GenerateContentRequest` accepts (#128 raised it from
