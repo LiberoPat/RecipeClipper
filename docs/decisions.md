@@ -3207,6 +3207,9 @@ whose views strip carries the Lists card that Home's Lists row was the only way 
 
 ## The free tier and the unlock (#107)
 
+**Superseded with `proUnlock` on (#413):** recipes are unlimited for everyone and this unlock is Pro;
+what follows is the app with `proUnlock` off. See "Pro" below.
+
 Owner's decision (2026-09-25, rules approved as proposed): the free app keeps
 20 recipes; a one-time purchase unlocks unlimited ones. **Changed by #345 step 2 (2026-11-18,
 `oneCookbook` on): the limit is 50 and at the limit a new recipe is shown, not saved; nothing is ever
@@ -3285,6 +3288,9 @@ the app is exactly as before (the history cap of 50 unprotected recipes).
   product exists.
 
 ## One cookbook (#345)
+
+**With `proUnlock` on (#413) the free tier's 50 never applies** (no shown-not-saved, no undo rule);
+the rest of this section stands.
 
 The owner's pick (2026-11-18) from the library designs (private artifact, source
 `~/Downloads/RecipeClipper-designs/library-history/`): **V1 "Say what it is"** (step 1, #346), then
@@ -6328,6 +6334,119 @@ the flag is the one thing a gate would wrap.
   `MealPlanReviewScreenTest`.
 - **Not here:** the pantry (#363) and food profile (#364) toggles (neither exists to read yet),
   and any Pro gate (#413).
+
+## Pro: unlimited recipes free, a one-time unlock for the Week extras (#413, 2026-11-21)
+
+The owner's decision (2026-11-19, issue #413, with the 2026-11-20 comment): **unlimited recipes,
+free, forever; no ads, no account**; a **one-time "Pro" unlock, never a subscription**, holding only
+the Week planning extras. Behind the **`proUnlock`** flag (on by default in debug and release, both
+platforms); off, the app is exactly as before (the free tier of #107 and #345 when `freeTier` is on,
+every extra free).
+
+**How the three flags combine.** `proUnlock` on overrides `freeTier`: the library is limited as if
+`freeTier` were off (`LibraryLimit.of(..., proUnlock = true)`), so with `oneCookbook` on (the default)
+it is `Unlimited`, and with `oneCookbook` off it is the old `History(50)` clean-up of unprotected
+recipes (that clean-up is `oneCookbook`'s own flag-off behaviour, not the free tier's; never the free
+20). `freeTier`'s Settings row ("Unlimited recipes") and the Recipes count are hidden; the Pro row
+takes its place. `proUnlock` off: `freeTier` and `oneCookbook` decide exactly as in #107 and #345
+(`Capped(50)`, `Free(20)`, `History(50)` or `Unlimited`), and nothing is gated.
+
+| proUnlock | freeTier | oneCookbook | Library | Week extras |
+|---|---|---|---|---|
+| on | any | on | unlimited | Pro (locked until bought) |
+| on | any | off | old clean-up of 50 unprotected | Pro |
+| off | off | on | unlimited | free |
+| off | on | on | 50, shown not saved (unlocked: unlimited) | free |
+| off | on | off | 20, swap the oldest (unlocked: unlimited) | free |
+| off | off | off | old clean-up of 50 | free |
+
+- **The limit is gone on every way in** through the one value: `RecipeDao.upsert` (a link, Reddit,
+  Cloudflare's `importPage`, a clip, typed, scanned, photo-read and shared-text recipes through
+  `addManual`), `BackupMerger` (a backup, a sent file, the Paprika, Recipe Keeper and Mealie imports),
+  `restoreAll` (so no free-tier undo rule), the meal-plan review's room, and the iOS share extension,
+  which reads the App Group mirror `LibraryPolicy` keeps (it now says "unlimited"). The "Not saved"
+  bar, the "library full" dialog and the extension's card simply never fire. No code path was removed:
+  the flag turns it all back.
+- **The purchase is #107's, re-pointed, not a new one.** #107 built real store code: Google Play
+  Billing 9.1.0 (`PlayBillingEntitlements`: one-time product, acknowledged purchases, pending
+  purchases, a launch-time re-check, a cached answer in the `entitlements` prefs file) and StoreKit 2
+  (`StoreKitEntitlements`: `Transaction.updates`, `AppStore.sync()` for restore, a cached answer in
+  `UserDefaults`, the local `RecipeClipper.storekit` with a placeholder price). The product id stays
+  **`unlimited_recipes`** on both stores, so **a cook who unlocked under #107 is Pro** with nothing to
+  migrate (the same entitlement, the same cache). No SDK or product id was added.
+  - **One place per platform reads Pro:** `ProAccess` (`DefaultProAccess` over the flag, the store and
+    Developer settings' override; Android a `Flow<ProState>` the ViewModels collect, iOS an observable
+    `state` the ViewModels' computed properties read). `ProState` has `gated` (the flag), `isPro`,
+    `pending` and the store's `price`; `extras` is `!gated || isPro`, `locked` its opposite.
+  - **Developer settings' "Unlocked" switch is now "Pro (unlocked)"** (the same `override.unlocked`
+    key, so Reset clears it): on, Pro counts as bought with no store. It can only add Pro; a real
+    purchase on a test account can't be switched off from there.
+  - **Release setup still to wire** (the owner's, #18 and #22): the one-time product in Play Console
+    and the non-consumable in App Store Connect, both `unlimited_recipes` (display name "Pith Pro";
+    price is the owner's call, never written in the app), **Family Sharing turned on** for the iOS
+    product, and the Play license testers. Restore purchases is already there on both (Play's fresh
+    `queryPurchasesAsync`, `AppStore.sync()`). Until the products exist a purchase answers "Couldn't
+    reach the store".
+- **The Pro screen** (Android `ui/pro/ProScreen` with `ProViewModel`, iOS `UI/Pro`): Settings' Pro
+  page (`settings/pro`; iOS `Route.settingsSection(.pro)`) and, on the Week's stack, `week/pro`, so
+  Back returns to where the cook was. The badge, then "Pith Pro", "Extras for planning your week.
+  Everything else in Pith stays free.", the four extras each with a line, "One-time purchase, never a
+  subscription.", **Unlock Pro** (the store's price after it, "Unlock Pro for €3.49", only once the
+  store has given one; no figure otherwise), **Restore purchases**, the pending or failed line (#107's
+  words), and "Free. No ads. No account. No subscription." Bought, the button gives way to "Pro is
+  unlocked. Thank you!". The Settings index row says "Unlocked" when Pro.
+- **The badge** (`ProBadge` on both): "Pro" in the accent paprika (tertiary / `accentText`) inside a
+  thin paprika outline at half strength, 11pt semibold Karla, no fill: quiet, no Material purple. It
+  sits after a locked extra's own label; a locked extra with no button of its own gets one muted line
+  with the badge (`ProTeaserRow`). An iOS context menu can't draw an outline, so Skip's menu item says
+  "Pro" as its subtitle there.
+
+**What is gated, and what a cook without Pro sees.** The rule for anything already used: **nothing
+saved is taken away or hidden, and nothing switched on is switched off.** Gating only stops starting
+something new.
+
+- **Fresh food (#396).** *Buy later:* locked, Shop for this week shows one To buy list (as with the
+  `freshFood` flag off) whose "Add to groceries" adds every line, so nothing goes unbought; when the
+  split would have put something later, one locked line "Buy fresh food later in the week · Pro" opens
+  the Pro screen. Lines already added to Groceries stay. *The "cook it earlier?" note:* still shown on
+  the Week and in the meal-plan review (it is the table's hint), but its "Swap with …" carries the
+  badge and opens the Pro screen; nothing moves. A swap made before stays (it was a plan change).
+- **Reminders (#397).** Settings > Week stays. A reminder the cook switched on themselves keeps
+  running without Pro, and can be retimed or turned off; once off, turning it on needs Pro (the switch
+  shows the badge and opens the Pro screen, writing nothing). The evening reminder's default "on"
+  (never stored) is a Pro default: without Pro and with the switch never touched, it shows off and
+  nothing is scheduled; with Pro it is on as before. "Switched on themselves" is the key being stored
+  (`evening_reminder` present; Tonight is off by default, so on is always the cook's): no new setting.
+  Android's alarm receiver and iOS's planner both apply it (`ProReminders.runs`), and a purchase,
+  refund or override re-plans at once.
+- **Skip (#398).** Locked, today's Skip button and the long-press Skip are still there with the badge
+  and open the Pro screen; Move and Remove stay free. Meals already skipped are ordinary plan rows and
+  stay where they are; an undo already showing works as before.
+- **Plan my week (#392, #367).** Locked, Ask an AI's Plan my week is the free week of dinners it was
+  before #392 (the flag-off prompt), and its choices (meals, start day, recipes from the cook's own,
+  new or a mix) are one locked line, "Choose the meals, the first day and your own recipes · Pro",
+  that closes the sheet and opens the Pro screen. The remembered meal choice is kept for when Pro
+  comes. **The meal-plan review stays free** (it is an import: an AI plan already imported, or pasted
+  from any chat, is reviewed, saved and planned with its days and meals as before); only its
+  fresh-food swap is Pro's.
+- **Not gated** (owner, 2026-11-20): adding a recipe to Week, Move, Remove, Shop for this week, What
+  I need, menus, every way in and every import, lists, search, cook mode, scaling and conversion,
+  printing, export and backups, widgets and the Live Activity, single-recipe Ask an AI prompts. The
+  prep plan (#366), hosting menu (#368), shopping help (#365), alternate icons and themes, and sync
+  are Pro when built; none exists yet.
+
+**Strings.** 19 new keys in six languages on both platforms (`pro_*`; drafts for a native speaker in
+`docs/translations.md`). "Pro" and "Pith Pro" are kept as names in every language.
+
+**Tests.** Android: `LibraryLimitTest` (core), `ProUnlockLimitTest` (every way in over the real
+policy and SQLite, flag on and off), `ProAccessTest`, `MealReminderProTest`, `ProScreenTest`,
+`SettingsProTest`, `WeekProTest`, `WhatINeedProTest`, `PlanMyWeekProTest`, `MealPlanReviewProTest`;
+`SettingsUnlockTest` now pins `proUnlock` off. iOS: `ProUnlockTests` (every way in over the mirror the
+share extension reads), `ProTests` (Pro, the screen's ViewModel, Settings, Week, What I need, Ask an
+AI, the review), `MealReminderProTests`, `ProUITests`; the free-tier tests (`FreeTierViewModelTests`,
+`OneCookbookTests`, `OneCookbookViewModelTests`, `RecipesViewModelTests`) pin `proUnlock` off. No
+migration, no pure-logic change under the corpus (only `LibraryLimit.of`, which the corpus doesn't
+cover).
 
 ## Pith (#414, 2026-11-20)
 
