@@ -6,8 +6,9 @@ import com.example.recipeclipper.R
 
 /**
  * Settings' sections (#286), in the index's order: each is a row there, with its current value,
- * and a page of its own at `settings/<route>`. [UNLIMITED] shows only with the `freeTier` flag,
- * [WEEK] (the evening and Tonight reminders, #397) only with `eveningReminders`.
+ * and a page of its own at `settings/<route>`. [UNLIMITED] shows only with the `freeTier` flag and
+ * `proUnlock` off, [PRO] (#413, the Pro screen itself) only with `proUnlock`, [WEEK] (the evening
+ * and Tonight reminders, #397) only with `eveningReminders`.
  */
 enum class SettingsSection(val route: String, @StringRes val title: Int, @DrawableRes val icon: Int) {
     UNITS("units", R.string.settings_section_units, R.drawable.ic_settings_units),
@@ -18,5 +19,6 @@ enum class SettingsSection(val route: String, @StringRes val title: Int, @Drawab
     PANTRY("pantry", R.string.settings_section_pantry, R.drawable.ic_settings_pantry),
     YOUR_RECIPES("your-recipes", R.string.settings_section_your_recipes, R.drawable.ic_settings_recipes),
     HELP("help", R.string.settings_section_help, R.drawable.ic_settings_help),
-    UNLIMITED("unlimited", R.string.unlimited_title, R.drawable.ic_settings_unlimited)
+    UNLIMITED("unlimited", R.string.unlimited_title, R.drawable.ic_settings_unlimited),
+    PRO("pro", R.string.pro_title, R.drawable.ic_settings_pro)
 }

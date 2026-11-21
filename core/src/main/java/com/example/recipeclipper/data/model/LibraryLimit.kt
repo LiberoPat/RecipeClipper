@@ -14,8 +14,8 @@ package com.example.recipeclipper.data.model
  * - [Capped]: `oneCookbook` on (#345), the free tier on and locked. Every recipe counts, and a
  *   new one added at [Capped.max] is shown but not kept: nothing is ever removed to make room.
  *   Re-opening or refreshing a recipe already here is allowed (it is already counted).
- * - [Unlimited]: unlocked, or `oneCookbook` on with the free tier off. Nothing is removed
- *   automatically, ever.
+ * - [Unlimited]: unlocked, or `oneCookbook` on with the free tier off, or with `proUnlock` (#413).
+ *   Nothing is removed automatically, ever.
  */
 sealed interface LibraryLimit {
     data class History(val keep: Int) : LibraryLimit
@@ -36,7 +36,12 @@ sealed interface LibraryLimit {
         /** The old cap on unprotected recipes, while the free tier is off. */
         const val HISTORY_RECIPES = 50
 
-        fun of(freeTier: Boolean, unlocked: Boolean, oneCookbook: Boolean = false): LibraryLimit = when {
+        /**
+         * [proUnlock] (#413) takes the free tier away whatever [freeTier] says: every recipe is free, so
+         * the limit is the one `oneCookbook` alone gives ([Unlimited] on, the old [History] cull off).
+         */
+        fun of(freeTier: Boolean, unlocked: Boolean, oneCookbook: Boolean = false, proUnlock: Boolean = false): LibraryLimit = when {
+            proUnlock -> if (oneCookbook) Unlimited else History(HISTORY_RECIPES)
             oneCookbook -> if (freeTier && !unlocked) Capped(CAPPED_RECIPES) else Unlimited
             !freeTier -> History(HISTORY_RECIPES)
             unlocked -> Unlimited

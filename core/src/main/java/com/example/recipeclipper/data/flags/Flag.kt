@@ -9,7 +9,7 @@ enum class Flag(val key: String) {
     /** Chef mode (#100): the Settings switch for short steps written on the device. */
     CHEF_MODE("chefMode"),
 
-    /** The free tier (#107): 50 recipes (20 with [ONE_COOKBOOK] off), and the one-time unlock for unlimited ones. */
+    /** The free tier (#107): 50 recipes (20 with [ONE_COOKBOOK] off), and the one-time unlock for unlimited ones; ignored while [PRO_UNLOCK] is on. */
     FREE_TIER("freeTier"),
 
     /** A recipe picked from the page's text by the on-device model when the page has no recipe data (#103). */
@@ -81,6 +81,8 @@ enum class Flag(val key: String) {
     GROCERY_RECIPE_TAGS("groceryRecipeTags"),
     /** Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix. */
     PLAN_MY_WEEK_PLUS("planMyWeekPlus"),
+    /** Pro (#413): no library limit for anyone, and the one-time unlock holds the Week planning extras, shown locked until bought. */
+    PRO_UNLOCK("proUnlock"),
     /** Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone; needs [ONE_COOKBOOK]. */
     LIBRARY_FIRST("libraryFirst");
 

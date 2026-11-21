@@ -182,4 +182,5 @@ private fun sectionValue(section: SettingsSection, state: SettingsUiState): Stri
     }
     SettingsSection.HELP -> null
     SettingsSection.UNLIMITED -> if (state.unlock?.unlocked == true) stringResource(R.string.settings_value_unlocked) else null
+    SettingsSection.PRO -> if (state.isPro) stringResource(R.string.settings_value_unlocked) else null
 }

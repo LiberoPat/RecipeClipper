@@ -1038,4 +1038,24 @@
     <string name="tonight_reminder_description">Por la tarde: las comidas planificadas para esta noche</string>
     <string name="reminder_time_title">Hora</string>
     <string name="reminder_time_dialog_title">Hora del aviso</string>
+    <!-- Pro (#413): the badge on a locked Week extra, the Pro screen, and the locked lines. -->
+    <string name="pro_badge">Pro</string>
+    <string name="pro_title">Pith Pro</string>
+    <string name="pro_intro">Extras para planificar tu semana. Todo lo demás de Pith sigue siendo gratis.</string>
+    <string name="pro_feature_fresh_title">Compra en dos veces</string>
+    <string name="pro_feature_fresh_body">Compra los frescos más tarde en la semana y ve cuándo una comida está planificada para después de lo que se conservan sus ingredientes, con un cambio de un toque.</string>
+    <string name="pro_feature_reminders_title">Recordatorios por la noche</string>
+    <string name="pro_feature_reminders_body">La noche anterior: las comidas de mañana y lo que haya que empezar con antelación. Y uno opcional el mismo día.</string>
+    <string name="pro_feature_skip_title">Saltar una comida</string>
+    <string name="pro_feature_skip_body">Retrasa el resto de la semana un día o mueve una comida al siguiente día libre, con un solo deshacer.</string>
+    <string name="pro_feature_plan_title">Planificar mi semana, a tu manera</string>
+    <string name="pro_feature_plan_body">Pide a una IA las comidas y los días que elijas, con tus recetas, nuevas o una mezcla.</string>
+    <string name="pro_one_time">Compra única, nunca una suscripción.</string>
+    <string name="pro_unlock">Desbloquear Pro</string>
+    <string name="pro_unlock_price">Desbloquear Pro por %1$s</string>
+    <string name="pro_restore">Restaurar compras</string>
+    <string name="pro_unlocked">Pro está desbloqueado. ¡Gracias!</string>
+    <string name="pro_free_line">Gratis. Sin anuncios. Sin cuenta. Sin suscripción.</string>
+    <string name="pro_teaser_fresh">Comprar los frescos más tarde en la semana</string>
+    <string name="pro_teaser_plan">Elegir las comidas, el primer día y tus propias recetas</string>
 </resources>

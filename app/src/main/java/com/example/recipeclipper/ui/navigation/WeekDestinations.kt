@@ -9,6 +9,7 @@ import androidx.navigation.navArgument
 import com.example.recipeclipper.ui.mealtypes.MealTypesScreen
 import com.example.recipeclipper.ui.askai.askAiViewModelIfOn
 import com.example.recipeclipper.ui.print.printViewModelIfOn
+import com.example.recipeclipper.ui.pro.ProScreen
 import com.example.recipeclipper.ui.recipe.RecipeScreen
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.week.WeekScreen
@@ -25,8 +26,14 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
             onOpenRecipe = { id, servings -> navController.navigate(Routes.weekRecipe(id, servings)) },
             onOpenMealTypes = { navController.navigate(Routes.MEAL_TYPES) },
             onOpenWhatINeed = { navController.navigate(Routes.whatINeed(it)) },
-            groceriesViewModel = hiltViewModel()
+            groceriesViewModel = hiltViewModel(),
+            onOpenPro = { navController.navigate(Routes.WEEK_PRO) }
         )
+    }
+
+    // The Pro screen (#413), on this stack: Skip, the fresh-food swap and Buy later open it until unlocked.
+    composable(Routes.WEEK_PRO) {
+        ProScreen(onBack = { navController.popBackStack() })
     }
 
     composable(
@@ -35,7 +42,8 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
     ) {
         WhatINeedScreen(
             onBack = { navController.popBackStack() },
-            onOpenRecipe = { id, servings -> navController.navigate(Routes.weekRecipe(id, servings)) }
+            onOpenRecipe = { id, servings -> navController.navigate(Routes.weekRecipe(id, servings)) },
+            onOpenPro = { navController.navigate(Routes.WEEK_PRO) }
         )
     }
 

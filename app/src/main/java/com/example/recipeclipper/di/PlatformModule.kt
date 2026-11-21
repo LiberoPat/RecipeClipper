@@ -29,6 +29,8 @@ import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import com.example.recipeclipper.data.DefaultLibraryPolicy
+import com.example.recipeclipper.data.DefaultProAccess
+import com.example.recipeclipper.data.ProAccess
 import com.example.recipeclipper.data.Entitlements
 import com.example.recipeclipper.data.LibraryPolicy
 import com.example.recipeclipper.data.PlayBillingEntitlements
@@ -118,6 +120,10 @@ abstract class PlatformModule {
     @Binds
     @Singleton
     abstract fun libraryPolicy(impl: DefaultLibraryPolicy): LibraryPolicy
+
+    @Binds
+    @Singleton
+    abstract fun proAccess(impl: DefaultProAccess): ProAccess
 
     companion object {
         @Provides
