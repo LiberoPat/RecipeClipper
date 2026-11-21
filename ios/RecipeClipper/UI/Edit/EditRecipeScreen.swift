@@ -25,6 +25,13 @@ struct EditRecipeScreen: View {
                         .foregroundStyle(Palette.muted)
                         .accessibilityIdentifier("edit.sharedNote")
                 }
+                // A recipe written inside an article (#435): taken as written, the headline as the name.
+                if state.article {
+                    Text(Strings.articleRead)
+                        .textStyle(Typography.bodyMedium)
+                        .foregroundStyle(Palette.muted)
+                        .accessibilityIdentifier("edit.articleNote")
+                }
                 if state.loading {
                     ProgressView().tint(Palette.primary)
                 } else if state.missing {
@@ -60,7 +67,7 @@ struct EditRecipeScreen: View {
     }
 
     private func title(_ state: EditRecipeUiState) -> String {
-        if state.photo != nil || state.shared { return Strings.photoTitle }
+        if state.photo != nil || state.shared || state.article { return Strings.photoTitle }
         return state.isNew ? Strings.editTitleNew : Strings.editTitleEdit
     }
 

@@ -5,6 +5,7 @@ import com.example.recipeclipper.data.local.entity.MenuEntryEntity
 import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.ArticleRecipe
 import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.LibraryLimit
 import com.example.recipeclipper.data.model.ParseResult
@@ -57,10 +58,21 @@ interface RecipeRepository {
     suspend fun saveClip(recipe: Recipe): ParseResult
 
     /**
+     * The recipes written inside [sharedUrl]'s article (#435), for the editor and the chooser: the
+     * ones the last import (or [importPage]) of that link found (`Error(InArticle)`), else, after
+     * process death, the page fetched and read again. Empty when the page no longer holds any, or
+     * the `articleRecipes` flag is off. Never saves anything.
+     */
+    suspend fun articleRecipes(sharedUrl: String): List<ArticleRecipe>
+
+    /** The saved recipe's id for each of [links] that one is saved under (cleaned), for the chooser (#435). */
+    suspend fun savedIds(links: List<String>): Map<String, Long>
+
+    /**
      * A page the cook opened in the app's visible browser to pass Cloudflare's check (#220),
      * as it stands now ([html]): read by the same parsers and saved like an import. Returns
      * `Error(HumanCheck)` while it is still the check, the page's `Error(NoRecipeFound)` once
-     * past it with no recipe data, else the saved recipe (or `Success(kept = false)` on a full
+     * past it with no recipe data (`Error(InArticle)` when its article holds recipes, #435), else the saved recipe (or `Success(kept = false)` on a full
      * library). Past the check, the host is remembered, so its next import renders first.
      */
     suspend fun importPage(sharedUrl: String, html: String): ParseResult

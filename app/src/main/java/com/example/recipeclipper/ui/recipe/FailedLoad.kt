@@ -26,7 +26,12 @@ class FailedLoad(
         // Cloudflare's check wants a person (#220): no error screen; the page opens visibly
         // for the cook to pass it.
         val checkInstead = shareUrl?.takeIf { error == ParseError.HumanCheck }
-        return if (clipInstead != null) {
+        // Recipes written inside the page's article (#435): no error screen; the editor, or the
+        // chooser over several, opens in the screen's place.
+        val articles = (error as? ParseError.InArticle)?.recipes?.takeIf { shareUrl != null && it.isNotEmpty() }
+        return if (articles != null) {
+            state.copy(articleRecipes = articles)
+        } else if (clipInstead != null) {
             state.copy(clipBlockedPost = clipInstead)
         } else if (checkInstead != null) {
             state.copy(humanCheckPage = checkInstead)

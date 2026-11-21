@@ -14,6 +14,8 @@ import com.example.recipeclipper.ui.clip.ClipScreen
 import com.example.recipeclipper.ui.clip.ClipViewModel
 import com.example.recipeclipper.ui.edit.EditRecipeScreen
 import com.example.recipeclipper.ui.edit.EditRecipeViewModel
+import com.example.recipeclipper.ui.article.ArticleChoiceScreen
+import com.example.recipeclipper.ui.article.ArticleChoiceViewModel
 import com.example.recipeclipper.ui.mealplan.CutOffScreen
 import com.example.recipeclipper.ui.mealplan.MealPlanReviewScreen
 import com.example.recipeclipper.ui.mealplan.MealPlanReviewViewModel
@@ -138,6 +140,20 @@ object Routes {
     fun editPhoto(post: PhotoPost) = "edit/photo?${EditRecipeViewModel.PHOTO_URL_ARG}=${Uri.encode(post.url)}" +
         "&${EditRecipeViewModel.PHOTO_TITLE_ARG}=${Uri.encode(post.title)}" +
         "&${EditRecipeViewModel.PHOTO_IMAGES_ARG}=${Uri.encode(post.imageUrls.joinToString("\n"))}"
+    // A recipe written inside an article (#435): the same editor, filled from the page's list of
+    // amounts and its method, found by the page's link and the recipe's place on the page (the
+    // repository remembers what it read).
+    const val EDIT_ARTICLE = "edit/article?${EditRecipeViewModel.ARTICLE_URL_ARG}={${EditRecipeViewModel.ARTICLE_URL_ARG}}" +
+        "&${EditRecipeViewModel.ARTICLE_INDEX_ARG}={${EditRecipeViewModel.ARTICLE_INDEX_ARG}}"
+
+    fun editArticle(url: String, index: Int) =
+        "edit/article?${EditRecipeViewModel.ARTICLE_URL_ARG}=${Uri.encode(url)}&${EditRecipeViewModel.ARTICLE_INDEX_ARG}=$index"
+
+    // Several recipes written inside one article (#435): the chooser, found by the page's link.
+    const val ARTICLE_CHOICE = "article/choose?${ArticleChoiceViewModel.URL_ARG}={${ArticleChoiceViewModel.URL_ARG}}"
+
+    fun articleChoice(url: String) = "article/choose?${ArticleChoiceViewModel.URL_ARG}=${Uri.encode(url)}"
+
     // "Scan a recipe" (#226): the same editor, filled from the cook's own pages (local URIs).
     const val SCAN = "edit/scan?${EditRecipeViewModel.SCAN_PAGES_ARG}={${EditRecipeViewModel.SCAN_PAGES_ARG}}"
 
@@ -410,6 +426,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
                 }
             },
             onReadPhoto = { navController.navigate(Routes.editPhoto(it)) },
+            onArticle = { url, count -> navController.openArticle(url, count, Routes.IMPORT) },
             planViewModel = hiltViewModel(),
             groceriesViewModel = hiltViewModel(),
             photosViewModel = hiltViewModel(),
@@ -437,6 +454,38 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
                     popUpTo(Routes.IMPORT) { inclusive = true }
                 }
             }
+        )
+    }
+
+    composable(
+        route = Routes.EDIT_ARTICLE,
+        arguments = listOf(
+            navArgument(EditRecipeViewModel.ARTICLE_URL_ARG) { type = NavType.StringType; defaultValue = "" },
+            navArgument(EditRecipeViewModel.ARTICLE_INDEX_ARG) { type = NavType.IntType; defaultValue = 0 }
+        )
+    ) {
+        EditRecipeScreen(
+            // The import is gone from under it (#435), so Back goes where the share came from, or
+            // to the chooser it was opened from.
+            onBack = { navController.popBackStack() },
+            // The saved recipe replaces the editor: Back from it goes where the share came from,
+            // or to the chooser, which then shows this one as saved.
+            onSaved = { id ->
+                navController.navigate(Routes.recipe(id)) {
+                    popUpTo(Routes.EDIT_ARTICLE) { inclusive = true }
+                }
+            }
+        )
+    }
+
+    composable(
+        route = Routes.ARTICLE_CHOICE,
+        arguments = listOf(navArgument(ArticleChoiceViewModel.URL_ARG) { type = NavType.StringType; defaultValue = "" })
+    ) {
+        ArticleChoiceScreen(
+            onBack = { navController.popBackStack() },
+            onCheck = { url, index -> navController.navigate(Routes.editArticle(url, index)) },
+            onOpenSaved = { navController.navigate(Routes.recipe(it)) }
         )
     }
 
@@ -474,6 +523,8 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             entry.arguments?.getBoolean(ClipViewModel.CHECK_ARG) == true
         ClipScreen(
             onCancel = { navController.popBackStack() },
+            // Past Cloudflare's check, recipes written inside the article (#435), in the clip's place.
+            onArticle = { url, count -> navController.openArticle(url, count, Routes.CLIP) },
             // The saved clip replaces the clip screen and the error screen under it, so Back
             // from the recipe goes where the share came from.
             onSaved = { id ->
@@ -482,5 +533,16 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
                 }
             }
         )
+    }
+}
+
+/**
+ * Recipes written inside a shared page's article (#435): the editor on the one, or the chooser
+ * over several, in [replacing]'s place (the import, or the clip that passed Cloudflare's check),
+ * so Back never lands on a screen that would open them again.
+ */
+internal fun NavHostController.openArticle(url: String, count: Int, replacing: String) {
+    navigate(if (count == 1) Routes.editArticle(url, 0) else Routes.articleChoice(url)) {
+        popUpTo(replacing) { inclusive = true }
     }
 }

@@ -41,6 +41,8 @@ final class AppContainer {
     var pendingText: PendingText?
     /// Where it leaves a week of recipes for the meal-plan review (#352); nil under test.
     var pendingPlan: PendingPlan?
+    /// A recipe written inside a shared page's article, left by the share extension (#435).
+    var pendingArticle: PendingArticle?
     /// A scan's pages while they are read and checked (#226), in the App Group container.
     let scanPages = ScanPages.shared()
     /// The feature flags (#87), read by the root view and Developer settings.
@@ -243,6 +245,7 @@ final class AppContainer {
                 extractionOn: { featureFlags?.isOn(.llmExtraction) ?? false },
                 photos: photoStore,
                 versionsOn: { featureFlags?.isOn(.recipeVersions) ?? false },
+                articleOn: { featureFlags?.isOn(.articleRecipes) ?? false },
                 tipsOn: { featureFlags?.isOn(.recipeTips) ?? false }
             ),
             listRepository: DefaultListRepository(
@@ -321,6 +324,9 @@ final class AppContainer {
         // Recipe tips (#432): the extension saves a link with its tips kept apart only while this is on.
         container.startMirroring(.recipeTips, into: DefaultsRecipeTipsSwitch(defaults: defaults))
         if !testing { container.pendingPlan = PendingPlan(defaults: defaults) }
+        // A recipe written inside an article (#435): the extension's copy of the flag, and the hand-off.
+        container.startMirroring(.articleRecipes, into: DefaultsArticleRecipesSwitch(defaults: defaults))
+        if !testing { container.pendingArticle = PendingArticle(defaults: defaults) }
         return container
     }
 
@@ -531,6 +537,23 @@ final class AppContainer {
     func takePendingPlan() -> String? {
         guard let text = pendingPlan?.take(now: clock.now()) else { return nil }
         return featureFlags.isOn(.shareText) && featureFlags.isOn(.mealPlanImport) ? text : nil
+    }
+
+    /// The recipes written inside an article that the share extension left (#435), if it did so
+    /// within `PendingArticle.window`, and only while the articleRecipes flag is on.
+    func takePendingArticle() -> [ArticleRecipe]? {
+        guard let articles = pendingArticle?.take(now: clock.now()), !articles.isEmpty else { return nil }
+        return featureFlags.isOn(.articleRecipes) ? articles : nil
+    }
+
+    /// The chooser over several recipes written inside one article (#435).
+    func makeArticleChoiceViewModel(articles: [ArticleRecipe]) -> ArticleChoiceViewModel {
+        ArticleChoiceViewModel(articles: articles, repository: recipeRepository)
+    }
+
+    /// The editor over a recipe written inside an article (#435), to check.
+    func makeEditRecipeViewModel(article: ArticleRecipe) -> EditRecipeViewModel {
+        EditRecipeViewModel(recipeId: nil, repository: recipeRepository, entitlements: entitlements, article: article)
     }
 
     /// The meal-plan review (#352) over the recipes `text` holds.

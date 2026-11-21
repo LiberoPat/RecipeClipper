@@ -7,6 +7,8 @@ struct ClipScreen: View {
     let vm: ClipViewModel
     var fixtureHTML: String? = nil
     let onSaved: (Int64) -> Void
+    /// Past Cloudflare's check, recipes written inside the page's article (#435).
+    var onArticle: ([ArticleRecipe]) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
 
@@ -114,6 +116,9 @@ struct ClipScreen: View {
             let serial = notice.serial
             do { try await Task.sleep(for: notice.message.snackbarWindow) } catch { return }
             vm.onNoticeShown(serial)
+        }
+        .onChange(of: state.articleRecipes) { _, articles in
+            if let articles { onArticle(articles) }
         }
         .onChange(of: state.savedRecipeId) { _, id in
             if let id { onSaved(id) }

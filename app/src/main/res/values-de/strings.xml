@@ -357,6 +357,13 @@
     <string name="text_read">Aus dem geteilten Text sortiert. Prüfe jede Zeile, vor allem die Mengen, bevor du speicherst.</string>
     <string name="text_leftovers">Zeilen, die nirgends hineinpassten, stehen unverändert unter Notizen.</string>
     <string name="text_not_sorted">Im Text waren keine Zutaten und Schritte zu finden, also steht alles unverändert unter Schritte: Vervollständige es von Hand.</string>
+    <!-- A recipe written inside an article (#435) -->
+    <string name="article_read">Unverändert aus dem Artikel übernommen. Der Name ist die Überschrift der Seite über dem Rezept: Ändere ihn in den des Gerichts, falls er das nicht ist. Prüfe jede Zeile, bevor du speicherst.</string>
+    <string name="article_failed">Das Rezept war im Artikel nicht mehr zu finden. Geh zurück und versuche es erneut, oder gib es unten ein.</string>
+    <string name="article_choose_title">Rezepte in diesem Artikel</string>
+    <string name="article_choose_note">Diese Seite schreibt mehr als ein Rezept aus. Wähle eines, um es zu prüfen, bevor es gespeichert wird.</string>
+    <string name="article_choose_counts">Zutaten: %1$d · Schritte: %2$d</string>
+    <string name="article_choose_saved">Gespeichert: zum Öffnen tippen</string>
     <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
     <string name="mealplan_title">Deine Woche</string>
     <string name="mealplan_intro">Wähle die Rezepte aus, die du behalten möchtest. Jedes wird als „Aus einem Chat“ gespeichert und an seinem Tag im Plan eingeplant. Gespeichert wird erst, wenn du auf Speichern tippst.</string>

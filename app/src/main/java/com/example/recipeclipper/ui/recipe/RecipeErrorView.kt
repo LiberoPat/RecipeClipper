@@ -115,6 +115,8 @@ internal fun RecipeErrorView(
 internal fun ParseError.toMessage(): String = when (this) {
     ParseError.NoRecipeFound -> stringResource(R.string.error_no_recipe_found)
     is ParseError.NoTranscription -> stringResource(R.string.error_no_transcription)
+    // Never shown: a recipe written inside an article (#435) opens the editor or the chooser.
+    is ParseError.InArticle -> stringResource(R.string.error_no_recipe_found)
     is ParseError.Blocked -> stringResource(R.string.error_blocked, httpStatus)
     ParseError.Offline -> stringResource(R.string.error_offline)
     is ParseError.FetchFailed -> stringResource(

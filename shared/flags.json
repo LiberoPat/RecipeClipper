@@ -227,6 +227,12 @@
       "description": "Step photos (#433): a step the source gives photos for (JSON-LD HowToStep.image, as Cookist does, its \"(1)\" markers left as written) shows a small thumbnail beside its text in the reading view, badged with its number (a stack with +1 for two or more), and a smaller one in cook mode (the current step's beside its timer, or beside its text when it has none); a tap opens a full-screen viewer that swipes through every step photo with its step's text. The photos are parsed, stored and exported whether it is on or not. Off, the screens are as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 433
+    },
+    {
+      "key": "articleRecipes",
+      "description": "Recipes written inside an article: on a page with no JSON-LD or microdata recipe, each list in the article whose items are mostly amounts (at least 3, more than half), with its method in paragraphs or an ordered list up to the next heading, is a recipe (at most 6, named by the heading above it). One opens the editor (Check the recipe) straight away in the import's place, filled in as written; several open a chooser first. The same past Cloudflare's check in the clip view. Saved only on Save, as a clip under the page's link (a later recipe adds pith_recipe=<n>). Never from prose alone, never saved unchecked. Off, such a page ends at No recipe found as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 435
     }
   ]
 }

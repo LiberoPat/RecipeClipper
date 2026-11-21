@@ -72,6 +72,14 @@ enum Strings {
     static var textRead: String { String(localized: "text_read") }
     static var textNotSorted: String { String(localized: "text_not_sorted") }
     static var textLeftovers: String { String(localized: "text_leftovers") }
+    // A recipe written inside an article (#435)
+    static var articleChooseTitle: String { String(localized: "article_choose_title") }
+    static var articleChooseNote: String { String(localized: "article_choose_note") }
+    static var articleChooseSaved: String { String(localized: "article_choose_saved") }
+    static func articleChooseCounts(_ ingredients: Int, _ steps: Int) -> String {
+        String(localized: "article_choose_counts \(ingredients) \(steps)")
+    }
+    static var articleRead: String { String(localized: "article_read") }
     static var photoFailed: String { String(localized: "photo_failed") }
     static var photoCheckHeading: String { String(localized: "photo_check_heading") }
     static var photoCheckLarge: String { String(localized: "photo_check_large") }
@@ -296,6 +304,8 @@ enum Strings {
         switch error {
         case .noRecipeFound: return errorNoRecipeFound
         case .noTranscription: return errorNoTranscription
+        // Never shown in the app: a recipe in an article (#435) opens the editor or the chooser.
+        case .inArticle: return errorNoRecipeFound
         case .blocked(let status): return errorBlocked(status)
         case .humanCheck: return String(localized: "error_human_check")
         case .cutOff: return String(localized: "error_cut_off")
@@ -313,6 +323,7 @@ enum Strings {
     static var shareScanInApp: String { String(localized: "share_scan_in_app") }
     static var shareTextInApp: String { String(localized: "share_text_in_app") }
     static var sharePlanInApp: String { String(localized: "share_plan_in_app") }
+    static var shareArticleInApp: String { String(localized: "share_article_in_app") }
 
     // Meal-plan import (#352)
     static var mealPlanTitle: String { String(localized: "mealplan_title") }

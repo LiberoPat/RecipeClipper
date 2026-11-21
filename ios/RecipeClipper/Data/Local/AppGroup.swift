@@ -61,6 +61,11 @@ typealias DefaultsMealPlanSwitch = DefaultsFlagSwitch<MealPlanFlag>
 enum RecipeTipsFlag: MirroredFlag { static let key = "recipe_tips_on" }
 typealias DefaultsRecipeTipsSwitch = DefaultsFlagSwitch<RecipeTipsFlag>
 
+/// Whether a recipe written inside an article is offered (the `articleRecipes` flag, #435), as the
+/// share extension reads it.
+enum ArticleRecipesFlag: MirroredFlag { static let key = "article_recipes_on" }
+typealias DefaultsArticleRecipesSwitch = DefaultsFlagSwitch<ArticleRecipesFlag>
+
 /// What a hand-off from the share extension stores: a value and the time it was left, under
 /// `valueKey` and `atKey` in the App Group suite.
 protocol HandOffKind {
@@ -128,3 +133,13 @@ enum PlanHandOff: HandOffKind {
     static let atKey = "pending_plan_at"
 }
 typealias PendingPlan = PendingHandOff<PlanHandOff>
+
+/// The recipes written inside a shared page's article (#435), as the share extension read them:
+/// the editor's check needs the app (never saved unchecked), which opens the editor on the one, or
+/// the chooser over several.
+enum ArticleHandOff: HandOffKind {
+    typealias Value = [ArticleRecipe]
+    static let valueKey = "pending_article"
+    static let atKey = "pending_article_at"
+}
+typealias PendingArticle = PendingHandOff<ArticleHandOff>

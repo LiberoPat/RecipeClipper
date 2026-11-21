@@ -81,7 +81,7 @@ struct RecipeErrorView: View {
 /// A Reddit post with no recipe as text: its title and photo above the note, so the user sees
 /// what they shared (the recipe may well be legible in the photo itself). Not the ReadingView:
 /// there is nothing to scale, tick or cook.
-private struct PostPreview: View {
+struct PostPreview: View {
     let title: String
     let imageUrl: String?
 

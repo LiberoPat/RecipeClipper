@@ -39,13 +39,15 @@ final class ShareViewController: UIViewController {
         let shareText = defaults.map(DefaultsShareTextSwitch.init)
         // A week of recipes in the text is left for the app's meal-plan review (#352).
         let mealPlan = defaults.map(DefaultsMealPlanSwitch.init)
+        // A recipe written inside an article is left for the app's editor (#435).
         let viewModel = ShareImportViewModel(
             repository: repository, connectivity: PathConnectivity(),
             makeReceiveList: { db.flatMap(makeReceiveList) },
             redditOn: { reddit?.isOn ?? true }, pendingClip: defaults.map(PendingClip.init),
             pendingScan: defaults.map { PendingScan(defaults: $0, pages: ScanPages.shared()) },
             shareTextOn: { shareText?.isOn ?? true }, pendingText: defaults.map(PendingText.init),
-            mealPlanOn: { mealPlan?.isOn ?? true }, pendingPlan: defaults.map(PendingPlan.init)
+            mealPlanOn: { mealPlan?.isOn ?? true }, pendingPlan: defaults.map(PendingPlan.init),
+            pendingArticle: defaults.map(PendingArticle.init)
         )
         return (viewModel, repository)
     }
@@ -78,10 +80,13 @@ final class ShareViewController: UIViewController {
         let source = RoutingRecipeSource(
             blog: BlogRecipeSource(), reddit: RedditRecipeSource(), redditOn: { reddit.isOn }
         )
-        // Tips (#432) kept apart as the app's mirrored `recipeTips` flag says.
+        // A recipe written inside an article (#435), and tips (#432) kept apart, as the app's
+        // mirrored `articleRecipes` and `recipeTips` flags say.
+        let article = DefaultsArticleRecipesSwitch(defaults: defaults)
         let tips = DefaultsRecipeTipsSwitch(defaults: defaults)
         return DefaultRecipeRepository(
-            db: db, source: source, clock: SystemClock(), library: library, tipsOn: { tips.isOn }
+            db: db, source: source, clock: SystemClock(), library: library, articleOn: { article.isOn },
+            tipsOn: { tips.isOn }
         )
     }
 

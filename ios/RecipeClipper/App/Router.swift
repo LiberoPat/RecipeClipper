@@ -112,7 +112,8 @@ final class Router {
     /// A saved clip replaces both the clip screen and the error screen under it, so Back from
     /// the recipe goes where the share came from. A clip Reddit's block opened (#213) has no
     /// error screen under it: it replaced the import, or came from the share extension. A recipe read from a Reddit photo (#198) is
-    /// saved the same way, from the editor over the post's error screen.
+    /// saved the same way, from the editor over the post's error screen, and so is one written
+    /// inside an article (#435).
     func openSavedClip(_ id: Int64) {
         var overError = true
         if case .clip(_, let blocked, let check) = path.last {
@@ -120,6 +121,7 @@ final class Router {
             overError = !blocked && !check
         }
         if case .photoRecipe = path.last { path.removeLast() }
+        if case .articleRecipe = path.last { path.removeLast() }
         if overError, case .importUrl = path.last { path.removeLast() }
         path.append(.recipe(id: id))
     }

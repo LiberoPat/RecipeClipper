@@ -94,6 +94,12 @@ data class RecipeUiState(
      * offers it only behind the `photoText` flag.
      */
     val photoPost: PhotoPost? = null,
+    /**
+     * A shared page whose article holds recipes (#435, [ParseError.InArticle]): the screen opens
+     * the editor on the one, or the chooser over several, in its own place, rather than show an
+     * error. [content] stays Loading meanwhile. The page's link is the first one's [sourceUrl].
+     */
+    val articleRecipes: List<com.example.recipeclipper.data.model.ArticleRecipe>? = null,
     /** Chef mode (#100): the steps the cook tapped to see as written, not short. */
     val asWrittenSteps: Set<Int> = emptySet(),
     /**

@@ -84,6 +84,8 @@ enum Flag: String, CaseIterable {
     case recipeTips
     /// Step photos (#433): a thumbnail beside each step the source gives photos for, a full-screen viewer on tap, and a smaller one in cook mode.
     case stepPhotos
+    /// A recipe written inside an article (#435): a list of amounts and the method after it, offered in the editor to check.
+    case articleRecipes
 }
 
 /// One flag as `shared/flags.json` declares it.

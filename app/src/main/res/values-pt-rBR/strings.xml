@@ -381,6 +381,13 @@
     <string name="text_read">Organizado a partir do texto compartilhado. Confira cada linha, principalmente as quantidades, antes de salvar.</string>
     <string name="text_leftovers">As linhas que não se encaixaram em nada estão em Anotações, como foram escritas.</string>
     <string name="text_not_sorted">Não foi possível encontrar ingredientes e passos no texto, então está tudo em Passos, como escrito: termine à mão.</string>
+    <!-- A recipe written inside an article (#435) -->
+    <string name="article_read">Tirada do artigo como está escrita. O nome é o título da página acima da receita: troque pelo nome do prato se não for. Confira cada linha antes de salvar.</string>
+    <string name="article_failed">Não foi possível encontrar a receita no artigo de novo. Volte e tente outra vez, ou digite abaixo.</string>
+    <string name="article_choose_title">Receitas deste artigo</string>
+    <string name="article_choose_note">Esta página traz mais de uma receita. Escolha uma para conferir antes de salvar.</string>
+    <string name="article_choose_counts">Ingredientes: %1$d · Passos: %2$d</string>
+    <string name="article_choose_saved">Salva: toque para abrir</string>
     <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
     <string name="mealplan_title">Sua semana</string>
     <string name="mealplan_intro">Escolha as receitas que quer manter. Cada uma é salva como “De um chat” e planejada no seu dia no Plano. Nada é salvo até você tocar em Salvar.</string>
