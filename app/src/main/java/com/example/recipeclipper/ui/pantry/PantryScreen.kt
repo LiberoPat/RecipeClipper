@@ -82,7 +82,9 @@ fun PantryScreen(
     // "Send as file" (#149, phase 2); null (screen tests) leaves it out.
     sendFileViewModel: SendFileViewModel? = null,
     // "Use it up" (#305); null (screen tests) leaves it out.
-    useItUpViewModel: UseItUpViewModel? = null
+    useItUpViewModel: UseItUpViewModel? = null,
+    // Settings' Pantry section (#412), the menu's last item; null leaves it out.
+    onOpenSettings: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val useItUpState = useItUpViewModel?.uiState?.collectAsStateWithLifecycle()?.value
@@ -187,7 +189,8 @@ fun PantryScreen(
                                     canClearRunOut = state.hasRunOut,
                                     onClearRunOut = viewModel::onClearRunOut,
                                     canSelect = state.sections.orEmpty().isNotEmpty(),
-                                    onSelectItems = viewModel::onStartSelecting
+                                    onSelectItems = viewModel::onStartSelecting,
+                                    onOpenSettings = onOpenSettings
                                 )
                             }
                             // In stock, Running low, Run out (#286); hidden while the pantry is empty.

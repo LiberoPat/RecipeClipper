@@ -914,6 +914,11 @@
     <string name="menu_desc_pantry_send_list">What\'s in stock, as text</string>
     <string name="menu_desc_clear_run_out">Remove everything marked Run out</string>
     <string name="menu_desc_share_calendar">Add this week\'s meals to your calendar app</string>
+    <!-- Each tab's own Settings section from its menu (#412) -->
+    <string name="action_plan_settings">Plan settings</string>
+    <string name="menu_desc_plan_settings">Reminders about the meals you plan</string>
+    <string name="action_pantry_settings">Pantry settings</string>
+    <string name="menu_desc_pantry_settings">Expiry reminders</string>
     <string name="pantry_select_items">Select items</string>
     <string name="pantry_select">Select</string>
     <string name="action_select_all">Select all</string>

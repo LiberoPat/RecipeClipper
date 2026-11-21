@@ -23,6 +23,9 @@ class SiteRulesTest {
     private val ba = "https://www.bonappetit.com/recipe/bas-best-carrot-cake"
     private val epicurious = "https://www.epicurious.com/recipes/food/views/ba-syn-7up-cake"
     private val delish = "https://www.delish.com/cooking/recipe-ideas/a21968799/cannoli-pie-recipe/"
+    private val g750 = "https://www.750g.com/brookie-r98937.htm"
+    private val recetas = "https://recetas.elperiodico.com/receta-de-galletas-de-mantequilla-caseras-31553.html"
+    private val habas = "https://recetas.elperiodico.com/receta-de-pure-de-habas-56441.html"
 
     @Test fun `NYT Cooking's group names become headings`() {
         val lines = recipe("site-nytimes-lemon-layer-cake", nyt).ingredients
@@ -61,6 +64,25 @@ class SiteRulesTest {
         assertEquals(listOf("For the crust:", "Cooking spray, for pie dish", "10 graham crackers, crushed", "6 tbsp. butter, melted"), lines.take(4))
         assertEquals("For the filling:", lines[6])
         assertEquals(15, lines.size)
+    }
+
+    @Test fun `750g's brownie and cookie doughs get their headings`() {
+        val lines = recipe("site-750g-brookie", g750).ingredients
+        assertEquals(listOf("Brownie:", "2 oeufs"), lines.take(2))
+        assertEquals(listOf("120 g de chocolat", "Cookie:", "½ paquet de levure chimique"), lines.subList(6, 9))
+        assertEquals(listOf("Brownie:", "Cookie:"), lines.filter { it.endsWith(":") })
+        assertEquals(13, lines.size)
+    }
+
+    @Test fun `RecetasGratis's video pointer and call for comments leave the last step, on its new host and its old one`() {
+        listOf(recetas, recetas.replace("recetas.elperiodico.com", "www.recetasgratis.net")).forEach { url ->
+            val steps = recipe("site-recetasgratis-galletas-mantequilla", url).instructions
+            assertEquals(url, 8, steps.size)
+            assertTrue(url, steps.last().endsWith("cuéntanos cómo te han quedado."))
+            assertTrue(url, steps.none { "vídeo" in it })
+        }
+        val last = recipe("site-recetasgratis-pure-de-habas", habas).instructions.last()
+        assertEquals("Servir el puré de hablas y espolvorear cebollín finamente picado.", last)
     }
 
     @Test fun `a card with an ingredient JSON-LD lacks leaves JSON-LD's lines alone`() {

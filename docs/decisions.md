@@ -6448,6 +6448,44 @@ AI, the review), `MealReminderProTests`, `ProUITests`; the free-tier tests (`Fre
 migration, no pure-logic change under the corpus (only `LibraryLimit.of`, which the corpus doesn't
 cover).
 
+## Plan and Pantry settings from their tabs' menus (#412, 2026-11-21)
+
+The owner's decision (2026-11-19): Settings stays the gear beside the Recipes title (#375), and each
+area's own section is also linked from that tab's menu, the common pattern for a rarely visited
+Settings. Behind **`tabSettingsLinks`** (on by default in debug and release, both platforms); off,
+neither menu has the item. No new settings: the links open the very pages Settings' index opens.
+
+- **Plan:** the menu's last item, **"Plan settings"** ("Reminders about the meals you plan"), opens
+  Settings' Plan section (`SettingsSection.WEEK`: the evening and Tonight reminders of #397, with
+  Pro's lock, #413). The issue says "Week settings"; the tab has been Plan since #414, so the item says
+  Plan, like the section's title. Settings' Plan section shows only with `eveningReminders`, so the
+  link does too (`FlagValues.planSettingsLink` / `FeatureFlags.planSettingsLink`): never a link to a
+  page the index hides. Shown in the month view as well (it isn't about the week shown).
+- **Pantry:** the menu's last item, after a divider, **"Pantry settings"** ("Expiry reminders", #52)
+  opens Settings' Pantry section, always there (`pantrySettingsLink`). iOS gives it the gear glyph,
+  as that menu's other actions have glyphs.
+- **Groceries:** no Groceries section exists, so no link.
+- **On the tab's own stack**, so the tab bar stays with that tab selected and Back returns to the
+  tab. Android: `week/settings` and `pantry/settings` (`Routes.WEEK_SETTINGS`, `PANTRY_SETTINGS`), in
+  the Week and Pantry graphs, since `settings/<section>` belongs to the Recipes graph and one NavHost
+  can't hold a route twice; both show the bar. A locked reminder's switch there opens `week/pro`,
+  on the same stack. iOS: `Route.settingsSection(.week)` on `weekPath`, and the Pantry tab got a stack
+  of its own (`Router.pantryPath`, cleared by choosing the open tab again, like the others).
+- **The Pantry opened from outside lands on the pantry itself**, not on its Settings page if that was
+  left open: an expiry reminder's tap (its Use it up sheet, #305, is the pantry's) and items received
+  into the pantry (#149). Android's `openRoute` of the Pantry tab pops to `pantry`; iOS's
+  `Router.showPantry()` clears `pantryPath`. The other tabs keep their place as before.
+
+**Strings.** Four keys in six languages on both platforms (`action_plan_settings`,
+`menu_desc_plan_settings`, `action_pantry_settings`, `menu_desc_pantry_settings`; drafts in
+`docs/translations.md`).
+
+**Tests.** Android: `TabSettingsLinksTest` (the real shell over real screens and ViewModels on the
+fakes: each item opens its section on its tab, Back returns, the tabs keep their place, the reminder's
+tap lands on the pantry, no item without a link, the flag's defaults). iOS: `TabSettingsLinksTests`
+(the flag, the Pantry's stack, the reminder's tap) and three tests in `TabShellUITests` (each item
+opens its page on its tab and Back returns; no item with the flag off).
+
 ## Recipe tips: HowToTip kept apart from the steps (#432, 2026-11-21)
 
 Found by the 2026-11-21 site check-up: kingarthurbaking.com lists its tips after the method as
@@ -7100,7 +7138,7 @@ over the cook's own pages, local URIs one per line; saving replaces it with `rec
 `edit/text?key={key}` (text shared in, #306: the same editor, split or as written, found by its
 key in `SharedTextInbox`, #334; saving replaces it with `recipe/{id}`). A bottom tab bar (#47) nests this graph under a Recipes tab
 alongside `week` (with its own `week/recipe/{recipeId}?servings={servings}` and
-`week/meal-types` and `week/need/{weekStart}`), `groceries` (#50) and `pantry` (#51)
+`week/meal-types` and `week/need/{weekStart}`, and `week/settings`, #412), `groceries` (#50) and `pantry` (#51; with `pantry/settings`, #412)
 (`AppShell`/iOS `RootView`'s `tabs`). Hidden on the recipe reading view and in cook
 mode; any route from an intent (a shared link, a tapped timer notification) always
 lands in Recipes, whichever tab is open.
@@ -7130,9 +7168,8 @@ never at launch), Your recipes (export, import and the automatic copy, #150), He
 tips again", #190), and Unlimited recipes (only with `freeTier`: "Unlock for <store price>"
 and "Restore purchase", or the sentence "Unlocked: every recipe is kept."; Developer
 settings has an "Unlocked" override). Reached from the gear beside
-the Home title, on every tab of the shell. It could now open from elsewhere too (the
-recipe screen follows `AppPreferences.settings`), but adding an entry point is the
-owner's call.
+the Recipes title (Home's, with `libraryFirst` off), and the Plan and Pantry sections' pages
+also from their tabs' menus (#412, below). Any other entry point is the owner's call.
 
 **An index with values (#286, the owner's pick of the redesign):** Settings opens on one row
 per section, in the order above: an icon (hand-drawn drawables on Android, SF Symbols on iOS),

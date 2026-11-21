@@ -17,6 +17,8 @@ struct WeekScreen: View {
     var shopForWeek = false
     /// The Pro screen (#413): without Pro, Skip and the fresh-food swap open it.
     var onOpenPro: () -> Void = {}
+    /// Settings' Plan section (#412), the menu's last item; nil leaves it out.
+    var onOpenSettings: (() -> Void)? = nil
     @State private var groceriesVM: AddToGroceriesViewModel?
     @State private var groceriesSheet: AddToGroceriesViewModel?
     /// The week's .ics file once written, for the share sheet (#52).
@@ -108,6 +110,10 @@ struct WeekScreen: View {
                             .accessibilityIdentifier("applyMenu")
                     }
                     Button(action: onOpenMealTypes) { Text(Strings.mealTypesTitle); Text(Strings.menuDescMealTypes) }
+                    if let onOpenSettings {
+                        Button(action: onOpenSettings) { Text(Strings.planSettings); Text(Strings.menuDescPlanSettings) }
+                            .accessibilityIdentifier("planSettings")
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }

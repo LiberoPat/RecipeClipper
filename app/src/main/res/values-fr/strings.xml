@@ -898,6 +898,10 @@
     <string name="menu_desc_pantry_send_list">Ce que vous avez, en texte</string>
     <string name="menu_desc_clear_run_out">Retire tout ce qui est marqué « Épuisé »</string>
     <string name="menu_desc_share_calendar">Ajoute les repas de la semaine à votre agenda</string>
+    <string name="action_plan_settings">Paramètres du planning</string>
+    <string name="menu_desc_plan_settings">Rappels des repas que tu planifies</string>
+    <string name="action_pantry_settings">Paramètres du garde-manger</string>
+    <string name="menu_desc_pantry_settings">Rappels de péremption</string>
     <string name="pantry_select_items">Sélectionner des articles</string>
     <string name="pantry_select">Sélectionner</string>
     <string name="action_select_all">Tout sélectionner</string>
