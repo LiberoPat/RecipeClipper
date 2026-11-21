@@ -4,6 +4,7 @@ import com.example.recipeclipper.data.model.Durations
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.data.model.StepPhotos
 import com.example.recipeclipper.data.model.WebImageUrl
 import org.json.JSONArray
 import org.json.JSONObject
@@ -283,7 +284,8 @@ internal object JsonLdRecipeParser {
             LanguageWords.detectionText(name, ingredients)
         }
         val words = LanguageWords.forTag(language)
-        val instructions = extractInstructions(json.opt("recipeInstructions"), words)
+        val (instructions, stepPhotos, tips) = extractInstructions(json.opt("recipeInstructions"), words)
+        // Tips (#432) are not steps: a recipe still needs ingredients or steps of its own.
         if (ingredients.isEmpty() && instructions.isEmpty()) return null
 
         return Recipe(
@@ -292,12 +294,14 @@ internal object JsonLdRecipeParser {
             image = WebImageUrl.of(extractImage(json.opt("image"))),
             ingredients = ingredients,
             instructions = instructions,
+            tips = tips,
             prepTime = Durations.format(json.optString("prepTime", ""), words),
             cookTime = Durations.format(json.optString("cookTime", ""), words),
             totalTime = Durations.format(json.optString("totalTime", ""), words),
             yield = extractYield(json.opt("recipeYield"), words),
             sourceUrl = sourceUrl,
-            language = language
+            language = language,
+            stepPhotos = StepPhotos.aligned(stepPhotos, instructions.size)
         )
     }
 
@@ -314,6 +318,26 @@ internal object JsonLdRecipeParser {
         is JSONObject -> node.optString("url").ifBlank { null }
         is JSONArray -> if (node.length() > 0) extractImage(node.opt(0)) else null
         else -> null
+    }
+
+    /**
+     * A HowToStep's `image` (#433): a link, an ImageObject (its `url`, else `contentUrl`) or an
+     * array of them, as web images only (#235), each once, at most [StepPhotos.MAX_PER_STEP].
+     */
+    private fun stepImages(node: Any?): List<String> {
+        val found = mutableListOf<String>()
+        fun add(item: Any?) {
+            when (item) {
+                is String -> WebImageUrl.of(item)?.let(found::add)
+                is JSONObject -> WebImageUrl.of(item.optString("url").ifBlank { item.optString("contentUrl") })?.let(found::add)
+                is JSONArray -> for (i in 0 until item.length()) {
+                    val element = item.opt(i)
+                    if (element !is JSONArray) add(element)
+                }
+            }
+        }
+        add(node)
+        return found.distinct().take(StepPhotos.MAX_PER_STEP)
     }
 
     private fun extractStringList(node: Any?): List<String> {
@@ -350,8 +374,17 @@ internal object JsonLdRecipeParser {
 
     private class CondensedSections(val names: Set<String>)
 
-    private fun extractInstructions(node: Any?, words: LanguageWords?): List<String> {
+    /**
+     * The steps of `recipeInstructions`, and apart from them its tips (#432): a `HowToTip` entry
+     * (kingarthurbaking.com lists three after the method: a make-ahead note, a substitution, a
+     * baking-stone tip) is not a step to advance through, so it never joins the steps, at the top
+     * level or inside a HowToSection. Its text is read as a step's is, through [jsonText]. Each step's photos (#433)
+     * come lined up with the steps: none for a step given as a string, and a tip keeps none.
+     */
+    private fun extractInstructions(node: Any?, words: LanguageWords?): Triple<List<String>, List<List<String>>, List<String>> {
         val steps = mutableListOf<String>()
+        val tips = mutableListOf<String>()
+        val photos = mutableListOf<List<String>>()
         val condensedNames = condensedSectionNames(words)
         fun condensed(item: Any?) = isCondensedSection(item, condensedNames)
 
@@ -361,7 +394,12 @@ internal object JsonLdRecipeParser {
         // section boundaries carried through Recipe rather than dropped here.
         fun addStep(item: Any?) {
             when (item) {
-                is String -> jsonText(item).trim().let { if (it.isNotEmpty()) steps.add(it) }
+                is String -> jsonText(item).trim().let {
+                    if (it.isNotEmpty()) {
+                        steps.add(it)
+                        photos.add(emptyList())
+                    }
+                }
                 is JSONObject -> {
                     val type = item.optString("@type")
                     if (type.equals("HowToSection", ignoreCase = true)) {
@@ -374,7 +412,14 @@ internal object JsonLdRecipeParser {
                             parts.isNotEmpty() -> parts
                             else -> jsonText(item.optString("name"))
                         }
-                        if (stepText.isNotBlank()) steps.add(stepText.trim())
+                        if (stepText.isNotBlank()) {
+                            if (type.equals("HowToTip", ignoreCase = true)) {
+                                tips.add(stepText.trim())
+                            } else {
+                                steps.add(stepText.trim())
+                                photos.add(stepImages(item.opt("image")))
+                            }
+                        }
                     }
                 }
             }
@@ -391,7 +436,10 @@ internal object JsonLdRecipeParser {
                 // recipe is never emptied by this. A lone section is never skipped.
                 if (sectionCount >= 2 && items.any(::condensed)) {
                     items.filterNot(::condensed).forEach(::addStep)
-                    if (steps.isEmpty()) items.forEach(::addStep)
+                    if (steps.isEmpty()) {
+                        tips.clear()
+                        items.forEach(::addStep)
+                    }
                 } else {
                     items.forEach(::addStep)
                 }
@@ -401,7 +449,7 @@ internal object JsonLdRecipeParser {
             // <br>-separated set of lines into one collapsed line.
             is String -> steps.addAll(node.split("\n").map { jsonText(it).trim() }.filter { it.isNotEmpty() })
         }
-        return steps
+        return Triple(steps, photos, tips)
     }
 
     /**

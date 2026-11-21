@@ -24,6 +24,7 @@
     <string name="heading_ingredients">Ingredientes</string>
     <string name="heading_instructions">Modo de preparo</string>
     <string name="heading_notes">Anotações</string>
+    <string name="heading_tips">Dicas</string>
     <string name="notes_placeholder">Adicionar uma anotação</string>
     <string name="action_open_original">Abrir original</string>
     <string name="cd_open_original">Abrir a receita original em %1$s</string>
@@ -1058,4 +1059,14 @@
     <string name="pro_free_line">Grátis. Sem anúncios. Sem conta. Sem assinatura.</string>
     <string name="pro_teaser_fresh">Comprar os frescos mais tarde na semana</string>
     <string name="pro_teaser_plan">Escolher as refeições, o primeiro dia e suas próprias receitas</string>
+    <!-- Step photos (#433) -->
+    <string name="step_photo_open">Foto %1$d do passo %2$d</string>
+    <plurals name="step_photos_open">
+        <item quantity="one">%1$d foto do passo %2$d</item>
+        <item quantity="many">%1$d de fotos do passo %2$d</item>
+        <item quantity="other">%1$d fotos do passo %2$d</item>
+    </plurals>
+    <string name="step_photo_open_action">Ver em tela cheia</string>
+    <string name="step_photo_position">Foto %1$d de %2$d</string>
+    <string name="step_photo_step">Passo %1$d</string>
 </resources>

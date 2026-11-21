@@ -46,7 +46,16 @@ data class RecipeEntity(
     /** The recipe's own picture, stored on the phone (#386): the name of a file in the photo store,
      *  preferred over [imageUrl] wherever the recipe's picture shows. Not an "I made this" photo
      *  (#116): never a cooking. Null for none. The user's, so a re-share or an edit never changes it. */
-    val photoFile: String? = null
+    val photoFile: String? = null,
+    /** The source's tips (#432, schema.org `HowToTip`), apart from [instructions]: a JSON list like
+     *  them, `[]` for every recipe stored before version 20 (a King Arthur recipe saved then keeps
+     *  its tips as steps until a re-share refreshes it). Never a step: cook progress ignores it. */
+    @ColumnInfo(defaultValue = "[]")
+    val tips: List<String> = emptyList(),
+    /** Each step's photos as the source gives them (#433): [com.example.recipeclipper.data.model.StepPhotos]'s
+     *  JSON, an array of arrays of web image links lined up with [instructions]; null for none. Content,
+     *  so a re-share refreshes it with the steps; an edit carries it along (`StepPhotos.afterEdit`). */
+    val stepPhotos: String? = null
 )
 
 @Entity(tableName = "lists", indices = [Index(value = ["uid"], unique = true)])

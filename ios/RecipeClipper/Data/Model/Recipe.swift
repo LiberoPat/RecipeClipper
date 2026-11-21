@@ -97,6 +97,22 @@ struct Recipe: Equatable {
     var photoFile: String? = nil
     /// The stored row's stable uid (#403: its tint), or empty for a recipe not stored yet.
     var uid: String = ""
+    /// Each step's photos as the source gives them (#433): web image links, one list per step,
+    /// lined up with `instructions`; empty for a recipe with none. See `StepPhotos`.
+    var stepPhotos: [[String]] = []
+    /// The source's tips (#432): schema.org `HowToTip` entries in `recipeInstructions`, kept apart
+    /// from `instructions`, each as written. Shown below the method, unnumbered, and never in cook
+    /// mode: not a step, not counted in its progress. Empty for most recipes.
+    var tips: [String] = []
+
+    /// The recipe as it read before #432 (the `recipeTips` flag off): its tips as its last steps.
+    func withTipsAsSteps() -> Recipe {
+        guard !tips.isEmpty else { return self }
+        var copy = self
+        copy.instructions += tips
+        copy.tips = []
+        return copy
+    }
 
     /// What the screens show as the recipe's picture (#386): its stored photo (with its link behind it, for a missing file), else its link.
     var displayImage: String? { photoFile.map { StoredPhoto.model($0, fallback: image) } ?? image }

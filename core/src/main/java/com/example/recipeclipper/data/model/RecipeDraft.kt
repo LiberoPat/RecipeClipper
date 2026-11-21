@@ -15,10 +15,13 @@ data class RecipeDraft(
     val ingredientsText: String = "",
     /** One step per line, as typed in the steps box. */
     val instructionsText: String = "",
-    val image: String = ""
+    val image: String = "",
+    /** One tip per line (#432), as typed in the tips box: never a step, and not needed to save. */
+    val tipsText: String = ""
 ) {
     val ingredients: List<String> get() = lines(ingredientsText)
     val instructions: List<String> get() = lines(instructionsText)
+    val tips: List<String> get() = lines(tipsText)
 
     /** The parsers' rule for a recipe: a name, plus ingredients or steps. */
     val isValid: Boolean
@@ -26,13 +29,18 @@ data class RecipeDraft(
 
     /**
      * [base]'s identity and user state with this draft's content. A blank optional field is
-     * absent (null), never an empty string.
+     * absent (null), never an empty string. The editor has no field for step photos (#433): they
+     * stay with their steps (an unchanged step keeps its own wherever it moved; an edited one
+     * keeps its place's), never shown or typed here.
      */
     fun applyTo(base: Recipe): Recipe = base.copy(
         name = name.trim(),
         image = image.trim().ifEmpty { null },
         ingredients = ingredients,
         instructions = instructions,
+        // The steps' photos (#433) follow their steps through the edit; see StepPhotos.afterEdit.
+        stepPhotos = StepPhotos.afterEdit(base.instructions, base.stepPhotos, instructions),
+        tips = tips,
         prepTime = prepTime.trim().ifEmpty { null },
         cookTime = cookTime.trim().ifEmpty { null },
         totalTime = totalTime.trim().ifEmpty { null },
@@ -49,7 +57,8 @@ data class RecipeDraft(
             totalTime = recipe.totalTime.orEmpty(),
             ingredientsText = recipe.ingredients.joinToString("\n"),
             instructionsText = recipe.instructions.joinToString("\n"),
-            image = recipe.image.orEmpty()
+            image = recipe.image.orEmpty(),
+            tipsText = recipe.tips.joinToString("\n")
         )
 
         /** One entry per non-blank line, trimmed. */

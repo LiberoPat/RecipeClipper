@@ -36,6 +36,8 @@ enum Strings {
     static var headingIngredients: String { String(localized: "heading_ingredients") }
     static var headingInstructions: String { String(localized: "heading_instructions") }
     static var headingNotes: String { String(localized: "heading_notes") }
+    /// The quiet heading over a recipe's tips (#432), below the method; the editor's tips box too.
+    static var headingTips: String { String(localized: "heading_tips") }
     static var notesPlaceholder: String { String(localized: "notes_placeholder") }
     static var openOriginal: String { String(localized: "action_open_original") }
 
@@ -667,14 +669,17 @@ enum Strings {
             cook: labelCook,
             total: labelTotal,
             ingredients: String(localized: "share_heading_ingredients"),
-            instructions: String(localized: "share_heading_instructions")
+            instructions: String(localized: "share_heading_instructions"),
+            // The tips' heading (#432) in capitals, like the other two, in the phone's language.
+            tips: headingTips.uppercased(with: Locale.current)
         )
     }
 
     // The printed card's headings (#318), as the reading view words them.
     static var printLabels: RecipePrint.Labels {
         RecipePrint.Labels(
-            share: shareTextLabels, ingredients: headingIngredients, instructions: headingInstructions, notes: headingNotes
+            share: shareTextLabels, ingredients: headingIngredients, instructions: headingInstructions, notes: headingNotes,
+            tips: headingTips
         )
     }
 
@@ -990,6 +995,12 @@ enum Strings {
     static var sharePhoto: String { String(localized: "cd_share_photo") }
     static var deletePhoto: String { String(localized: "cd_delete_photo") }
     static var closePhoto: String { String(localized: "cd_close_photo") }
+    // Step photos (#433).
+    static func stepPhotoOpen(_ number: Int, step: Int) -> String { String(localized: "step_photo_open \(number) \(step)") }
+    static func stepPhotosOpen(_ count: Int, step: Int) -> String { String(localized: "step_photos_open \(count) \(step)") }
+    static var stepPhotoOpenAction: String { String(localized: "step_photo_open_action") }
+    static func stepPhotoPosition(_ n: Int, of total: Int) -> String { String(localized: "step_photo_position \(n) \(total)") }
+    static func stepPhotoStep(_ n: Int) -> String { String(localized: "step_photo_step \(n)") }
     static var cookedPhotoDeleted: String { String(localized: "cooked_photo_deleted") }
     static var cookedAddFailed: String { String(localized: "cooked_add_failed") }
     static var cameraUnavailable: String { String(localized: "camera_unavailable") }

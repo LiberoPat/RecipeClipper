@@ -91,7 +91,12 @@ import java.io.File
  * the app keeps it (`https`), or nil (no image); write only the address.
  *
  * `Parse("block")` rows (#266) pin [JsonLdRecipeParser.parse]'s text: one ld+json block as the
- * recipe's name (nil: no recipe), ingredients, steps and yield; write only the block.
+ * recipe's name (nil: no recipe), ingredients, steps and yield, then its tips (#432) when it has
+ * any; write only the block.
+ *
+ * `StepPh("block")` rows (#433) pin the step photos [JsonLdRecipeParser.parse] reads from one
+ * ld+json block (each step's links, lined up with its steps; [] for none) and their badges'
+ * numbers ([StepPhotos.numbered]); write only the block.
  *
  * `Dur("time")` rows (#179) pin [Durations.format]: a prep, cook or total time
  * as a site (or the tour's sample) writes it, as the app shows it, or nil (hidden); write only
@@ -252,6 +257,8 @@ class DifferentialCorpusTest {
     private val imageRow = Regex("""^(\s*)Img\("((?:[^"\\]|\\.)*)"""")
     // A JSON-LD text row (#266): one ld+json block.
     private val parseRow = Regex("""^(\s*)Parse\("((?:[^"\\]|\\.)*)"""")
+    // A step-photo row (#433): one ld+json block.
+    private val stepPhotoRow = Regex("""^(\s*)StepPh\("((?:[^"\\]|\\.)*)"""")
     // A duration row (#179): a prep, cook or total time, optionally its language.
     private val durationRow = Regex("""^(\s*)Dur\("((?:[^"\\]|\\.)*)"(?:, lang: "([a-z]+)")?""")
     // An ahead-of-time row (#397): a recipe's steps, optionally their language.
@@ -346,9 +353,20 @@ class DifferentialCorpusTest {
         parseRow.find(line)?.let { m ->
             val block = unescape(m.groupValues[2])
             val r = JsonLdRecipeParser.parse(listOf(block), "https://src/parse")
-            val parsed = r?.let { "${q(it.name)}, ${list(it.ingredients)}, ${list(it.instructions)}, ${it.yield?.let(::q) ?: "nil"}" }
-                ?: "nil, [], [], nil"
+            val parsed = r?.let {
+                "${q(it.name)}, ${list(it.ingredients)}, ${list(it.instructions)}, ${it.yield?.let(::q) ?: "nil"}" +
+                    if (it.tips.isEmpty()) "" else ", tips: ${list(it.tips)}"
+            } ?: "nil, [], [], nil"
             return m.groupValues[1] + "Parse(${q(block)}, $parsed),"
+        }
+        stepPhotoRow.find(line)?.let { m ->
+            val block = unescape(m.groupValues[2])
+            val r = JsonLdRecipeParser.parse(listOf(block), "https://src/parse")
+            val photos = r?.stepPhotos.orEmpty()
+            val numbers = r?.let { StepPhotos.numbered(it.instructions, photos) }.orEmpty()
+            val urls = photos.joinToString(", ", "[", "]") { list(it) }
+            val badges = numbers.joinToString(", ", "[", "]") { s -> s.joinToString(", ", "[", "]") { it.number.toString() } }
+            return m.groupValues[1] + "StepPh(${q(block)}, $urls, $badges),"
         }
         groceryRow.find(line)?.let { g -> return groceryRow(g) }
         pantryRow.find(line)?.let { p -> return pantryRow(p) }

@@ -242,7 +242,8 @@ final class AppContainer {
                 extractor: FoundationModelsPageRecipeExtractor(),
                 extractionOn: { featureFlags?.isOn(.llmExtraction) ?? false },
                 photos: photoStore,
-                versionsOn: { featureFlags?.isOn(.recipeVersions) ?? false }
+                versionsOn: { featureFlags?.isOn(.recipeVersions) ?? false },
+                tipsOn: { featureFlags?.isOn(.recipeTips) ?? false }
             ),
             listRepository: DefaultListRepository(
                 db: database, clock: clock, reorderOn: { featureFlags?.isOn(.reorderLists) ?? true }
@@ -317,6 +318,8 @@ final class AppContainer {
         if !testing { container.pendingText = PendingText(defaults: defaults) }
         // A week of recipes in shared text (#352): the same, for its review.
         container.startMirroring(.mealPlanImport, into: DefaultsMealPlanSwitch(defaults: defaults))
+        // Recipe tips (#432): the extension saves a link with its tips kept apart only while this is on.
+        container.startMirroring(.recipeTips, into: DefaultsRecipeTipsSwitch(defaults: defaults))
         if !testing { container.pendingPlan = PendingPlan(defaults: defaults) }
         return container
     }
@@ -535,13 +538,17 @@ final class AppContainer {
         MealPlanReviewViewModel(
             text: text, recipes: recipeRepository, plan: mealPlanRepository, calendar: planCalendar,
             limit: { [libraryPolicy] in libraryPolicy.limit }, entitlements: entitlements,
-            freshFood: featureFlags.isOn(.freshFood), planPlus: featureFlags.isOn(.planMyWeekPlus), pro: proAccess
+            freshFood: featureFlags.isOn(.freshFood), planPlus: featureFlags.isOn(.planMyWeekPlus), pro: proAccess,
+            tipsOn: featureFlags.isOn(.recipeTips)
         )
     }
 
     /// Text shared in (#306): the editor over its reading, split or as written.
     func makeEditRecipeViewModel(shared: SharedText.Reading) -> EditRecipeViewModel {
-        EditRecipeViewModel(recipeId: nil, repository: recipeRepository, entitlements: entitlements, shared: shared)
+        EditRecipeViewModel(
+            recipeId: nil, repository: recipeRepository, entitlements: entitlements, shared: shared,
+            tipsOn: featureFlags.isOn(.recipeTips)
+        )
     }
 
     func makeEditRecipeViewModel(recipeId: Int64?) -> EditRecipeViewModel {

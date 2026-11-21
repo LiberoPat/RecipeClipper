@@ -40,6 +40,10 @@ internal class RecipeActions(
     val onIngredientLink: (Int, List<Int>) -> Unit = { _, _ -> },
     val onBackToStep: () -> Unit = {},
     val onIngredientJumpScrolled: () -> Unit = {},
+    /** Step photos (#433): a thumbnail opens the viewer on its photo, the viewer pages and closes. */
+    val onStepPhotoOpen: (position: Int) -> Unit = {},
+    val onStepPhotoPage: (position: Int) -> Unit = {},
+    val onStepPhotoClose: () -> Unit = {},
     val onShare: () -> Unit,
     val onOpenOriginal: (url: String) -> Unit,
     val onSaveToList: () -> Unit,
@@ -128,6 +132,9 @@ internal fun rememberRecipeActions(
             onIngredientLink = viewModel::onIngredientLink,
             onBackToStep = viewModel::onBackToStep,
             onIngredientJumpScrolled = viewModel::onIngredientJumpScrolled,
+            onStepPhotoOpen = viewModel::onStepPhotoOpen,
+            onStepPhotoPage = viewModel::onStepPhotoPage,
+            onStepPhotoClose = viewModel::onStepPhotoClose,
             onShare = {
                 viewModel.shareText(shareLabels(resources))?.let { text ->
                     val title = (viewModel.uiState.value.content as? RecipeContent.Success)

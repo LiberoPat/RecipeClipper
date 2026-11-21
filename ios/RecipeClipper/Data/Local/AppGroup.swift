@@ -56,6 +56,11 @@ typealias DefaultsShareTextSwitch = DefaultsFlagSwitch<ShareTextFlag>
 enum MealPlanFlag: MirroredFlag { static let key = "meal_plan_on" }
 typealias DefaultsMealPlanSwitch = DefaultsFlagSwitch<MealPlanFlag>
 
+/// Whether a page's HowToTip entries are kept apart as tips (the `recipeTips` flag, #432), as the
+/// share extension reads it when it saves a link.
+enum RecipeTipsFlag: MirroredFlag { static let key = "recipe_tips_on" }
+typealias DefaultsRecipeTipsSwitch = DefaultsFlagSwitch<RecipeTipsFlag>
+
 /// What a hand-off from the share extension stores: a value and the time it was left, under
 /// `valueKey` and `atKey` in the App Group suite.
 protocol HandOffKind {

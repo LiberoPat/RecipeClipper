@@ -6448,6 +6448,58 @@ AI, the review), `MealReminderProTests`, `ProUITests`; the free-tier tests (`Fre
 migration, no pure-logic change under the corpus (only `LibraryLimit.of`, which the corpus doesn't
 cover).
 
+## Recipe tips: HowToTip kept apart from the steps (#432, 2026-11-21)
+
+Found by the 2026-11-21 site check-up: kingarthurbaking.com lists its tips after the method as
+schema.org `HowToTip` entries in `recipeInstructions` (Mini Apple Pies: seventeen HowToSteps, then a
+crumb-topping variation, a spice substitution and a baking-stone tip), and the parser read every
+entry as a step, so cook mode ended on three steps that weren't. `stepNoise` (#120) only trims the
+end of the last step, so a site rule could not fix it. The owner's decision: **keep them as tips**,
+apart from the steps, below the method, unnumbered, and out of cook mode. Behind **`recipeTips`**
+(on in debug and release, both platforms).
+
+- **Parsing** (`JsonLdRecipeParser`, both platforms, pinned by the corpus's `Parse` rows, which now
+  end in `tips:` when there are some): an entry whose `@type` is `HowToTip` (any case), at the top
+  level or inside a HowToSection, is a tip; its text is read exactly as a step's (`text`, else
+  `name`, through `jsonText`), never rewritten. Tips are not steps, so the rule stands: a recipe
+  needs a name plus ingredients or steps, and one whose instructions are only tips has none. A
+  condensed duplicate section ("Abbreviated Recipe") that would have emptied the steps is put back with its tips
+  read once. Microdata, Reddit, the splitter and the importers have no tips. A `HowToStep` that
+  nests its own `HowToTip` (schema.org allows it; no site seen) is still one step.
+- **Storage:** `recipes.tips`, a JSON list like `instructions`, `NOT NULL DEFAULT '[]'` (Room 19 →
+  20, `MIGRATION_19_20`; iOS `user_version` 18 → 19, `addTips`). **Stored recipes are not rewritten:**
+  a King Arthur recipe saved before keeps its tips as steps until it is shared again, and the
+  re-share then refreshes it like any change of steps (its cook progress goes, as the rule for
+  changed steps says; ticks stay while the ingredients are the same). A change in the tips alone
+  keeps the cook's progress: step indexes still mean the same steps.
+- **Reading view:** after the steps (and before Versions and the note), a muted "Tips" heading in
+  the Versions style, then each tip as a plain paragraph: no number, no step amounts, no ingredient
+  links, no temperature conversion (the text stays as the source wrote it). **Cook mode never shows
+  them**: its steps, its "Step 1 of N", its timers and its progress are the steps alone.
+- **Flag off:** a freshly parsed recipe's tips are its last steps, as before (the repository folds
+  them in, `Recipe.withTipsAsSteps`, for a fetch, a rendered page, a page shared from Safari, the
+  iOS share extension through the mirrored `recipe_tips_on`, and a chat's JSON in the editor or the
+  meal-plan review). Tips already stored still show.
+- **Everything that carries a recipe:** the export file and a shared file write `tips` only when
+  there are some (older files, and recipes with none, have no key and read as none;
+  `backup-v1-tips.json` is the shared fixture), and `BackupMerger` passes them through; shared text
+  and the printed card put them after the steps under the heading, unnumbered (the text's heading in
+  capitals, like the other two); Ask an AI's recipe JSON writes them after the steps as `HowToTip`
+  objects, so a changed version (#354) comes back with them as tips (the prompt doesn't ask for
+  tips; absent is fine). Search doesn't read them.
+- **The editor (the simplest honest thing):** a recipe that has tips opens with a "Tips" box under
+  the steps, one tip per line, saved as typed (empty lines dropped; a blank box is no tips). A
+  recipe without tips, a typed-in one included, has no box, so nothing new to explain; tips are
+  never what makes a draft valid. A chat's HowToTip fills the box the same way.
+- **Tests:** `KingArthurPageTest` / `KingArthurPageTests` over
+  `shared/fixtures/pages/site-kingarthur-mini-apple-pies.html` (the saved page's one JSON-LD block,
+  verbatim); the parser's HowToTip tests; `RecipeTipsTest` / `RecipeTipsTests` (share text, print,
+  the AI's JSON, the draft, the backup fixture); `DefaultRecipeRepositoryTipsTest` /
+  `RecipeTipsDataTests` (the flag both ways, a re-share of a recipe saved with its tips as steps,
+  progress kept when only the tips change, an edit, and on iOS the 18 → 19 migration);
+  `EditRecipeTipsViewModelTest` / `EditRecipeTipsTests`; `RecipeTipsScreenTest` (Robolectric: the
+  section, and none of it in cook mode); `MigrationTest.migration19To20…` (device only).
+
 ## Pith (#414, 2026-11-20)
 
 The app is **Pith**, subtitle **"Skip the story. Cook."** (owner, 2026-11-19), with the
@@ -6957,6 +7009,84 @@ is the blank tile or band it was).
 - Android reads the flag through `LocalFlagValues` (`noPhotoImageOn()`), iOS through an
   environment value `noPhotoImage` set once in `RootView`.
 
+## Step photos beside each step (#433, 2026-11-21)
+
+Cookist (and any site whose JSON-LD gives `HowToStep.image`) gives each step its own photo and ends
+the step text in markers, "(1)", "(3) (4)", that point at them; without the photos they meant
+nothing. The owner chose option B of the five layouts
+(`~/Downloads/RecipeClipper-designs/step-photos/step-photos.html`): a small thumbnail beside the step,
+full size on tap. Behind `stepPhotos`, on by default; off, every screen is as before (the photos are
+still parsed, stored and exported, so turning it on shows them without a re-share).
+
+- **Parsed from JSON-LD only.** `JsonLdRecipeParser` reads a HowToStep's `image` (a link, an
+  ImageObject's `url` else `contentUrl`, or an array of either; nested arrays, numbers and nulls
+  ignored), each through `WebImageUrl` (#235), once, at most 8 a step (`StepPhotos.MAX_PER_STEP`), into
+  `Recipe.stepPhotos`: one list of links per step, lined up with the steps, an empty list for a recipe
+  with none. A step given as a string has none; a blank step goes with its photo; sections flatten with
+  theirs; the site rules' step noise (#120) drops a cut-away last step's photos with it
+  (`BlogPageParser.refine`). Cookist needs nothing else: every step of its three pages in #433 carries
+  one `image`, and its markers are already in the text. Microdata, Reddit, the on-device model's pick
+  (#103) and the Paprika, Recipe Keeper and Mealie imports give no step photos.
+- **The numbers come from the markers, the text stays as written.** `StepPhotos.numbered`: a step's
+  bare "(n)" markers (one or two digits in brackets) number its photos when there are exactly as many
+  markers as photos; otherwise its photos take their place among the recipe's step photos (1, 2, 3...).
+  The markers are never hidden or rewritten (hiding them once their photo shows would rewrite the
+  text; the design's open point, not taken). Pinned on iOS by the corpus's `StepPh` rows.
+- **Stored as a column, `recipes.stepPhotos`**: `StepPhotos.encode`'s JSON (an array of arrays of
+  links), null for none, read back leniently (`decode`: anything odd is none, each link a web image
+  again). Room 20 to 21 (`MIGRATION_20_21`, `MigrationTest` 20 to 21 and 19 to 21, schema `21.json`),
+  iOS `user_version` 19 to 20 (`addStepPhotos`): numbered after #432's tips (Room 20, iOS 19), which
+  landed first. A plain column rather than a field inside `instructions`, which
+  every other reader (ticks, cook progress, Chef mode's hashes, share, print) takes as plain strings.
+- **Content, not the cook's.** A re-share and "Update from source" refresh them with the steps (unlike
+  `photoFile`, #386, which is the user's); the user's version (#29) keeps what it has, since a re-share
+  never touches it. **The editor has no field for them and loses none on an edit**
+  (`RecipeDraft.applyTo` through `StepPhotos.afterEdit`): a step whose text is unchanged keeps its photos
+  wherever it moved (a reorder, steps added or removed around it); then the changed steps left over are
+  paired with the old ones left over, in order, but only when as many are left on both sides, so an
+  edited step keeps its own. A removed step's photos go; steps added and changed in the same edit leave
+  the unpaired new ones with none.
+- **The reading view** (`StepPhotoThumbnail`, iOS `StepPhotoThumbnail`): a step with photos gets a
+  54 dp square, 9 dp corners, at the right of its text, 12 dp from it, badged bottom left with the first
+  photo's number (white on ink at 78%). Two or more stack: the second behind, offset 4 dp right and up,
+  at 55%, with a paprika "+1" (count − 1) pill top right. A step without has no thumbnail and today's
+  full-width text. One button for a screen reader: "Photo 3 of step 2" or "2 photos of step 3", action
+  "View full screen".
+- **The viewer** (`StepPhotoViewer`): full screen on `#0E0C0B` in both themes, words `#F1ECE6`: Close,
+  "Photo 3 of 7", "Step 3", the photo fitted, page dots, then the step's number (Fraunces, the on-ink
+  paprika) and its text as the reading view shows it (temperatures converted; not Chef mode's short
+  version). Swipes through every step photo of the recipe in step order. The page shown is the
+  ViewModel's (`stepPhotoViewer`, the photo's place among all of them), so a rotation keeps it.
+- **Cook mode**: done and upcoming rows carry the first photo at 40 dp (7 dp corners, no badge or
+  pill), decorative: the row's tap still makes the step current, and that card's thumbnail opens the
+  viewer. The current card puts its thumbnail (the reading view's, badge and stack) at the end of the
+  timer's row when the step has a timer, and beside the step's text, top right, when it has none (the
+  owner's follow-up: alone in a row of its own under the text it looked stranded; iOS
+  `CurrentStepPhoto.placement`). The card's text size and the rest of cook mode are unchanged.
+- **Loading and failure.** Coil (iOS `ImageLoader`), cached like the hero, so a photo seen once shows
+  offline. A thumbnail whose first photo fails to load is not drawn at all (the text takes the room),
+  never a placeholder: a stand-in tile beside every step of a page whose images are gone would read as
+  broken. The space before a thumbnail belongs to the thumbnail (its `gap`), so a failed one leaves no
+  gap anywhere. A stack whose second photo fails keeps the first and its pill. A failed page in the
+  viewer is the dark ground with its caption.
+- **With tips (#432).** The tips sit below the method with no photos; a tip is never a step, so the
+  parser gives tips none and the photos stay lined up with the steps alone.
+- **Share, print, export.** Sharing as text is unchanged (the markers are in the text as they always
+  were). The print and the cookbook PDF (#318) leave step photos out: the print only uses a cached hero
+  photo, and fetching a dozen step photos for paper is not trivial. The export file and a shared file
+  (#149) carry them as `"stepPhotos"` on a recipe, written only when a step has one (an older app
+  ignores the key); an import reads them as web images lined up with the steps, for a new recipe; a
+  recipe already here keeps its content, as for every other field (`BackupMerger`). Fixture:
+  `shared/fixtures/backup/backup-v1-step-photos.json`, read by both platforms' `BackupJson` tests.
+- **Tests.** `StepPhotosTest` / `StepPhotosTests` (markers, numbering, lining up, the edit, storage),
+  `StepPhotosParserTest` and its iOS twin (Cookist's fixture `shared/fixtures/jsonld/cookist-fagottini-di-mortadella.json`,
+  ImageObject and arrays, junk, sections, the site rule), the corpus's `StepPh` rows,
+  `RecipeStepPhotosDbTest` (Room: stored, refreshed, the user's version, an edit, export and import),
+  `MigrationTest`, `RecipeStepPhotosTest` (the ViewModel's viewer state) and `RecipeStepPhotosScreenTest`
+  (Compose, over `FakeImages`, a Coil loader that never touches the network: thumbnails, none on a step
+  without, the viewer paging, cook mode, a failed photo, no step photos and the flag off unchanged), with
+  the iOS data, migration and view tests.
+
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 
 `CLAUDE.md` had grown back to about 750 lines, and it is loaded into every session,
@@ -7043,9 +7173,9 @@ lands in Recipes, whichever tab is open.
 
 ### The database, in one paragraph
 
-Room database `recipe_clipper.db`, **version 19** (iOS `user_version` 18): `recipes`
+Room database `recipe_clipper.db`, **version 21** (iOS `user_version` 20): `recipes`
 (with nullable `notes`, `language`, `cookState`, `servingsTarget`, `editedAt`, `basedOnUid`,
-#354, and `photoFile`, #386, and `contentOrigin`), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
+#354, `photoFile`, #386, `contentOrigin`, `tips`, #432, a JSON list, and `stepPhotos`, #433), `lists` and `recipe_list_cross_ref` (cascading), `meal_types` and
 `meal_plan_entries` (#49), `grocery_items` (#50), `pantry_items` (#51; `runningLow`, #194), `menus` and
 `menu_entries` (#52), `short_steps` (#100) and `ai_decisions` (#104) (derived: never
 exported), `cooked_photos` (#116, cascading; no `fileName` for "Mark as cooked", #173). Recipes, lists, the plan, grocery,

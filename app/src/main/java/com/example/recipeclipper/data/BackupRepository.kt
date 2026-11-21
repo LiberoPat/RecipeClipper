@@ -22,6 +22,7 @@ import com.example.recipeclipper.data.local.entity.GroceryItemEntity
 import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.model.PlanDays
+import com.example.recipeclipper.data.model.StepPhotos
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -171,7 +172,9 @@ internal fun RecipeEntity.toBackup() = BackupRecipe(
     language = language,
     contentOrigin = contentOrigin,
     editedAt = editedAt,
-    basedOn = basedOnUid
+    basedOn = basedOnUid,
+    tips = tips,
+    stepPhotos = StepPhotos.aligned(StepPhotos.decode(stepPhotos), instructions.size)
 )
 
 /** A pantry item as the export file holds it, and as the Pantry's shared file sends it (#149). */

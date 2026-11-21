@@ -1,5 +1,7 @@
 package com.example.recipeclipper.ui.edit
 
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -107,7 +109,10 @@ data class EditRecipeUiState(
      *  the cook types; saved with the recipe. Only shared text's review shows it. */
     val note: String = "",
     /** Whether the split left lines out, so the review says where they went. */
-    val leftovers: Boolean = false
+    val leftovers: Boolean = false,
+    /** The recipe came with tips (#432): their box shows, below the steps. A recipe without
+     *  any, a typed one included, has no tips box. */
+    val showsTips: Boolean = false
 ) {
     /** The [checks]' lines, each with why. */
     val flags: List<LineFlag> get() = checks.map { it.flag }
@@ -151,7 +156,9 @@ class EditRecipeViewModel @Inject constructor(
     private val sharedTexts: SharedTextInbox = SharedTextInbox(),
     /** The countdowns outside the app (#309): an edit that changes the steps drops the cook's
      *  progress, so they are squared with the database after a save (#333); none without it. */
-    private val countdowns: TimerCountdownSync? = null
+    private val countdowns: TimerCountdownSync? = null,
+    /** Recipe tips (#432): a chat's HowToTip entries stay apart only with `recipeTips` on; null reads as off. */
+    private val flags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val recipeId: Long? = savedStateHandle.get<Long>(RECIPE_ID_ARG)?.takeIf { it > 0 }
@@ -211,7 +218,7 @@ class EditRecipeViewModel @Inject constructor(
                 val recipe = repository.open(recipeId)
                 _uiState.update {
                     if (recipe == null) it.copy(loading = false, missing = true)
-                    else it.copy(loading = false, draft = RecipeDraft.of(recipe))
+                    else it.copy(loading = false, draft = RecipeDraft.of(recipe), showsTips = recipe.tips.isNotEmpty())
                 }
             }
         } else if (pictures != null) {
@@ -229,7 +236,8 @@ class EditRecipeViewModel @Inject constructor(
             photoLanguage = reading.recipe.language
             fromChat = reading.fromChat
             basedOn = reading.basedOn
-            val recipe = reading.recipe
+            // Tips (#432) stay apart only with recipeTips on; off, they are the last steps, as before.
+            val recipe = if (flags?.isOn(Flag.RECIPE_TIPS) == true) reading.recipe else reading.recipe.withTipsAsSteps()
             _uiState.update {
                 it.copy(
                     loading = false,
@@ -243,8 +251,10 @@ class EditRecipeViewModel @Inject constructor(
                         cookTime = recipe.cookTime.orEmpty(),
                         totalTime = recipe.totalTime.orEmpty(),
                         ingredientsText = recipe.ingredients.joinToString("\n"),
-                        instructionsText = recipe.instructions.joinToString("\n")
-                    )
+                        instructionsText = recipe.instructions.joinToString("\n"),
+                        tipsText = recipe.tips.joinToString("\n")
+                    ),
+                    showsTips = recipe.tips.isNotEmpty()
                 )
             }
         }

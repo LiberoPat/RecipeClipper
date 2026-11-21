@@ -3,6 +3,7 @@ package com.example.recipeclipper.data.remote
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.data.model.StepPhotos
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -42,10 +43,15 @@ object BlogPageParser {
      * up (#118), then the group headings JSON-LD drops from a plugin's card (#119) or the
      * site's own (#120), and the site's known noise dropped from the last step (#120).
      */
-    private fun refine(doc: Document, url: String, recipe: Recipe): Recipe = recipe.copy(
-        ingredients = SiteRules.ingredients(doc, url, WprmIngredients.refine(doc, recipe.ingredients)),
-        instructions = SiteRules.steps(url, recipe.instructions),
-    )
+    private fun refine(doc: Document, url: String, recipe: Recipe): Recipe {
+        val steps = SiteRules.steps(url, recipe.instructions)
+        return recipe.copy(
+            ingredients = SiteRules.ingredients(doc, url, WprmIngredients.refine(doc, recipe.ingredients)),
+            instructions = steps,
+            // The noise rule only cuts the end of the last step, or drops it (#120): its photos go with it (#433).
+            stepPhotos = StepPhotos.aligned(recipe.stepPhotos, steps.size),
+        )
+    }
 
     /** For the weekly site check (#120): whether each of [url]'s site rules still matches [doc]. */
     fun siteRuleCheck(doc: Document, url: String): Map<String, Boolean>? {
