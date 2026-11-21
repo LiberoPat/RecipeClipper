@@ -40,12 +40,16 @@ struct RecipeRecord: Equatable {
     /// `imageUrl` wherever the recipe's picture shows. Not an "I made this" photo (#116): never a
     /// cooking. nil for none. The user's: `update` never writes it, so a re-share or an edit keeps it.
     var photoFile: String? = nil
+    /// The source's tips (#432, schema.org `HowToTip`), apart from `instructions`: JSON text like
+    /// them, `[]` for every recipe stored before user_version 19 (a King Arthur recipe saved then
+    /// keeps its tips as steps until a re-share refreshes it). Never a step: cook progress ignores it.
+    var tips: [String] = []
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
         totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language, \
-        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid, photoFile
+        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid, photoFile, tips
         """
 
     init(
@@ -56,7 +60,7 @@ struct RecipeRecord: Equatable {
         notes: String? = nil, uid: String = newUid(), language: String? = nil,
         cookState: String? = nil, servingsTarget: Int? = nil,
         contentOrigin: String = "PARSED", editedAt: Int64? = nil, basedOnUid: String? = nil,
-        photoFile: String? = nil
+        photoFile: String? = nil, tips: [String] = []
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -80,6 +84,7 @@ struct RecipeRecord: Equatable {
         self.editedAt = editedAt
         self.basedOnUid = basedOnUid
         self.photoFile = photoFile
+        self.tips = tips
     }
 
     init(row: SQLiteRow) {
@@ -105,6 +110,7 @@ struct RecipeRecord: Equatable {
         editedAt = row.isNull(19) ? nil : row.int64(19)
         basedOnUid = row.optionalString(20)
         photoFile = row.optionalString(21)
+        tips = JSONColumns.decodeStrings(row.string(22))
     }
 }
 

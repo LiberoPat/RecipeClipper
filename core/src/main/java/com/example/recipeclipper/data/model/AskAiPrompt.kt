@@ -316,8 +316,12 @@ object AskAiPrompt {
         text("cookTime", recipe.cookTime)
         text("totalTime", recipe.totalTime)
         fields += "  \"recipeIngredient\": " + array(recipe.ingredients.map { "    ${quote(it)}" })
+        // The tips (#432) after the steps, as HowToTip, so a changed recipe brings them back as tips.
         fields += "  \"recipeInstructions\": " +
-            array(recipe.instructions.map { "    {\"@type\": \"HowToStep\", \"text\": ${quote(it)}}" })
+            array(
+                recipe.instructions.map { "    {\"@type\": \"HowToStep\", \"text\": ${quote(it)}}" } +
+                    recipe.tips.map { "    {\"@type\": \"HowToTip\", \"text\": ${quote(it)}}" }
+            )
         return "{\n${fields.joinToString(",\n")}\n}"
     }
 

@@ -78,7 +78,11 @@ final class ShareViewController: UIViewController {
         let source = RoutingRecipeSource(
             blog: BlogRecipeSource(), reddit: RedditRecipeSource(), redditOn: { reddit.isOn }
         )
-        return DefaultRecipeRepository(db: db, source: source, clock: SystemClock(), library: library)
+        // Tips (#432) kept apart as the app's mirrored `recipeTips` flag says.
+        let tips = DefaultsRecipeTipsSwitch(defaults: defaults)
+        return DefaultRecipeRepository(
+            db: db, source: source, clock: SystemClock(), library: library, tipsOn: { tips.isOn }
+        )
     }
 
     /// "Add this list" (#149) over the same database.

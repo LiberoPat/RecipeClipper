@@ -50,13 +50,13 @@ struct RecipeDao {
         try db.run(
             """
             INSERT INTO recipes (\(RecipeRecord.columns))
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             r.id == 0 ? nil : r.id, r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
             JSONColumns.encode(r.checkedIngredients), r.notes, r.uid, r.language, r.cookState, r.servingsTarget,
-            r.contentOrigin, r.editedAt, r.basedOnUid, r.photoFile
+            r.contentOrigin, r.editedAt, r.basedOnUid, r.photoFile, JSONColumns.encode(r.tips)
         )
         return db.lastInsertRowId
     }
@@ -67,14 +67,14 @@ struct RecipeDao {
             UPDATE recipes SET sourceUrl = ?, title = ?, imageUrl = ?, ingredients = ?,
                 instructions = ?, prepTime = ?, cookTime = ?, totalTime = ?, servings = ?,
                 sourceType = ?, lastViewedAt = ?, checkedIngredients = ?, notes = ?, language = ?,
-                cookState = ?, servingsTarget = ?, contentOrigin = ?, editedAt = ?
+                cookState = ?, servingsTarget = ?, contentOrigin = ?, editedAt = ?, tips = ?
             WHERE id = ?
             """,
             r.sourceUrl, r.title, r.imageUrl,
             JSONColumns.encode(r.ingredients), JSONColumns.encode(r.instructions),
             r.prepTime, r.cookTime, r.totalTime, r.servings, r.sourceType, r.lastViewedAt,
             JSONColumns.encode(r.checkedIngredients), r.notes, r.language, r.cookState, r.servingsTarget,
-            r.contentOrigin, r.editedAt, r.id
+            r.contentOrigin, r.editedAt, JSONColumns.encode(r.tips), r.id
         )
     }
 
@@ -493,8 +493,20 @@ struct RecipeDao {
             : []
         // The note is the user's, not the source's: a fresh parse never carries one.
         updated.notes = existing.notes
-        // Step indexes, like ticks, only mean the same steps if the steps are unchanged.
-        updated.cookState = existing.instructions == fresh.instructions ? existing.cookState : nil
+        // Step indexes, like ticks, only mean the same steps if the steps are unchanged, or if the
+        // only change is that the last steps are now tips (#432): then the indexes left still mean
+        // the same steps, and any past the new last step go.
+        if existing.instructions == fresh.instructions {
+            updated.cookState = existing.cookState
+        } else if CookProgress.keptWhenTipsSplitOff(
+            oldSteps: existing.instructions, newSteps: fresh.instructions, newTips: fresh.tips
+        ) {
+            updated.cookState = CookStateJSON.encode(
+                CookStateJSON.decode(existing.cookState).clamped(to: fresh.instructions.count)
+            )
+        } else {
+            updated.cookState = nil
+        }
         // The chosen servings are the user's and don't depend on the wording of the steps.
         updated.servingsTarget = existing.servingsTarget
         return updated

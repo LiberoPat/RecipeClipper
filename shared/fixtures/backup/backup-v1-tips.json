@@ -1,0 +1,48 @@
+{
+  "format": "recipe-clipper-backup",
+  "formatVersion": 1,
+  "exportedAt": 1790000000000,
+  "recipes": [
+    {
+      "id": "r-pies",
+      "sourceUrl": "https://www.kingarthurbaking.com/recipes/mini-apple-pies-recipe",
+      "sourceType": "BLOG",
+      "title": "Mini Apple Pies",
+      "imageUrl": null,
+      "ingredients": ["1/3 cup (66g) granulated sugar"],
+      "instructions": ["Bake for 35 to 40 minutes.", "Cool."],
+      "prepTime": null,
+      "cookTime": null,
+      "totalTime": null,
+      "servings": "24",
+      "lastViewedAt": 1789000000100,
+      "checkedIngredients": [],
+      "notes": null,
+      "language": "en",
+      "contentOrigin": "PARSED",
+      "editedAt": null,
+      "tips": ["If you don’t have Apple Pie Spice , mix cinnamon & nutmeg.", "Bake on a stone."]
+    },
+    {
+      "id": "r-soup",
+      "sourceUrl": "https://example.com/soup",
+      "sourceType": "BLOG",
+      "title": "Tomato Soup",
+      "imageUrl": null,
+      "ingredients": ["2 lb tomatoes"],
+      "instructions": ["Roast."],
+      "prepTime": null,
+      "cookTime": null,
+      "totalTime": null,
+      "servings": "4",
+      "lastViewedAt": 1789000000200,
+      "checkedIngredients": [],
+      "notes": null,
+      "language": "en",
+      "contentOrigin": "PARSED",
+      "editedAt": null
+    }
+  ],
+  "lists": [],
+  "memberships": []
+}

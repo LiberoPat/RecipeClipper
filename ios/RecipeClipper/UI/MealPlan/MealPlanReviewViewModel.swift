@@ -96,6 +96,8 @@ final class MealPlanReviewViewModel {
     @ObservationIgnored private let today: Int64
     /// Each recipe's most delicate perishable (#396), by `ReviewItem.index`; empty with the flag off.
     @ObservationIgnored private var perishables: [Int: Perishable] = [:]
+    /// Recipe tips (#432): a recipe's HowToTip entries stay apart only with `recipeTips` on.
+    @ObservationIgnored private let tipsOn: Bool
 
     /// Without Pro (#413) a note's swap carries the Pro badge and opens the Pro screen. The review itself
     /// stays free (it is an import). Read live.
@@ -104,9 +106,11 @@ final class MealPlanReviewViewModel {
     init(
         text: String, recipes: RecipeRepository, plan: MealPlanRepository, calendar: PlanCalendar,
         limit: @escaping () -> LibraryLimit = { .unlimited }, entitlements: Entitlements = UnavailableEntitlements(),
-        freshFood: Bool = false, planPlus: Bool = false, pro: ProAccess = UngatedProAccess()
+        freshFood: Bool = false, planPlus: Bool = false, pro: ProAccess = UngatedProAccess(),
+        tipsOn: Bool = false
     ) {
         self.pro = pro
+        self.tipsOn = tipsOn
         self.recipes = recipes
         self.plan = plan
         self.limit = limit
@@ -297,7 +301,9 @@ final class MealPlanReviewViewModel {
             }
             let item = read[row.index]
             guard let recipe = await recipes.addManual(
-                draft: RecipeDraft.of(item.recipe), language: item.recipe.language, notes: nil, fromChat: true
+                // Tips (#432) stay apart only with recipeTips on; off, they are the last steps, as before.
+                draft: RecipeDraft.of(tipsOn ? item.recipe : item.recipe.withTipsAsSteps()),
+                language: item.recipe.language, notes: nil, fromChat: true
             ) else { failed = true; continue }
             // Id 0: the one upsert did not keep it (no room). It stays in the review.
             if recipe.id == 0 { continue }

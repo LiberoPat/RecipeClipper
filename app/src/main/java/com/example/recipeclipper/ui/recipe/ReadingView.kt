@@ -208,6 +208,11 @@ internal fun ReadingView(
                 }
             }
 
+            // The source's tips (#432): below the method, unnumbered and as written (never
+            // converted), under a quiet heading. Not steps: cook mode never shows them.
+            if (recipe.tips.isNotEmpty()) item {
+                TipsSection(recipe.tips)
+            }
             // The versions saved from this recipe (#354), quietly after the steps.
             if (state.versions.isNotEmpty() && !state.notKept) item {
                 VersionsSection(state.versions, actions.onOpenRecipe)

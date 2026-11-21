@@ -291,7 +291,8 @@ abstract class BackupDao {
                     contentOrigin = r.contentOrigin,
                     editedAt = r.editedAt,
                     basedOnUid = r.basedOn,
-                    photoFile = r.photo?.let(storedPhotos::get)
+                    photoFile = r.photo?.let(storedPhotos::get),
+                    tips = r.tips
                 )
             )
         }

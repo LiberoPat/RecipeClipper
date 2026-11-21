@@ -15,8 +15,13 @@ data class SplitRecipe(
     val prepTime: String?,
     val cookTime: String?,
     val totalTime: String?,
-    val language: String? = null
-)
+    val language: String? = null,
+    /** A chat's schema.org Recipe's tips (#432, HowToTip): never from split text. */
+    val tips: List<String> = emptyList()
+) {
+    /** With the `recipeTips` flag off (#432): the tips as the last steps, as before. */
+    fun withTipsAsSteps(): SplitRecipe = if (tips.isEmpty()) this else copy(instructions = instructions + tips, tips = emptyList())
+}
 
 /**
  * Turns free text that is laid out as a recipe (a Reddit post body, or a comment with the
