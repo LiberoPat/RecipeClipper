@@ -152,10 +152,11 @@ class TooltipsScreenTest {
         compose.setContent {
             CompositionLocalProvider(
                 LocalTooltips provides tooltips,
-                LocalFlagValues provides FlagValues(setOf(Flag.LIBRARY_FIRST))
+                LocalFlagValues provides FlagValues(setOf(Flag.LIBRARY_FIRST, Flag.ONE_COOKBOOK))
             ) {
                 RecipesScreen(
                     onBack = {}, onOpenRecipe = {}, viewModel = library,
+                    oneCookbook = false, rowActions = false, multiSelect = false,
                     libraryRoot = LibraryRoot(home, onOpenSettings = {}, onResumeCooking = {}, onOpenPlanned = { _, _, _ -> })
                 )
             }
