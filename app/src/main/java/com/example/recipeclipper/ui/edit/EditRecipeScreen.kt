@@ -86,7 +86,7 @@ fun EditRecipeScreen(
                 Text(
                     stringResource(
                         when {
-                            state.photo != null || state.shared -> R.string.photo_title
+                            state.photo != null || state.shared || state.article -> R.string.photo_title
                             state.isNew -> R.string.edit_title_new
                             else -> R.string.edit_title_edit
                         }
@@ -105,6 +105,12 @@ fun EditRecipeScreen(
                             if (state.leftovers) " " + stringResource(R.string.text_leftovers) else ""
                     )
                     false -> Note(stringResource(R.string.text_not_sorted))
+                    null -> Unit
+                }
+                // A recipe written inside an article (#435): taken as written, the headline as the name.
+                when (state.articleFound) {
+                    true -> Note(stringResource(R.string.article_read))
+                    false -> Message(stringResource(R.string.article_failed))
                     null -> Unit
                 }
                 when {

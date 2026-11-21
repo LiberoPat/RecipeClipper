@@ -46,6 +46,7 @@ internal object SiteReport {
             if (error.timedOut) "FetchFailed(timed out)" else "FetchFailed(${error.detail ?: "no detail"})"
         ParseError.NoRecipeFound -> "NoRecipeFound"
         is ParseError.NoTranscription -> "NoTranscription"
+        is ParseError.InArticle -> "InArticle"
         ParseError.Offline -> "Offline"
         ParseError.SaveFailed -> "SaveFailed"
         ParseError.NotSaved -> "NotSaved"

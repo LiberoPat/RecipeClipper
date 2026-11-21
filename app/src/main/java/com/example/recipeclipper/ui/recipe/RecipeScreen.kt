@@ -57,6 +57,8 @@ fun RecipeScreen(
     onOpenRecipe: (recipeId: Long) -> Unit = {},
     // "Read the photo" (#198): a Reddit post with no recipe text, read on the device.
     onReadPhoto: (PhotoPost) -> Unit = {},
+    // A recipe written inside an article (#435): the editor, filled from the page, to check.
+    onCheckArticle: (url: String) -> Unit = {},
     photoTextEnabled: Boolean = LocalFlagValues.current.isOn(Flag.PHOTO_TEXT),
     viewModel: RecipeViewModel = hiltViewModel(),
     saveViewModel: SaveToListViewModel = hiltViewModel(),
@@ -217,7 +219,7 @@ fun RecipeScreen(
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                     is RecipeContent.Error -> RecipeErrorView(
-                        content.error, state, actions, photoTextEnabled, onClip, onReadPhoto
+                        content.error, state, actions, photoTextEnabled, onClip, onReadPhoto, onCheckArticle
                     )
                 }
             }

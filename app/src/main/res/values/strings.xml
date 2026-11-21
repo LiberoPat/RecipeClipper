@@ -466,6 +466,11 @@
     <string name="text_read">Sorted from the text you shared. Check every line, above all the amounts, before saving.</string>
     <string name="text_leftovers">Lines that didn\'t fit anywhere are under Notes, as written.</string>
     <string name="text_not_sorted">Couldn\'t find ingredients and steps in the text, so it\'s all under Steps, as written: finish it by hand.</string>
+    <!-- A recipe written inside an article (#435) -->
+    <string name="error_in_article">This page has no recipe data, but its article writes one out: a list of amounts, then the method. Check it before it\'s saved.</string>
+    <string name="action_check_article">Check the recipe</string>
+    <string name="article_read">Taken from the article as written. The name is the article\'s headline: change it to the dish\'s. Check every line before saving.</string>
+    <string name="article_failed">Couldn\'t find the recipe in the article again. Go back and try again, or type it in below.</string>
     <!-- Meal-plan import (#352): the review of a week of recipes shared in -->
     <string name="mealplan_title">Your week</string>
     <string name="mealplan_intro">Choose the recipes to keep. Each one is saved as from a chat and planned on its day in Plan. Nothing is saved until you tap Save.</string>

@@ -1,6 +1,7 @@
 package com.example.recipeclipper.fake
 
 import com.example.recipeclipper.data.RecipeRepository
+import com.example.recipeclipper.data.model.ArticleRecipe
 import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.data.model.ParseResult
@@ -99,6 +100,15 @@ class FakeRecipeRepository : RecipeRepository {
     override suspend fun saveClip(recipe: Recipe): ParseResult {
         saveClipCalls += recipe
         return saveClipResult ?: ParseResult.Success(recipe.copy(id = 1))
+    }
+
+    /** Staged answer for [articleRecipe] (#435); every link it was asked for, in order. */
+    var articleRecipeResult: ArticleRecipe? = null
+    val articleRecipeCalls = mutableListOf<String>()
+
+    override suspend fun articleRecipe(sharedUrl: String): ArticleRecipe? {
+        articleRecipeCalls += sharedUrl
+        return articleRecipeResult
     }
 
     /** Staged answers for [importPage] (#220), by the page's HTML; a page not staged is still
