@@ -798,7 +798,7 @@ enum Strings {
     static var receiveListEmpty: String { String(localized: "receive_list_empty") }
     /// The share card, once the lines are in the pantry (iOS only: Android opens the Pantry tab).
     static var receiveListAddedPantry: String { String(localized: "receive_list_added_pantry") }
-    // A file sent to someone else's Recipe Clipper (#149, phase 2).
+    // A file sent to someone else's Pith (#149, phase 2).
     static var sendFile: String { String(localized: "action_send_file") }
     static var sendFileFailed: String { String(localized: "send_file_failed") }
     // Print or save as PDF, and a list as a cookbook (#318).

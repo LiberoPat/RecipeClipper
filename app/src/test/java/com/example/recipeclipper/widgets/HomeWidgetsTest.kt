@@ -85,8 +85,8 @@ class HomeWidgetsTest {
         groceries.add(listOf(NewGroceryLine("2 onions", "en")))
         widgets.update()
 
-        assertEquals(listOf("Recipe Clipper"), host.texts(list))
-        assertEquals(listOf("Recipe Clipper"), host.texts(tonight))
+        assertEquals(listOf("Pith"), host.texts(list))
+        assertEquals(listOf("Pith"), host.texts(tonight))
     }
 
     @Test

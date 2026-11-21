@@ -286,7 +286,7 @@ class HomeScreenTest {
     fun aLinkCanBeSharedFromAnyApp() {
         show()
 
-        compose.onNodeWithText("Or share a link to Recipe Clipper from any app.").assertIsDisplayed()
+        compose.onNodeWithText("Or share a link to Pith from any app.").assertIsDisplayed()
     }
 
     // The resume card (#286).

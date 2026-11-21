@@ -102,7 +102,7 @@ object ShareFile {
         val safe = title.map { c -> if (c in UNSAFE || c.isISOControl()) ' ' else c }.joinToString("")
             .replace(Regex("\\s+"), " ")
             .trim().trimStart('.').take(MAX_NAME).trim()
-        return safe.ifEmpty { "Recipe Clipper" } + "." + extension
+        return safe.ifEmpty { "Pith" } + "." + extension
     }
 
     private const val UNSAFE = "/\\:*?\"<>|"

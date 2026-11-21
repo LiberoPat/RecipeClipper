@@ -21,7 +21,7 @@ enum SiteReportLink {
         let cleaned = UrlCleaner.clean(link)
         let title = "Site not supported: \(SourceDomain.of(cleaned) ?? cleaned)"
         let body = [
-            "Recipe Clipper found no recipe on this page.",
+            "Pith found no recipe on this page.",
             "",
             "Link: \(cleaned)",
             "Platform: \(platform)",

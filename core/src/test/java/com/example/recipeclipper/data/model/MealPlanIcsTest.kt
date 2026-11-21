@@ -26,7 +26,7 @@ class MealPlanIcsTest {
         val expected = listOf(
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
-            "PRODID:-//Recipe Clipper//Meal plan//EN",
+            "PRODID:-//Pith//Meal plan//EN",
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
             "BEGIN:VEVENT",

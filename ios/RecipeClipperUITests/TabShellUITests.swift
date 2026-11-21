@@ -22,7 +22,7 @@ final class TabShellUITests: RecipeUITestCase {
     func testTheBarShowsFourTabsInOrderWithRecipesOpen() {
         launchWithTabs()
 
-        let labels = ["Recipes", "Week", "Groceries", "Pantry"]
+        let labels = ["Recipes", "Plan", "Groceries", "Pantry"]
         let xs = labels.map { require(tab($0), $0).frame.minX }
         XCTAssertEqual(xs, xs.sorted())
         XCTAssertTrue(tab("Recipes").isSelected)
@@ -32,7 +32,7 @@ final class TabShellUITests: RecipeUITestCase {
     func testTheOtherTabsShowTheirScreens() {
         launchWithTabs()
 
-        tab("Week").tap()
+        tab("Plan").tap()
         require(app.staticTexts["weekRange"], "the Week (#49)")
         tab("Groceries").tap()
         require(textContaining("Your list is empty"), "the empty Groceries list (#50)")
@@ -67,7 +67,7 @@ final class TabShellUITests: RecipeUITestCase {
         launchWithTabs()
         openLists()
 
-        tab("Week").tap()
+        tab("Plan").tap()
         require(app.staticTexts["weekRange"], "the Week")
         tab("Recipes").tap()
 

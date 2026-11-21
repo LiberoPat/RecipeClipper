@@ -147,7 +147,7 @@ class ShareFileTest {
         assertEquals("Sheet-pan chicken.recipeclipper", ShareFile.fileName("Sheet-pan chicken"))
         assertEquals("Mac and cheese 1 2.recipeclipper", ShareFile.fileName("Mac/and\\cheese: 1*2?"))
         assertEquals("hidden.recipeclipper", ShareFile.fileName("..hidden"))
-        assertEquals("Recipe Clipper.recipeclipper", ShareFile.fileName(" / "))
+        assertEquals("Pith.recipeclipper", ShareFile.fileName(" / "))
         assertEquals(60 + ".recipeclipper".length, ShareFile.fileName("x".repeat(200)).length)
     }
 }

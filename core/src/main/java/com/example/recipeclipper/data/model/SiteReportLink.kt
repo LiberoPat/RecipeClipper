@@ -24,7 +24,7 @@ object SiteReportLink {
         val cleaned = UrlCleaner.clean(link)
         val title = "Site not supported: ${SourceDomain.of(cleaned) ?: cleaned}"
         val body = listOf(
-            "Recipe Clipper found no recipe on this page.",
+            "Pith found no recipe on this page.",
             "",
             "Link: $cleaned",
             "Platform: $platform",

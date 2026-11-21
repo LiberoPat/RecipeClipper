@@ -1,4 +1,4 @@
-# Recipe Clipper — iOS
+# Pith (Recipe Clipper in the code) — iOS
 
 The iOS port of the Android app in `../app`, at feature parity with it: share a recipe link,
 get just the recipe. SwiftUI, iOS 17+, no third-party dependencies. `../CLAUDE.md` is the

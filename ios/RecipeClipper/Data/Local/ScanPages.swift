@@ -74,7 +74,7 @@ struct ScanPages: @unchecked Sendable {
 
 /// Images the share extension was given (#226), handed to the app. The extension can't open
 /// the app (#19), and the review needs it (never saved unchecked), so it leaves the pages in
-/// `ScanPages` and their names here, and its card says to open Recipe Clipper; the app,
+/// `ScanPages` and their names here, and its card says to open Pith; the app,
 /// becoming active within `window`, opens the scan's review on them, once. Each new share
 /// replaces or clears it, as `PendingClip` does for a blocked Reddit post (#213).
 struct PendingScan: @unchecked Sendable {

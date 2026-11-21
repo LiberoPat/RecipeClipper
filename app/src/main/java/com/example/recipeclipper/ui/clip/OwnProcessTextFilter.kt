@@ -8,7 +8,7 @@ import android.view.View
 import androidx.core.view.iterator
 
 /**
- * Keeps the app's own "Recipe Clipper" entry (`ProcessTextActivity`, #306) out of the clip
+ * Keeps the app's own "Pith" entry (`ProcessTextActivity`, #306) out of the clip
  * page's selection menu (#334): the page is already in the app. Wraps the callback the WebView
  * starts its selection mode with, and hides every item whose intent targets this package, each
  * time the menu is built or rebuilt (a selection change rebuilds it).

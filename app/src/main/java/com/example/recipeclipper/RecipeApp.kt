@@ -69,7 +69,7 @@ class RecipeApp : Application(), ImageLoaderFactory {
         autoBackup.start()
         // The home-screen widgets (#309) follow the plan and the list while the process lives.
         homeWidgets.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))
-        // "Recipe Clipper" in other apps' selection menus (#306) follows the shareText flag (#334).
+        // "Pith" in other apps' selection menus (#306) follows the shareText flag (#334).
         processTextEntry.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))
         // The countdowns outside the app (#309) go when `liveTimers` is turned off (#333).
         timerCountdowns.start(CoroutineScope(SupervisorJob() + Dispatchers.Default))

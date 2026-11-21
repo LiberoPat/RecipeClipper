@@ -35,7 +35,10 @@ enum AutoBackupPolicy {
     /// Settings nudges when the last copy is older than this and nothing is copying.
     static let nudgeAfterMs: Int64 = 30 * 24 * 60 * 60 * 1000
 
-    static let filePrefix = "recipe-clipper-backup-"
+    /// Pith's copies (#414). Those written before the rename (`recipe-clipper-backup-…`) are
+    /// still the app's own: kept or cleared with the new ones, by their time.
+    static let filePrefix = "pith-backup-"
+    private static let oldFilePrefix = "recipe-clipper-backup-"
 
     /// The automatic copy is actually being kept: on, and somewhere to put it.
     static func isWorking(_ record: AutoBackupRecord, _ destination: BackupDestination) -> Bool {
@@ -68,7 +71,7 @@ enum AutoBackupPolicy {
         !libraryEmpty && record.enabled && !record.folderPromptDone && destination == .notChosen
     }
 
-    /// `recipe-clipper-backup-2026-09-26-1430.zip`, in the phone's time zone: sorts by time.
+    /// `pith-backup-2026-09-26-1430.zip`, in the phone's time zone: sorts by time.
     static func fileName(now: Int64, timeZone: TimeZone = .current) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -79,12 +82,18 @@ enum AutoBackupPolicy {
 
     /// True for a name this feature wrote; nothing else in the folder is ever touched.
     static func isBackupFile(_ name: String) -> Bool {
-        name.range(of: #"^recipe-clipper-backup-\d{4}-\d{2}-\d{2}-\d{4}\.zip$"#, options: .regularExpression) != nil
+        name.range(of: #"^(pith|recipe-clipper)-backup-\d{4}-\d{2}-\d{2}-\d{4}\.zip$"#, options: .regularExpression) != nil
     }
 
     /// The app's own copies beyond the newest `keep`, never `written` and never anything else.
     static func toDelete(existing: [String], written: String) -> [String] {
-        let ours = Array(Set(existing.filter(isBackupFile))).sorted(by: >)
+        // Newest by the time in the name, not the name: the old prefix mustn't sort as newer.
+        func stamp(_ name: String) -> Substring {
+            name.dropFirst(name.hasPrefix(filePrefix) ? filePrefix.count : oldFilePrefix.count)
+        }
+        let ours = Array(Set(existing.filter(isBackupFile))).sorted {
+            stamp($0) != stamp($1) ? stamp($0) > stamp($1) : $0 > $1
+        }
         let kept = Set([written] + ours.filter { $0 != written }.prefix(keep - 1))
         return ours.filter { !kept.contains($0) }
     }

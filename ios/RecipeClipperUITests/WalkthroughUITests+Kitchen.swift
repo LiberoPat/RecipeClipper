@@ -17,7 +17,7 @@ extension WalkthroughUITests {
             pause(1.2)
         }
         pause(2.5)
-        tab("Week")
+        tab("Plan")
         planToday("Chicken Adobo")
         plan(day: today + 1, "Chicken Adobo")
         recipeMenu("Shop for this week")
@@ -63,7 +63,7 @@ extension WalkthroughUITests {
         app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: app.frame.midX, dy: top))
             .press(forDuration: 0.2, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
         pause(1.5)
-        tab("Week")
+        tab("Plan")
         let meal = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'meal-'")).firstMatch
         scrollTo(meal, "tomorrow's dinner on the Week")
         pause(3.5)

@@ -117,7 +117,7 @@ enum ShareFile {
         var safe = replaced.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         while safe.hasPrefix(".") { safe.removeFirst() }
         safe = String(safe.prefix(maxName)).trimmingCharacters(in: .whitespaces)
-        return (safe.isEmpty ? "Recipe Clipper" : safe) + "." + ext
+        return (safe.isEmpty ? "Pith" : safe) + "." + ext
     }
 
     private static let maxName = 60

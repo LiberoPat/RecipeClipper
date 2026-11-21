@@ -286,7 +286,7 @@ class LibraryFirstScreenTest {
             compose.onNodeWithText(name).assertIsDisplayed()
             compose.onNodeWithText(hint).assertIsDisplayed()
         }
-        compose.onNodeWithText("Or share a link to Recipe Clipper from any app.").assertIsDisplayed()
+        compose.onNodeWithText("Or share a link to Pith from any app.").assertIsDisplayed()
     }
 
     @Test
