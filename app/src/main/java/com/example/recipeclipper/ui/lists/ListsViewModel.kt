@@ -6,12 +6,15 @@ import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.model.RecipeList
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -34,8 +37,15 @@ data class ListsUiState(
     val draggingId: Long? = null
 )
 
-/** A drag in flight: the list held, and every list's id in the order the drag has made. */
-private data class Drag(val id: Long, val order: List<Long>)
+/**
+ * A drag in flight: the list held, and every list's id in the order the drag has made.
+ * [settling] is a drop whose write is done but whose new stored order has not been published yet:
+ * the order stays on show so the covers don't snap back and then forward again (#421).
+ */
+private data class Drag(val id: Long, val order: List<Long>, val settling: Boolean = false)
+
+/** How long a dropped order waits for the database to publish it before the stored one returns. */
+private const val SETTLE_MILLIS = 1_000L
 
 /**
  * The Lists screen: every list as a cover with its count, creating a new one, and putting the
@@ -59,8 +69,18 @@ class ListsViewModel @Inject constructor(
     private val stored = MutableStateFlow<List<RecipeList>?>(null)
 
     init {
-        viewModelScope.launch { repository.observeLists().collect { stored.value = it } }
+        viewModelScope.launch {
+            repository.observeLists().collect { lists ->
+                stored.value = lists
+                // The write the drop made has come back: the stored order is the one on show.
+                val ids = lists.map { it.id }
+                drag.update { if (it != null && it.settling && it.order == ids) null else it }
+            }
+        }
     }
+
+    /** Puts the stored order back on show if the dropped one is never published (the write failed). */
+    private var settleJob: Job? = null
 
     val uiState: StateFlow<ListsUiState> = combine(
         stored.filterNotNull(),
@@ -75,7 +95,7 @@ class ListsViewModel @Inject constructor(
             coverPhotos = photos.mapValues { it.value.take(ListDao.COVER_PHOTOS) },
             creatingList = creating,
             newListName = name,
-            draggingId = dragging?.id
+            draggingId = dragging?.takeUnless { it.settling }?.id
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListsUiState())
 
@@ -109,6 +129,7 @@ class ListsViewModel @Inject constructor(
     fun onDragStart(listId: Long) {
         val lists = stored.value ?: return
         if (lists.none { it.id == listId }) return
+        settleJob?.cancel()
         drag.value = Drag(listId, lists.map { it.id })
     }
 
@@ -123,14 +144,29 @@ class ListsViewModel @Inject constructor(
 
     /** The cook let go: the order the drag made is stored, once. */
     fun onDragEnd() {
-        val current = drag.value ?: return
+        val current = drag.value?.takeUnless { it.settling } ?: return
         viewModelScope.launch {
             if (current.order != stored.value?.map { it.id }) repository.reorderLists(current.order)
-            drag.value = null
+            // The drag may have been cancelled or replaced while the write ran.
+            if (drag.value !== current) return@launch
+            if (stored.value?.map { it.id } == current.order) {
+                drag.value = null
+            } else {
+                // The write is done, its publication is on its way. If it never comes the stored
+                // order goes back on show after a moment.
+                val settling = current.copy(settling = true)
+                drag.value = settling
+                settleJob = launch {
+                    delay(SETTLE_MILLIS)
+                    drag.update { if (it === settling) null else it }
+                }
+            }
         }
     }
 
+    /** The drag ended with no drop: the covers go back, nothing is stored. */
     fun onDragCancel() {
+        settleJob?.cancel()
         drag.value = null
     }
 
