@@ -37,7 +37,7 @@ internal val Paprika = Color(0xFFBF4A2B)
 // spec's muted and paprika are too dim to read as small text on ink.
 private val MutedOnInk = Color(0xFFA39A90)
 private val HairlineOnInk = Color(0xFF3A342F)
-private val PaprikaTextOnInk = Color(0xFFE2735A)
+internal val PaprikaTextOnInk = Color(0xFFE2735A)
 
 /**
  * One of the five warm tints of a recipe with no photo (#403): the ground of its image and the

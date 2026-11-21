@@ -82,6 +82,8 @@ enum Flag: String, CaseIterable {
     case tabSettingsLinks
     /// Recipe tips (#432): HowToTip entries kept apart from the steps, below the method, never in cook mode; off, they are the last steps.
     case recipeTips
+    /// Step photos (#433): a thumbnail beside each step the source gives photos for, a full-screen viewer on tap, and a smaller one in cook mode.
+    case stepPhotos
     /// A recipe written inside an article (#435): a list of amounts and the method after it, offered in the editor to check.
     case articleRecipes
 }

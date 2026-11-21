@@ -60,7 +60,9 @@ class RecipeScreenFixture(
     /** Set to show "Change this recipe" (#353), as the navigation does with the askAi flag on. */
     val askAi: com.example.recipeclipper.ui.askai.AskAiViewModel? = null,
     /** The flags the screen sees (#87); all off, as a screen test without them. */
-    val flags: com.example.recipeclipper.data.flags.FlagValues = com.example.recipeclipper.data.flags.FlagValues.ALL_OFF
+    val flags: com.example.recipeclipper.data.flags.FlagValues = com.example.recipeclipper.data.flags.FlagValues.ALL_OFF,
+    /** Set to load the screen's images with this (#433: [com.example.recipeclipper.fake.FakeImages]), never the network. */
+    val imageLoader: coil.ImageLoader? = null
 ) {
 
     val recipes = FakeRecipeRepository().apply { openResult = recipe }
@@ -119,9 +121,11 @@ class RecipeScreenFixture(
                 null
             }
         compose.setContent {
+          val images = imageLoader ?: coil.compose.LocalImageLoader.current
           androidx.compose.runtime.CompositionLocalProvider(
               com.example.recipeclipper.ui.print.LocalPrinter provides printer,
-              com.example.recipeclipper.ui.common.LocalFlagValues provides flags
+              com.example.recipeclipper.ui.common.LocalFlagValues provides flags,
+              coil.compose.LocalImageLoader provides images
           ) {
             RecipeScreen(
                 onBack = { backs++ },

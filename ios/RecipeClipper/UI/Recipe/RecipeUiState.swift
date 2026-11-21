@@ -79,6 +79,20 @@ struct RecipeSuccess: Equatable {
         return stepAmounts[index]
     }
 
+    /// Each step's photos (#433), numbered by the step text's own "(n)" markers (see
+    /// `StepPhotos.numbered`); empty for a recipe with none. Read from the steps as stored: a
+    /// converted temperature never moves a marker.
+    var stepPhotos: [[StepPhoto]] { StepPhotos.numbered(recipe.instructions, recipe.stepPhotos) }
+
+    /// Every step photo in step order: the viewer's pages.
+    var allStepPhotos: [StepPhoto] { StepPhotos.all(stepPhotos) }
+
+    /// Step `index`'s photos; none for a step without.
+    func photosOf(_ index: Int) -> [StepPhoto] {
+        let all = stepPhotos
+        return all.indices.contains(index) ? all[index] : []
+    }
+
     /// The amounts inside the step as `shownStep` shows it; nil when amounts are off.
     func shownStepParts(_ index: Int, asWritten: Set<Int>) -> [StepAmounts.Part]? {
         guard stepAmounts != nil else { return nil }
@@ -182,6 +196,9 @@ struct RecipeUiState: Equatable {
     var basedOn: RecipeLink?
     /// The versions saved from this recipe (#354), newest first, quietly listed under its steps.
     var versions: [RecipeLink] = []
+    /// The step photo viewer (#433): open on this photo's position among the recipe's step photos;
+    /// nil when closed.
+    var stepPhotoViewer: Int?
 
     /// Cook mode's opened ingredients bar for the current step (#286): its lines first, then the
     /// rest; nil lists every line as written. Derived from `content`, `cook` and `asWrittenSteps`

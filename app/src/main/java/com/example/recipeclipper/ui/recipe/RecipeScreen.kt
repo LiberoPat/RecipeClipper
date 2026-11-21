@@ -247,6 +247,11 @@ fun RecipeScreen(
                 ChangeRecipeSheet(content.recipe, onDismiss = { changeSheetOpen = false }, viewModel = askAiViewModel)
             }
             if (useUpViewModel != null) PantryUseUpUi(useUpViewModel, snackbarHostState)
+            // A step photo's thumbnail was tapped (#433): every step photo, full screen.
+            val viewing = state.stepPhotoViewer
+            if (viewing != null && content is RecipeContent.Success && stepPhotosOn()) {
+                StepPhotoViewer(content, viewing, actions)
+            }
         }
     }
 }

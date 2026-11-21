@@ -51,7 +51,11 @@ data class RecipeEntity(
      *  them, `[]` for every recipe stored before version 20 (a King Arthur recipe saved then keeps
      *  its tips as steps until a re-share refreshes it). Never a step: cook progress ignores it. */
     @ColumnInfo(defaultValue = "[]")
-    val tips: List<String> = emptyList()
+    val tips: List<String> = emptyList(),
+    /** Each step's photos as the source gives them (#433): [com.example.recipeclipper.data.model.StepPhotos]'s
+     *  JSON, an array of arrays of web image links lined up with [instructions]; null for none. Content,
+     *  so a re-share refreshes it with the steps; an edit carries it along (`StepPhotos.afterEdit`). */
+    val stepPhotos: String? = null
 )
 
 @Entity(tableName = "lists", indices = [Index(value = ["uid"], unique = true)])

@@ -410,6 +410,26 @@ final class RecipeViewModel {
     }
 
     /// Chef mode: shows step `index` as written, or short again.
+    // MARK: Step photos (#433)
+
+    /// A step's thumbnail was tapped: the viewer opens on photo `position` of the recipe's step
+    /// photos. A position the recipe hasn't got (its steps changed meanwhile) opens nothing.
+    func onStepPhotoOpen(_ position: Int) {
+        guard let content = uiState.content.success, content.allStepPhotos.indices.contains(position) else { return }
+        uiState.stepPhotoViewer = position
+    }
+
+    /// The viewer was swiped to photo `position`.
+    func onStepPhotoPage(_ position: Int) {
+        guard uiState.stepPhotoViewer != nil,
+              let content = uiState.content.success, content.allStepPhotos.indices.contains(position) else { return }
+        uiState.stepPhotoViewer = position
+    }
+
+    func onStepPhotoClose() {
+        uiState.stepPhotoViewer = nil
+    }
+
     func onStepAsWrittenToggle(_ index: Int) {
         if uiState.asWrittenSteps.contains(index) {
             uiState.asWrittenSteps.remove(index)

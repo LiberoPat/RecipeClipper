@@ -10,6 +10,7 @@ struct CookView: View {
     let content: RecipeSuccess
     let state: RecipeUiState
     let vm: RecipeViewModel
+    @Environment(\.stepPhotos) private var stepPhotos
 
     var body: some View {
         let cook = state.cook
@@ -46,6 +47,8 @@ struct CookView: View {
                                 isLast: index == steps.count - 1,
                                 // "Tapping another step makes it current" (#190) points at the next one.
                                 isNext: index == cook.currentStep + 1,
+                                // Step photos (#433): none with the flag off, or for a step without.
+                                photos: stepPhotos ? content.photosOf(index) : [],
                                 vm: vm
                             )
                             .id(index)
@@ -288,6 +291,9 @@ private struct CookStep: View {
     let timer: StepTimer?
     let isLast: Bool
     let isNext: Bool
+    /// The step's photos (#433): the current card's thumbnail beside its timer, a smaller one on
+    /// the other rows; empty draws nothing new.
+    var photos: [StepPhoto] = []
     let vm: RecipeViewModel
     @ScaledMetric(relativeTo: .headline) private var numberColumn: CGFloat = 32
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -308,16 +314,37 @@ private struct CookStep: View {
                 }
                 .padding(.bottom, 8)
                 // Only the current step's ingredient links open (#254): a tap elsewhere selects.
-                stepText(text, amounts, accent: Palette.accentText, linked: true)
-                    .textStyle(Typography.cookStep)
-                    .foregroundStyle(Palette.onBackground)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .modifier(StepLinks(parts: amounts, onLink: { vm.onIngredientLink(index, $0) }))
-                if timerSeconds != nil || timer != nil {
+                // Step photos (#433): beside the text when the step has no timer, at the end of the
+                // timer's row when it has one. The thumbnail's gap is its own, so a photo that fails
+                // to load leaves none.
+                let placement = CurrentStepPhoto.placement(hasPhotos: !photos.isEmpty, hasTimer: timerSeconds != nil || timer != nil)
+                HStack(alignment: .top, spacing: 0) {
+                    stepText(text, amounts, accent: Palette.accentText, linked: true)
+                        .textStyle(Typography.cookStep)
+                        .foregroundStyle(Palette.onBackground)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .modifier(StepLinks(parts: amounts, onLink: { vm.onIngredientLink(index, $0) }))
+                    if placement == .besideText {
+                        StepPhotoThumbnail(photos: photos, size: 56, gap: 12, onOpen: vm.onStepPhotoOpen)
+                            .padding(.top, 4)
+                    }
+                }
+                if placement == .none, timerSeconds != nil || timer != nil {
                     // The cook-mode tooltips (#190) go below their controls, never over the step's text.
                     CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
                         .tooltipAnchor(.cookTimer, side: .below)
                         .padding(.top, 16)
+                } else if placement == .besideTimer {
+                    HStack(alignment: .center, spacing: 0) {
+                        // The cook-mode tooltips (#190) go below their controls, never over the step's text.
+                        CurrentTimer(step: index, timerSeconds: timerSeconds, timerWords: timerWords, timer: timer, vm: vm)
+                            .tooltipAnchor(.cookTimer, side: .below)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if placement == .besideTimer {
+                            StepPhotoThumbnail(photos: photos, size: 56, gap: 10, onOpen: vm.onStepPhotoOpen)
+                        }
+                    }
+                    .padding(.top, 16)
                 }
                 Button(isLast ? Strings.cookDoneFinish : Strings.cookDoneNext, action: vm.onStepDone)
                     .buttonStyle(PrimaryButtonStyle(minHeight: 52, fillWidth: true))
@@ -336,6 +363,7 @@ private struct CookStep: View {
                     ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
                     : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 0))
                 VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .top, spacing: 0) {
                     layout {
                         Text("\(index + 1)")
                             .textStyle(Typography.titleMedium)
@@ -348,6 +376,9 @@ private struct CookStep: View {
                             .foregroundStyle(Palette.muted)
                             .multilineTextAlignment(.leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    // Step photos (#433): a small one, decorative; the row's tap makes the step current.
+                    if !photos.isEmpty { StepPhotoMiniThumbnail(photos: photos, gap: 12).padding(.top, 2) }
                     }
                     // A timer still running on a step you've moved on from stays visible:
                     // steps overlap.

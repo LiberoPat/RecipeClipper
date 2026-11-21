@@ -89,6 +89,8 @@ enum class Flag(val key: String) {
     TAB_SETTINGS_LINKS("tabSettingsLinks"),
     /** Recipe tips (#432): HowToTip entries kept apart from the steps, below the method, never in cook mode; off, they are the last steps. */
     RECIPE_TIPS("recipeTips"),
+    /** Step photos (#433): a thumbnail beside each step the source gives photos for, a full-screen viewer on tap, and a smaller one in cook mode. */
+    STEP_PHOTOS("stepPhotos"),
     /** A recipe written inside an article (#435): a list of amounts and the method after it, offered in the editor to check. */
     ARTICLE_RECIPES("articleRecipes");
 

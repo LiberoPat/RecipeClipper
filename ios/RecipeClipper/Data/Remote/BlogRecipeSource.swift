@@ -139,6 +139,8 @@ final class BlogRecipeSource: RecipeSource {
                 let wprm = WprmIngredients.refine(html: html, lines: recipe.ingredients)
                 refined.ingredients = SiteRules.ingredients(html: html, url: url, lines: wprm)
                 refined.instructions = SiteRules.steps(url: url, steps: recipe.instructions)
+                // The noise rule only cuts the end of the last step, or drops it (#120): its photos go with it (#433).
+                refined.stepPhotos = StepPhotos.aligned(recipe.stepPhotos, refined.instructions.count)
                 return refined
             }
         guard let recipe = jsonLd ?? MicrodataRecipeParser.parse(html: html, sourceUrl: url) else {

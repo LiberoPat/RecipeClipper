@@ -25,6 +25,7 @@ import com.example.recipeclipper.data.local.entity.PantryItemEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
 import com.example.recipeclipper.data.model.LibraryLimit
+import com.example.recipeclipper.data.model.StepPhotos
 import com.example.recipeclipper.data.model.UrlCleaner
 
 /** Everything an export holds, read in one transaction so it is one consistent moment. */
@@ -292,7 +293,8 @@ abstract class BackupDao {
                     editedAt = r.editedAt,
                     basedOnUid = r.basedOn,
                     photoFile = r.photo?.let(storedPhotos::get),
-                    tips = r.tips
+                    tips = r.tips,
+                    stepPhotos = StepPhotos.encode(StepPhotos.aligned(r.stepPhotos, r.instructions.size))
                 )
             )
         }
