@@ -63,13 +63,9 @@ final class ListsUITests: RecipeUITestCase {
         dragLunchOntoFavorites(hold: 1.5, velocity: .slow, thenHold: 1.5)
     }
 
-    /// The same, with the finger moving as soon as it can. A slow runner (the nightly's) may not
-    /// have finished lifting the cover when the finger is already over Favorites, and then the
-    /// system never says the drag entered it: only the drop on it counts, and it must still give
-    /// Lunch the place (`ListsViewModel.onDrop`). Reproduced here with a short press.
-    func testACoverDraggedAtOnceStillTakesThePlaceItIsDroppedOn() {
-        dragLunchOntoFavorites(hold: 0.7, velocity: .fast, thenHold: 0.2)
-    }
+    // A drop before the system says the drag entered the cover still gives it the place
+    // (`ListsViewModel.onDrop`): pinned by ListsViewModelTests, not here. A short-press UI test
+    // reproduced it locally, but on the CI runner a 0.7 s press often starts no drag at all.
 
     private func dragLunchOntoFavorites(hold: TimeInterval, velocity: XCUIGestureVelocity, thenHold: TimeInterval) {
         launch(flags: ["reorderLists"])
