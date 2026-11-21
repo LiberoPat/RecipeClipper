@@ -56,6 +56,11 @@ typealias DefaultsShareTextSwitch = DefaultsFlagSwitch<ShareTextFlag>
 enum MealPlanFlag: MirroredFlag { static let key = "meal_plan_on" }
 typealias DefaultsMealPlanSwitch = DefaultsFlagSwitch<MealPlanFlag>
 
+/// Whether a page's HowToTip entries are kept apart as tips (the `recipeTips` flag, #432), as the
+/// share extension reads it when it saves a link.
+enum RecipeTipsFlag: MirroredFlag { static let key = "recipe_tips_on" }
+typealias DefaultsRecipeTipsSwitch = DefaultsFlagSwitch<RecipeTipsFlag>
+
 /// Whether a recipe written inside an article is offered (the `articleRecipes` flag, #435), as the
 /// share extension reads it.
 enum ArticleRecipesFlag: MirroredFlag { static let key = "article_recipes_on" }

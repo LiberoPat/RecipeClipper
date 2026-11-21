@@ -154,6 +154,10 @@ private fun EditFields(state: EditRecipeUiState, onChange: (RecipeDraft) -> Unit
         { onChange(draft.copy(instructionsText = it)) },
         multiLine = true
     )
+    // The source's tips (#432), one per line, only for a recipe that has them.
+    if (state.showsTips) {
+        Field(stringResource(R.string.heading_tips), draft.tipsText, { onChange(draft.copy(tipsText = it)) }, multiLine = true)
+    }
     // Shared text's review (#306) keeps the lines the split left out as the note (#334).
     if (state.shared) Field(stringResource(R.string.heading_notes), state.note, onNoteChange, multiLine = true)
     Field(

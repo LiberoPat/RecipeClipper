@@ -119,6 +119,8 @@ extension PrintStyle {
                 return textBlock(string(s, text, Self.ink), space: 8, keep: false, x: margin + 22, width: contentWidth - 22,
                                  marker: string("\(n).", stepNumber, Self.paprika))
             case .note(let s): return textBlock(string(s, text, Self.ink), space: 4, keep: keep)
+            // A tip (#432): a plain paragraph, unnumbered, a little apart from the next.
+            case .tip(let s): return textBlock(string(s, text, Self.ink), space: 8, keep: keep)
             }
         }
     }

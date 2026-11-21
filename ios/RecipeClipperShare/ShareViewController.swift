@@ -80,10 +80,13 @@ final class ShareViewController: UIViewController {
         let source = RoutingRecipeSource(
             blog: BlogRecipeSource(), reddit: RedditRecipeSource(), redditOn: { reddit.isOn }
         )
-        // A recipe written inside an article (#435), by the app's mirrored `articleRecipes` flag.
+        // A recipe written inside an article (#435), and tips (#432) kept apart, as the app's
+        // mirrored `articleRecipes` and `recipeTips` flags say.
         let article = DefaultsArticleRecipesSwitch(defaults: defaults)
+        let tips = DefaultsRecipeTipsSwitch(defaults: defaults)
         return DefaultRecipeRepository(
-            db: db, source: source, clock: SystemClock(), library: library, articleOn: { article.isOn }
+            db: db, source: source, clock: SystemClock(), library: library, articleOn: { article.isOn },
+            tipsOn: { tips.isOn }
         )
     }
 

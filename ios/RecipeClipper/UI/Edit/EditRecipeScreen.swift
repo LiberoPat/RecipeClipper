@@ -89,6 +89,11 @@ struct EditRecipeScreen: View {
         OutlinedField(label: Strings.editLabelTotal, text: binding(\.totalTime))
         MultilineField(label: Strings.editLabelIngredients, text: binding(\.ingredientsText))
         MultilineField(label: Strings.editLabelSteps, text: binding(\.instructionsText))
+        // The source's tips (#432), one per line, only for a recipe that has them.
+        if state.showsTips {
+            MultilineField(label: Strings.headingTips, text: binding(\.tipsText))
+                .accessibilityIdentifier("edit.tips")
+        }
         // Shared text's review (#306) keeps the lines the split left out as the note (#334).
         if state.shared {
             MultilineField(

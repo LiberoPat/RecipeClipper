@@ -28,6 +28,8 @@ enum RecipeShareText {
         let total: String
         let ingredients: String
         let instructions: String
+        /// The tips' heading (#432), after the steps.
+        var tips: String = "TIPS"
 
         static let english = Labels(
             serves: { "Serves \($0)" },
@@ -64,6 +66,13 @@ enum RecipeShareText {
 
         lines.append(labels.instructions)
         lines += instructions.enumerated().map { "\($0.offset + 1). \($0.element)" }
+
+        // The source's tips (#432), after the steps, as written and unnumbered.
+        if !recipe.tips.isEmpty {
+            lines.append("")
+            lines.append(labels.tips)
+            lines += recipe.tips
+        }
 
         return lines.joined(separator: "\n")
     }

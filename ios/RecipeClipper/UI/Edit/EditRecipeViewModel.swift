@@ -78,6 +78,9 @@ struct EditRecipeUiState: Equatable {
     /// This editor is the review of a recipe written inside an article (#435): "Check the
     /// recipe", saved as a clip under the page's link.
     var article = false
+    /// The recipe came with tips (#432): their box shows, below the steps. A recipe without any,
+    /// a typed one included, has no tips box.
+    var showsTips = false
 
     init(isNew: Bool, photo: PhotoPost? = nil, scan: Bool = false, shared: Bool = false, article: Bool = false) {
         self.isNew = isNew
@@ -146,13 +149,16 @@ final class EditRecipeViewModel {
     @ObservationIgnored private var readTask: Task<Void, Never>?
     /// The language the photo's lines were read in (#208), or nil when nothing was clear.
     @ObservationIgnored private var photoLanguage: String?
+    /// Recipe tips (#432): a chat's HowToTip entries stay apart only with `recipeTips` on.
+    @ObservationIgnored private let tipsOn: Bool
 
     init(
         recipeId: Int64?, repository: RecipeRepository, entitlements: Entitlements = UnavailableEntitlements(),
         photo: PhotoPost? = nil, photoReader: PhotoTextReader = UnavailablePhotoTextReader(),
         scanPages: [String]? = nil, shared: SharedText.Reading? = nil, countdowns: TimerCountdownSync? = nil,
-        article: ArticleRecipe? = nil
+        tipsOn: Bool = false, article: ArticleRecipe? = nil
     ) {
+        self.tipsOn = tipsOn
         self.entitlements = entitlements
         self.countdowns = countdowns
         self.recipeId = recipeId.flatMap { $0 > 0 ? $0 : nil }
@@ -175,6 +181,7 @@ final class EditRecipeViewModel {
                 uiState.loading = false
                 if let recipe {
                     uiState.draft = RecipeDraft.of(recipe)
+                    uiState.showsTips = !recipe.tips.isEmpty
                 } else {
                     uiState.missing = true
                 }
@@ -198,7 +205,8 @@ final class EditRecipeViewModel {
     /// Shared text (#306) into the fields, from its reading (done once, in the extension, #334).
     /// The lines the split left out are the note.
     private func readText(_ reading: SharedText.Reading) {
-        let recipe = reading.recipe
+        // Tips (#432) stay apart only with recipeTips on; off, they are the last steps, as before.
+        let recipe = tipsOn ? reading.recipe : reading.recipe.withTipsAsSteps()
         photoLanguage = recipe.language
         uiState.loading = false
         uiState.sharedSorted = reading.sorted
@@ -209,8 +217,10 @@ final class EditRecipeViewModel {
             yield: recipe.yield ?? "", prepTime: recipe.prepTime ?? "", cookTime: recipe.cookTime ?? "",
             totalTime: recipe.totalTime ?? "",
             ingredientsText: recipe.ingredients.joined(separator: "\n"),
-            instructionsText: recipe.instructions.joined(separator: "\n")
+            instructionsText: recipe.instructions.joined(separator: "\n"),
+            tipsText: recipe.tips.joined(separator: "\n")
         )
+        uiState.showsTips = !recipe.tips.isEmpty
     }
 
     deinit {

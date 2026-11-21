@@ -99,6 +99,15 @@ pasti che pianifichi*, *Lembretes das refeições que você planeja*) and "Expir
 setting's own title in each language). To check: whether each language's word for Settings reads
 naturally in a menu item ("Ajustes" against "Configuración", "Paramètres" against "Réglages").
 
+## Recipe tips, 2026-11-21 (#432)
+
+One string on both platforms, `heading_tips`, a draft by Claude for a native speaker to check: the
+quiet heading over a recipe's tips below the method, the editor's tips box, and (in capitals) the
+heading in a shared recipe's text: *Consejos*, *Astuces*, *Tipps*, *Consigli*, *Dicas*. Check that
+each reads as a recipe page's own "Tips" section would in that language (French recipe sites also
+say *Conseils*), and that the capitals (*CONSEJOS*, *ASTUCES*, *TIPPS*, *CONSIGLI*, *DICAS*) sit well
+beside the shared text's other two headings.
+
 ## A recipe written inside an article, 2026-11-21 (#435)
 
 Drafts written by Claude, for a native speaker to check: `article_read` (the editor's note) and the

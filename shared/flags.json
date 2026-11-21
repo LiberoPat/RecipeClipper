@@ -217,6 +217,12 @@
       "issue": 412
     },
     {
+      "key": "recipeTips",
+      "description": "Recipe tips (#432): a page's schema.org HowToTip entries (kingarthurbaking.com lists them after the method) are kept apart from the steps as the recipe's tips, shown as written below the method under a quiet Tips heading, unnumbered, and left out of cook mode. Off, a newly parsed recipe's tips are its last steps, as before; tips already stored still show.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 432
+    },
+    {
       "key": "articleRecipes",
       "description": "Recipes written inside an article: on a page with no JSON-LD or microdata recipe, each list in the article whose items are mostly amounts (at least 3, more than half), with its method in paragraphs or an ordered list up to the next heading, is a recipe (at most 6, named by the heading above it). One opens the editor (Check the recipe) straight away in the import's place, filled in as written; several open a chooser first. The same past Cloudflare's check in the clip view. Saved only on Save, as a clip under the page's link (a later recipe adds pith_recipe=<n>). Never from prose alone, never saved unchecked. Off, such a page ends at No recipe found as before.",
       "defaults": { "debug": true, "release": true },
