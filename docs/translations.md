@@ -251,6 +251,8 @@ the word the app already uses for the meal plan ("Add to plan"), so the two agre
 |---|---|---|---|---|---|---|
 | `tab_week` | Plan | Planning | Plan | Piano | Plano | French follows "Ajouter au planning"; Italian follows "Aggiungi al piano" (and moves with it if that becomes "programma", below). The Week/Month toggle (`action_week_view`) stays "Semana", "Semaine", "Woche", "Settimana". |
 | `mealplan_intro`, `mealplan_open_week`, `groceries_empty` | en Plan / Abrir Plan / desde Plan | dans Planning / Ouvrir Planning / depuis le Planning | im Plan / Plan öffnen / aus dem Plan | nel Piano / Apri Piano / dal Piano | no Plano / Abrir Plano / pelo Plano | The tab named as a place, as "Semana" was. |
+| `share_target_label` (Android; English "Clip recipe to Pith") | Guardar receta en Pith | Garder la recette dans Pith | Rezept in Pith speichern | Salva ricetta in Pith | Salvar receita no Pith | The share sheet and selection-menu entry: "save" rather than the clip verb ("Recortar", "Découper"…), which reads oddly as an action on a link. Short enough not to truncate? |
+| iOS share extension `CFBundleDisplayName` (English "Clip Recipe") | Guardar receta | Garder la recette | Rezept speichern | Salva ricetta | Salvar receita | The same, without the name: it sits under the Pith icon. |
 
 "Pith" is a name, never translated (`app_name` and `home_title` are `translatable="false"`);
 in the sentences it takes the article a brand does ("do Pith", "o Pith" in Portuguese,

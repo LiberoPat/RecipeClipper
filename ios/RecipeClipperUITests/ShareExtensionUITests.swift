@@ -60,12 +60,12 @@ final class ShareExtensionUITests: XCTestCase {
         sleep(2) // let the page settle before sharing
 
         tapShare()
-        let target = safari.descendants(matching: .any).matching(NSPredicate(format: "label == 'Pith'")).firstMatch
+        let target = safari.descendants(matching: .any).matching(NSPredicate(format: "label == 'Clip Recipe'")).firstMatch
         if !target.waitForExistence(timeout: 10) {
             // Not in the first row of apps: More, then pick it from the list.
             safari.buttons.matching(NSPredicate(format: "label == 'More'")).firstMatch.tap()
         }
-        require(target, in: safari, "Pith in the share sheet")
+        require(target, in: safari, "Clip Recipe in the share sheet")
         target.tap()
     }
 

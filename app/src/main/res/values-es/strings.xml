@@ -85,6 +85,8 @@
     <string name="home_scan_hint">Una ficha o la página de un libro</string>
     <string name="home_type_hint">Escríbela tú</string>
     <string name="home_share_hint">O comparte un enlace con Pith desde cualquier app.</string>
+    <!-- The share target and the text-selection entry (#414): offered as an action, the app says what it does -->
+    <string name="share_target_label">Guardar receta en Pith</string>
     <string name="home_resume_cooking">Reanudar la receta</string>
     <string name="home_open_recipe">Abrir la receta</string>
     <string name="home_today">Hoy</string>

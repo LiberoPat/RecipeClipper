@@ -83,6 +83,8 @@
     <string name="home_scan_hint">Rezeptkarte oder Kochbuchseite</string>
     <string name="home_type_hint">Selbst eintippen</string>
     <string name="home_share_hint">Oder teile einen Link aus einer beliebigen App mit Pith.</string>
+    <!-- The share target and the text-selection entry (#414): offered as an action, the app says what it does -->
+    <string name="share_target_label">Rezept in Pith speichern</string>
     <string name="home_resume_cooking">Kochen fortsetzen</string>
     <string name="home_open_recipe">Rezept öffnen</string>
     <string name="home_today">Heute</string>

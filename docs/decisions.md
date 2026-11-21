@@ -6258,9 +6258,12 @@ already said "plan" (Add to plan, Plan my week, Remove from the plan). Before sh
 owner's): the pending PITH trademark application (USPTO 50168836) and the domains
 (pithrecipes.com, pith.recipes). The store text is in `docs/store-listing.md`.
 
-- **What the cook sees changed.** Android `app_name` (the launcher, the share sheet, the
-  text-selection menu's entry, the widgets' empty title) and `home_title`; iOS
-  `CFBundleDisplayName` for the app, the share extension and the widgets (which also name the
+- **Pith is the name; where the app is offered as an action it says what it does** (owner,
+  2026-11-20: "Pith" alone didn't say it). Android's link/text share target and text-selection
+  entry are `share_target_label`, "Clip recipe to Pith"; iOS's share extension is "Clip Recipe"
+  (`RecipeClipperShare/InfoPlist.xcstrings`), under the Pith icon. Six languages each.
+- **What the cook sees changed.** Android `app_name` (the launcher, the widgets' empty title)
+  and `home_title`; iOS `CFBundleDisplayName` for the app and the widgets (which also name the
   Live Activity), the iCloud Drive folder's name in Files (`NSUbiquitousContainerName`; Files
   shows it after a build with a new `CURRENT_PROJECT_VERSION`), and the file type's name ("Pith
   file"). Every string that said "Recipe Clipper", in six languages on both platforms (a name

@@ -161,6 +161,8 @@
     <string name="home_scan_hint">A card or a cookbook page</string>
     <string name="home_type_hint">Write it in yourself</string>
     <string name="home_share_hint">Or share a link to Pith from any app.</string>
+    <!-- The share target and the text-selection entry (#414): offered as an action, the app says what it does -->
+    <string name="share_target_label">Clip recipe to Pith</string>
     <string name="home_resume_cooking">Resume cooking</string>
     <string name="home_open_recipe">Open recipe</string>
     <string name="home_today">Today</string>
