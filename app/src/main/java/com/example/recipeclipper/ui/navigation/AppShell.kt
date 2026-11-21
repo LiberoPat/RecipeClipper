@@ -33,7 +33,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navigation
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.libraryFirst
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.recipe.Hairline
@@ -152,7 +152,7 @@ fun AppShell(
     groceries: NavGraphBuilder.(NavHostController) -> Unit = { groceriesDestinations(it) },
     pantry: NavGraphBuilder.(NavHostController) -> Unit = { pantryDestinations() },
     /** Library first (#375): the Recipes tab opens the library, not Home. */
-    libraryFirst: Boolean = LocalFlagValues.current.isOn(Flag.LIBRARY_FIRST)
+    libraryFirst: Boolean = LocalFlagValues.current.libraryFirst
 ) {
     val entry by navController.currentBackStackEntryAsState()
     val destination = entry?.destination

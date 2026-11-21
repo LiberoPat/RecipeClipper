@@ -67,7 +67,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
-import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.libraryFirst
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.TooltipScreen
@@ -118,7 +118,7 @@ fun TooltipHost(screen: TooltipScreen, blocked: Boolean = false, content: @Compo
         val current = state.current?.takeIf { state.token == token } ?: return@Box
         val bounds = anchors[current] ?: return@Box
         TooltipBubble(
-            text = stringResource(current.text(LocalFlagValues.current.isOn(Flag.LIBRARY_FIRST))),
+            text = stringResource(current.text(LocalFlagValues.current.libraryFirst)),
             tag = "tooltip-${current.id}",
             anchor = bounds.full,
             side = bounds.side,

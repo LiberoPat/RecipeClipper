@@ -151,7 +151,7 @@ private fun CompactCard(
 ) {
     val colors = MaterialTheme.colorScheme
     Column(
-        Modifier.padding(top = 4.dp, bottom = 12.dp).fillMaxWidth().testTag("libraryCard")
+        Modifier.fillMaxWidth().testTag("libraryCard")
             .clip(RoundedCornerShape(16.dp)).background(colors.surfaceContainer).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {

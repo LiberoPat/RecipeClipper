@@ -35,7 +35,7 @@ import com.example.recipeclipper.ui.settings.SettingsScreen
 import com.example.recipeclipper.ui.settings.SettingsSection
 import com.example.recipeclipper.ui.settings.SettingsSectionScreen
 import com.example.recipeclipper.ui.tour.LocalTooltips
-import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.libraryFirst
 import com.example.recipeclipper.ui.common.LocalFlagValues
 
 object Routes {
@@ -243,7 +243,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
     composable(Routes.RECIPES) {
         // With libraryFirst (#375) this is the tab's first screen: Home's jobs (the card, the ways in, the
         // gear) are here, and the + opens the Add a recipe sheet. Without, it is pushed from Home.
-        val libraryFirst = LocalFlagValues.current.isOn(Flag.LIBRARY_FIRST)
+        val libraryFirst = LocalFlagValues.current.libraryFirst
         RecipesScreen(
             onBack = { navController.popBackStack() },
             onOpenRecipe = { navController.navigate(Routes.recipe(it)) },
