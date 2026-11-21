@@ -245,6 +245,11 @@ enum ParseError: Equatable, Error {
     /// gallery's; else the one photo; `photoUrls` fills it in when empty), for "Read the photo"
     /// (#198). Never retried automatically.
     case noTranscription(title: String, imageUrl: String?, imageUrls: [String] = [])
+    /// A page with no recipe data whose article holds one written as a list of amounts and the
+    /// method after it (#435, `articleRecipes`): an outcome, not a failure. The screen offers it in
+    /// the editor for the cook to check; it is never saved unchecked. Never retried automatically,
+    /// never reloaded on reconnect.
+    case inArticle(ArticleRecipe)
     /// The site answered, but refused: 403, 404, 429 or any 5xx. Usually a bot block, and not a
     /// stable one (the same site can refuse one minute and answer the next, and some send 404
     /// as a disguise for a block), so this reads as "try again", not "unsupported".

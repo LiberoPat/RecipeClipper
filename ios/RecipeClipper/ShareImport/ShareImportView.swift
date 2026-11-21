@@ -140,6 +140,11 @@ struct ShareImportView: View {
             message(Strings.shareTextInApp)
             buttons { Button(Strings.done, action: onDone).buttonStyle(PrimaryButtonStyle()) }
 
+        case .articleInApp:
+            // The editor's check needs the app (#435: never saved unchecked), as shared text's does.
+            message(Strings.shareArticleInApp)
+            buttons { Button(Strings.done, action: onDone).buttonStyle(PrimaryButtonStyle()) }
+
         case .planInApp:
             // The review needs the app (#352: nothing is saved unreviewed), as a scan's does.
             message(Strings.sharePlanInApp)

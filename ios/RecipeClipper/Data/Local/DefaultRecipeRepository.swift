@@ -22,6 +22,8 @@ final class DefaultRecipeRepository: RecipeRepository {
     private let extractionOn: () -> Bool
     /// The `recipeVersions` flag (#354), read at each save; the share extension leaves it off.
     private let versionsOn: () -> Bool
+    /// The `articleRecipes` flag (#435), read at each import; the share extension reads the app's mirror.
+    private let articleOn: () -> Bool
 
     /// How a failed fetch waits before its single retry. Injected so a test doesn't really wait;
     /// throws on cancellation, as `Task.sleep` does.
@@ -54,9 +56,11 @@ final class DefaultRecipeRepository: RecipeRepository {
         extractor: PageRecipeExtractor = NoPageRecipeExtractor(),
         extractionOn: @escaping () -> Bool = { false },
         photos: PhotoStore? = nil,
-        versionsOn: @escaping () -> Bool = { false }
+        versionsOn: @escaping () -> Bool = { false },
+        articleOn: @escaping () -> Bool = { false }
     ) {
         self.versionsOn = versionsOn
+        self.articleOn = articleOn
         self.photos = photos
         self.library = library
         self.extractor = extractor
@@ -180,11 +184,26 @@ final class DefaultRecipeRepository: RecipeRepository {
             if !Task.isCancelled, let answer = await answer(only, url: url) { return answer }
         }
         // Last, only for a page that loaded with no recipe data: the on-device model may pick
-        // one out of its text (the rendered page's if there is one; #103).
-        guard error == .noRecipeFound, !Task.isCancelled,
-              let page = rendered?.page?.page ?? fetched.page ?? renderedPage.map({ PageTextReader.read(html: $0, url: url) })
-        else { return parsed }
-        return await extractFromPage(page, url: url) ?? parsed
+        // one out of its text (the rendered page's if there is one; #103), and failing that a
+        // recipe written inside its article is offered for the cook to check (#435).
+        guard error == .noRecipeFound, !Task.isCancelled else { return parsed }
+        if let page = rendered?.page?.page ?? fetched.page ?? renderedPage.map({ PageTextReader.read(html: $0, url: url) }),
+           let extracted = await extractFromPage(page, url: url) {
+            return extracted
+        }
+        guard articleOn() else { return parsed }
+        let article = rendered?.page?.article ?? fetched.article
+            ?? renderedPage.flatMap { ArticleRecipeParser.parse(html: $0, url: url) }
+        return inArticle(article, url: url) ?? parsed
+    }
+
+    /// A page with no recipe data whose article holds one (#435, behind `articleRecipes`):
+    /// `.inArticle`, for the screen to offer it in the editor. Nil, and the page stays
+    /// `.noRecipeFound`, when the flag is off or there is none. Android's `inArticle`.
+    private func inArticle(_ article: ArticleRecipe?, url: String) -> ParseResult? {
+        guard articleOn(), var found = article else { return nil }
+        found.sourceUrl = url
+        return .error(.inArticle(found))
     }
 
     /// What one render came to (Android's `Rendered`). `page` is the rendered page parsed, when
@@ -205,7 +224,7 @@ final class DefaultRecipeRepository: RecipeRepository {
         if case .success = page.result { return page.result }
         guard rendered.challenged || rendered.trusted else { return nil }
         if let text = page.page, let extracted = await extractFromPage(text, url: url) { return extracted }
-        return .error(.noRecipeFound)
+        return inArticle(page.article, url: url) ?? .error(.noRecipeFound)
     }
 
     /// One load of `url` in the off-screen browser, capped at `renderTimeout`, or at
@@ -261,6 +280,9 @@ final class DefaultRecipeRepository: RecipeRepository {
         guard existing.toDomain().canUpdateFromSource else { return .error(.nothingToShow) }
         let parsed = await fetchWithFallbacks(existing.sourceUrl, renderedPage: nil)
         if Task.isCancelled { return parsed }
+        // A recipe still only written inside the article (#435) is no recipe data to update from:
+        // the cook's checked copy stays.
+        if case .error(.inArticle) = parsed { return .error(.noRecipeFound) }
         guard case .success(var recipe) = parsed else { return parsed }
         // Filed under the saved link, whatever the parse reports, so it lands on this row.
         recipe.sourceUrl = existing.sourceUrl

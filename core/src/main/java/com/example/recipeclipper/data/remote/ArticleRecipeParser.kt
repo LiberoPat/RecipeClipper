@@ -23,8 +23,8 @@ import org.jsoup.nodes.Element
  *   list is an ingredient, as written.
  * - **The steps** are the paragraphs, and the items of an `<ol>`, after the list in document
  *   order, through any containers, up to the next heading (`<h1>`–`<h6>`), another `<ul>`, or the
- *   end of the article. A paragraph that is a steps header ("Preparación:") is skipped; one that
- *   is an ingredients or notes header (the splitter's words) ends them. Figures, tables, asides
+ *   end of the article. A heading or paragraph that is a steps header ("Preparación:", the
+ *   splitter's words) is passed over; a paragraph that is an ingredients or notes header ends them. Figures, tables, asides
  *   and the like are passed over. At most [MAX_STEPS]. The site's known noise is then dropped as
  *   for any page ([SiteRules.steps]). No step, no recipe.
  * - **The name** is the page's first `<h1>`, else `og:title`, else `<title>`; no name, no recipe.
@@ -104,6 +104,10 @@ object ArticleRecipeParser {
     /** An item that is nothing but a link. */
     private fun linkOnly(item: Element, text: String): Boolean = item.select("a").any { it.text() == text }
 
+    /** The section [text] is a header of, in the splitter's words; null for an ordinary line. */
+    private fun section(text: String, words: LanguageWords): RecipeTextSplitter.Section? =
+        if (text.isEmpty()) null else RecipeTextSplitter.header(RecipeTextSplitter.Line(text), words)?.section
+
     /** The method after [list]: see the class comment. */
     private fun stepsAfter(list: Element, root: Element, words: LanguageWords): List<String> {
         val steps = mutableListOf<String>()
@@ -112,7 +116,8 @@ object ArticleRecipeParser {
             if (steps.size >= MAX_STEPS) return false
             val name = element.normalName()
             return when {
-                name in HEADINGS -> false
+                // A steps heading ("Preparación") is passed over; any other ends the steps.
+                name in HEADINGS -> section(element.text(), words) == RecipeTextSplitter.Section.INSTRUCTIONS
                 name == "ul" -> false
                 name in PASSED_OVER -> true
                 name == "ol" -> {
@@ -121,7 +126,7 @@ object ArticleRecipeParser {
                 }
                 name == "p" -> {
                     val text = element.text()
-                    when (if (text.isEmpty()) null else RecipeTextSplitter.header(RecipeTextSplitter.Line(text), words)?.section) {
+                    when (section(text, words)) {
                         null -> { if (text.isNotEmpty()) steps += text; true }
                         RecipeTextSplitter.Section.INSTRUCTIONS -> true
                         else -> false

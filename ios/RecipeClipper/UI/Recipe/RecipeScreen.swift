@@ -23,6 +23,8 @@ struct RecipeScreen: View {
     var onHumanCheck: (String) -> Void = { _ in }
     /// Opens the editor on a Reddit post's photos, read on the device (#198).
     var onReadPhoto: (PhotoPost) -> Void = { _ in }
+    /// Opens the editor on a recipe written inside the page's article, to check (#435).
+    var onCheckArticle: (ArticleRecipe) -> Void = { _ in }
     /// The `photoText` flag (#198): "Read the photo" shows only behind it.
     var photoTextEnabled = false
     /// Makes "Your cooks" (#116); nil leaves it out.
@@ -83,7 +85,7 @@ struct RecipeScreen: View {
             case .error(let error):
                 RecipeErrorView(
                     error: error, state: state, vm: vm, photoTextEnabled: photoTextEnabled,
-                    onClip: onClip, onReadPhoto: onReadPhoto
+                    onClip: onClip, onReadPhoto: onReadPhoto, onCheckArticle: onCheckArticle
                 )
             }
         }

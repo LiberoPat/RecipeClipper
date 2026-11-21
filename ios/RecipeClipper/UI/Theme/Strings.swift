@@ -70,6 +70,9 @@ enum Strings {
     static var textRead: String { String(localized: "text_read") }
     static var textNotSorted: String { String(localized: "text_not_sorted") }
     static var textLeftovers: String { String(localized: "text_leftovers") }
+    // A recipe written inside an article (#435)
+    static var checkArticle: String { String(localized: "action_check_article") }
+    static var articleRead: String { String(localized: "article_read") }
     static var photoFailed: String { String(localized: "photo_failed") }
     static var photoCheckHeading: String { String(localized: "photo_check_heading") }
     static var photoCheckLarge: String { String(localized: "photo_check_large") }
@@ -294,6 +297,7 @@ enum Strings {
         switch error {
         case .noRecipeFound: return errorNoRecipeFound
         case .noTranscription: return errorNoTranscription
+        case .inArticle: return String(localized: "error_in_article")
         case .blocked(let status): return errorBlocked(status)
         case .humanCheck: return String(localized: "error_human_check")
         case .cutOff: return String(localized: "error_cut_off")
@@ -311,6 +315,7 @@ enum Strings {
     static var shareScanInApp: String { String(localized: "share_scan_in_app") }
     static var shareTextInApp: String { String(localized: "share_text_in_app") }
     static var sharePlanInApp: String { String(localized: "share_plan_in_app") }
+    static var shareArticleInApp: String { String(localized: "share_article_in_app") }
 
     // Meal-plan import (#352)
     static var mealPlanTitle: String { String(localized: "mealplan_title") }

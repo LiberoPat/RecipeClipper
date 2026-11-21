@@ -43,6 +43,9 @@ struct FetchedPage {
     var result: ParseResult
     var page: PageText? = nil
     var challenge = false
+    /// With `page`: a recipe written inside the page's article (`ArticleRecipeParser`, #435), for
+    /// the cook to check.
+    var article: ArticleRecipe? = nil
 }
 
 /// The on-device model reading a page with no recipe data (#103), beside `StepShortener`:

@@ -206,6 +206,47 @@
         }
       }
     },
+    "action_check_article" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rezept prüfen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check the recipe"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisar la receta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifier la recette"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controlla la ricetta"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conferir a receita"
+          }
+        }
+      }
+    },
     "action_clip_it_yourself" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1760,6 +1801,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use apenas minhas receitas salvas acima. Não as escreva por extenso: de cada uma, dê só @type \"Recipe\", seu \"name\", seu link exatamente como listado em \"isBasedOn\", e seu dia e refeição. Repita uma receita só se houver menos receitas do que refeições."
+          }
+        }
+      }
+    },
+    "article_read" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unverändert aus dem Artikel übernommen. Der Name ist die Überschrift des Artikels: Ändere ihn in den des Gerichts. Prüfe jede Zeile, bevor du speicherst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taken from the article as written. The name is the article's headline: change it to the dish's. Check every line before saving."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomada del artículo tal como está escrita. El nombre es el titular del artículo: cámbialo por el del plato. Revisa cada línea antes de guardar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprise de l'article telle qu'elle est écrite. Le nom est le titre de l'article : remplacez-le par celui du plat. Vérifiez chaque ligne avant d'enregistrer."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presa dall'articolo così com'è scritta. Il nome è il titolo dell'articolo: cambialo con quello del piatto. Controlla ogni riga prima di salvare."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tirada do artigo como está escrita. O nome é o título do artigo: troque pelo nome do prato. Confira cada linha antes de salvar."
           }
         }
       }
@@ -3332,6 +3414,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Importando…"
+          }
+        }
+      }
+    },
+    "error_in_article" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Seite hat keine Rezeptdaten, aber ihr Artikel schreibt eines aus: eine Liste mit Mengen, dann die Zubereitung. Prüfe es, bevor es gespeichert wird."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This page has no recipe data, but its article writes one out: a list of amounts, then the method. Check it before it's saved."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta página no tiene datos de receta, pero su artículo escribe una: una lista de cantidades y luego la preparación. Revísala antes de guardarla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette page n'a pas de données de recette, mais son article en écrit une : une liste de quantités, puis la préparation. Vérifiez-la avant de l'enregistrer."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa pagina non ha dati di ricetta, ma il suo articolo ne scrive una: un elenco di quantità, poi il procedimento. Controllala prima di salvarla."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta página não tem dados de receita, mas o artigo dela traz uma: uma lista de quantidades e depois o modo de preparo. Confira antes de salvar."
           }
         }
       }
@@ -15039,6 +15162,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desbloqueado"
+          }
+        }
+      }
+    },
+    "share_article_in_app" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Seite schreibt ihr Rezept in einem Artikel aus. Öffne Pith, um es zu prüfen, bevor es gespeichert wird."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This page writes its recipe inside an article. Open Pith to check it before it's saved."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta página escribe su receta dentro de un artículo. Abre Pith para revisarla antes de guardarla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette page écrit sa recette dans un article. Ouvrez Pith pour la vérifier avant de l'enregistrer."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa pagina scrive la sua ricetta dentro un articolo. Apri Pith per controllarla prima di salvarla."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta página escreve a receita dentro de um artigo. Abra o Pith para conferir antes de salvar."
           }
         }
       }

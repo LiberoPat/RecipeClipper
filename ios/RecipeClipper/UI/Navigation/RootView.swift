@@ -51,6 +51,10 @@ struct RootView: View {
                 if phase == .active, let reading = container.takePendingText() {
                     router.openInRecipes(.textRecipe(reading))
                 }
+                // A recipe written inside an article it left (#435) opens in the editor, to check.
+                if phase == .active, let article = container.takePendingArticle() {
+                    router.openInRecipes(.articleRecipe(article))
+                }
                 // A week of recipes it left (#352) opens the meal-plan review.
                 if phase == .active, let text = container.takePendingPlan() {
                     router.openInRecipes(.mealPlan(text))
@@ -356,6 +360,13 @@ struct RootView: View {
                 EditRecipeScreen(vm: vm, onSaved: router.openSavedClip)
             }
             .toolbar(.hidden, for: .tabBar)
+        case .articleRecipe(let article):
+            // As a Reddit photo's (#198): the checked recipe replaces the editor and the page's
+            // error screen.
+            ScreenHost({ container.makeEditRecipeViewModel(article: article) }) { vm in
+                EditRecipeScreen(vm: vm, onSaved: router.openSavedClip)
+            }
+            .toolbar(.hidden, for: .tabBar)
         case .scanRecipe(let pages):
             // "Scan a recipe" (#226): the saved recipe replaces the review, as a typed-in one does,
             // and the pages go.
@@ -456,6 +467,7 @@ struct RootView: View {
                 onClipBlocked: onClipBlocked,
                 onHumanCheck: onHumanCheck,
                 onReadPhoto: { push(.photoRecipe($0)) },
+                onCheckArticle: { push(.articleRecipe($0)) },
                 photoTextEnabled: container.featureFlags.isOn(.photoText),
                 makePhotosVM: container.makeCookedPhotosViewModel,
                 makeSendFileVM: container.makeSendFileViewModel,
