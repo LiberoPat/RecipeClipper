@@ -819,17 +819,20 @@ both.
   as of September 2026). `DEVELOPER_DIR` selects Xcode 27 explicitly. It runs
   `RecipeClipperTests` on the image's iPhone 17 / iOS 27.0 simulator and
   uploads the `.xcresult` on failure.
-- **iOS UI tests** (`ios-ui-tests.yml`), about 50 minutes: nightly at 03:00
+- **iOS UI tests** (`ios-ui-tests.yml`), about 30-35 minutes: nightly at 03:00
   UTC and on demand (Actions → iOS UI tests → Run workflow, or
   `gh workflow run ios-ui-tests.yml --ref <branch>`). The suite was one job of
-  about two hours, so it runs as **three parallel shards** (a matrix, `fail-fast`
-  off, 90 minutes each). Each shard builds for testing itself (the three builds
-  overlap, about four minutes, which beats one build plus uploading and downloading
-  its products), then tests on a simulator it creates and boots first, and deletes
-  after. The result named `iOS UI tests` is a last small job that needs every shard,
-  so a run passes only if the whole suite did; a failed shard uploads its
-  `.xcresult` as `ios-ui-test-results-<shard>`. The workflow still runs one run at a
-  time. Each
+  about two hours, so it runs as **five parallel shards** (a matrix, `fail-fast`
+  off, 90 minutes each; three shards took 51 minutes). Each shard builds for testing
+  itself (the builds overlap, about four minutes, which beats one build plus uploading
+  and downloading its products), then tests on a simulator it creates and boots first,
+  and deletes after. The result named `iOS UI tests` is a last small job that needs
+  every shard, so a run passes only if the whole suite did; a failed shard uploads its
+  `.xcresult` as `ios-ui-test-results-<shard>`. One run per branch at a time
+  (`concurrency: ios-ui-tests-<ref>`), so different pull requests test side by side
+  (owner, 2026-11-20). A pull request that changes nothing iOS-related (the CI's
+  "Detect iOS changes" says so and skips the iOS unit tests) doesn't need this run
+  to merge. Each
   test has five minutes (ten at most), so a stuck one fails alone, and no
   diagnostics are collected from the simulator (after a failure that timed
   out at ten minutes, every time). If the
