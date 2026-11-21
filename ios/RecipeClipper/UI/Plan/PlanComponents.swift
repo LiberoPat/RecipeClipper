@@ -17,6 +17,9 @@ enum PlanDayFormat {
     /// "Monday, October 19", in the locale's order: a Week day strip button, read aloud (#286).
     static func fullTitle(_ day: Int64) -> String { format(day, "EEEEMMMMd") }
 
+    /// "Monday": a grocery tag's day, read aloud (#422).
+    static func fullWeekday(_ day: Int64) -> String { format(day, "EEEE") }
+
     /// "Mon"
     static func shortWeekday(_ day: Int64) -> String { format(day, "EEE") }
 

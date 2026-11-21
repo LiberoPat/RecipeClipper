@@ -444,6 +444,43 @@ enum GroceryShareText {
     }
 }
 
+/// The recipe a grocery line is for, as a small tag (#422; Android's `RecipeTag`): its `title`, and
+/// the `day` it is planned on when it came from the plan ("Mushroom omelette · Thu"). `recipeId` is
+/// what a tap opens.
+struct RecipeTag: Equatable, Hashable {
+    let recipeId: Int64
+    let title: String
+    let day: Int64?
+}
+
+/// The tags under a Groceries row (#422; Android's `GroceryRecipeTags`), pure and the same on both
+/// platforms. One per recipe (and day) its lines came from, in the order added; none for a typed or
+/// shared-list line, or a recipe that is gone. Up to `full` show whole; more than that, the first
+/// `shownWhenMore` and "+N" for the rest.
+enum GroceryRecipeTags {
+
+    /// The most tags a row shows in full.
+    static let full = 3
+
+    /// How many show when there are more than `full`; the rest are the "+N".
+    static let shownWhenMore = 2
+
+    static func of(_ items: [GroceryItem], recipeTitles: [Int64: String]) -> [RecipeTag] {
+        var tags: [RecipeTag] = []
+        for item in items {
+            guard let id = item.recipeId, let title = recipeTitles[id]?.kTrimmed, !title.isEmpty else { continue }
+            let tag = RecipeTag(recipeId: id, title: title, day: item.plannedDay)
+            if !tags.contains(tag) { tags.append(tag) }
+        }
+        return tags
+    }
+
+    /// The tags to draw, and how many more there are ("+N", 0 for none).
+    static func shown(_ tags: [RecipeTag]) -> (tags: [RecipeTag], more: Int) {
+        tags.count <= full ? (tags, 0) : (Array(tags.prefix(shownWhenMore)), tags.count - shownWhenMore)
+    }
+}
+
 /// A list shared into the app as plain text (#149; Android's ReceivedList): the lines to offer,
 /// as written. A bulleted list, like the one "Send list" writes, is read by its bullets: only the
 /// "- " (or "• ", "* "…) lines are items, so its title and aisle headings are left out. Text
@@ -516,6 +553,8 @@ struct GrocerySource: Equatable, Identifiable {
     let day: Int64?
     let language: String?
     let lines: [String]
+    /// The servings the week plans it at (#422), for opening the recipe from a tag; nil: its own yield.
+    var servings: Int? = nil
     var id: String { key }
 }
 
@@ -550,7 +589,7 @@ enum GrocerySources {
             if lines.isEmpty { return nil }
             return GrocerySource(
                 key: "plan-\(p.entryId)", recipeId: p.recipeId, title: p.title, day: p.day, language: words?.language,
-                lines: lines
+                lines: lines, servings: p.servings
             )
         }
     }

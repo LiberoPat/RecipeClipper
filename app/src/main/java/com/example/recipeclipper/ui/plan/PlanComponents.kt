@@ -57,6 +57,9 @@ internal fun dayTitle(day: Long): String = format(day, "EEEEd")
 /** "Monday, October 19", in the locale's order: a Week day strip button, read aloud (#286). */
 internal fun fullDayTitle(day: Long): String = format(day, "EEEEMMMMd")
 
+/** "Monday": a grocery tag's day, read aloud (#422). */
+internal fun fullWeekday(day: Long): String = format(day, "EEEE")
+
 /** "Mon" */
 internal fun shortWeekday(day: Long): String = format(day, "EEE")
 

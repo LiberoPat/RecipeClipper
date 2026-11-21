@@ -177,4 +177,24 @@ class GroceryDaoTest {
             groceries.observeRecipeTitles().first().associate { it.id to it.title }
         )
     }
+
+    // #422: a typed item linked to a recipe (and the planned day), then unlinked, with no schema change.
+    @Test
+    fun aTypedItemIsLinkedToARecipeAndUnlinked() = runBlocking {
+        val soup = recipe("https://example.com/soup")
+        groceries.add(listOf(item("2 limes"), item("milk")))
+        val ids = groceries.observeItems().first().map { it.id }
+
+        groceries.setRecipe(listOf(ids[0]), soup, plannedDay = 20_721, now = 5)
+        var items = groceries.observeItems().first()
+        assertEquals(soup, items[0].recipeId)
+        assertEquals(20_721L, items[0].plannedDay)
+        assertEquals(5L, items[0].updatedAt)
+        assertNull(items[1].recipeId)
+
+        groceries.setRecipe(listOf(ids[0]), null, plannedDay = null, now = 6)
+        items = groceries.observeItems().first()
+        assertNull(items[0].recipeId)
+        assertNull(items[0].plannedDay)
+    }
 }

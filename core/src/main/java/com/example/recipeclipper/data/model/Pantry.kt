@@ -185,7 +185,9 @@ data class NeedLine(
     val recipeId: Long,
     val title: String,
     val day: Long?,
-    val language: String?
+    val language: String?,
+    /** The servings the week plans it at (#422): what a tap on its recipe tag opens it at; null: its own yield. */
+    val servings: Int? = null
 )
 
 /**
@@ -267,7 +269,7 @@ object PantryMatch {
         for (source in sources) {
             val words = LanguageWords.forTag(source.language)
             for (text in source.lines) {
-                val line = NeedLine(text, source.recipeId, source.title, source.day, source.language)
+                val line = NeedLine(text, source.recipeId, source.title, source.day, source.language, source.servings)
                 val name = words?.let { IngredientName.of(text, it) }
                 // One ingredient whatever the number of a listed pair's words ("onion", "onions").
                 val key: Any = if (name == null) unnamed++ else (source.language to IngredientName.key(name, words))

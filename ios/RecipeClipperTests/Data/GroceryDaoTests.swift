@@ -27,6 +27,24 @@ final class GroceryDaoTests: XCTestCase {
         try await db.write { try RecipeDao(db: $0).upsert(dataRecipeRecord(url, viewedAt: 1), historyLimit: historyLimit) }
     }
 
+    /// #422: a typed item linked to a recipe (and the planned day), then unlinked, with no schema change.
+    func testATypedItemIsLinkedToARecipeAndUnlinked() async throws {
+        let soup = try await upsert("https://example.com/soup")
+        try await db.write { try GroceryDao(db: $0).add([self.item("2 limes"), self.item("milk")]) }
+        let ids = try await items().map(\.id)
+
+        try await db.write { try GroceryDao(db: $0).setRecipe([ids[0]], recipeId: soup, plannedDay: 20_721, now: 5) }
+        var rows = try await items()
+        XCTAssertEqual(rows[0].recipeId, soup)
+        XCTAssertEqual(rows[0].plannedDay, 20_721)
+        XCTAssertNil(rows[1].recipeId)
+
+        try await db.write { try GroceryDao(db: $0).setRecipe([ids[0]], recipeId: nil, plannedDay: nil, now: 6) }
+        rows = try await items()
+        XCTAssertNil(rows[0].recipeId)
+        XCTAssertNil(rows[0].plannedDay)
+    }
+
     func testItemsGoLastInTheOrderGiven() async throws {
         try await db.write { conn in
             try GroceryDao(db: conn).add([self.item("a"), self.item("b")])

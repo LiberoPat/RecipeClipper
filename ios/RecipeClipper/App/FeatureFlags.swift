@@ -70,6 +70,8 @@ enum Flag: String, CaseIterable {
     case eveningReminders
     /// Fresh food (#396): Shop for this week in two trips (Buy now, Buy later in the week), and the plan's "cook it earlier?" note.
     case freshFood
+    /// Recipe tags (#422): a grocery line's recipe is a small tappable tag, apart from its amount, in Groceries and Shop for this week.
+    case groceryRecipeTags
     /// Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix.
     case planMyWeekPlus
     /// Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone; needs `oneCookbook`.

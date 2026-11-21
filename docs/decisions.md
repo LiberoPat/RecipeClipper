@@ -5971,6 +5971,80 @@ only claim anywhere is "keeps about N days once bought", a range from a table.
   `FreshFoodTests`, `FreshShopTests`, `MealPlanReviewFreshTests`, `WeekFreshNudgeTests`, the corpus's `Fresh`
   rows, and `FreshFoodUITests`.
 
+## Groceries: the recipe is a tag, apart from the amount (#422, 2026-11-20)
+
+The owner found a grocery line's description and the recipe it is for looked the same (both muted
+lines under the name), so they blurred. Decision: the recipe becomes a small tag. Behind the
+`groceryRecipeTags` flag (on by default; off, the muted comma line of #286 returns exactly), on both
+platforms. Supersedes the "recipe line" bullet of #286 above while the flag is on.
+
+- **A row is: the name; its amount and note as plain text, as before** (an added-up row's lines, the
+  "× 3" row, the lines that sit together); **then the recipes it is for, each a tag on a line of its
+  own.** A tag is a small rounded pill tinted with the paprika wash (the accent-for-text token at 12%:
+  paprika on the ground, the lighter on-ink paprika in dark mode, as the Home timer's tag) with a
+  small book glyph (Android's hand-drawn `ic_book`, iOS's SF Symbol `book`), "Mushroom omelette · Thu"
+  when the line came from the plan (the day is `plannedDay`, short weekday as Week's), just the title
+  when it came from "Add to groceries" on the recipe. Tags wrap.
+- **One tag per recipe and day** the row's lines came from, in the order added (`GroceryRecipeTags.of`,
+  pure, `:core` and Swift; the same cases in `GroceryRecipeTagsTest` / `GroceryRecipeTagsTests`, not the
+  corpus, since it is a filter and a distinct). Up to three show whole; **more than three, the first two
+  and a quiet "+N"** (`shown`: N is the rest, so never "+1"), as the issue says. The "+N" is a label,
+  not a button, read "N more recipes". The same recipe planned on two days is two tags (the days
+  differ, and the day is the point). A typed or shared-list line, and a line whose recipe has been
+  deleted, has no tag, as before (the title map is `observeRecipeTitles`).
+- **A tap opens the recipe on the current tab's own stack**, so Back returns to the list. The Week's
+  stack already had `week/recipe/{id}?servings=` (Shop for this week lives there); **Groceries gained
+  its own, `groceries/recipe/{id}?servings=`** (Android: `Routes.GROCERIES_RECIPE`, a shared
+  `tabRecipe` destination with the Week's; iOS: `Router.groceriesPath`, reusing `Route.weekRecipe`). A
+  line that came from the plan opens at **the servings the week plans it at**: Shop for this week knows
+  them (`GrocerySource.servings`, `NeedLine.servings`, from `PlannedIngredients`); Groceries has no
+  column for them (a stored line has only `recipeId` and `plannedDay`, no schema change), so
+  `GroceriesViewModel.onOpenRecipe` looks the meal up in the plan (`MealPlanRepository.observeDays` for
+  that day, the recipe's first meal) and falls back to the recipe's own yield when the meal has since
+  been moved or removed. A recipe not planned opens at its own yield.
+- **Accessibility.** A tag is a button that reads "For Mushroom omelette, Thursday" (the full weekday),
+  or "For Mushroom omelette" with no day (`grocery_tag_for`, `grocery_tag_for_day`, `grocery_tag_more`,
+  six languages on both platforms). **The row's tick is unchanged and the tag never steals it:** on
+  Android a clickable inside the row's `combinedClickable` stays its own node (a test pins the row is
+  still `Role.Checkbox` with its toggle state and a tag tap ticks nothing); on iOS the tags sit beside
+  the row's tick button in a stack, not inside it (nesting buttons in a label is unreliable), so a
+  tap on the row's own area ticks and a tap on a tag opens, and the row's accessibility label no longer
+  holds the recipe. The tag's touch area is a few points taller than the pill; the tick, a long-press
+  and the tooltip anchors are untouched.
+- **A typed item can be linked to a recipe** (owner's addition, 2026-11-20; same flag). Long-press a row
+  with no recipe of its own: **"For a recipe…"** opens a picker of the cook's recipes (the Week's "+ Add"
+  list without its meal types and notes: `observeHistory`, most recently viewed first, searchable by title
+  or ingredient, one tap links at once). The row's lines then carry that recipe: its tag, with **the next
+  day this week (today and the six after) it is planned**, else no day. A row that has a recipe offers
+  **"Not for a recipe"**, which takes the link off every line. **No new column and no migration:** a link
+  is the item's existing `recipeId` (and `plannedDay`), set by `GroceryRepository.setRecipe` (the DAO's
+  one `UPDATE`), so export/import already carry it and the schema is unchanged (Room 17, iOS
+  `user_version` 16). **The trade-off:** nothing records *who* made a link, so the app's own links (an
+  item added from a recipe or the plan) cannot be told from the cook's. The rule that keeps the app's
+  links safe is that **"For a recipe…" is offered only to a row none of whose lines has a recipe**, so a
+  link is never overwritten; "Not for a recipe" can take any link off (a cook who ate that recipe
+  elsewhere), which only loses a tag. A row mixing linked and unlinked lines is offered the second only.
+  If telling the two apart ever matters, a `linkedByUser` column is the migration to add. The item's
+  tap-to-tick, aisle and the rest of its menu are unchanged. Strings `action_for_a_recipe`,
+  `action_not_for_a_recipe`, `link_recipe_title` (six languages, both platforms).
+- **Shop for this week's rows** (Buy now, Buy later, In your pantry) use the same tag under each line:
+  there each line already named one recipe and day, so a line is its text with its one tag below, in
+  place of the muted "Recipe · Thu" line. The Week's stack opens the recipe at the planned servings.
+  Nothing else on those rows changed ("For {day}", "Keeps about…", "You have…" and #302's amounts).
+- **Anywhere else a line names its recipe:** the "Add to groceries" sheet groups lines under the recipe's
+  own heading and the "Add this list" sheet shows a line as written, so neither has a muted recipe line to
+  replace; "Send list" keeps its brackets (plain text). The Pantry's basket tag is the pantry's own.
+- **Code.** `RecipeTags.kt` / `RecipeTags.swift` (`RecipeTagRow`, shared by Groceries and Shop for this
+  week); `GroceriesUiState.recipeTags` beside `recipeLines` (kept for the flag off); the screens take
+  `recipeTags` and `onOpenRecipe`, the flag from `LocalFlagValues` / `featureFlags`.
+- **Tests.** `GroceryRecipeTagsTest`, `GroceryRecipeTagsScreenTest` (tag shown with and without a day,
+  hidden for typed and gone, "+N", a tap opens at the planned servings or the yield, the tick still
+  ticks, flag off, linking and unlinking from the menu, the planned day), `GroceryDaoTest.aTypedItemIsLinkedToARecipeAndUnlinked`,
+  `WhatINeedRecipeTagsScreenTest` (all three sections); iOS `GroceryRecipeTagsTests`,
+  `GroceryRecipeTagsViewModelTests` (including the link), `GroceryDaoTests`, and `GroceriesUITests`
+  (`testARecipesLinesGoOnTheListByAisle`: tag, tap, Back, the row still ticks;
+  `testATypedItemIsLinkedToARecipeAndUnlinked`).
+
 ## Paste an AI's answer in the app (#372, 2026-11-19)
 
 An AI's answer used to come in only by Share (or Android's text-selection menu). Most chat apps

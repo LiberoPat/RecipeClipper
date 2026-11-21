@@ -617,6 +617,18 @@
     <string name="pantry_in_stock">En stock</string>
     <string name="pantry_out">Épuisé</string>
     <string name="pantry_on_list">Sur votre liste de courses</string>
+    <!-- A grocery line's recipe tag, read aloud (#422): "For Mushroom omelette, Thursday" -->
+    <string name="grocery_tag_for">Pour %1$s</string>
+    <string name="grocery_tag_for_day">Pour %1$s, %2$s</string>
+    <plurals name="grocery_tag_more">
+        <item quantity="one">%1$d recette de plus</item>
+        <item quantity="many">%1$d de recettes de plus</item>
+        <item quantity="other">%1$d recettes de plus</item>
+    </plurals>
+    <!-- Linking a typed grocery item to a recipe (#422): its long-press menu, and the picker's title -->
+    <string name="action_for_a_recipe">Pour une recette…</string>
+    <string name="action_not_for_a_recipe">Pas pour une recette</string>
+    <string name="link_recipe_title">Pour quelle recette ?</string>
     <string name="pantry_ran_out">Épuisé</string>
     <string name="pantry_restock">Racheté</string>
     <string name="pantry_running_low">Presque fini</string>

@@ -94,6 +94,16 @@ struct GroceryDao {
         }
     }
 
+    /// Links items to a recipe (and the planned day it is for, or none), or with a nil `recipeId` unlinks them (#422).
+    func setRecipe(_ ids: [Int64], recipeId: Int64?, plannedDay: Int64?, now: Int64) throws {
+        for id in ids {
+            try db.run(
+                "UPDATE grocery_items SET recipeId = ?, plannedDay = ?, updatedAt = ? WHERE id = ?",
+                recipeId, recipeId == nil ? nil : plannedDay, now, id
+            )
+        }
+    }
+
     func delete(_ ids: [Int64]) throws {
         for id in ids { try db.run("DELETE FROM grocery_items WHERE id = ?", id) }
     }

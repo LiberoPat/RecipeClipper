@@ -248,8 +248,9 @@ private struct UseItUpBounds: PreferenceKey {
 }
 
 /// The name, then its tags, left to right, wrapping onto a new line when the next one doesn't
-/// fit (Android's FlowRow); each line's items are centred on each other.
-private struct TagFlow: Layout {
+/// fit (Android's FlowRow); each line's items are centred on each other. Also the grocery
+/// recipe tags' (#422).
+struct TagFlow: Layout {
     var spacing: CGFloat = 8
     var lineSpacing: CGFloat = 4
 

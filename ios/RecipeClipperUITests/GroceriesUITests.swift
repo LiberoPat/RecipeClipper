@@ -32,9 +32,67 @@ final class GroceriesUITests: RecipeUITestCase {
         require(line("2 lb chicken thighs"), "the chicken")
         require(text("Oils, sauces & condiments"), "the condiments aisle")
         require(line("1/2 cup soy sauce"), "the soy sauce")
-        // Each row names its recipe on a line under it (#286).
+        // Each row names its recipe on a line under it (#286), with the recipe tags (#422) off.
         let named = NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "2 lb chicken thighs", "Chicken Adobo")
         require(app.buttons.matching(named).firstMatch, "the chicken, naming its recipe")
+    }
+
+    /// #422: with the recipe tags on, a row names its recipe as a small tag under it, a button of its
+    /// own that reads "For <recipe>", apart from the row's amount and its tick.
+    func testARecipeTagIsAButtonApartFromTheRowAndOpensTheRecipe() {
+        launch(.standard, flags: ["groceryRecipeTags"])
+        require(app.staticTexts["Chicken Adobo"], "Continue cooking").tap()
+        require(app.buttons["More options"], "the recipe menu").tap()
+        require(app.buttons["Add to groceries"], "Add to groceries").tap()
+        require(app.buttons["addToGroceriesButton"], "the sheet's button").tap()
+        requireGone(app.buttons["addToGroceriesButton"], "the sheet")
+        back()
+        require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
+
+        let tag = app.buttons.matching(NSPredicate(format: "label == %@", "For Chicken Adobo")).firstMatch
+        require(tag, "the recipe tag")
+        let named = NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "2 lb chicken thighs", "Chicken Adobo")
+        XCTAssertFalse(app.buttons.matching(named).firstMatch.exists, "the recipe is not part of the row's own text")
+
+        // A tap on the tag opens the recipe on this tab's stack and ticks nothing; Back returns to the list.
+        tag.tap()
+        require(text("Chicken Adobo"), "the recipe, opened from its tag")
+        back()
+        require(line("2 lb chicken thighs"), "the list, back")
+        assertAbsent(app.buttons["doneShopping"], "Done shopping: the tag ticked nothing")
+
+        // The row itself still ticks.
+        line("2 lb chicken thighs").tap()
+        require(app.buttons["doneShopping"], "Done shopping, once a row is ticked")
+    }
+
+    /// #422: a hand-typed item is linked to a recipe from its long-press menu; it then wears that
+    /// recipe's tag, whose tap opens the recipe, and "Not for a recipe" takes the link off.
+    func testATypedItemIsLinkedToARecipeAndUnlinked() {
+        launch(.standard, flags: ["groceryRecipeTags"])
+        require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
+        let field = require(app.textFields["Add an item"], "Add an item")
+        field.tap()
+        field.typeText("2 limes\n")
+        let tag = app.buttons.matching(NSPredicate(format: "label == %@", "For Chicken Adobo")).firstMatch
+        assertAbsent(tag, "a tag on a typed item")
+
+        require(line("2 limes"), "the typed item").press(forDuration: 1.0)
+        require(app.buttons["For a recipe…"], "For a recipe…").tap()
+        require(text("Which recipe is it for?"), "the picker")
+        require(app.buttons.matching(NSPredicate(format: "label == %@", "Chicken Adobo")).firstMatch, "the recipe in the picker").tap()
+
+        // The item wears the recipe's tag; the tag opens the recipe, and Back returns to the list.
+        require(tag, "the recipe tag").tap()
+        require(text("Chicken Adobo"), "the recipe, opened from its tag")
+        back()
+        require(line("2 limes"), "the list, back")
+
+        // The link comes off from the same menu.
+        line("2 limes").press(forDuration: 1.0)
+        assertAbsent(app.buttons["For a recipe…"], "For a recipe… on a linked item")
+        require(app.buttons["Not for a recipe"], "Not for a recipe").tap()
+        requireGone(tag, "the tag, once unlinked")
     }
 
     func testATypedItemCanBeDeletedAndBroughtBack() {

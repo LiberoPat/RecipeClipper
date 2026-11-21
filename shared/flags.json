@@ -187,6 +187,12 @@
       "issue": 396
     },
     {
+      "key": "groceryRecipeTags",
+      "description": "Recipe tags (#422): in Groceries and in Shop for this week, the recipe a line is for is a small rounded tag tinted with the paprika wash and a book glyph (\"Mushroom omelette · Thu\" when planned), apart from the line's amount and note; up to three show, then the first two and \"+N\". A tap opens the recipe (at the planned servings when it came from the plan), on the current tab. A typed or shared-list line has no tag. Off, the recipes are the muted line under the row as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 422
+    },
+    {
       "key": "planMyWeekPlus",
       "description": "Ask an AI's Plan my week with choices: the cook's meal types as chips (Dinner ticked, the last choice remembered), a start day, and a source: new recipes, from my recipes (the library or one list, named by link) or a mix. The reader takes each recipe's meal, an object naming a saved recipe by its link is planned from the library, and the review shows and changes day and meal. Off, the sheet and the review are as before: a week of dinners, new recipes.",
       "defaults": { "debug": true, "release": true },

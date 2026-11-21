@@ -19,6 +19,8 @@ final class Router {
     var path: [Route] = []
     /// The Week tab's stack (#49).
     var weekPath: [Route] = []
+    /// The Groceries tab's stack (#422): a recipe opened from a line's tag.
+    var groceriesPath: [Route] = []
     var selectedTab: AppTab = .recipes
 
     /// An expiry reminder was tapped (#305): the Pantry opens the Use it up sheet, once.
@@ -52,6 +54,7 @@ final class Router {
     func select(_ tab: AppTab) {
         if tab == selectedTab, tab == .recipes { path = [] }
         if tab == selectedTab, tab == .week { weekPath = [] }
+        if tab == selectedTab, tab == .groceries { groceriesPath = [] }
         selectedTab = tab
     }
 

@@ -77,6 +77,8 @@ enum class Flag(val key: String) {
     EVENING_REMINDERS("eveningReminders"),
     /** Fresh food (#396): Shop for this week in two trips (Buy now, Buy later in the week), and the plan's "cook it earlier?" note. */
     FRESH_FOOD("freshFood"),
+    /** Recipe tags (#422): a grocery line's recipe is a small tappable tag, apart from its amount, in Groceries and Shop for this week. */
+    GROCERY_RECIPE_TAGS("groceryRecipeTags"),
     /** Plan my week with choices (#392, #367): meals, a start day, and new recipes, the cook's own or a mix. */
     PLAN_MY_WEEK_PLUS("planMyWeekPlus"),
     /** Library first (#375): the Recipes tab opens the library, with Today's card above search, a + sheet of ways in and the Settings gear; Home is gone; needs [ONE_COOKBOOK]. */

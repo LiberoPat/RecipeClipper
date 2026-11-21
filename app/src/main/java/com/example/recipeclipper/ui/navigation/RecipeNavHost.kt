@@ -75,6 +75,10 @@ object Routes {
     const val MEAL_TYPES = "week/meal-types"
     const val WHAT_I_NEED = "week/need/{${WhatINeedViewModel.WEEK_START_ARG}}"
     const val GROCERIES = "groceries"
+
+    // The Groceries tab's own stack (#422): a line's recipe tag opens it here, at its planned servings.
+    const val GROCERIES_RECIPE =
+        "groceries/recipe/{${RecipeViewModel.RECIPE_ID_ARG}}?${RecipeViewModel.SERVINGS_ARG}={${RecipeViewModel.SERVINGS_ARG}}"
     const val PANTRY = "pantry"
 
     // Edit a recipe (#29), or with no id type a new one in.
@@ -87,6 +91,8 @@ object Routes {
             servings?.let { "${RecipeViewModel.SERVINGS_ARG}=$it" },
             "${RecipeViewModel.START_COOK_ARG}=true".takeIf { startCook }
         ).let { if (it.isEmpty()) "" else "?" + it.joinToString("&") }
+    fun groceriesRecipe(id: Long, servings: Int?) =
+        "groceries/recipe/$id" + (servings?.let { "?${RecipeViewModel.SERVINGS_ARG}=$it" } ?: "")
     fun whatINeed(weekStart: Long) = "week/need/$weekStart"
     fun edit(id: Long) ="edit?${EditRecipeViewModel.RECIPE_ID_ARG}=$id"
     const val NEW_RECIPE = "edit"
