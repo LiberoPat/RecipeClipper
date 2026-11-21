@@ -113,7 +113,10 @@ data class RecipeUiState(
     /** The recipe this one is a version of (#354), to say "Based on" and open it; null for none. */
     val basedOn: RecipeLink? = null,
     /** The versions saved from this recipe (#354), newest first, quietly listed under its steps. */
-    val versions: List<RecipeLink> = emptyList()
+    val versions: List<RecipeLink> = emptyList(),
+    /** The step photo the full-screen viewer shows (#433), its place among every step photo of the
+     *  recipe ([RecipeContent.Success.allStepPhotos]); null while the viewer is closed. */
+    val stepPhotoViewer: Int? = null
 ) {
     /**
      * Cook mode's opened ingredients bar for the current step (#286): its lines first, then the

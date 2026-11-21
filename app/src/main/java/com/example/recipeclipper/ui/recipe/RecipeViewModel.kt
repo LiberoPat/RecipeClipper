@@ -411,6 +411,21 @@ class RecipeViewModel @Inject constructor(
         }
     }
 
+    // --- Step photos (#433) ---
+
+    /** A step photo's thumbnail was tapped: the viewer opens on it ([position] among every step photo). */
+    fun onStepPhotoOpen(position: Int) = onStepPhotoPage(position)
+
+    /** The viewer was swiped to [position]; kept here so a rotation reopens it on the same photo. */
+    fun onStepPhotoPage(position: Int) {
+        _uiState.update { state ->
+            val count = (state.content as? RecipeContent.Success)?.allStepPhotos?.size ?: 0
+            if (position !in 0 until count) state else state.copy(stepPhotoViewer = position)
+        }
+    }
+
+    fun onStepPhotoClose() = _uiState.update { it.copy(stepPhotoViewer = null) }
+
     // --- Cook mode ([CookController]) ---
 
     fun onCookStart() {

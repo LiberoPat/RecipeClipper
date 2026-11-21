@@ -9,6 +9,7 @@ import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SourceType
+import com.example.recipeclipper.data.model.StepPhotos
 
 // The domain Recipe and the Room entity are separate types; this is the only place that
 // converts between them.
@@ -33,7 +34,8 @@ internal fun Recipe.toEntity(viewedAt: Long) = RecipeEntity(
     servingsTarget = servingsTarget,
     contentOrigin = origin.name,
     editedAt = editedAt,
-    photoFile = photoFile
+    photoFile = photoFile,
+    stepPhotos = StepPhotos.encode(StepPhotos.aligned(stepPhotos, instructions.size))
 )
 
 internal fun RecipeEntity.toDomain() = Recipe(
@@ -57,7 +59,8 @@ internal fun RecipeEntity.toDomain() = Recipe(
     origin = ContentOrigin.fromName(contentOrigin),
     editedAt = editedAt,
     photoFile = photoFile,
-    uid = uid
+    uid = uid,
+    stepPhotos = StepPhotos.aligned(StepPhotos.decode(stepPhotos), instructions.size)
 )
 
 internal fun ListRow.toDomain() = RecipeList(

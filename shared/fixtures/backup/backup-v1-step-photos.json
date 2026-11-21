@@ -1,0 +1,53 @@
+{
+  "format": "recipe-clipper-backup",
+  "formatVersion": 1,
+  "exportedAt": 1790000000000,
+  "recipes": [
+    {
+      "id": "r-fagottini",
+      "sourceUrl": "https://www.cookist.it/fagottini-di-mortadella-ricetta/",
+      "sourceType": "BLOG",
+      "title": "Fagottini di mortadella",
+      "imageUrl": null,
+      "ingredients": ["Mortadella sottili, 8 fette"],
+      "instructions": ["Stendi le fette (1).", "Accendi il forno.", "Sbuccia (3) (4)."],
+      "prepTime": null,
+      "cookTime": null,
+      "totalTime": null,
+      "servings": "8 fagottini",
+      "lastViewedAt": 1789000000100,
+      "checkedIngredients": [],
+      "notes": null,
+      "language": "it",
+      "contentOrigin": "PARSED",
+      "editedAt": null,
+      "stepPhotos": [
+        ["https://img.example/1.jpg"],
+        [],
+        ["http://img.example/3.jpg", "file:///data/data/com.example.recipeclipper/x.jpg", "https://img.example/4.jpg", "https://img.example/4.jpg"],
+        ["https://img.example/beyond-the-last-step.jpg"]
+      ]
+    },
+    {
+      "id": "r-odd",
+      "sourceUrl": "https://example.com/odd",
+      "sourceType": "BLOG",
+      "title": "Odd",
+      "imageUrl": null,
+      "ingredients": ["1 egg"],
+      "instructions": ["Boil."],
+      "lastViewedAt": 1789000000200,
+      "stepPhotos": "not a list"
+    },
+    {
+      "id": "r-plain",
+      "sourceUrl": "https://example.com/plain",
+      "sourceType": "BLOG",
+      "title": "Plain",
+      "imageUrl": null,
+      "ingredients": ["1 egg"],
+      "instructions": ["Fry."],
+      "lastViewedAt": 1789000000300
+    }
+  ]
+}

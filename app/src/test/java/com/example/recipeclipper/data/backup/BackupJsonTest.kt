@@ -361,6 +361,24 @@ class BackupJsonTest {
         assertTrue(first.has("basedOn") && first.isNull("basedOn"))
     }
 
+    /** Step photos (#433): the shared fixture, read the same way by iOS's `BackupJsonTests`. */
+    @Test fun `step photos read as web images lined up with the steps, round-trip, and are absent when none`() {
+        val backup = decodeOrFail(fixture("backup-v1-step-photos.json"))
+        assertEquals(
+            listOf(
+                listOf(listOf("https://img.example/1.jpg"), emptyList(), listOf("https://img.example/3.jpg", "https://img.example/4.jpg")),
+                emptyList(),
+                emptyList()
+            ),
+            backup.recipes.map { it.stepPhotos }
+        )
+        assertEquals(backup, decodeOrFail(BackupJson.encode(backup)))
+        val recipes = org.json.JSONObject(BackupJson.encode(backup)).getJSONArray("recipes")
+        assertTrue(recipes.getJSONObject(0).has("stepPhotos"))
+        assertTrue(!recipes.getJSONObject(2).has("stepPhotos"))
+        assertTrue(decodeOrFail(fixture("backup-v1.json")).recipes.all { it.stepPhotos.isEmpty() })
+    }
+
     @Test fun `a blank basedOn reads as none`() {
         val text = fixture("backup-v1-versions.json").replace("\"basedOn\": \"r-soup\"", "\"basedOn\": \"  \"")
         assertEquals(null, decodeOrFail(text).recipes[1].basedOn)

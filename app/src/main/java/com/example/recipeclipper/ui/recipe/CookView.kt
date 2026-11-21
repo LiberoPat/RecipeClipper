@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.LanguageWords
 import com.example.recipeclipper.data.model.StepAmounts
+import com.example.recipeclipper.data.model.StepPhoto
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.ui.tour.TooltipSide
@@ -71,6 +72,7 @@ internal fun CookView(
     val cook = state.cook
     val steps = content.instructions
     val listState = rememberLazyListState()
+    val showPhotos = stepPhotosOn()
 
     KeepScreenOn()
     BackHandler(onBack = actions.onCookExit)
@@ -117,7 +119,8 @@ internal fun CookView(
                         !content.hasShortStep(index) -> null
                         index in state.asWrittenSteps -> stringResource(R.string.step_show_short)
                         else -> stringResource(R.string.step_show_as_written)
-                    }
+                    },
+                    photos = if (showPhotos) content.photosOf(index) else emptyList()
                 )
             }
         }
@@ -299,7 +302,9 @@ private fun CookStep(
     actions: RecipeActions,
     // Chef mode (#100): the current step's "As written" / "Short version" switch; null: none.
     // A tap on a step already makes it current, so the switch is a small button on the card.
-    shortToggle: String? = null
+    shortToggle: String? = null,
+    // Step photos (#433), empty for a step without (or with the flag off).
+    photos: List<StepPhoto> = emptyList()
 ) {
     val colors = MaterialTheme.colorScheme
     val body = MaterialTheme.typography.bodyLarge
@@ -334,9 +339,22 @@ private fun CookStep(
                 style = body.copy(fontSize = 21.sp, lineHeight = 30.sp),
                 modifier = Modifier.stepLinkActions(amounts, onLink)
             )
-            if (timerSeconds != null || timer != null) {
+            val hasTimer = timerSeconds != null || timer != null
+            if (photos.isEmpty()) {
+                if (hasTimer) {
+                    Spacer(Modifier.height(16.dp))
+                    CurrentTimer(index, timerSeconds, timerWords, timer, actions)
+                }
+            } else {
+                // Step photos (#433): the thumbnail beside the timer, or in the same place with none.
                 Spacer(Modifier.height(16.dp))
-                CurrentTimer(index, timerSeconds, timerWords, timer, actions)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        if (hasTimer) CurrentTimer(index, timerSeconds, timerWords, timer, actions)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    StepPhotoThumbnail(photos, actions.onStepPhotoOpen)
+                }
             }
             Spacer(Modifier.height(20.dp))
             // Its tooltip goes below the card, never over the step's text.
@@ -379,8 +397,14 @@ private fun CookStep(
                 style = body.copy(
                     textDecoration = if (done) TextDecoration.LineThrough else TextDecoration.None
                 ),
-                color = colors.onSurfaceVariant
+                color = colors.onSurfaceVariant,
+                modifier = if (photos.isEmpty()) Modifier else Modifier.weight(1f)
             )
+            // Step photos (#433): a small one, no badge; the row's tap makes the step current.
+            if (photos.isNotEmpty()) {
+                Spacer(Modifier.width(10.dp))
+                StepPhotoMini(photos, Modifier.padding(top = 3.dp))
+            }
         }
         // A timer still running on a step you've moved on from stays visible: steps overlap.
         if (timer != null) {

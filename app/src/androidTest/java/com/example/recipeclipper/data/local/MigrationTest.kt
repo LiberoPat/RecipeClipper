@@ -11,6 +11,7 @@ import com.example.recipeclipper.data.local.entity.AiDecisionEntity
 import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.ShortStepEntity
 import com.example.recipeclipper.data.model.LibraryLimit
+import com.example.recipeclipper.data.model.StepPhotos
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -843,6 +844,45 @@ class MigrationTest {
         assertEquals(listOf(0), lists.map { it.sortOrder })
     }
 
+    /**
+     * Step photos (#433): a new nullable `recipes.stepPhotos`, from version 19. Every recipe comes
+     * across as it was with none (and its own photo, #386, kept), and a re-share then writes them as
+     * content. Numbered 20 on main while #432 (recipe tips) also claims 20: whichever lands second
+     * is renumbered.
+     */
+    @Test
+    fun migration19To20KeepsEveryRecipeAndAddsStepPhotos() {
+        helper.createDatabase(name, 19).use { db ->
+            insertAdobo(db)
+            db.execSQL("UPDATE recipes SET photoFile = 'stored.jpg' WHERE id = 7")
+        }
+
+        helper.runMigrationsAndValidate(name, 20, true, RecipeDatabase.MIGRATION_19_20)
+
+        val db = openMigrated()
+        runBlocking {
+            val original = db.recipeDao().get(7)!!
+            assertEquals("Adobo", original.title)
+            assertEquals("stored.jpg", original.photoFile)
+            assertNull(original.stepPhotos)
+            val photos = StepPhotos.encode(listOf(listOf("https://img.example/simmer.jpg")))
+            db.recipeDao().upsert(original.copy(stepPhotos = photos), LibraryLimit.Unlimited)
+            assertEquals(photos, db.recipeDao().get(7)!!.stepPhotos)
+        }
+    }
+
+    /** A database still at 18 gets the photo column (#386), then the step photos (#433). */
+    @Test
+    fun migration18To20RunsBothStepsInOrder() {
+        helper.createDatabase(name, 18).use { db -> insertAdobo(db) }
+
+        helper.runMigrationsAndValidate(name, 20, true, RecipeDatabase.MIGRATION_18_19, RecipeDatabase.MIGRATION_19_20)
+
+        val recipe = runBlocking { openMigrated().recipeDao().get(7)!! }
+        assertNull(recipe.photoFile)
+        assertNull(recipe.stepPhotos)
+    }
+
     private fun insertAdobo(db: androidx.sqlite.db.SupportSQLiteDatabase) {
         db.execSQL(
             """
@@ -880,7 +920,7 @@ class MigrationTest {
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 19, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 20, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

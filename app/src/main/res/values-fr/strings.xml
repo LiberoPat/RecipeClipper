@@ -1058,4 +1058,10 @@
     <string name="pro_free_line">Gratuit. Sans pub. Sans compte. Sans abonnement.</string>
     <string name="pro_teaser_fresh">Acheter les produits frais plus tard dans la semaine</string>
     <string name="pro_teaser_plan">Choisir les repas, le premier jour et vos propres recettes</string>
+    <!-- Step photos (#433) -->
+    <string name="step_photo_open">Photo %1$d de l\'étape %2$d</string>
+    <string name="step_photos_open">%1$d photos de l\'étape %2$d</string>
+    <string name="step_photo_open_action">Afficher en plein écran</string>
+    <string name="step_photo_position">Photo %1$d sur %2$d</string>
+    <string name="step_photo_step">Étape %1$d</string>
 </resources>
