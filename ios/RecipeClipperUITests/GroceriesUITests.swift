@@ -98,9 +98,10 @@ final class GroceriesUITests: RecipeUITestCase {
         require(line("milk"), "the typed item")
         require(text("Dairy & eggs"), "the dairy aisle")
 
-        // The snackbar lasts four seconds of real time (SnackbarTimeout), so Undo is tapped as
-        // soon as it shows. Waiting for the row to go first could outlast it when the machine
-        // is busy (several UI test classes in one run), and then Undo was gone: the flake in #91.
+        // The snackbar lasts the undo window, ten seconds of real time (SnackbarTimeout.undo), so
+        // Undo is tapped as soon as it shows. Waiting for the row to go first could outlast it when
+        // the machine is busy (several UI test classes in one run), and then Undo was gone: the
+        // flake in #91. A CI runner that stalls past the whole window still misses it (#423's run).
         deleteMilk()
         require(app.buttons["Undo"], "the snackbar").tap()
         require(line("milk"), "the item, back")
