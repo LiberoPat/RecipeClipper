@@ -904,6 +904,10 @@
     <string name="menu_desc_pantry_send_list">Ciò che hai in casa, come testo</string>
     <string name="menu_desc_clear_run_out">Rimuove tutto ciò che è segnato come Finito</string>
     <string name="menu_desc_share_calendar">Aggiunge i pasti della settimana al tuo calendario</string>
+    <string name="action_plan_settings">Impostazioni del piano</string>
+    <string name="menu_desc_plan_settings">Promemoria dei pasti che pianifichi</string>
+    <string name="action_pantry_settings">Impostazioni della dispensa</string>
+    <string name="menu_desc_pantry_settings">Promemoria di scadenza</string>
     <string name="pantry_select_items">Seleziona articoli</string>
     <string name="pantry_select">Seleziona</string>
     <string name="action_select_all">Seleziona tutto</string>

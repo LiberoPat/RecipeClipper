@@ -824,6 +824,11 @@ enum Strings {
     static var menuDescClearTicked: String { String(localized: "menu_desc_clear_ticked") }
     static var menuDescPantrySendList: String { String(localized: "menu_desc_pantry_send_list") }
     static var menuDescClearRunOut: String { String(localized: "menu_desc_clear_run_out") }
+    // Each tab's own Settings section from its menu (#412).
+    static var planSettings: String { String(localized: "action_plan_settings") }
+    static var menuDescPlanSettings: String { String(localized: "menu_desc_plan_settings") }
+    static var pantrySettings: String { String(localized: "action_pantry_settings") }
+    static var menuDescPantrySettings: String { String(localized: "menu_desc_pantry_settings") }
     // A list sent from another phone, shared in or pasted (#149).
     static var pasteList: String { String(localized: "action_paste_list") }
     static var receiveListTitle: String { String(localized: "receive_list_title") }

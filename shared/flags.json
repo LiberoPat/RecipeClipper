@@ -211,6 +211,12 @@
       "issue": 375
     },
     {
+      "key": "tabSettingsLinks",
+      "description": "Settings links (#412): the Plan tab's menu gains \"Plan settings\" (Settings' Plan section, its reminders; only while that section shows, with eveningReminders) and the Pantry's \"Pantry settings\" (its expiry reminders), each opening that section's page on the tab's own stack, so Back returns to the tab. Groceries has no section, so no link. Off, Settings is reached only from the gear beside the Recipes title.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 412
+    },
+    {
       "key": "articleRecipes",
       "description": "A recipe written inside an article: on a page with no JSON-LD or microdata recipe, the article's first list whose items are mostly amounts (at least 3, more than half), followed by its method in paragraphs or an ordered list up to the next heading, is offered on the no-recipe screen as Check the recipe, which opens the editor filled in with those lines as written for the cook to check, saved as a clip under the page's link. Never from prose alone, never saved unchecked. Off, such a page ends at No recipe found as before.",
       "defaults": { "debug": true, "release": true },
