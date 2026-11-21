@@ -233,6 +233,11 @@ class ListsScreenTest {
             up()
         }
         compose.waitForIdle()
+        // The new order is on show once the stored one arrives, not at the instant of the drop.
+        compose.waitUntil(5_000) {
+            compose.onNodeWithTag("lists.cover.2").getBoundsInRoot().left <
+                compose.onNodeWithTag("lists.cover.1").getBoundsInRoot().left
+        }
 
         assertEquals(listOf(listOf(2L, 1L, 3L)), repository.reorderCalls)
         assertEquals(null, opened) // dropping a drag does not open the list

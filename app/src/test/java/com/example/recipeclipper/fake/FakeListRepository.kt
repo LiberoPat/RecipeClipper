@@ -129,9 +129,27 @@ class FakeListRepository : ListRepository {
         return id
     }
 
+    /**
+     * When true, [reorderLists] returns without publishing, as Room's Flow re-emits a moment after
+     * the write: the new order reaches [observeLists] only when [publishHeldReorder] is called
+     * (or never, to model a write that did not land).
+     */
+    var holdReorderPublication = false
+    private var heldOrder: List<Long>? = null
+
+    /** Publishes the order the held [reorderLists] call left waiting. */
+    fun publishHeldReorder() {
+        heldOrder?.let { applyOrder(it) }
+        heldOrder = null
+    }
+
     /** As the SQL does it: the named lists first, in that order, then the rest as they were. */
     override suspend fun reorderLists(orderedIds: List<Long>) {
         reorderCalls += orderedIds
+        if (holdReorderPublication) heldOrder = orderedIds else applyOrder(orderedIds)
+    }
+
+    private fun applyOrder(orderedIds: List<Long>) {
         val byId = lists.value.associateBy { it.id }
         val named = orderedIds.filter { it in byId }.distinct()
         lists.value = (named + lists.value.map { it.id }.filterNot { it in named }).map { byId.getValue(it) }
