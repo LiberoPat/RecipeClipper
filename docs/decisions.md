@@ -6469,9 +6469,19 @@ apart from the steps, below the method, unnumbered, and out of cook mode. Behind
 - **Storage:** `recipes.tips`, a JSON list like `instructions`, `NOT NULL DEFAULT '[]'` (Room 19 →
   20, `MIGRATION_19_20`; iOS `user_version` 18 → 19, `addTips`). **Stored recipes are not rewritten:**
   a King Arthur recipe saved before keeps its tips as steps until it is shared again, and the
-  re-share then refreshes it like any change of steps (its cook progress goes, as the rule for
-  changed steps says; ticks stay while the ingredients are the same). A change in the tips alone
-  keeps the cook's progress: step indexes still mean the same steps.
+  re-share then refreshes it (ticks stay while the ingredients are the same). A change in the tips
+  alone keeps the cook's progress: step indexes still mean the same steps.
+- **Cook progress across the split** (owner, 2026-11-21, a follow-up to #444): that refresh changes
+  the steps, but only by their last ones becoming tips, so **the progress is kept**. Exactly: the
+  old steps equal the new steps followed by the new tips (same order, compared as stored, like the
+  "steps unchanged" check) and the new tips aren't empty (`CookProgress.keptWhenTipsSplitOff`, in
+  `:core` and iOS `Data/Model`, called from `RecipeDao`'s `keepingUserState` on both platforms, so
+  a re-share, an edit and the iOS share extension alike). The saved progress is then clamped to
+  the steps left (`clampedTo` / `clamped(to:)`): done marks and timers on a former tip row are
+  dropped (a dropped running timer's alert finds no timer: Android's receiver re-checks the
+  database; iOS's pending alert is squared when the recipe opens, as after any dropped progress),
+  and a current step past the end moves back to the last step; nothing else changes. No steps
+  left, no progress. Every other change of steps still drops it.
 - **Reading view:** after the steps (and before Versions and the note), a muted "Tips" heading in
   the Versions style, then each tip as a plain paragraph: no number, no step amounts, no ingredient
   links, no temperature conversion (the text stays as the source wrote it). **Cook mode never shows
@@ -6495,8 +6505,10 @@ apart from the steps, below the method, unnumbered, and out of cook mode. Behind
   `shared/fixtures/pages/site-kingarthur-mini-apple-pies.html` (the saved page's one JSON-LD block,
   verbatim); the parser's HowToTip tests; `RecipeTipsTest` / `RecipeTipsTests` (share text, print,
   the AI's JSON, the draft, the backup fixture); `DefaultRecipeRepositoryTipsTest` /
-  `RecipeTipsDataTests` (the flag both ways, a re-share of a recipe saved with its tips as steps,
-  progress kept when only the tips change, an edit, and on iOS the 18 → 19 migration);
+  `RecipeTipsDataTests` (the flag both ways, a re-share of a recipe saved with its tips as steps
+  keeping its progress, clamped when it pointed at a former tip row, still dropped when a real step
+  changed or with no tips, progress kept when only the tips change, an edit, and on iOS the
+  18 → 19 migration); `CookProgressTest` / `CookProgressTests` (the comparison and the clamp);
   `EditRecipeTipsViewModelTest` / `EditRecipeTipsTests`; `RecipeTipsScreenTest` (Robolectric: the
   section, and none of it in cook mode); `MigrationTest.migration19To20…` (device only).
 

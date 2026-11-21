@@ -272,7 +272,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   it's tracking.
 - **Re-sharing upserts:** same id, list membership, note and chosen servings,
   refreshed content, bumped `lastViewedAt`, ticked ingredients kept only if
-  the ingredient list is unchanged, cook progress only if the steps are; the
+  the ingredient list is unchanged, cook progress only if the steps are
+  (or their last ones just became tips, #432: kept, clamped); the
   `LibraryLimit` (#107) applies in the same transaction. Opening from
   history counts as a view.
 - **The user's version is never refreshed** (#29): a `contentOrigin` other
