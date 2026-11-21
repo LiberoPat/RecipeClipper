@@ -8,6 +8,8 @@ import XCTest
 /// before changing production code (docs/testing.md, "Compose UI tests"). `require` does that for you.
 class RecipeUITestCase: XCTestCase {
     var app: XCUIApplication!
+    /// Library first (#375): the launch turned the flag on, so the Recipes tab opens the library, not Home.
+    private(set) var libraryFirst = false
 
     /// Generous: the first launch on a cold simulator is slow.
     let timeout: TimeInterval = 10
@@ -56,21 +58,40 @@ class RecipeUITestCase: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestSeed", scenario.rawValue]
         if keepPrefs { app.launchArguments.append("-uiTestKeepPrefs") }
-        if !flags.isEmpty { app.launchArguments += ["-uiTestFlags", flags.joined(separator: ",")] }
+        // Library first (#375) needs one cookbook (its views strip carries the Lists card), so asking for
+        // one is asking for both.
+        libraryFirst = flags.contains("libraryFirst")
+        let turnedOn = libraryFirst && !flags.contains("oneCookbook") ? flags + ["oneCookbook"] : flags
+        if !turnedOn.isEmpty { app.launchArguments += ["-uiTestFlags", turnedOn.joined(separator: ",")] }
         app.launchArguments += extraArguments
         app.launch()
         self.app = app
-        require(homePasteLink, "Home to appear")
+        require(atRoot, libraryFirst ? "the library to appear" : "Home to appear")
         return app
     }
 
     /// Home's "Paste a link" tile (#286): what tells Home is showing.
     var homePasteLink: XCUIElement { app.buttons["home.pasteLink"] }
 
+    /// The library's + (#375): what tells the library is showing as the Recipes tab's first screen.
+    var libraryAdd: XCUIElement { app.buttons["library.add"] }
+
+    /// The Recipes tab's first screen: Home, or with library first the library.
+    var atRoot: XCUIElement { libraryFirst ? libraryAdd : homePasteLink }
+
+    /// The Recipes tab in the bar: choosing it again pops to the tab's first screen.
+    var recipesTab: XCUIElement { app.tabBars.firstMatch.buttons["Recipes"] }
+
     /// Opens `link` from Home as the cook would (#286): the Paste a link tile, the link typed
     /// into its sheet, then Go. `beforeGo` runs between the two (a walkthrough's pause).
     func pasteLink(_ link: String, beforeGo: () -> Void = {}) {
-        require(homePasteLink, "Home").tap()
+        if libraryFirst {
+            // The + 's sheet (#375): its first row.
+            require(libraryAdd, "the library's +").tap()
+            require(app.buttons["add.pasteLink"], "Paste a link in the sheet").tap()
+        } else {
+            require(homePasteLink, "Home").tap()
+        }
         let field = require(app.descendants(matching: .any)["pasteField"], "the Paste a link sheet's field")
         field.tap()
         field.typeText(link)
@@ -107,12 +128,18 @@ class RecipeUITestCase: XCTestCase {
     // MARK: - Navigation
 
     func openRecipes() {
-        require(app.buttons["home.nav.recipes"]).tap()
+        if libraryFirst {
+            // The library is the tab's first screen (#375): the tab itself, when something is over it.
+            if !app.textFields["Search titles and ingredients"].exists { recipesTab.tap() }
+        } else {
+            require(app.buttons["home.nav.recipes"]).tap()
+        }
         require(app.textFields["Search titles and ingredients"], "Recipes")
     }
 
     func openLists() {
-        require(app.buttons["home.nav.lists"]).tap()
+        // With library first the Lists card leads the views strip (#371).
+        require(libraryFirst ? app.buttons["recipes.lists"] : app.buttons["home.nav.lists"]).tap()
         require(app.buttons["lists.newList"], "the Lists screen")
     }
 
@@ -138,7 +165,7 @@ class RecipeUITestCase: XCTestCase {
     /// "a recipe open" goes through this, so a change to Home's shape is made here once.
     func openRecipe(_ title: String) {
         let onRecipes = app.textFields["Search titles and ingredients"]
-        if !onRecipes.exists && !row(title).exists && homePasteLink.exists {
+        if !onRecipes.exists && !row(title).exists && atRoot.exists && !libraryFirst {
             openRecipes()
         }
         require(row(title), "the row for \(title)").tap()
@@ -150,10 +177,11 @@ class RecipeUITestCase: XCTestCase {
     }
 
     /// Backs out to Home, however deep: a recipe opened through Recipes (`openRecipe`) is one
-    /// screen further from Home than Continue cooking's.
+    /// screen further from Home than Continue cooking's. With library first (#375) that is the
+    /// library, the Recipes tab's first screen.
     func backToHome() {
-        for _ in 0..<4 where !homePasteLink.exists { back() }
-        require(homePasteLink, "Home")
+        for _ in 0..<4 where !atRoot.exists { back() }
+        require(atRoot, libraryFirst ? "the library" : "Home")
     }
 
     // MARK: - Waiting

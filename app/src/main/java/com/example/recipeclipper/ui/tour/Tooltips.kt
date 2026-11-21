@@ -67,6 +67,8 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.flags.libraryFirst
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.data.model.Tooltips
@@ -116,7 +118,7 @@ fun TooltipHost(screen: TooltipScreen, blocked: Boolean = false, content: @Compo
         val current = state.current?.takeIf { state.token == token } ?: return@Box
         val bounds = anchors[current] ?: return@Box
         TooltipBubble(
-            text = stringResource(current.text()),
+            text = stringResource(current.text(LocalFlagValues.current.libraryFirst)),
             tag = "tooltip-${current.id}",
             anchor = bounds.full,
             side = bounds.side,
@@ -130,8 +132,9 @@ fun Modifier.tooltipAnchor(tooltip: Tooltip, side: TooltipSide = TooltipSide.AUT
     this then TooltipAnchorElement(tooltip, side)
 
 @StringRes
-private fun Tooltip.text(): Int = when (this) {
-    Tooltip.HOME_LINK -> R.string.tooltip_home_link
+private fun Tooltip.text(libraryFirst: Boolean): Int = when (this) {
+    // The first screen's one tip (#375): at the + with `libraryFirst`, at Home's Paste a link tile without.
+    Tooltip.HOME_LINK -> if (libraryFirst) R.string.tooltip_library_add else R.string.tooltip_home_link
     Tooltip.RECIPE_UNITS -> R.string.tooltip_recipe_units
     Tooltip.RECIPE_START_COOKING -> R.string.tooltip_recipe_start_cooking
     Tooltip.RECIPE_MADE_THIS -> R.string.tooltip_recipe_made_this

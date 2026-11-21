@@ -27,8 +27,9 @@ the commands; iOS test commands and the simulator rules are in
   real Hilt graph, database and network stack, launched from the launcher and
   by a shared link (an `ACTION_SEND` intent to a `.invalid` host, which must
   reach the import screen and its Try again). It clears the settings first, so
-  every tooltip is unseen (#190): the launcher opens Home and its first tooltip
-  shows in its own window until Got it.
+  every tooltip is unseen (#190): the launcher opens the library (Home, with
+  `libraryFirst` off, #375) and its first tooltip, at the +, shows in its own window
+  until Got it.
 
 Waits that flaked under load (#91, and the nightly iOS UI tests), and what
 not to undo:
@@ -510,7 +511,8 @@ calls it. Share itself
 opens the system chooser, so the tests stop at `RecipeViewModel.shareText()`.
 
 Still without Android UI tests: the Settings screen. The iOS UI tests
-(`ios/RecipeClipperUITests`) cover Home, Recipes (+ → Type a recipe, search, swipe-to-delete, the
+(`ios/RecipeClipperUITests`) cover Home (flags off), the library as the first screen (`LibraryFirstUITests`, #375: launched with
+`flags: ["libraryFirst"]`, which the helpers `atRoot`, `openRecipes`, `pasteLink` and `backToHome` follow), Recipes (+ → Type a recipe, search, swipe-to-delete, the
 batched undo), Settings, list detail, the save-to-list sheet with the bookmark
 it fills, the source credit, the import error screens (including "Report this
 site" opening Safari) and cook mode (`CookModeUITests`, on the `cook` seed

@@ -25,6 +25,27 @@ extension View {
     }
 }
 
+/// Library first (#375): whether the tab's first screen is the library, which reads the first tooltip's words
+/// ("tap + to add one") instead of Home's ("tap here to paste one"). Provided once, by the root view.
+private struct LibraryFirstKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var libraryFirst: Bool {
+        get { self[LibraryFirstKey.self] }
+        set { self[LibraryFirstKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// `tooltipHost(.home)` on the library when it is the first screen (#375); the view as it is otherwise.
+    @ViewBuilder
+    func rootTooltipHost(_ on: Bool, blocked: Bool) -> some View {
+        if on { tooltipHost(.home, blocked: blocked) } else { self }
+    }
+}
+
 /// Where the anchors inside one host are, in the host's own coordinates (so a navigation
 /// transition moving the whole screen changes nothing), and which are wholly on screen.
 @MainActor
@@ -181,11 +202,12 @@ private struct TooltipBubble: View {
     let tooltip: Tooltip
     let onDismiss: () -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.libraryFirst) private var libraryFirst
 
     var body: some View {
         Button(action: onDismiss) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(Strings.tooltip(tooltip))
+                Text(Strings.tooltip(tooltip, libraryFirst: libraryFirst))
                     .textStyle(Typography.bodyMedium)
                     .foregroundStyle(Palette.inverseOnSurface)
                     .multilineTextAlignment(.leading)

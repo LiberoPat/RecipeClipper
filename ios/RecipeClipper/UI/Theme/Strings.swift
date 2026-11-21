@@ -155,6 +155,8 @@ enum Strings {
     static var autoBackupNow: String { String(localized: "auto_backup_now") }
     static var autoBackupRunning: String { String(localized: "auto_backup_running") }
     static var homeRestoreBackup: String { String(localized: "home_restore_backup") }
+    /// The empty library's heading (#375).
+    static var libraryEmptyTitle: String { String(localized: "library_empty_title") }
 
     static func backupRecipes(_ n: Int) -> String { String(localized: "backup_recipes \(n)") }
     static func backupLists(_ n: Int) -> String { String(localized: "backup_lists \(n)") }
@@ -981,9 +983,10 @@ enum Strings {
     // The tooltips (#190)
     static var tooltipGotIt: String { String(localized: "tooltip_got_it") }
     /// A tooltip's words.
-    static func tooltip(_ tooltip: Tooltip) -> String {
+    static func tooltip(_ tooltip: Tooltip, libraryFirst: Bool = false) -> String {
         switch tooltip {
-        case .homeLink: String(localized: "tooltip_home_link")
+        // The first screen's one tip (#375): at the + with `libraryFirst`, at Home's Paste a link tile without.
+        case .homeLink: libraryFirst ? String(localized: "tooltip_library_add") : String(localized: "tooltip_home_link")
         case .recipeUnits: String(localized: "tooltip_recipe_units")
         case .recipeStartCooking: String(localized: "tooltip_recipe_start_cooking")
         case .recipeMadeThis: String(localized: "tooltip_recipe_made_this")
