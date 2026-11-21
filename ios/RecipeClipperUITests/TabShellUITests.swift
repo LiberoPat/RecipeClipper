@@ -97,6 +97,59 @@ final class TabShellUITests: RecipeUITestCase {
         XCTAssertTrue(tab("Recipes").isSelected)
     }
 
+    // MARK: - Each tab's own Settings section from its menu (#412)
+
+    private let settingsLinks = ["tabSettingsLinks", "eveningReminders"]
+
+    private func menu(_ item: String) {
+        require(app.buttons["More options"], "the tab's menu").tap()
+        require(menuItem(item), item).tap()
+    }
+
+    private func settingSwitch(_ label: String) -> XCUIElement {
+        app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
+    }
+
+    func testPlanSettingsOpensThePlanSectionOnThePlanTabAndBackReturnsToTheWeek() {
+        launch(flags: settingsLinks)
+        tab("Plan").tap()
+        require(app.staticTexts["weekRange"], "the Week")
+
+        menu("Plan settings")
+
+        require(settingSwitch("Evening reminder"), "Settings' Plan page")
+        XCTAssertTrue(tab("Plan").isSelected, "on the Plan's own stack")
+        XCTAssertTrue(tabBar.isHittable, "the bar on the page")
+        back()
+        require(app.staticTexts["weekRange"], "the Week again")
+    }
+
+    func testPantrySettingsOpensThePantrySectionOnThePantryTabAndBackReturnsToThePantry() {
+        launch(flags: settingsLinks)
+        tab("Pantry").tap()
+        require(app.textFields["Add to the pantry"], "the Pantry")
+
+        menu("Pantry settings")
+
+        require(settingSwitch("Expiry reminders"), "Settings' Pantry page")
+        XCTAssertTrue(tab("Pantry").isSelected, "on the Pantry's own stack")
+        // Another tab and back: the page is still there; the open tab again goes to the pantry.
+        tab("Recipes").tap()
+        require(atRoot, "Recipes")
+        tab("Pantry").tap()
+        require(settingSwitch("Expiry reminders"), "the Pantry tab kept its place")
+        back()
+        require(app.textFields["Add to the pantry"], "the Pantry again")
+    }
+
+    func testWithoutTheFlagNeitherMenuLinksSettings() {
+        launchWithTabs()
+        tab("Plan").tap()
+        require(app.buttons["More options"], "the Week menu").tap()
+        require(menuItem("Meal types"), "the Week menu open")
+        XCTAssertFalse(menuItem("Plan settings").exists)
+    }
+
     /// Clip it yourself (#37) is full screen too, and its page still reaches the app: hiding the
     /// bar once broke the page's events (the modifier sat outside the screen's ScreenHost).
     func testClippingIsFullScreenAndThePageStillAnswers() {

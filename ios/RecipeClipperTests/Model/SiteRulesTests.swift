@@ -19,6 +19,9 @@ final class SiteRulesTests: XCTestCase {
     private let ba = "https://www.bonappetit.com/recipe/bas-best-carrot-cake"
     private let epicurious = "https://www.epicurious.com/recipes/food/views/ba-syn-7up-cake"
     private let delish = "https://www.delish.com/cooking/recipe-ideas/a21968799/cannoli-pie-recipe/"
+    private let g750 = "https://www.750g.com/brookie-r98937.htm"
+    private let recetas = "https://recetas.elperiodico.com/receta-de-galletas-de-mantequilla-caseras-31553.html"
+    private let habas = "https://recetas.elperiodico.com/receta-de-pure-de-habas-56441.html"
 
     func testNytCookingGroupNamesBecomeHeadings() throws {
         let lines = try recipe("site-nytimes-lemon-layer-cake", nyt).ingredients
@@ -58,6 +61,25 @@ final class SiteRulesTests: XCTestCase {
                        ["For the crust:", "Cooking spray, for pie dish", "10 graham crackers, crushed", "6 tbsp. butter, melted"])
         XCTAssertEqual(lines[6], "For the filling:")
         XCTAssertEqual(lines.count, 15)
+    }
+
+    func test750gBrownieAndCookieDoughsGetTheirHeadings() throws {
+        let lines = try recipe("site-750g-brookie", g750).ingredients
+        XCTAssertEqual(Array(lines.prefix(2)), ["Brownie:", "2 oeufs"])
+        XCTAssertEqual(Array(lines[6..<9]), ["120 g de chocolat", "Cookie:", "½ paquet de levure chimique"])
+        XCTAssertEqual(lines.filter { $0.hasSuffix(":") }, ["Brownie:", "Cookie:"])
+        XCTAssertEqual(lines.count, 13)
+    }
+
+    func testRecetasGratisVideoPointerAndCallForCommentsLeaveTheLastStepOnItsNewHostAndItsOldOne() throws {
+        for url in [recetas, recetas.replacingOccurrences(of: "recetas.elperiodico.com", with: "www.recetasgratis.net")] {
+            let steps = try recipe("site-recetasgratis-galletas-mantequilla", url).instructions
+            XCTAssertEqual(steps.count, 8, url)
+            XCTAssertTrue(steps.last?.hasSuffix("cuéntanos cómo te han quedado.") == true, url)
+            XCTAssertFalse(steps.contains { $0.contains("vídeo") }, url)
+        }
+        let last = try recipe("site-recetasgratis-pure-de-habas", habas).instructions.last
+        XCTAssertEqual(last, "Servir el puré de hablas y espolvorear cebollín finamente picado.")
     }
 
     func testACardWithAnIngredientJsonLdLacksLeavesJsonLdsLinesAlone() throws {

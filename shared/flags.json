@@ -211,6 +211,12 @@
       "issue": 375
     },
     {
+      "key": "tabSettingsLinks",
+      "description": "Settings links (#412): the Plan tab's menu gains \"Plan settings\" (Settings' Plan section, its reminders; only while that section shows, with eveningReminders) and the Pantry's \"Pantry settings\" (its expiry reminders), each opening that section's page on the tab's own stack, so Back returns to the tab. Groceries has no section, so no link. Off, Settings is reached only from the gear beside the Recipes title.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 412
+    },
+    {
       "key": "recipeTips",
       "description": "Recipe tips (#432): a page's schema.org HowToTip entries (kingarthurbaking.com lists them after the method) are kept apart from the steps as the recipe's tips, shown as written below the method under a quiet Tips heading, unnumbered, and left out of cook mode. Off, a newly parsed recipe's tips are its last steps, as before; tips already stored still show.",
       "defaults": { "debug": true, "release": true },

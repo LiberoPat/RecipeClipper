@@ -6,12 +6,16 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.recipeclipper.data.flags.planSettingsLink
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.mealtypes.MealTypesScreen
 import com.example.recipeclipper.ui.askai.askAiViewModelIfOn
 import com.example.recipeclipper.ui.print.printViewModelIfOn
 import com.example.recipeclipper.ui.pro.ProScreen
 import com.example.recipeclipper.ui.recipe.RecipeScreen
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
+import com.example.recipeclipper.ui.settings.SettingsSection
+import com.example.recipeclipper.ui.settings.SettingsSectionScreen
 import com.example.recipeclipper.ui.week.WeekScreen
 import com.example.recipeclipper.ui.week.WhatINeedScreen
 import com.example.recipeclipper.ui.week.WhatINeedViewModel
@@ -27,6 +31,21 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
             onOpenMealTypes = { navController.navigate(Routes.MEAL_TYPES) },
             onOpenWhatINeed = { navController.navigate(Routes.whatINeed(it)) },
             groceriesViewModel = hiltViewModel(),
+            onOpenPro = { navController.navigate(Routes.WEEK_PRO) },
+            onOpenSettings = if (LocalFlagValues.current.planSettingsLink) {
+                { navController.navigate(Routes.WEEK_SETTINGS) }
+            } else {
+                null
+            }
+        )
+    }
+
+    // Settings' Plan page (#412), from the menu's "Plan settings": the same page as Settings > Plan,
+    // here on the Plan's own stack, so Back returns to the week; a locked reminder opens Pro here too.
+    composable(Routes.WEEK_SETTINGS) {
+        SettingsSectionScreen(
+            SettingsSection.WEEK,
+            onBack = { navController.popBackStack() },
             onOpenPro = { navController.navigate(Routes.WEEK_PRO) }
         )
     }

@@ -202,7 +202,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   default) is on. Don't restore an always-dark cook mode without asking.
 - **Settings:** exclusive choices are radio rows, independent toggles are
   switches, never a bare ✓. Reached from the gear beside the Recipes title
-  (Home's, with `libraryFirst` off); another entry point is the owner's call.
+  (Home's, with `libraryFirst` off); the Plan and Pantry menus link their own
+  section, on that tab's stack (#412); another entry point is the owner's call.
 - **Recipes** (#345, V4): under search, one strip of cards: Lists first (#371: opens the
   Lists screen, Back to Recipes), then the automatic views (Not in a list, Cooked, Typed by
   you, From a chat; each its own screen), in place of V1's All / In a list / Not in a list pills
