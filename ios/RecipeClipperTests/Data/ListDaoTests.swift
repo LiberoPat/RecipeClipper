@@ -320,6 +320,72 @@ final class ListDaoTests: XCTestCase {
         ])
     }
 
+    // MARK: - Covers of recipes with no photo (#403)
+
+    private func addNamed(_ url: String, title: String, image: String?, ingredients: [String] = ["1 cup flour"]) async throws -> Int64 {
+        try await db.upsert(RecipeRecord(
+            sourceUrl: url, title: title, imageUrl: image,
+            ingredients: ingredients, instructions: ["Mix."],
+            prepTime: nil, cookTime: nil, totalTime: nil, servings: "4",
+            sourceType: "BLOG", lastViewedAt: 1, language: "en"
+        ), limit: 50)
+    }
+
+    private func placeholders() async throws -> [Int64: [String]] {
+        try await db.read { try ListDao(db: $0).coverPlaceholders() }
+            .reduce(into: [Int64: [String]]()) { $0[$1.listId, default: []].append($1.source.title) }
+    }
+
+    /// The recipes with no photo, up to four, newest added first; a photo's recipe is not one.
+    func testPlaceholderCoversAreTheNoPhotoRecipesNewestFirstUpToFour() async throws {
+        let favorites = try await db.favoritesId()
+        for n in 1...6 {
+            let id = try await addNamed("https://example.com/\(n)", title: "R\(n)", image: nil)
+            try await add(id, to: favorites, at: Int64(n * 10))
+        }
+        let photo = try await addNamed("https://example.com/photo", title: "Photo", image: "https://img/p.jpg")
+        try await add(photo, to: favorites, at: 100)
+        let blank = try await addNamed("https://example.com/blank", title: "Blank", image: "")
+        try await add(blank, to: favorites, at: 5)
+
+        let actual = try await placeholders()
+        XCTAssertEqual(actual, [favorites: ["R6", "R5", "R4", "R3"]])
+    }
+
+    /// What the image is drawn from comes with it: the recipe's own uid, language and lines.
+    func testPlaceholderCoversCarryWhatTheImageIsDrawnFrom() async throws {
+        let favorites = try await db.favoritesId()
+        let id = try await addNamed("https://example.com/a", title: "Lentil Soup", image: nil, ingredients: ["1 cup red lentils"])
+        try await add(id, to: favorites, at: 10)
+
+        let rows = try await db.read { try ListDao(db: $0).coverPlaceholders() }
+        let uid = try await db.read { try RecipeDao(db: $0).get(id) }?.uid
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows.first?.source.uid, uid)
+        XCTAssertEqual(rows.first?.source.language, "en")
+        XCTAssertEqual(rows.first?.source.ingredients, ["1 cup red lentils"])
+    }
+
+    /// An empty list has no row: it keeps the bookmark tile.
+    func testAnEmptyListHasNoPlaceholderCover() async throws {
+        let actual = try await db.read { try ListDao(db: $0).coverPlaceholders() }
+        XCTAssertTrue(actual.isEmpty)
+    }
+
+    /// A summary carries the recipe's uid and language, and only Home's recent ones the lines.
+    func testSummariesCarryTheUidAndOnlyTheRecentOnesTheIngredients() async throws {
+        let id = try await addNamed("https://example.com/a", title: "A", image: nil, ingredients: ["2 eggs"])
+        let uid = try await db.read { try RecipeDao(db: $0).get(id) }?.uid
+
+        let history = try await db.read { try RecipeDao(db: $0).history(query: "") }
+        XCTAssertEqual(history.first?.uid, uid)
+        XCTAssertEqual(history.first?.language, "en")
+        XCTAssertEqual(history.first?.ingredients, [])
+        let recent = try await db.read { try RecipeDao(db: $0).recent(limit: 1) }
+        XCTAssertEqual(recent.first?.uid, uid)
+        XCTAssertEqual(recent.first?.ingredients, ["2 eggs"])
+    }
+
     /// Leaving a list takes the photo off its cover; the recipe itself stays.
     func testCoversFollowMembership() async throws {
         let favorites = try await db.favoritesId()

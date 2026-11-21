@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "language": "de",
+  "about": "Ingredient names that say nothing about a dish, skipped when the no-photo image picks the recipe's first ingredients (#403). Each is matched whole against the line's name as IngredientName reads it (apostrophes and hyphens dropped, listed plurals made singular), never at the end of a longer name: \"bell pepper\" is not \"pepper\".",
+  "staples": [
+    "salz",
+    "meersalz",
+    "speisesalz",
+    "pfeffer",
+    "schwarzer pfeffer",
+    "weißer pfeffer",
+    "öl",
+    "olivenöl",
+    "pflanzenöl",
+    "rapsöl",
+    "sonnenblumenöl",
+    "speiseöl",
+    "wasser",
+    "kaltes wasser",
+    "warmes wasser",
+    "heißes wasser",
+    "kochendes wasser",
+    "eiswasser",
+    "eis"
+  ]
+}

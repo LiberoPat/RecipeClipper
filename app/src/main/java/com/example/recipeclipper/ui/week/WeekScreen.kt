@@ -61,7 +61,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
@@ -81,7 +80,8 @@ import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import com.example.recipeclipper.data.model.NoPhotoSource
+import com.example.recipeclipper.ui.common.RecipeImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.FreshNudge
@@ -733,17 +733,12 @@ private fun MealRow(
                 .testTag("meal-${meal.id}")
         ) {
             if (meal.recipeId != null) {
-                val shape = RoundedCornerShape(8.dp)
-                if (meal.imageUrl != null) {
-                    AsyncImage(
-                        model = meal.imageUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(44.dp).clip(shape)
-                    )
-                } else {
-                    Box(Modifier.size(44.dp).clip(shape).background(MaterialTheme.colorScheme.outlineVariant))
-                }
+                RecipeImage(
+                    model = meal.imageUrl,
+                    recipe = NoPhotoSource(meal.recipeUid ?: "recipe-${meal.recipeId}", meal.title.orEmpty(), meal.language),
+                    contentDescription = null,
+                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp))
+                )
                 Spacer(Modifier.width(12.dp))
             }
             Column(Modifier.weight(1f)) {

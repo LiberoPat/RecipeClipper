@@ -3,6 +3,7 @@ package com.example.recipeclipper.data
 import com.example.recipeclipper.data.local.dao.CookStateRow
 import com.example.recipeclipper.data.local.dao.ListCoverPhotoRow
 import com.example.recipeclipper.data.local.dao.ListMemberCountRow
+import com.example.recipeclipper.data.local.dao.ListCoverPlaceholderRow
 import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.ListRow
 import com.example.recipeclipper.data.local.dao.MealPlanDao
@@ -107,6 +108,7 @@ class DatabaseErrorTest {
         override fun observeLists(recipeId: Long): Flow<List<ListRow>> = flow { throw Boom() }
         override fun observeRecipesIn(listId: Long): Flow<List<RecipeSummaryRow>> = flow { throw Boom() }
         override fun observeCoverPhotos(): Flow<List<ListCoverPhotoRow>> = flow { throw Boom() }
+        override fun observeCoverPlaceholders(): Flow<List<ListCoverPlaceholderRow>> = flow { throw Boom() }
         override fun observeSavedRecipes(): Flow<List<SavedRecipeRow>> = flow { throw Boom() }
         override fun observeMemberCounts(recipeIds: List<Long>): Flow<List<ListMemberCountRow>> = flow { throw Boom() }
         override suspend fun addToList(crossRef: RecipeListCrossRef) = throw Boom()
@@ -227,13 +229,14 @@ class DatabaseErrorTest {
         assertEquals(listOf(emptyList<Any>()), lists.observeListsFor(1).toList())
         assertEquals(listOf(emptyList<Any>()), lists.observeRecipesIn(2).toList())
         assertEquals(listOf(emptyMap<Long, List<String>>()), lists.observeCoverPhotos().toList())
+        assertEquals(listOf(emptyMap<Long, List<Any>>()), lists.observeCoverPlaceholders().toList())
 
         assertEquals(
             listOf(
                 "setMembership failed", "setMembership failed", "createList failed",
                 "rename failed", "deleteList failed", "reorderLists failed",
                 "observeLists failed", "observeListsFor failed", "observeRecipesIn failed",
-                "observeCoverPhotos failed"
+                "observeCoverPhotos failed", "observeCoverPlaceholders failed"
             ),
             log.messages
         )

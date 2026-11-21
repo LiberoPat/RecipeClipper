@@ -33,12 +33,24 @@ final class ListsViewModelTests: XCTestCase {
 
     func testEachListsCoverPhotosArriveWithItFourAtMost() async {
         let repository = repositoryWithBuiltIns()
-        repository.coverPhotos.send([2: (1...5).map { "https://img/\($0).jpg" }])
+        repository.coverPhotos.send([2: (1...5).map {
+            CoverPhoto(url: "https://img/\($0).jpg", source: NoPhotoSource(uid: "uid-\($0)", title: "Recipe \($0)"))
+        }])
         let vm = ListsViewModel(repository: repository)
         await settleMain()
 
-        XCTAssertEqual(vm.uiState.coverPhotos[2], (1...4).map { "https://img/\($0).jpg" })
+        XCTAssertEqual(vm.uiState.coverPhotos[2]?.map(\.url), (1...4).map { "https://img/\($0).jpg" })
         XCTAssertNil(vm.uiState.coverPhotos[1], "no photo: a plain tile")
+    }
+
+    func testEachListsPlaceholderCoversArriveFourAtMost() async {
+        let repository = repositoryWithBuiltIns()
+        repository.coverPlaceholders.send([1: (1...5).map { NoPhotoSource(uid: "uid-\($0)", title: "Recipe \($0)") }])
+        let vm = ListsViewModel(repository: repository)
+        await settleMain()
+
+        XCTAssertEqual(vm.uiState.coverPlaceholders[1]?.map(\.uid), (1...4).map { "uid-\($0)" })
+        XCTAssertNil(vm.uiState.coverPlaceholders[2], "an empty list: the bookmark tile")
     }
 
     func testNothingHereIsTickedSinceNoRecipeIsInHand() async {

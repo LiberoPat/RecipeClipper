@@ -22,6 +22,24 @@ enum Tokens {
     static let mutedOnInk = UIColor(rgb: 0xA39A90)
     static let hairlineOnInk = UIColor(rgb: 0x3A342F)
     static let paprikaTextOnInk = UIColor(rgb: 0xE2735A)
+
+    /// The five warm tints of a recipe with no photo (#403): paprika, saffron, sage, cocoa and
+    /// rose, each a ground and the colour of the words on it. `NoPhoto.tintIndex` picks one by the
+    /// recipe's uid. The on-ink set is the dark variant: a dim ground with a light word, the same hue.
+    static let noPhotoLight: [(ground: UIColor, ink: UIColor)] = [
+        (UIColor(rgb: 0xF5E1D8), UIColor(rgb: 0x9C391F)),
+        (UIColor(rgb: 0xF5E9D1), UIColor(rgb: 0x875710)),
+        (UIColor(rgb: 0xE7EADC), UIColor(rgb: 0x4D5A2E)),
+        (UIColor(rgb: 0xEEE3D9), UIColor(rgb: 0x69442F)),
+        (UIColor(rgb: 0xF3E0DF), UIColor(rgb: 0x8B3D47)),
+    ]
+    static let noPhotoOnInk: [(ground: UIColor, ink: UIColor)] = [
+        (UIColor(rgb: 0x3C241D), UIColor(rgb: 0xEF9C82)),
+        (UIColor(rgb: 0x392D19), UIColor(rgb: 0xE6C07A)),
+        (UIColor(rgb: 0x2A2F22), UIColor(rgb: 0xBAC69B)),
+        (UIColor(rgb: 0x33271F), UIColor(rgb: 0xD9B89F)),
+        (UIColor(rgb: 0x38232A), UIColor(rgb: 0xE6A4AD)),
+    ]
 }
 
 private extension UIColor {
@@ -68,6 +86,16 @@ enum Palette {
     static let inverseSurface = dynamic(light: Tokens.ink, dark: Tokens.ground)
     static let inverseOnSurface = dynamic(light: Tokens.ground, dark: Tokens.ink)
     static let inversePrimary = dynamic(light: Tokens.paprikaTextOnInk, dark: Tokens.paprika)
+
+    /// One of the five tints of a recipe's no-photo image (#403): its ground and the words on it,
+    /// following the appearance (and cook mode's forced ink).
+    static func noPhotoTint(_ index: Int) -> (ground: Color, ink: Color) {
+        let i = ((index % Tokens.noPhotoLight.count) + Tokens.noPhotoLight.count) % Tokens.noPhotoLight.count
+        return (
+            dynamic(light: Tokens.noPhotoLight[i].ground, dark: Tokens.noPhotoOnInk[i].ground),
+            dynamic(light: Tokens.noPhotoLight[i].ink, dark: Tokens.noPhotoOnInk[i].ink)
+        )
+    }
 
     /// `accentText` as a UIColor, for UIKit surfaces SwiftUI's `.tint` never reaches: the
     /// window tint that alerts, menus and text-field cursors inherit. Without it they fall back

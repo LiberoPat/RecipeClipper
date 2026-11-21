@@ -4,6 +4,7 @@ import com.example.recipeclipper.MainDispatcherRule
 import com.example.recipeclipper.collectEagerly
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.fake.FakeListRepository
+import com.example.recipeclipper.fake.coverPhoto
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -51,13 +52,13 @@ class ListsViewModelTest {
     fun `each list's cover photos arrive with it, four at most`() =
         runTest(mainDispatcherRule.dispatcher) {
             val repository = repositoryWithBuiltIns()
-            repository.coverPhotos.value = mapOf(2L to (1..5).map { "https://img/$it.jpg" })
+            repository.coverPhotos.value = mapOf(2L to (1..5).map { coverPhoto("https://img/$it.jpg") })
             val viewModel = ListsViewModel(repository)
             collectEagerly(viewModel.uiState)
             advanceUntilIdle()
 
             val covers = viewModel.uiState.value.coverPhotos
-            assertEquals((1..4).map { "https://img/$it.jpg" }, covers[2L])
+            assertEquals((1..4).map { "https://img/$it.jpg" }, covers[2L]?.map { it.url })
             assertEquals(null, covers[1L]) // no photo: a plain tile
         }
 

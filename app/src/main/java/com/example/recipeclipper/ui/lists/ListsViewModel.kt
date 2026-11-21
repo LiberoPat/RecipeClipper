@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.local.dao.ListDao
+import com.example.recipeclipper.data.model.CoverPhoto
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -31,7 +33,9 @@ import javax.inject.Inject
 data class ListsUiState(
     val loaded: Boolean = false,
     val lists: List<RecipeList> = emptyList(),
-    val coverPhotos: Map<Long, List<String>> = emptyMap(),
+    val coverPhotos: Map<Long, List<CoverPhoto>> = emptyMap(),
+    /** A list with no photo shows its recipes' designed images (#403); an empty one the bookmark tile. */
+    val coverPlaceholders: Map<Long, List<NoPhotoSource>> = emptyMap(),
     val creatingList: Boolean = false,
     val newListName: String = "",
     val draggingId: Long? = null
@@ -84,15 +88,18 @@ class ListsViewModel @Inject constructor(
 
     val uiState: StateFlow<ListsUiState> = combine(
         stored.filterNotNull(),
-        repository.observeCoverPhotos(),
+        combine(repository.observeCoverPhotos(), repository.observeCoverPlaceholders()) { photos, placeholders ->
+            photos to placeholders
+        },
         creatingList,
         newListName,
         drag
-    ) { lists, photos, creating, name, dragging ->
+    ) { lists, (photos, placeholders), creating, name, dragging ->
         ListsUiState(
             loaded = true,
             lists = dragging?.let { lists.inOrder(it.order) } ?: lists,
             coverPhotos = photos.mapValues { it.value.take(ListDao.COVER_PHOTOS) },
+            coverPlaceholders = placeholders.mapValues { it.value.take(ListDao.COVER_PHOTOS) },
             creatingList = creating,
             newListName = name,
             draggingId = dragging?.takeUnless { it.settling }?.id

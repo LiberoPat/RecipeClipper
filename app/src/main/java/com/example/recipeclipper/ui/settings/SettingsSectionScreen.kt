@@ -68,6 +68,18 @@ fun SettingsSectionScreen(
     val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.onImportPicked(it.toString()) }
     }
+    // Import from Paprika (#382): the same system picker; a .paprikarecipes file has no MIME type of its own.
+    val paprikaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { viewModel.onPaprikaPicked(it.toString()) }
+    }
+    // Import from Recipe Keeper (#390): the same picker, for its .zip.
+    val recipeKeeperPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { viewModel.onRecipeKeeperPicked(it.toString()) }
+    }
+    // Import from Mealie (#391): the same system picker; a Mealie zip or .json has no MIME type worth filtering on.
+    val mealiePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { viewModel.onMealiePicked(it.toString()) }
+    }
     // The automatic backup copy's folder (#150): the system's folder picker, kept by permission.
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         viewModel.onBackupFolderPicked(uri?.toString())
@@ -99,6 +111,9 @@ fun SettingsSectionScreen(
     val actions = SectionActions(
         onShowTips = onShowTips,
         onImport = { importPicker.launch(IMPORT_MIME_TYPES) },
+        onImportPaprika = { paprikaPicker.launch(PAPRIKA_MIME_TYPES) },
+        onImportRecipeKeeper = { recipeKeeperPicker.launch(RECIPE_KEEPER_MIME_TYPES) },
+        onImportMealie = { mealiePicker.launch(MEALIE_MIME_TYPES) },
         onChooseFolder = { folderPicker.launch(null) },
         onWeekReminderChange = { kind, on ->
             // Asking is a platform effect, so it lives here: only when the cook turns one on, never
@@ -164,6 +179,9 @@ fun SettingsSectionScreen(
 private class SectionActions(
     val onShowTips: () -> Unit,
     val onImport: () -> Unit,
+    val onImportPaprika: () -> Unit,
+    val onImportRecipeKeeper: () -> Unit,
+    val onImportMealie: () -> Unit,
     val onChooseFolder: () -> Unit,
     val onWeekReminderChange: (MealReminderKind, Boolean) -> Unit,
     val onExpiryRemindersChange: (Boolean) -> Unit
@@ -280,5 +298,43 @@ private fun YourRecipesRows(state: SettingsUiState, viewModel: SettingsViewModel
         enabled = !state.backup.isBusy,
         onClick = actions.onImport
     )
+    // Another app's file, beside this app's own (#382): behind the paprikaImport flag.
+    if (state.showsPaprikaImport) {
+        ActionRow(
+            title = stringResource(R.string.paprika_import_title),
+            description = stringResource(R.string.paprika_import_description),
+            enabled = !state.backup.isBusy,
+            onClick = actions.onImportPaprika
+        )
+    }
+    // Recipe Keeper's, beside it (#390): behind the recipeKeeperImport flag.
+    if (state.showsRecipeKeeperImport) {
+        ActionRow(
+            title = stringResource(R.string.recipekeeper_import_title),
+            description = stringResource(R.string.recipekeeper_import_description),
+            enabled = !state.backup.isBusy,
+            onClick = actions.onImportRecipeKeeper
+        )
+    }
+    // Mealie's export (#391), beside them: behind the mealieImport flag.
+    if (state.showsMealieImport) {
+        ActionRow(
+            title = stringResource(R.string.mealie_import_title),
+            description = stringResource(R.string.mealie_import_description),
+            enabled = !state.backup.isBusy,
+            onClick = actions.onImportMealie
+        )
+    }
+    if (state.showsPaprikaImport || state.showsRecipeKeeperImport || state.showsMealieImport) {
+        // What the imports do with the other app's categories (#387, #390, #391): one switch for all
+        // of them; on unless the cook turns it off.
+        SwitchRow(
+            title = stringResource(R.string.paprika_filing_title),
+            description = stringResource(R.string.paprika_filing_description),
+            checked = state.paprikaFiling,
+            onCheckedChange = viewModel::onPaprikaFilingChange,
+            enabled = !state.backup.isBusy
+        )
+    }
     BackupStatusText(state.backup)
 }

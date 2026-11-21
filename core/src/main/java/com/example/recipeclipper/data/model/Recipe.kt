@@ -90,8 +90,21 @@ data class Recipe(
     /** Whose words the content is; see [ContentOrigin]. */
     val origin: ContentOrigin = ContentOrigin.PARSED,
     /** When the user last saved an edit, or null if never. */
-    val editedAt: Long? = null
+    val editedAt: Long? = null,
+    /** The recipe's own picture, stored on the phone (#386): a file name in the photo store, or null.
+     *  Not part of [image] (a web link, which the editor shows and saves). */
+    val photoFile: String? = null,
+    /** The stored row's stable uid (#403: its tint), or empty for a recipe not stored yet. */
+    val uid: String = ""
 ) {
+    /** What the screens show as the recipe's picture (#386): its stored photo (with its link behind it, for a missing file), else its link. */
+    val displayImage: String?
+        get() = photoFile?.let { StoredPhoto.model(it, fallback = image) } ?: image
+
+    /** What its no-photo image is drawn from (#403); a recipe not stored yet is tinted by its link. */
+    val noPhoto: NoPhotoSource
+        get() = NoPhotoSource(uid.ifEmpty { sourceUrl }, name, language, ingredients)
+
     /** "Update from source" applies: the user's version of a recipe that has a real link. */
     val canUpdateFromSource: Boolean
         get() = origin.isUsersVersion && origin != ContentOrigin.MANUAL && !ManualRecipe.isManual(sourceUrl)
@@ -123,8 +136,16 @@ data class RecipeSummary(
     /** The prep and cook times as stored, and the language they were written in: what "30 min or less" reads (#378). */
     val prepTime: String? = null,
     val cookTime: String? = null,
-    val language: String? = null
+    val language: String? = null,
+    /** Its stable uid, for its image when it has no photo (#403). */
+    val uid: String = "",
+    /** Its ingredient lines, only where an image shows them (Home's card, #403); else empty. */
+    val ingredients: List<String> = emptyList()
 ) {
+    /** What its no-photo image is drawn from (#403). */
+    val noPhoto: NoPhotoSource
+        get() = NoPhotoSource(uid.ifEmpty { "recipe-$id" }, title, language, ingredients)
+
     /** The site, as the reading view credits it; null for a typed or scanned recipe. */
     val sourceDomain: String?
         get() = if (ManualRecipe.isManual(sourceUrl)) null else SourceDomain.of(sourceUrl)

@@ -18,6 +18,7 @@ import com.example.recipeclipper.ui.edit.PastedTextRouter
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.MealWindows
 import com.example.recipeclipper.data.model.PlanDays
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -123,8 +124,16 @@ data class TodayMeal(
     val recipeId: Long?,
     val title: String,
     val imageUrl: String?,
-    val servings: Int?
-)
+    val servings: Int?,
+    /** What its no-photo image is drawn from (#403): the recipe's uid, language and ingredient lines; none for a note. */
+    val recipeUid: String? = null,
+    val language: String? = null,
+    val ingredients: List<String> = emptyList()
+) {
+    /** The designed image for a recipe with no photo (#403); a recipe whose uid is not known is tinted by its id. */
+    val noPhoto: NoPhotoSource
+        get() = NoPhotoSource(recipeUid ?: "recipe-$recipeId", title, language, ingredients)
+}
 
 /**
  * Home's Today card (#402): [lead], the earliest meal today not yet cooked, and the [others]
@@ -154,7 +163,7 @@ data class TodayCard(val lead: TodayMeal, val others: List<TodayMeal>) {
                     val title = (meal.title ?: meal.note)?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
                     TodayMeal(
                         meal.id, names[meal.mealTypeId].orEmpty(), meal.recipeId, title,
-                        meal.imageUrl, meal.servings
+                        meal.imageUrl, meal.servings, meal.recipeUid, meal.language, meal.ingredients
                     )
                 }
             return left.firstOrNull()?.let { TodayCard(it, left.drop(1)) }

@@ -36,11 +36,19 @@ final class DefaultListRepository: ListRepository {
         db.observe { conn in try ListDao(db: conn).recipesIn(listId: listId).map { $0.toDomain() } }
     }
 
-    func observeCoverPhotos() -> AnyPublisher<[Int64: [String]], Never> {
+    func observeCoverPhotos() -> AnyPublisher<[Int64: [CoverPhoto]], Never> {
         db.observe { conn in
             // The rows come ordered by list, newest first: grouping keeps that order.
-            try ListDao(db: conn).coverPhotos().reduce(into: [Int64: [String]]()) { covers, row in
-                covers[row.listId, default: []].append(row.imageUrl)
+            try ListDao(db: conn).coverPhotos().reduce(into: [Int64: [CoverPhoto]]()) { covers, row in
+                covers[row.listId, default: []].append(CoverPhoto(url: row.imageUrl, source: row.source))
+            }
+        }
+    }
+
+    func observeCoverPlaceholders() -> AnyPublisher<[Int64: [NoPhotoSource]], Never> {
+        db.observe { conn in
+            try ListDao(db: conn).coverPlaceholders().reduce(into: [Int64: [NoPhotoSource]]()) { covers, row in
+                covers[row.listId, default: []].append(row.source)
             }
         }
     }

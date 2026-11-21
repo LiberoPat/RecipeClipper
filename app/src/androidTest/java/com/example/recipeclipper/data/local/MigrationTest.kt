@@ -810,12 +810,77 @@ class MigrationTest {
         }
     }
 
+    /**
+     * A recipe's own stored picture (#386): a new nullable `recipes.photoFile`, from version 18
+     * (the reordered lists). Every recipe comes across as it was with no photo, one can then be
+     * written, and a re-share's update keeps it.
+     */
+    @Test
+    fun migration18To19KeepsEveryRecipeAndAddsThePhotoFile() {
+        helper.createDatabase(name, 18).use { db -> insertAdobo(db) }
+
+        helper.runMigrationsAndValidate(name, 19, true, RecipeDatabase.MIGRATION_18_19)
+
+        assertPhotoFileAdded()
+    }
+
+    /** A database still at 17 ends with both changes: the lists numbered (#381) and the photo column (#386). */
+    @Test
+    fun migration17To19RunsBothStepsInOrder() {
+        helper.createDatabase(name, 17).use { db ->
+            insertAdobo(db)
+            db.execSQL(
+                "INSERT INTO lists (id, name, isBuiltIn, isFavorites, sortOrder, createdAt, uid) " +
+                    "VALUES (3, 'Weeknights', 0, 0, 2, 0, 'uid-3')"
+            )
+        }
+
+        helper.runMigrationsAndValidate(name, 19, true, RecipeDatabase.MIGRATION_17_18, RecipeDatabase.MIGRATION_18_19)
+
+        assertPhotoFileAdded()
+        val lists = runBlocking { openMigrated().backupDao().allLists() }
+        assertEquals(listOf("Weeknights"), lists.map { it.name })
+        assertEquals(listOf(0), lists.map { it.sortOrder })
+    }
+
+    private fun insertAdobo(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            INSERT INTO recipes
+              (id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime,
+               cookTime, totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid,
+               language, cookState, servingsTarget, contentOrigin, editedAt, basedOnUid)
+            VALUES
+              (7, 'https://example.com/a', 'Adobo', 'https://img.example/a.jpg', '["1 cup soy sauce"]',
+               '["Simmer."]', NULL, NULL, NULL, '4', 'BLOG', 123, '[]', NULL,
+               'recipe-uid', 'en', NULL, NULL, 'PARSED', NULL, NULL)
+            """.trimIndent()
+        )
+    }
+
+    private fun assertPhotoFileAdded() {
+        val db = openMigrated()
+        runBlocking {
+            val original = db.recipeDao().get(7)!!
+            assertEquals("Adobo", original.title)
+            assertEquals("https://img.example/a.jpg", original.imageUrl)
+            assertNull(original.photoFile)
+
+            db.openHelper.writableDatabase.execSQL("UPDATE recipes SET photoFile = 'stored.jpg' WHERE id = 7")
+            assertEquals("stored.jpg", db.recipeDao().get(7)!!.photoFile)
+            // A re-share of the link refreshes the content and never takes the picture away.
+            db.recipeDao().upsert(original.copy(title = "Adobo, again", photoFile = null), LibraryLimit.Unlimited)
+            assertEquals("Adobo, again", db.recipeDao().get(7)!!.title)
+            assertEquals("stored.jpg", db.recipeDao().get(7)!!.photoFile)
+        }
+    }
+
     /** A version-1 install goes all the way to the current version in one open. */
     @Test
     fun migration1ToCurrentRunsEveryStep() {
         helper.createDatabase(name, 1).close()
 
-        helper.runMigrationsAndValidate(name, 18, true, *RecipeDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(name, 19, true, *RecipeDatabase.ALL_MIGRATIONS)
 
         val db = openMigrated()
         val lists = runBlocking { db.listDao().observeLists(ListDao.NO_RECIPE).first() }

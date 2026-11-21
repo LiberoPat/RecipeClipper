@@ -36,12 +36,16 @@ struct RecipeRecord: Equatable {
     /// key: a delete clears it by hand (`RecipeDao.clearOrphanedLinks`), so it never points at
     /// nothing. `update` never writes it, as it never writes the uid.
     var basedOnUid: String? = nil
+    /// The recipe's own picture (#386): the name of a file in the photo store, preferred over
+    /// `imageUrl` wherever the recipe's picture shows. Not an "I made this" photo (#116): never a
+    /// cooking. nil for none. The user's: `update` never writes it, so a re-share or an edit keeps it.
+    var photoFile: String? = nil
 
     /// The column list every `SELECT` of a full row uses, in `init(row:)`'s order.
     static let columns = """
         id, sourceUrl, title, imageUrl, ingredients, instructions, prepTime, cookTime, \
         totalTime, servings, sourceType, lastViewedAt, checkedIngredients, notes, uid, language, \
-        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid
+        cookState, servingsTarget, contentOrigin, editedAt, basedOnUid, photoFile
         """
 
     init(
@@ -51,7 +55,8 @@ struct RecipeRecord: Equatable {
         sourceType: String, lastViewedAt: Int64, checkedIngredients: Set<Int> = [],
         notes: String? = nil, uid: String = newUid(), language: String? = nil,
         cookState: String? = nil, servingsTarget: Int? = nil,
-        contentOrigin: String = "PARSED", editedAt: Int64? = nil, basedOnUid: String? = nil
+        contentOrigin: String = "PARSED", editedAt: Int64? = nil, basedOnUid: String? = nil,
+        photoFile: String? = nil
     ) {
         self.id = id
         self.sourceUrl = sourceUrl
@@ -74,6 +79,7 @@ struct RecipeRecord: Equatable {
         self.contentOrigin = contentOrigin
         self.editedAt = editedAt
         self.basedOnUid = basedOnUid
+        self.photoFile = photoFile
     }
 
     init(row: SQLiteRow) {
@@ -98,6 +104,7 @@ struct RecipeRecord: Equatable {
         contentOrigin = row.string(18)
         editedAt = row.isNull(19) ? nil : row.int64(19)
         basedOnUid = row.optionalString(20)
+        photoFile = row.optionalString(21)
     }
 }
 
@@ -317,6 +324,10 @@ struct RecipeSummaryRecord: Equatable {
     let prepTime: String?
     let cookTime: String?
     let language: String?
+    /// The recipe's stable uid, for its no-photo image (#403), and its ingredient lines only where an
+    /// image shows them (Home's card); empty elsewhere.
+    let uid: String
+    let ingredients: [String]
 
     init(row: SQLiteRow) {
         id = row.int64(0)
@@ -332,6 +343,8 @@ struct RecipeSummaryRecord: Equatable {
         prepTime = row.optionalString(10)
         cookTime = row.optionalString(11)
         language = row.optionalString(12)
+        uid = row.string(13)
+        ingredients = row.isNull(14) ? [] : JSONColumns.decodeStrings(row.string(14))
     }
 }
 
@@ -359,15 +372,36 @@ struct ListRecord: Equatable {
 struct ListCoverPhotoRecord: Equatable {
     let listId: Int64
     let imageUrl: String
+    /// What the recipe's designed image is drawn from if the photo fails to load (#403).
+    let source: NoPhotoSource
 
-    init(listId: Int64, imageUrl: String) {
+    init(listId: Int64, imageUrl: String, source: NoPhotoSource) {
         self.listId = listId
         self.imageUrl = imageUrl
+        self.source = source
     }
 
     init(row: SQLiteRow) {
         listId = row.int64(0)
         imageUrl = row.string(1)
+        source = NoPhotoSource(
+            uid: row.string(2), title: row.string(3), language: row.optionalString(4),
+            ingredients: JSONColumns.decodeStrings(row.string(5))
+        )
+    }
+}
+
+/// One recipe with no photo on a list's cover (#403): what its designed image is drawn from.
+struct ListCoverPlaceholderRecord: Equatable {
+    let listId: Int64
+    let source: NoPhotoSource
+
+    init(row: SQLiteRow) {
+        listId = row.int64(0)
+        source = NoPhotoSource(
+            uid: row.string(1), title: row.string(2), language: row.optionalString(3),
+            ingredients: JSONColumns.decodeStrings(row.string(4))
+        )
     }
 }
 

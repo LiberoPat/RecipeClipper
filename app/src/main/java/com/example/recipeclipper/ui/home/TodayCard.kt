@@ -26,6 +26,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.common.NoPhotoStyle
+import com.example.recipeclipper.ui.common.RecipeImage
+import com.example.recipeclipper.ui.common.noPhotoImageOn
 
 /**
  * Today's meal (#402), in the Continue cooking card's place while nothing is being cooked: the
@@ -51,7 +54,17 @@ internal fun TodayCard(
                 if (lead.recipeId != null) Modifier.clickable(role = Role.Button, onClick = { onOpen(lead) }) else Modifier
             )
         ) {
-            if (lead.imageUrl != null) {
+            if (lead.recipeId != null && noPhotoImageOn()) {
+                // A photo at 136 dp; with none (or one that fails to load) the recipe's designed
+                // image, the same band as Continue cooking's, at 112 dp (#403).
+                RecipeImage(
+                    model = lead.imageUrl,
+                    recipe = lead.noPhoto,
+                    contentDescription = null,
+                    style = NoPhotoStyle.Label,
+                    modifier = Modifier.fillMaxWidth().height(if (lead.imageUrl != null) 136.dp else 112.dp)
+                )
+            } else if (lead.imageUrl != null) {
                 AsyncImage(
                     model = lead.imageUrl,
                     contentDescription = null,

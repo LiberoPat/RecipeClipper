@@ -61,6 +61,12 @@ struct PlannedMeal: Equatable, Identifiable {
     let note: String?
     /// The entry's stable uid (#26): what a calendar export (#52) names the event by.
     var uid = ""
+    /// The recipe's own uid and language, for its no-photo image (#403); nil for a note.
+    var recipeUid: String? = nil
+    var language: String? = nil
+    /// The recipe's ingredient lines, for the label of its no-photo image on Home's Today card
+    /// (#403, #402); empty for a note.
+    var ingredients: [String] = []
 }
 
 /// A reusable weekly menu (#52; Android's `Menu`, renamed so it never shadows SwiftUI's): a named copy of a week's meals. `mealCount` is how many meals

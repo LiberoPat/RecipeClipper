@@ -272,7 +272,10 @@ struct HtmlTree {
         }
         func findOpen(_ name: String, barriers: Set<String>) -> Int? {
             var i = stack.count - 1
-            while i > 0 {
+            // Only the nearest 128 open elements are searched (#390): a hostile page that nests a
+            // million unclosed divs would otherwise make every tag walk the whole stack.
+            let lowest = max(1, stack.count - 128)
+            while i >= lowest {
                 let open = elements[stack[i]].name
                 if open == name { return i }
                 if barriers.contains(open) { return nil }

@@ -53,6 +53,22 @@ final class HomeTodayTests: XCTestCase {
         XCTAssertEqual(card?.others[1].servings, 6)
     }
 
+    /// The lead carries what its designed image is drawn from (#403): the recipe's uid, language and
+    /// ingredient lines; a planned note carries none.
+    func testTheCardCarriesWhatTheNoPhotoImageIsDrawnFrom() async {
+        var soup = meal(1, FakeMealPlanRepository.dinner, 12, "Lentil soup")
+        soup.recipeUid = "uid-12"
+        soup.language = "en"
+        soup.ingredients = ["1 cup red lentils", "2 carrots, diced"]
+        plan.meals.send([soup, meal(2, FakeMealPlanRepository.snack, nil, nil, note: "Leftovers")])
+        let vm = await home()
+
+        let lead = vm.uiState.today?.lead
+        XCTAssertEqual(lead?.noPhoto, NoPhotoSource(uid: "uid-12", title: "Lentil soup", language: "en", ingredients: soup.ingredients))
+        XCTAssertNil(vm.uiState.today?.others.first?.recipeUid)
+        XCTAssertEqual(vm.uiState.today?.others.first?.ingredients, [])
+    }
+
     func testAUsersOwnMealTypeSitsWhereTheCookPutIt() async {
         plan.types.send(
             [MealType(id: 9, name: "Brunch", builtInKey: nil, sortOrder: 0)]

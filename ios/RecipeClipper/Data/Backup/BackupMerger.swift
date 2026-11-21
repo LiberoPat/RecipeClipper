@@ -8,6 +8,8 @@ struct ExistingRecipe: Equatable {
     var hasNotes: Bool
     /// In at least one list, or typed in by hand (#102): outside the history cap either way.
     var isListed: Bool
+    /// It has its own stored picture (#386): an import fills only a recipe with none.
+    var hasPhoto = false
 }
 
 /// A list already on this phone. Pass them in display order: a name match takes the first.
@@ -94,6 +96,12 @@ struct NoteUpdate: Equatable {
     var notes: String
 }
 
+/// A recipe here with no picture of its own gains the file's (#386): `file` is the package's path to it.
+struct PhotoUpdate: Equatable {
+    var recipeId: Int64
+    var file: String
+}
+
 struct PlannedMembership: Equatable {
     var recipe: MergeTarget
     var list: MergeTarget
@@ -115,6 +123,7 @@ struct ImportPlan: Equatable {
     var newPlanEntries: [NewPlanEntry] = []
     var newMenus: [NewMenu] = []
     var newCookedPhotos: [NewCookedPhoto] = []
+    var photoUpdates: [PhotoUpdate] = []
 }
 
 /// How an export file merges into a phone that already has recipes (issue #26; the owner's
@@ -171,7 +180,11 @@ enum BackupMerger {
         capsEveryRecipe: Bool = false,
         existingCookedPhotoUids: Set<String> = [],
         /// The pictures the package holds, by path in the zip; nil takes every file as there.
-        availablePhotoFiles: Set<String>? = nil
+        availablePhotoFiles: Set<String>? = nil,
+        /// A new list that no recipe coming in ends up in is not created (#387): a Paprika import files
+        /// recipes by their categories, and a recipe the free limit leaves out files nowhere, so a
+        /// category of such recipes makes no empty list. A backup keeps its lists whole (false).
+        dropEmptyNewLists: Bool = false
     ) -> ImportPlan {
         // --- Recipes: fold the file onto distinct cleaned links, then onto what's here.
         var existingByUrl: [String: ExistingRecipe] = [:]
@@ -186,6 +199,10 @@ enum BackupMerger {
         var matchedOrder: [Int64] = []
         var matched: [Int64: ExistingRecipe] = [:]
         var importedNote: [Int64: String] = [:]              // existing id -> first non-blank note
+        var importedPhoto: [Int64: String] = [:]             // existing id -> first picture in the package (#386)
+        func photoOf(_ recipe: BackupRecipe) -> String? {
+            recipe.photo.flatMap { file in availablePhotoFiles.map { $0.contains(file) } ?? true ? file : nil }
+        }
 
         for recipe in backup.recipes {
             let url = UrlCleaner.clean(recipe.sourceUrl)
@@ -194,12 +211,19 @@ enum BackupMerger {
                 if matched[existing.id] == nil { matchedOrder.append(existing.id) }
                 matched[existing.id] = existing
                 if let note, importedNote[existing.id] == nil { importedNote[existing.id] = note }
+                if !existing.hasPhoto, importedPhoto[existing.id] == nil, let photo = photoOf(recipe) {
+                    importedPhoto[existing.id] = photo
+                }
                 recipeTargets[recipe.id] = .existing(existing.id)
                 continue
             }
             if var first = newByUrl[url] {
                 if first.notes == nil, let note {
                     first.notes = note
+                    newByUrl[url] = first
+                }
+                if first.photo == nil, let photo = photoOf(recipe) {
+                    first.photo = photo
                     newByUrl[url] = first
                 }
                 recipeTargets[recipe.id] = .new(first.id)
@@ -212,6 +236,7 @@ enum BackupMerger {
             fresh.sourceType = knownSourceTypes.contains(recipe.sourceType) ? recipe.sourceType : "BLOG"
             fresh.checkedIngredients = recipe.checkedIngredients.filter { recipe.ingredients.indices.contains($0) }
             fresh.notes = note
+            fresh.photo = photoOf(recipe)
             newOrder.append(url)
             newByUrl[url] = fresh
             recipeTargets[recipe.id] = .new(uid)
@@ -325,6 +350,11 @@ enum BackupMerger {
         let noteUpdates = matchedOrder.compactMap { id -> NoteUpdate? in
             guard let existing = matched[id], !existing.hasNotes, let note = importedNote[id] else { return nil }
             return NoteUpdate(recipeId: id, notes: note)
+        }
+
+        let photoUpdates = matchedOrder.compactMap { id -> PhotoUpdate? in
+            guard let existing = matched[id], !existing.hasPhoto, let file = importedPhoto[id] else { return nil }
+            return PhotoUpdate(recipeId: id, file: file)
         }
 
         // --- Pantry: by uid, then by name in the same language; what's here stands.
@@ -452,18 +482,28 @@ enum BackupMerger {
             return NewCookedPhoto(photo: cleaned, recipe: recipe)
         }
 
+        // A recipe left out by the cap (#345) takes no list membership with it.
+        let keptMemberships = memberships.filter { m in
+            if case .new = m.recipe { return written.contains(m.recipe) }
+            return true
+        }
+        // A new list nothing came into is not made (#387), when asked.
+        var keptListOrder = newListOrder
+        if dropEmptyNewLists {
+            let used = Set(keptMemberships.compactMap { m -> String? in
+                if case .new(let uid) = m.list { return uid }
+                return nil
+            })
+            keptListOrder = newListOrder.filter { key in newListsByName[key].map { used.contains($0.uid) } ?? false }
+        }
         return ImportPlan(
             newRecipes: linkedRecipes,
             noteUpdates: noteUpdates,
-            newLists: newListOrder.compactMap { newListsByName[$0] },
-            // A recipe left out by the cap (#345) takes no list membership with it.
-            memberships: memberships.filter { m in
-                if case .new = m.recipe { return written.contains(m.recipe) }
-                return true
-            },
+            newLists: keptListOrder.compactMap { newListsByName[$0] },
+            memberships: keptMemberships,
             summary: ImportSummary(
                 recipesAdded: newRecipes.count,
-                listsAdded: newListOrder.count,
+                listsAdded: keptListOrder.count,
                 recipesAlreadyHere: matchedOrder.count,
                 recipesSkipped: skipped,
                 pantryAdded: newPantry.count,
@@ -479,7 +519,8 @@ enum BackupMerger {
             newMealTypes: newTypeOrder.compactMap { newTypesByName[$0] },
             newPlanEntries: newPlanEntries,
             newMenus: newMenus,
-            newCookedPhotos: newCookedPhotos
+            newCookedPhotos: newCookedPhotos,
+            photoUpdates: photoUpdates
         )
     }
 

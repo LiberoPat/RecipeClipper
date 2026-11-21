@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.lists
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -23,8 +24,13 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.up
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagValues
+import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeList
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.fake.FakeListRepository
+import com.example.recipeclipper.fake.coverPhoto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -49,19 +55,114 @@ class ListsScreenTest {
             RecipeList(3, "Weeknights", isBuiltIn = false, isFavorites = false, recipeCount = 0)
         )
         membership.value = setOf(7L to 1L, 7L to 3L, 8L to 3L)
-        coverPhotos.value = mapOf(3L to listOf("https://img/8.jpg", "https://img/7.jpg"))
+        coverPhotos.value = mapOf(3L to listOf(coverPhoto("https://img/8.jpg"), coverPhoto("https://img/7.jpg")))
     }
 
     private var opened: Long? = null
 
-    private fun show(reorderEnabled: Boolean = false) {
+    private fun show(flags: FlagValues = FlagValues.ALL_OFF, reorderEnabled: Boolean = false) {
         val viewModel = ListsViewModel(repository)
         compose.setContent {
-            ListsScreen(
-                onBack = {}, onOpenList = { opened = it }, viewModel = viewModel,
-                reorderEnabled = reorderEnabled
-            )
+            CompositionLocalProvider(LocalFlagValues provides flags) {
+                ListsScreen(
+                    onBack = {}, onOpenList = { opened = it }, viewModel = viewModel,
+                    reorderEnabled = reorderEnabled
+                )
+            }
         }
+    }
+
+    // --- Covers of recipes with no photo (#403) ---
+
+    private val noPhotoOn = FlagValues(setOf(Flag.NO_PHOTO_IMAGE))
+
+    private fun placeholdersOn(listId: Long) = compose.onAllNodes(
+        hasTestTag("lists.coverPlaceholder") and hasAnyAncestor(hasTestTag("lists.cover.$listId")),
+        useUnmergedTree = true
+    ).fetchSemanticsNodes().size
+
+    private fun sources(n: Int) = (1..n).map { NoPhotoSource("uid-$it", "Recipe $it", "en", listOf("$it eggs")) }
+
+    /** Favorites has three recipes with no photo: their designed images fill the usual mosaic. */
+    @Test
+    fun aListWhoseRecipesHaveNoPhotoShowsTheirPlaceholders() {
+        repository.coverPlaceholders.value = mapOf(1L to sources(3))
+        show(noPhotoOn)
+
+        assertEquals(3, placeholdersOn(1))
+        assertEquals(0, plainTile(1))
+        assertEquals(0, photosOn(1))
+    }
+
+    /**
+     * A cover photo that fails to load shows its recipe's designed image, not a blank tile (#403):
+     * the address here is a file that does not exist, so Coil reports an error.
+     */
+    @Test
+    fun aCoverPhotoThatFailsToLoadFallsBackToItsRecipesPlaceholder() {
+        repository.coverPhotos.value = mapOf(
+            1L to listOf(coverPhoto("file:///no/such/photo.jpg", ingredients = listOf("1 cup red lentils")))
+        )
+        show(noPhotoOn)
+
+        assertEquals(1, photosOn(1))
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodes(
+                hasTestTag("noPhoto.label") and hasAnyAncestor(hasTestTag("lists.cover.1")),
+                useUnmergedTree = true
+            ).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    /** With the flag off a failed cover photo is blank as before. */
+    @Test
+    fun withTheFlagOffAFailedCoverPhotoStaysBlank() {
+        repository.coverPhotos.value = mapOf(1L to listOf(coverPhoto("file:///no/such/photo.jpg")))
+        show()
+        compose.waitForIdle()
+
+        assertEquals(1, photosOn(1))
+        assertEquals(
+            0,
+            compose.onAllNodes(hasTestTag("noPhoto.label") or hasTestTag("noPhoto.monogram"), useUnmergedTree = true)
+                .fetchSemanticsNodes().size
+        )
+    }
+
+    @Test
+    fun fourPlaceholdersMakeTheTwoByTwo() {
+        repository.coverPlaceholders.value = mapOf(1L to sources(4))
+        show(noPhotoOn)
+
+        assertEquals(4, placeholdersOn(1))
+    }
+
+    /** A real photo wins: a list with one photo shows photos alone, never the others' placeholders. */
+    @Test
+    fun photosComeFirstAndHideThePlaceholders() {
+        repository.coverPlaceholders.value = mapOf(3L to sources(2))
+        show(noPhotoOn)
+
+        assertEquals(2, photosOn(3))
+        assertEquals(0, placeholdersOn(3))
+    }
+
+    /** An empty list keeps the outlined bookmark: nothing saved here yet. */
+    @Test
+    fun anEmptyListKeepsTheBookmarkTile() {
+        show(noPhotoOn)
+
+        assertEquals(1, plainTile(2))
+        assertEquals(0, placeholdersOn(2))
+    }
+
+    @Test
+    fun withTheFlagOffTheBookmarkTileIsBack() {
+        repository.coverPlaceholders.value = mapOf(1L to sources(3))
+        show()
+
+        assertEquals(0, placeholdersOn(1))
+        assertEquals(1, plainTile(1))
     }
 
     @Test
@@ -100,8 +201,8 @@ class ListsScreenTest {
     @Test
     fun aCoverShowsItsListsPhotos() {
         repository.coverPhotos.value = mapOf(
-            1L to (1..4).map { "https://img/$it.jpg" },
-            3L to listOf("https://img/8.jpg", "https://img/7.jpg")
+            1L to (1..4).map { coverPhoto("https://img/$it.jpg") },
+            3L to listOf(coverPhoto("https://img/8.jpg"), coverPhoto("https://img/7.jpg"))
         )
         show()
 

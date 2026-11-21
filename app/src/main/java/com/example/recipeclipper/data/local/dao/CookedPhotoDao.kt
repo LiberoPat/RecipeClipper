@@ -32,6 +32,10 @@ abstract class CookedPhotoDao {
     @Query("SELECT DISTINCT recipeId FROM cooked_photos WHERE day = :day")
     abstract fun observeRecipesCookedOn(day: Long): Flow<List<Long>>
 
+    /** Every picture file a recipe names (#386): the sweep leaves these alone too, though no cooking names them. */
+    @Query("SELECT photoFile FROM recipes WHERE photoFile IS NOT NULL")
+    abstract suspend fun recipePhotoFileNames(): List<String>
+
     @Insert
     abstract suspend fun insert(photo: CookedPhotoEntity): Long
 
