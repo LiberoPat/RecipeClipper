@@ -75,6 +75,9 @@ import XCTest
 // image). Write only `Img("http://img.example/a.jpg"),`.
 // JSON-LD text rows (#266): one ld+json block, then JsonLdRecipeParser.parse's name (nil: no
 // recipe), ingredients, steps and yield. Write only `Parse("{\"@type\":\"Recipe\", …}"),`.
+// Step-photo rows (#433): one ld+json block, then the step photos JsonLdRecipeParser.parse reads
+// (each step's links; [] for none) and StepPhotos.numbered's badge numbers. Write only
+// `StepPh("{\"@type\":\"Recipe\", …}"),`.
 // Duration rows (#179): a prep, cook or total time, then Durations.format of it
 // (nil: hidden). Write only `Dur("PT1H30M"),` or `Dur("1 Std. 30 Min.", lang: "de"),`.
 // Minutes rows (#378): a stored prep, cook or total time, then Durations.minutes (nil: unreadable,
@@ -339,6 +342,13 @@ final class DifferentialCorpusTests: XCTestCase {
         let block: String; let name: String?; let ingredients: [String]; let steps: [String]; let yield: String?
         init(_ block: String, _ name: String?, _ ingredients: [String], _ steps: [String], _ yield: String?) {
             self.block = block; self.name = name; self.ingredients = ingredients; self.steps = steps; self.yield = yield
+        }
+    }
+
+    private struct StepPh {
+        let block: String; let photos: [[String]]; let numbers: [[Int]]
+        init(_ block: String, _ photos: [[String]], _ numbers: [[Int]]) {
+            self.block = block; self.photos = photos; self.numbers = numbers
         }
     }
 
@@ -2167,6 +2177,16 @@ final class DifferentialCorpusTests: XCTestCase {
         Parse("{\"@type\":\"Recipe\",\"name\":\"Lauchkuchen\",\"recipeIngredient\":[\"200 g Mehl\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":[\"Für den Teig\\u00a0Mehl\",\"Backpulver und Salz mischen.\"]},{\"@type\":\"HowToStep\",\"text\":[\"\",\" \"],\"name\":\"Named\"},{\"@type\":\"HowToStep\",\"text\":[\"a\",1]},{\"@type\":\"HowToStep\",\"text\":[\"&amp;oacute;leo <b>x</b>\",\"\",\"y\"]},{\"@type\":\"HowToStep\",\"text\":\"[\\\"not\\\", \\\"json\\\"]\"}]}", "Lauchkuchen", ["200 g Mehl"], ["Für den Teig Mehl, Backpulver und Salz mischen.", "Named", "[\"a\",1]", "óleo x, y", "[\"not\", \"json\"]"], nil),
     ]
 
+    // Step-photo rows (#433): see the header. Write only the block.
+    private static let stepPhotoRows: [StepPh] = [
+        StepPh("{\"@type\":\"Recipe\",\"name\":\"Fagottini\",\"recipeIngredient\":[\"8 fette\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Stendi (1).\",\"image\":\"https://img.example/1.jpg\"},{\"@type\":\"HowToStep\",\"text\":\"Sbuccia (3) (4).\",\"image\":[\"https://img.example/3.jpg\",{\"@type\":\"ImageObject\",\"url\":\"http://img.example/4.jpg\"}]},{\"@type\":\"HowToStep\",\"text\":\"Accendi il forno.\"},{\"@type\":\"HowToStep\",\"text\":\"Cuoci (9).\",\"image\":{\"@type\":\"ImageObject\",\"contentUrl\":\"https://img.example/9.jpg\"}}]}", [["https://img.example/1.jpg"], ["https://img.example/3.jpg", "https://img.example/4.jpg"], [], ["https://img.example/9.jpg"]], [[1], [3, 4], [], [9]]),
+        StepPh("{\"@type\":\"Recipe\",\"name\":\"Plain\",\"recipeIngredient\":[\"1 egg\"],\"recipeInstructions\":[\"Mix.\",{\"@type\":\"HowToStep\",\"text\":\"Bake.\"}]}", [], []),
+        StepPh("{\"@type\":\"Recipe\",\"name\":\"Plain text\",\"recipeIngredient\":[\"1 egg\"],\"recipeInstructions\":\"Mix.\\nBake.\"}", [], []),
+        StepPh("{\"@type\":\"Recipe\",\"name\":\"Junk\",\"recipeIngredient\":[\"1 egg\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Peel (2).\",\"image\":[\"file:///data/x.jpg\",\"data:image/gif;base64,AA\",\"/rel.jpg\",\"https://img.example/a.jpg\",\"https://img.example/a.jpg\",[\"https://img.example/nested.jpg\"],\" HTTP://Img.Example/b.jpg \"]},{\"@type\":\"HowToStep\",\"text\":\"Bake (1).\",\"image\":{\"@type\":\"ImageObject\"}},{\"@type\":\"HowToStep\",\"text\":\"Serve (5).\",\"image\":[{\"url\":\"https://img.example/c.jpg\"},12,null]}]}", [["https://img.example/a.jpg", "https://Img.Example/b.jpg"], [], ["https://img.example/c.jpg"]], [[1, 2], [], [5]]),
+        StepPh("{\"@type\":\"Recipe\",\"name\":\"Sections\",\"recipeIngredient\":[\"1 egg\"],\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Dough\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Knead.\",\"image\":\"https://img.example/k.jpg\"},\"Rest.\",{\"@type\":\"HowToStep\",\"text\":\" \",\"image\":\"https://img.example/blank.jpg\"}]},{\"@type\":\"HowToSection\",\"name\":\"Filling\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"name\":\"Fill (7)\",\"image\":[\"https://img.example/f1.jpg\",\"https://img.example/f2.jpg\"]}]}]}", [["https://img.example/k.jpg"], [], ["https://img.example/f1.jpg", "https://img.example/f2.jpg"]], [[1], [], [2, 3]]),
+        StepPh("{\"@type\":\"Recipe\",\"name\":\"Many\",\"recipeIngredient\":[\"1 egg\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Look.\",\"image\":[\"https://i.example/1.jpg\",\"https://i.example/2.jpg\",\"https://i.example/3.jpg\",\"https://i.example/4.jpg\",\"https://i.example/5.jpg\",\"https://i.example/6.jpg\",\"https://i.example/7.jpg\",\"https://i.example/8.jpg\",\"https://i.example/9.jpg\",\"https://i.example/10.jpg\"]}]}", [["https://i.example/1.jpg", "https://i.example/2.jpg", "https://i.example/3.jpg", "https://i.example/4.jpg", "https://i.example/5.jpg", "https://i.example/6.jpg", "https://i.example/7.jpg", "https://i.example/8.jpg"]], [[1, 2, 3, 4, 5, 6, 7, 8]]),
+    ]
+
     private static let images: [Img] = [
         Img("https://img.example/a/cookies.jpg?w=1200&h=800#top", "https://img.example/a/cookies.jpg?w=1200&h=800#top"),
         Img("http://img.example/a.jpg", "https://img.example/a.jpg"),
@@ -3097,6 +3117,16 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(recipe?.ingredients ?? [], row.ingredients, row.block)
             XCTAssertEqual(recipe?.instructions ?? [], row.steps, row.block)
             XCTAssertEqual(recipe?.yield, row.yield, row.block)
+        }
+    }
+
+    func testStepPhotosMatchKotlin() {
+        for row in Self.stepPhotoRows {
+            let recipe = JsonLdRecipeParser.parse([row.block], sourceUrl: "https://src/parse")
+            let photos = recipe?.stepPhotos ?? []
+            XCTAssertEqual(photos, row.photos, row.block)
+            let numbered = recipe.map { StepPhotos.numbered($0.instructions, photos) } ?? []
+            XCTAssertEqual(numbered.map { $0.map(\.number) }, row.numbers, row.block)
         }
     }
 

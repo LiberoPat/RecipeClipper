@@ -26,13 +26,17 @@ data class RecipeDraft(
 
     /**
      * [base]'s identity and user state with this draft's content. A blank optional field is
-     * absent (null), never an empty string.
+     * absent (null), never an empty string. The editor has no field for step photos (#433): they
+     * stay with their steps (an unchanged step keeps its own wherever it moved; an edited one
+     * keeps its place's), never shown or typed here.
      */
     fun applyTo(base: Recipe): Recipe = base.copy(
         name = name.trim(),
         image = image.trim().ifEmpty { null },
         ingredients = ingredients,
         instructions = instructions,
+        // The steps' photos (#433) follow their steps through the edit; see StepPhotos.afterEdit.
+        stepPhotos = StepPhotos.afterEdit(base.instructions, base.stepPhotos, instructions),
         prepTime = prepTime.trim().ifEmpty { null },
         cookTime = cookTime.trim().ifEmpty { null },
         totalTime = totalTime.trim().ifEmpty { null },

@@ -1,0 +1,62 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Fagottini di mortadella",
+  "image": {
+    "@type": "ImageObject",
+    "url": "https://staticcookist.akamaized.net/wp-content/uploads/sites/21/2024/01/94b2b06f-80c3-4c93-9bdf-60bdda9b4f84-1200x675.jpg",
+    "width": 1200,
+    "height": 675
+  },
+  "recipeYield": "8 fagottini",
+  "totalTime": "PT10M",
+  "recipeIngredient": [
+    "Mortadella sottili, 8 fette",
+    "Fiocchi di latte, 100 gr",
+    "Mozzarelle ciliegine, 8",
+    "Erba cipollina, 8 steli",
+    "Granella di pistacchi, q.b."
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "text": "Stendi le fette di mortadella su un tagliere (1).",
+      "image": "https://staticcookist.akamaized.net/wp-content/uploads/sites/21/2024/01/Fagottini-di-mortadella_farcire_mortadella_1-1200x675.jpg"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Farciscile al centro con un cucchiaino di fiocchi di latte (2).",
+      "image": "https://staticcookist.akamaized.net/wp-content/uploads/sites/21/2024/01/Fagottini-di-mortadella_farcire_mortadella_2-1200x675.jpg"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Aggiungi una mozzarellina (3).",
+      "image": "https://staticcookist.akamaized.net/wp-content/uploads/sites/21/2024/01/Fagottini-di-mortadella_farcire_mortadella_3-1200x675.jpg"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Completa con una spolverizzata di granella di pistacchi (4).",
+      "image": "https://staticcookist.akamaized.net/wp-content/uploads/sites/21/2024/01/Fagottini-di-mortadella_farcire_mortadella_4-1200x675.jpg"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Ripiega la fetta di mortadella sul ripieno (5), in modo da formare un fagottino.",
+      "image": "https://staticcookist.akamaized.net/wp-content/uploads/sites/21/2024/01/Fagottini-di-mortadella_chiudere_fagottino_5-1200x675.jpg"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Sigillalo con uno stelo di erba cipollina (6).",
+      "image": "https://staticcookist.akamaized.net/wp-content/uploads/sites/21/2024/01/Fagottini-di-mortadella_chiudere_fagottino_6-1200x675.jpg"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Prosegui in questo modo fino a esaurire tutti gli ingredienti (7).",
+      "image": "https://staticcookist.akamaized.net/wp-content/uploads/sites/21/2024/01/Fagottini-di-mortadella_chiudere_fagottino_7-1200x675.jpg"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Trasferisci i fagottini di mortadella su un piatto da portata (8), porta in tavola e servi.",
+      "image": "https://staticcookist.akamaized.net/wp-content/uploads/sites/21/2024/01/Fagottini-di-mortadella-1200x675.jpg"
+    }
+  ]
+}
