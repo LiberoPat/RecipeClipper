@@ -132,18 +132,29 @@ final class BlogRecipeSource: RecipeSource {
         // Microdata only when there is no JSON-LD recipe, so no working site changes.
         // JSON-LD's recipe is refined by the page: WP Recipe Maker's ingredient parts when they
         // line up (#118), then the group headings JSON-LD drops from a plugin's card (#119) or the
-        // site's own (#120), and the site's known noise dropped from the last step (#120).
+        // site's own (#120), the step photos the site's page alone shows when it proves them (#438),
+        // and the site's known noise dropped from the last step (#120, #440).
         let jsonLd = JsonLdRecipeParser.parse(blocks, sourceUrl: url, pageLanguage: JsonLdRecipeParser.pageLanguage(html: html))
             .map { recipe -> Recipe in
                 var refined = recipe
                 let wprm = WprmIngredients.refine(html: html, lines: recipe.ingredients)
                 refined.ingredients = SiteRules.ingredients(html: html, url: url, lines: wprm)
                 refined.instructions = SiteRules.steps(url: url, steps: recipe.instructions)
-                // The noise rule only cuts the end of the last step, or drops it (#120): its photos go with it (#433).
-                refined.stepPhotos = StepPhotos.aligned(recipe.stepPhotos, refined.instructions.count)
+                let photos = recipe.stepPhotos.isEmpty
+                    ? SiteRules.stepPhotos(html: html, url: url, steps: recipe.instructions) ?? []
+                    : recipe.stepPhotos
+                // The noise rules only cut the end of the last step, or drop it (#120, #440): its photos go with it (#433).
+                refined.stepPhotos = StepPhotos.aligned(photos, refined.instructions.count)
                 return refined
             }
-        guard let recipe = jsonLd ?? MicrodataRecipeParser.parse(html: html, sourceUrl: url) else {
+        // A microdata recipe is refined by the page's cards as JSON-LD's is (#437): only the
+        // headings, only when a card lines up one-to-one with the microdata's lines.
+        let microdata = { () -> Recipe? in
+            guard var recipe = MicrodataRecipeParser.parse(html: html, sourceUrl: url) else { return nil }
+            recipe.ingredients = SiteRules.ingredients(html: html, url: url, lines: recipe.ingredients)
+            return recipe
+        }
+        guard let recipe = jsonLd ?? microdata() else {
             return .error(.noRecipeFound)
         }
         return .success(recipe)

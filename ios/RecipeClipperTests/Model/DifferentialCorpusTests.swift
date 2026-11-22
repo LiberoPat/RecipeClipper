@@ -67,6 +67,9 @@ import XCTest
 // `Heads("<markup>", ["line"]),`.
 // Site-rule rows (#120): a host, a page's markup, JSON-LD's lines and steps, then SiteRules.ingredients
 // and SiteRules.steps for that host. Write only `Site("delish.com", "<markup>", ["line"], ["step"]),`.
+// Page step-photo rows (#438): a host, a page's markup and JSON-LD's steps, then the step photos
+// SiteRules.stepPhotos proves (each step's links; [] for none) and StepPhotos.numbered's badge
+// numbers. Write only `SitePh("ricette.giallozafferano.it", "<markup>", ["step"]),`.
 // Article rows (#435): a page with no recipe data (attributes single-quoted), at https://example.com/a,
 // then ArticleRecipeParser.parse's headline, each recipe's name, ingredients and steps, and their
 // language (nil, [], [], [], nil: none).
@@ -358,6 +361,13 @@ final class DifferentialCorpusTests: XCTestCase {
         init(_ block: String, _ name: String?, _ ingredients: [String], _ steps: [String], _ yield: String?, tips: [String] = []) {
             self.block = block; self.name = name; self.ingredients = ingredients; self.steps = steps; self.yield = yield
             self.tips = tips
+        }
+    }
+
+    private struct SitePh {
+        let host: String; let html: String; let steps: [String]; let photos: [[String]]; let numbers: [[Int]]
+        init(_ host: String, _ html: String, _ steps: [String], _ photos: [[String]], _ numbers: [[Int]]) {
+            self.host = host; self.html = html; self.steps = steps; self.photos = photos; self.numbers = numbers
         }
     }
 
@@ -2035,6 +2045,26 @@ final class DifferentialCorpusTests: XCTestCase {
         Site("delish.com", "<div class='ingredients-body'><h3>Topping</h3><ul><li><strong>2 cups</strong></li></ul></div>", ["2 c."], ["Mix."], ["2 c."], ["Mix."]),
         Site("example.com", "<div class='ingredients-body'><h3>For the crust</h3><ul><li><strong>6 Tbsp.</strong> butter</li></ul></div>", ["6 tbsp. butter"], ["Bake. Editor’s note: x"], ["6 tbsp. butter"], ["Bake. Editor’s note: x"]),
         Site("bbcgoodfood.com", "<div class='tasty-recipes-ingredients'><p><strong>Dough:</strong></p><ul><li>2 cups flour</li></ul></div>", ["2 cups flour"], ["Mix."], ["Dough:", "2 cups flour"], ["Mix."]),
+        Site("smittenkitchen.com", "<div class='jetpack-recipe-ingredients'><ul><h5>Crispy Onions</h5><li class='jetpack-recipe-ingredient' itemprop='recipeIngredient'>2 medium yellow onions</li><li>Freshly ground black pepper</li><h5>Mushroom Sauce</h5><li>3 tablespoons unsalted butter</li><li>Freshly ground black pepper</li></ul></div>", ["2 medium yellow onions", "Freshly ground black pepper", "3 tablespoons unsalted butter", "Freshly ground black pepper"], ["Fry."], ["Crispy Onions:", "2 medium yellow onions", "Freshly ground black pepper", "Mushroom Sauce:", "3 tablespoons unsalted butter", "Freshly ground black pepper"], ["Fry."]),
+        Site("smittenkitchen.com", "<div class='jetpack-recipe-ingredients'><ul><h5>Onions</h5><li>2 onions</li><li>Salt</li></ul></div>", ["2 onions"], ["Fry."], ["2 onions"], ["Fry."]),
+        Site("ricette.giallozafferano.it", "<div class='gz-ingredients gz-outer'><dl class='gz-list-ingredients'><dt class='gz-title-ingredients gz-uppercase'>Per il riso (per circa 12 arancini)</dt><dd class='gz-ingredient'><a href='/r'>Riso vialone nano</a> <span> 500 g </span></dd></dl><dl class='gz-list-ingredients'><dt class='gz-title-ingredients'>per il ripieno al ragù</dt><dd class='gz-ingredient'><a>Acqua</a><span>1,2 l</span></dd><dt class='gz-title-ingredients'> </dt></dl></div>", ["Riso vialone nano 500 g", "Acqua 1,2 l"], ["Lessate il riso."], ["Per il riso (per circa 12 arancini):", "Riso vialone nano 500 g", "per il ripieno al ragù:", "Acqua 1,2 l"], ["Lessate il riso."]),
+        Site("example.com", "<div class='gz-ingredients gz-outer'><dl class='gz-list-ingredients'><dt class='gz-title-ingredients'>Per il riso</dt><dd class='gz-ingredient'>Riso 500 g</dd></dl></div>", ["Riso 500 g"], ["Lessate il riso."], ["Riso 500 g"], ["Lessate il riso."]),
+        Site("cuisineaz.com", "<section class='recipe_section ingredients'><ul class='ingredient_list'><li class='ingredient_item'><span class='ingredient_label'>Magret de canard</span><span class='js-ingredient-qte ingredient_qte'>4 </span></li></ul><ul class='ingredient_list'><li class='ingredient_step'><span>Pour la marinade&#xA0;</span></li><li class='ingredient_item'><span class='ingredient_label'>Carotte(s)</span><span class='ingredient_qte'>1 </span></li></ul></section>", ["4 Magret de canard", "1 Carotte(s)"], ["Faites mariner."], ["4 Magret de canard", "Pour la marinade:", "1 Carotte(s)"], ["Faites mariner."]),
+        Site("recetas.elperiodico.com", "<p>No card.</p>", ["1 huevo"], ["Mezcla.", "Además, si dispones de leche, no te pierdas este VÍDEO receta de galletas:"], ["1 huevo"], ["Mezcla."]),
+        Site("recetas.elperiodico.com", "<p>No card.</p>", ["1 huevo"], ["Mezcla. No te pierdas este vídeo."], ["1 huevo"], ["Mezcla. No te pierdas este vídeo."]),
+        Site("recetas.elperiodico.com", "<p>No card.</p>", ["1 huevo"], ["Mezcla.", "Hornea. no te pierdas este VÍDEO. Si te ha gustado esta receta, tienes algún comentario o inquietud, escríbenos."], ["1 huevo"], ["Mezcla."]),
+        Site("recetasgratis.net", "<p>No card.</p>", ["1 huevo"], ["No te pierdas este VÍDEO.", "Mezcla.", "Hornea, y no te pierdas este Vídeo"], ["1 huevo"], ["No te pierdas este VÍDEO.", "Mezcla."]),
+    ]
+
+    private static let sitePhotoRows: [SitePh] = [
+        SitePh("ricette.giallozafferano.it", "<div class='gz-content-recipe-step'><div class='gz-content-recipe-step-img-container'><picture class='gz-content-recipe-step-img gz-content-recipe-step-img-single' data-step='1'><img src='/images/a_1.jpg'></picture><picture class='gz-content-recipe-step-img' data-step='2'><img src='https://img.example/a_2.jpg'></picture></div><p>Lessate il riso <span class='num-step'>1</span>; mescolate <span class='num-step'>2</span>.</p></div><div class='gz-content-recipe-step'><p>Servite caldi.</p></div><div class='gz-content-recipe-step'><picture class='gz-content-recipe-step-img' data-step='3'><img src='/images/a_3.jpg'></picture><p>Friggete <span class='num-step'>3</span>!</p></div>", ["Lessate il riso 1 ; mescolate 2 .", "Servite caldi.", "Friggete 3 !"], [["https://www.ricette.giallozafferano.it/images/a_1.jpg", "https://img.example/a_2.jpg"], [], ["https://www.ricette.giallozafferano.it/images/a_3.jpg"]], [[1, 2], [], [3]]),
+        SitePh("ricette.giallozafferano.it", "<div class='gz-content-recipe-step'><div class='gz-content-recipe-step-img-container'><picture class='gz-content-recipe-step-img gz-content-recipe-step-img-single' data-step='1'><img src='/images/a_1.jpg'></picture><picture class='gz-content-recipe-step-img' data-step='2'><img src='https://img.example/a_2.jpg'></picture></div><p>Lessate il riso <span class='num-step'>1</span>; mescolate <span class='num-step'>3</span>.</p></div><div class='gz-content-recipe-step'><p>Servite caldi.</p></div><div class='gz-content-recipe-step'><picture class='gz-content-recipe-step-img' data-step='3'><img src='/images/a_3.jpg'></picture><p>Friggete <span class='num-step'>3</span>!</p></div>", ["Lessate il riso 1 ; mescolate 2 .", "Servite caldi.", "Friggete 3 !"], [], []),
+        SitePh("ricette.giallozafferano.it", "<div class='gz-content-recipe-step'><div class='gz-content-recipe-step-img-container'><picture class='gz-content-recipe-step-img gz-content-recipe-step-img-single' data-step='0'><img src='/images/a_1.jpg'></picture><picture class='gz-content-recipe-step-img' data-step='2'><img src='https://img.example/a_2.jpg'></picture></div><p>Lessate il riso <span class='num-step'>0</span>; mescolate <span class='num-step'>2</span>.</p></div><div class='gz-content-recipe-step'><p>Servite caldi.</p></div><div class='gz-content-recipe-step'><picture class='gz-content-recipe-step-img' data-step='3'><img src='/images/a_3.jpg'></picture><p>Friggete <span class='num-step'>3</span>!</p></div>", ["Lessate il riso 1 ; mescolate 2 .", "Servite caldi.", "Friggete 3 !"], [], []),
+        SitePh("ricette.giallozafferano.it", "<div class='gz-content-recipe-step'><div class='gz-content-recipe-step-img-container'><picture class='gz-content-recipe-step-img gz-content-recipe-step-img-single' data-step='1'><img src='/images/a_1.jpg'></picture><picture class='gz-content-recipe-step-img' data-step='2'><img src='https://img.example/a_2.jpg'></picture></div><p>Lessate il riso <span class='num-step'>1</span>; mescolate <span class='num-step'>2</span>.</p></div><div class='gz-content-recipe-step'><p>Servite caldi.</p></div><div class='gz-content-recipe-step'><picture class='gz-content-recipe-step-img' data-step='3'><img src='/images/a_3.jpg'></picture><p>Friggete <span class='num-step'>3</span>!</p></div>", ["Lessate il riso 1 ; mescolate 2 .", "Servite caldi."], [], []),
+        SitePh("ricette.giallozafferano.it", "<div class='gz-content-recipe-step'><div class='gz-content-recipe-step-img-container'><picture class='gz-content-recipe-step-img gz-content-recipe-step-img-single' data-step='1'><img src='/images/a_1.jpg'></picture><picture class='gz-content-recipe-step-img' data-step='2'><img src='https://img.example/a_2.jpg'></picture></div><p>Lessate il riso <span class='num-step'>1</span>; mescolate <span class='num-step'>2</span>.</p></div><div class='gz-content-recipe-step'><p>Servite caldi.</p></div><div class='gz-content-recipe-step'><picture class='gz-content-recipe-step-img' data-step='3'><img src='data:image/gif;base64,AA'></picture><p>Friggete <span class='num-step'>3</span>!</p></div>", ["Lessate il riso 1 ; mescolate 2 .", "Servite caldi.", "Friggete 3 !"], [], []),
+        SitePh("ricette.giallozafferano.it", "<div class='gz-content-recipe-step'><div class='gz-content-recipe-step-img-container'><picture class='gz-content-recipe-step-img gz-content-recipe-step-img-single' data-step='1'><img src='/images/a_1.jpg'></picture><picture class='gz-content-recipe-step-img' data-step='2'><img src='https://img.example/a_2.jpg'></picture></div><p>Lessate il riso <span class='num-step'>1</span>; mescolate <span class='num-step'>2</span>.</p></div><div class='gz-content-recipe-step'><p>Servite caldi.</p></div><div class='gz-content-recipe-step'><picture class='gz-content-recipe-step-img' data-step='3'><img src='/images/a_3.jpg'></picture><p>Friggete <span class='num-step'>3</span>!</p></div>", ["Lessate il riso 1 ; girate 2 .", "Servite caldi.", "Friggete 3 !"], [], []),
+        SitePh("ricette.giallozafferano.it", "<div class='gz-content-recipe-step'><p>Mescolate.</p></div>", ["Mescolate."], [], []),
+        SitePh("example.com", "<div class='gz-content-recipe-step'><div class='gz-content-recipe-step-img-container'><picture class='gz-content-recipe-step-img gz-content-recipe-step-img-single' data-step='1'><img src='/images/a_1.jpg'></picture><picture class='gz-content-recipe-step-img' data-step='2'><img src='https://img.example/a_2.jpg'></picture></div><p>Lessate il riso <span class='num-step'>1</span>; mescolate <span class='num-step'>2</span>.</p></div><div class='gz-content-recipe-step'><p>Servite caldi.</p></div><div class='gz-content-recipe-step'><picture class='gz-content-recipe-step-img' data-step='3'><img src='/images/a_3.jpg'></picture><p>Friggete <span class='num-step'>3</span>!</p></div>", ["Lessate il riso 1 ; mescolate 2 .", "Servite caldi.", "Friggete 3 !"], [], []),
     ]
 
     private static let articles: [Article] = [
@@ -2221,6 +2251,9 @@ final class DifferentialCorpusTests: XCTestCase {
         Parse("{\"@type\":\"Recipe\",\"name\":\"Tips and eggs\",\"recipeIngredient\":[\"1 egg\"],\"recipeInstructions\":[{\"@type\":\"HowToTip\",\"text\":\"A tip.\"}]}", "Tips and eggs", ["1 egg"], [], nil, tips: ["A tip."]),
         Parse("{\"@type\":\"Recipe\",\"name\":\"Ragu\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Abbreviated Recipe\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"All at once.\"},{\"@type\":\"HowToTip\",\"text\":\"Short tip.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Method\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Real step.\"},{\"@type\":\"HowToTip\",\"text\":\"Real tip.\"}]}]}", "Ragu", [], ["Real step."], nil, tips: ["Real tip."]),
         Parse("{\"@type\":\"Recipe\",\"name\":\"Ragu\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Summary\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Only step.\"},{\"@type\":\"HowToTip\",\"text\":\"Once.\"}]},{\"@type\":\"HowToSection\",\"name\":\"Method\",\"itemListElement\":[{\"@type\":\"HowToTip\",\"text\":\"Method tip.\"}]}]}", "Ragu", [], ["Only step."], nil, tips: ["Once.", "Method tip."]),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Bolo\",\"recipeIngredient\":[\"2 ovos\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"position\":0,\"itemListElement\":{\"@type\":\"HowToDirection\",\"text\":\"Preaqueça o forno a 180 ºC.\"}},{\"@type\":\"HowToStep\",\"itemListElement\":[{\"@type\":\"HowToDirection\",\"text\":\"Bata os ovos &amp;amp; o leite.\"},{\"@type\":\"HowToTip\",\"text\":\"Use um garfo.\"},\"Junte o <b>açúcar</b>.\",{\"@type\":\"HowToDirection\",\"text\":\" \"},[\"x\"],7]}]}", "Bolo", ["2 ovos"], ["Preaqueça o forno a 180 ºC.", "Bata os ovos & o leite. Junte o açúcar."], nil, tips: ["Use um garfo."]),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Own\",\"recipeIngredient\":[\"1 egg\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Fry.\",\"itemListElement\":{\"@type\":\"HowToDirection\",\"text\":\"Not this.\"}},{\"@type\":\"HowToStep\",\"name\":\"Serve.\",\"itemListElement\":{\"@type\":\"HowToTip\",\"text\":\"Warm plates.\"}},{\"@type\":\"HowToTip\",\"itemListElement\":{\"@type\":\"HowToDirection\",\"text\":\"Unread.\"}},{\"@type\":\"HowToStep\",\"text\":[\"\",\" \"],\"itemListElement\":{\"@type\":\"HowToDirection\",\"name\":\"Named direction.\"}}]}", "Own", ["1 egg"], ["Fry.", "Serve.", "Named direction."], nil, tips: ["Warm plates."]),
+        Parse("{\"@type\":\"Recipe\",\"name\":\"Sec\",\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Massa\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"itemListElement\":{\"@type\":\"HowToDirection\",\"text\":\"Misture.\"}}]},{\"@type\":\"HowToSection\",\"name\":\"Calda\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"itemListElement\":[]}]}]}", "Sec", [], ["Misture."], nil),
     ]
 
     // Step-photo rows (#433): see the header. Write only the block.
@@ -3411,6 +3444,15 @@ final class DifferentialCorpusTests: XCTestCase {
             let url = "https://www.\(row.host)/r"
             XCTAssertEqual(SiteRules.ingredients(html: row.html, url: url, lines: row.lines), row.refined, row.host)
             XCTAssertEqual(SiteRules.steps(url: url, steps: row.steps), row.refinedSteps, row.host)
+        }
+    }
+
+    func testPageStepPhotosMatchKotlin() {
+        for row in Self.sitePhotoRows {
+            let url = "https://www.\(row.host)/r"
+            let photos = StepPhotos.aligned(SiteRules.stepPhotos(html: row.html, url: url, steps: row.steps) ?? [], row.steps.count)
+            XCTAssertEqual(photos, row.photos, row.html)
+            XCTAssertEqual(StepPhotos.numbered(row.steps, photos).map { $0.map(\.number) }, row.numbers, row.html)
         }
     }
 

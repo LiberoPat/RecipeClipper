@@ -11,12 +11,19 @@ import org.jsoup.nodes.Element
  * only, read by both apps, so a site's quirk is a table edit, not code. [cards] are ingredient
  * cards any site may have (recipe plugins, #119); a site's own rules, by host without "www.",
  * come first. A rule can only add the group headings JSON-LD drops ([CardHeadings], and only
- * when the card lines up with JSON-LD's lines) or drop known noise from the end of the last
- * step. Pure. The iOS app's `SiteRules` is the same.
+ * when the card lines up with JSON-LD's lines, or a microdata recipe's, #437), drop known noise
+ * from the end of the last step, or the whole last step when it is only a pointer (#440), or add
+ * the step photos a page's step numbers point at ([PageStepPhotos], #438). Pure. The iOS app's
+ * `SiteRules` is the same.
  */
 internal object SiteRules {
 
-    class Site(val cards: List<CardHeadings.Card>, val stepNoise: List<String>)
+    class Site(
+        val cards: List<CardHeadings.Card>,
+        val stepNoise: List<String>,
+        val wholeStepNoise: List<String> = emptyList(),
+        val stepPhotos: PageStepPhotos.Card? = null,
+    )
 
     private val table = SharedTables.read("site-rules")
 
@@ -29,7 +36,12 @@ internal object SiteRules {
     private val sites: Map<String, Site> = table.getJSONObject("sites").let { sites ->
         sites.keys().asSequence().associateWith { host ->
             val site = sites.getJSONObject(host)
-            Site(cards(site.optJSONArray("cards")), SharedTables.strings(site.optJSONArray("stepNoise")))
+            Site(
+                cards(site.optJSONArray("cards")),
+                SharedTables.strings(site.optJSONArray("stepNoise")),
+                SharedTables.strings(site.optJSONArray("wholeStepNoise")),
+                site.optJSONObject("stepPhotos")?.let(::photoCard),
+            )
         }
     }
 
@@ -40,20 +52,33 @@ internal object SiteRules {
     fun ingredients(page: Element, url: String, lines: List<String>): List<String> =
         CardHeadings.refine(page, lines, site(url)?.cards.orEmpty() + cards)
 
-    /** [steps], without [url]'s site's known noise at the end of the last one. */
+    /**
+     * [steps], without [url]'s site's known noise at the end of the last one, then without a
+     * last step that holds one of its whole-step phrases (#440).
+     */
     fun steps(url: String, steps: List<String>): List<String> =
-        site(url)?.let { dropNoise(steps, it.stepNoise) } ?: steps
+        site(url)?.let { dropWholeStep(dropNoise(steps, it.stepNoise), it.wholeStepNoise) } ?: steps
+
+    /** The photos [url]'s site's page shows beside each of [steps] (#438), or null when it has none it proves. */
+    fun stepPhotos(page: Element, url: String, steps: List<String>): List<List<String>>? =
+        site(url)?.stepPhotos?.let { PageStepPhotos.read(page, steps, it) }
 
     /**
      * For the weekly site check: whether each of [url]'s site's rules still matches its page,
-     * named ("ingredients": a card lines up with JSON-LD's [lines]; "step noise": found in
-     * [steps]). Null when the site has no rules.
+     * named ("ingredients": a card lines up with the recipe's [lines]; "step noise": found in
+     * [steps]; "whole step noise": its last step dropped; "step photos": the page proves them).
+     * Null when the site has no rules.
      */
     fun check(page: Element, url: String, lines: List<String>, steps: List<String>): Map<String, Boolean>? {
         val site = site(url) ?: return null
         return buildMap {
             if (site.cards.isNotEmpty()) put("ingredients", CardHeadings.lineUp(page, lines, site.cards) != null)
             if (site.stepNoise.isNotEmpty()) put("step noise", dropNoise(steps, site.stepNoise) != steps)
+            if (site.wholeStepNoise.isNotEmpty()) {
+                val cut = dropNoise(steps, site.stepNoise)
+                put("whole step noise", dropWholeStep(cut, site.wholeStepNoise) != cut)
+            }
+            site.stepPhotos?.let { put("step photos", PageStepPhotos.read(page, steps, it) != null) }
         }
     }
 
@@ -71,6 +96,17 @@ internal object SiteRules {
             steps.size > 1 -> steps.dropLast(1)
             else -> steps
         }
+    }
+
+    /**
+     * [steps] without the last one when it holds one of [phrases], in any case (#440: a last step
+     * that only points at a video the app doesn't show), unless it is the only step. One step at
+     * most; the words of the others are never touched.
+     */
+    fun dropWholeStep(steps: List<String>, phrases: List<String>): List<String> {
+        if (steps.size < 2) return steps
+        val last = steps.last().lowercase()
+        return if (phrases.any { it.isNotEmpty() && last.contains(it.lowercase()) }) steps.dropLast(1) else steps
     }
 
     private fun noiseStart(step: String, phrase: String): Int? {
@@ -94,6 +130,14 @@ internal object SiteRules {
             heading = CardSelector(o.getString("heading")),
             title = selector("title"),
             amount = selector("amount"),
+            trustHeading = o.optBoolean("trustHeading", false),
         )
     }
+
+    private fun photoCard(o: JSONObject): PageStepPhotos.Card = PageStepPhotos.Card(
+        step = CardSelector(o.getString("step")),
+        photo = CardSelector(o.getString("photo")),
+        number = o.getString("number").ifEmpty { throw IllegalArgumentException("A stepPhotos card has no number") },
+        marker = CardSelector(o.getString("marker")),
+    )
 }

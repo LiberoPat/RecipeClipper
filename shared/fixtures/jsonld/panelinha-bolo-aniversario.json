@@ -1,0 +1,192 @@
+{
+ "@context": "https://schema.org/",
+ "@type": "Recipe",
+ "name": "Bolo de aniversário dos meus filhos",
+ "image": [
+  {
+   "@context": "http://schema.org",
+   "@type": "ImageObject",
+   "contentUrl": "https://i.panelinha.com.br/i1/bk-2823-bolo.webp",
+   "url": "https://i.panelinha.com.br/i1/bk-2823-bolo.webp",
+   "name": "Bolo de aniversário dos meus filhos",
+   "height": "760",
+   "width": "1140"
+  }
+ ],
+ "recipeIngredient": [
+  "400 g de chocolate meio amargo (50% a 60% de cacau)",
+  "1⅓ de xícara (chá) de creme de leite fresco (320 g)",
+  "2½ colheres (sopa) de mel",
+  "3 colheres (sopa) de manteiga em ponto pomada",
+  "2 xícaras (chá) de farinha de trigo",
+  "1 xícara (chá) de chocolate em pó",
+  "4 ovos",
+  "1 xícara (chá) de café coado",
+  "1 xícara (chá) de óleo",
+  "½ xícara (chá) de açúcar",
+  "½ xícara (chá) de açúcar mascavo",
+  "1 colher (sopa) de fermento em pó",
+  "manteiga , farinha e chocolate para untar e polvilhar a fôrma",
+  "⅓ de xícara (chá) de açúcar",
+  "⅓ de xícara (chá) de água",
+  "1 tira de casca de limão"
+ ],
+ "recipeInstructions": [
+  {
+   "@type": "HowToSection",
+   "position": 0,
+   "name": "PARA A GANACHE",
+   "itemListElement": [
+    {
+     "@type": "HowToStep",
+     "position": 0,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Comece o preparo pela ganache, assim enquanto o bolo assa e esfria ela atinge a textura ideal para recheio e cobertura. Na tábua, pique o chocolate em pedaços bem pequenos e transfira para uma tigela – quanto mais picado estiver, melhor para derreter. Se a manteiga estiver gelada leve para rodar no micro-ondas por alguns segundos para ficar na consistência de pomada."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 1,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Numa panela pequena, coloque o creme de leite fresco e leve ao fogo médio para aquecer, mexendo de vez em quando com uma colher. Atenção: não deixe o creme ferver. Quando surgirem as primeiras bolhas, mergulhe o dedo indicador e veja se suporta deixar por apenas 4 segundos. Se o creme de leite estiver muito quente, a gordura do chocolate e do creme se separam e a ganache fica com aspecto talhado."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 2,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Regue o creme de leite quente sobre o chocolate picado e deixe sem mexer por 2 minutos – assim todo o chocolate aquece por igual. Misture delicadamente com uma espátula de silicone até todo o chocolate derreter e formar um creme liso. Acrescente o mel, a manteiga e misture delicadamente até ficar brilhante."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 3,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Deixe a ganache esfriar completamente, em temperatura ambiente, por cerca de 1 hora antes de levar para a geladeira. Enquanto isso, aproveite para preparar o bolo. Assim que a ganache esfriar cubra com filme e leve para a geladeira por cerca de 40 minutos, até firmar e atingir a consistência ideal para rechear e cobrir o bolo."
+     }
+    }
+   ]
+  },
+  {
+   "@type": "HowToSection",
+   "position": 1,
+   "name": "PARA A MASSA",
+   "itemListElement": [
+    {
+     "@type": "HowToStep",
+     "position": 0,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Preaqueça o forno a 180 ºC (temperatura média). Numa tigela pequena, misture ½ colher (sopa) de farinha de trigo com 1 colher (sopa) de chocolate em pó, reserve."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 1,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Unte com manteiga uma fôrma redonda de 20 cm de diâmetro e 10 cm de altura – espalhe uma camada bem fina e uniforme. Corte um disco de papel-manteiga usando o fundo da fôrma como medida. Pressione com os dedos para colar o papel no fundo untado e unte novamente com manteiga sobre o papel. Polvilhe o fundo e laterais da fôrma com a mistura de farinha e chocolate, bata bem sobre a pia para retirar o excesso."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 2,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Numa tigela, misture a farinha com o chocolate em pó e reserve."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 3,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Numa tigela pequena, quebre um ovo de cada vez e transfira para o liquidificador – se um estiver estragado você não perde a receita. Junte o café e o óleo e bata apenas para misturar. Em seguida, junte os açúcares e bata bem até ficar liso."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 4,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Transfira a mistura líquida para uma tigela grande e acrescente a mistura de farinha, em etapas, passando pela peneira. Misture delicadamente com o batedor de arame para incorporar e a massa ficar lisa. Por último, misture o fermento em pó."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 5,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Coloque a massa na fôrma preparada e gire sobre a bancada para nivelar. Leve ao forno para assar por cerca de 50 minutos – para verificar, espete um palito, se sair limpo está pronto, caso contrário deixe assar por mais alguns minutos."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 6,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Retire do forno e deixe o bolo esfriar completamente antes de desenformar. Enquanto isso, prepare a calda."
+     }
+    }
+   ]
+  },
+  {
+   "@type": "HowToSection",
+   "position": 2,
+   "name": "PARA A CALDA",
+   "itemListElement": [
+    {
+     "@type": "HowToStep",
+     "position": 0,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Numa panela pequena, misture o açúcar com a água e a casca de limão. Leve ao fogo médio, quando ferver, deixe cozinhar por mais 1 minuto até que o açúcar tenha dissolvido completamente. Desligue o fogo e deixe esfriar."
+     }
+    }
+   ]
+  },
+  {
+   "@type": "HowToSection",
+   "position": 3,
+   "name": "PARA A MONTAGEM",
+   "itemListElement": [
+    {
+     "@type": "HowToStep",
+     "position": 0,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Assim que o bolo estiver frio, cubra a assadeira com um fundo removível de uma fôrma redonda (ele também vai ser usado para transportar as camadas de bolo cortadas, se preferir utilize um prato). Vire a fôrma de uma só vez para desenformar, descarte o papel manteiga e desvire o bolo sobre a tábua – assim a base, que é mais retinha, vai ser a parte de cima do bolo confeitado."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 1,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Com uma faca de pão, corte apenas a superfície do topo do bolo para nivelar. Corte o bolo ao meio, no sentido da largura, para formar duas camadas (se preferir, utilize uma linha grossa em vez da faca). Utilize novamente o fundo de uma fôrma para transferir a primeira camada de bolo para o prato de servir."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 2,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Com uma colher (ou pincel) umedeça as duas camadas de bolo com a calda. Com uma colher, espalhe cerca de ⅓ da ganache sobre a primeira camada do bolo, do centro para a borda – ela vai ser o recheio. Cubra com a segunda camada de bolo e pressione delicadamente para firmar."
+     }
+    },
+    {
+     "@type": "HowToStep",
+     "position": 3,
+     "itemListElement": {
+      "@type": "HowToDirection",
+      "text": "Para decorar: espalhe primeiro uma camada fina de ganache em todo o bolo e nivele bem com uma espátula de confeitar. Cubra o bolo com o restante da ganache para decorar: vale colocar de colheradas para ficar rústico, fazer desenhos com a ponta da espátula ou riscar com um garfo. Sirva a seguir ou deixe na geladeira até a hora da festa."
+     }
+    }
+   ]
+  }
+ ]
+}

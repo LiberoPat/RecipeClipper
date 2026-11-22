@@ -82,6 +82,102 @@ final class SiteRulesTests: XCTestCase {
         XCTAssertEqual(last, "Servir el puré de hablas y espolvorear cebollín finamente picado.")
     }
 
+    private let avena = "https://recetas.elperiodico.com/receta-de-galletas-de-avena-faciles-y-rapidas-67303.html"
+    private let smitten = "https://smittenkitchen.com/2013/11/green-bean-casserole-with-crispy-onions/"
+    private let arancini = "https://ricette.giallozafferano.it/Arancini-di-riso.html"
+    private let cuisineaz = "https://www.cuisineaz.com/recettes/baeckeoffe-de-noel-pas-cher-121205.aspx"
+
+    func testRecetasGratisLastStepThatOnlyPointsAtAVideoGoesWholeOnBothHosts() throws {
+        for url in [avena, avena.replacingOccurrences(of: "recetas.elperiodico.com", with: "www.recetasgratis.net")] {
+            let steps = try recipe("site-recetasgratis-galletas-avena", url).instructions
+            XCTAssertEqual(steps.count, 4, url)
+            XCTAssertTrue(try XCTUnwrap(steps.last).hasPrefix("Pasado ese tiempo, deja que las galletas de avena se enfríen"), url)
+        }
+        // Elsewhere the step stays.
+        XCTAssertEqual(try recipe("site-recetasgratis-galletas-avena", "https://example.com/galletas").instructions.count, 5)
+    }
+
+    func testAWholeStepPhraseDropsOnlyTheLastStepInAnyCaseAndNeverTheOnlyOne() {
+        let phrases = ["no te pierdas este VÍDEO"]
+        XCTAssertEqual(SiteRules.dropWholeStep(["Mezcla.", "Además, no te pierdas este vídeo:"], phrases: phrases), ["Mezcla."])
+        XCTAssertEqual(SiteRules.dropWholeStep(["No te pierdas este VÍDEO."], phrases: phrases), ["No te pierdas este VÍDEO."])
+        let middle = ["Mezcla y no te pierdas este VÍDEO.", "Hornea."]
+        XCTAssertEqual(SiteRules.dropWholeStep(middle, phrases: phrases), middle)
+        XCTAssertEqual(SiteRules.dropWholeStep(["a", "b"], phrases: [""]), ["a", "b"])
+    }
+
+    func testSmittenKitchensMicrodataRecipeGetsItsJetpackCardsGroupHeadings() throws {
+        let lines = try recipe("site-smittenkitchen-green-bean-casserole", smitten).ingredients
+        XCTAssertEqual(lines.filter { $0.hasSuffix(":") }, ["Crispy Onions:", "Mushroom Sauce:", "Assembly:"])
+        XCTAssertEqual(Array(lines.prefix(2)), ["Crispy Onions:", "2 medium yellow onions, halved and thinly sliced"])
+        XCTAssertEqual(Array(lines[7..<9]), ["Mushroom Sauce:", "3 tablespoons unsalted butter"])
+        XCTAssertEqual(lines.last, "1 to 1 1/2 pounds green beans, trimmed and halved (see note; I prefer more)")
+        XCTAssertEqual(lines.count, 19)
+        // The microdata's own reading is otherwise unchanged; on another host there are no headings.
+        XCTAssertEqual(try recipe("site-smittenkitchen-green-bean-casserole", "https://example.com/beans").ingredients.count, 16)
+    }
+
+    func testGialloZafferanosDtGroupNamesAreTrustedAsHeadings() throws {
+        let lines = try recipe("site-giallozafferano-arancini", arancini).ingredients
+        XCTAssertEqual(lines.filter { $0.hasSuffix(":") }, [
+            "Per il riso (per circa 12 arancini):", "per il ripieno al ragù:", "Per il ripieno al prosciutto:",
+            "Per la pastella:", "Per impanare e friggere:",
+        ])
+        XCTAssertEqual(Array(lines[20..<24]), ["Per la pastella:", "Farina 00 200 g", "Acqua 350 g", "Sale fino 1 pizzico"])
+        XCTAssertEqual(lines.count, 27)
+    }
+
+    func testCuisineAzsMarinadeGetsItsHeadingItsAmountsLeftOutOfTheMatch() throws {
+        let lines = try recipe("site-cuisineaz-baeckeoffe", cuisineaz).ingredients
+        XCTAssertEqual(Array(lines[9..<13]), ["Poivre", "Pour la marinade:", "1 Carotte(s)", "1 Oignon(s)"])
+        XCTAssertEqual(lines[0], "4 Magret de canard")
+        XCTAssertEqual(lines.count, 19)
+    }
+
+    func testAHeadingACardDoesntTrustIsStillRefused() throws {
+        let untrusted = CardHeadings.Card(
+            list: try XCTUnwrap(CardSelector("section.ingredients")), item: try XCTUnwrap(CardSelector("li.ingredient_item")),
+            heading: try XCTUnwrap(CardSelector("li.ingredient_step")), amount: CardSelector(".ingredient_qte")
+        )
+        let lines = try recipe("site-cuisineaz-baeckeoffe", "https://example.com/b").ingredients
+        XCTAssertEqual(CardHeadings.lineUp(html: try pageFixture("site-cuisineaz-baeckeoffe"), lines: lines, cards: [untrusted]), lines)
+    }
+
+    func testGialloZafferanosStepPhotosComeFromItsPageNumberedAsItsTextNumbersThem() throws {
+        let recipe = try recipe("site-giallozafferano-arancini", arancini)
+        XCTAssertEqual(recipe.instructions.count, 11)
+        // The text stays exactly as written, numbers and all.
+        XCTAssertTrue(recipe.instructions[0].contains("con il sale grosso 1 ; in questo modo"), recipe.instructions[0])
+        XCTAssertEqual(recipe.stepPhotos.map(\.count), Array(repeating: 3, count: 11))
+        XCTAssertEqual(recipe.stepPhotos[0][0], "https://ricette.giallozafferano.it/images/ricette/2/247/arancini-di-riso_1.jpg")
+        XCTAssertEqual(recipe.stepPhotos[10][2], "https://ricette.giallozafferano.it/images/ricette/2/247/arancini-di-riso_33.jpg")
+        let numbered = StepPhotos.numbered(recipe.instructions, recipe.stepPhotos)
+        XCTAssertEqual(numbered.flatMap { $0 }.map(\.number), Array(1...33))
+        XCTAssertEqual(numbered[10].map(\.number), [31, 32, 33])
+        // Elsewhere the page's photos aren't read.
+        XCTAssertEqual(try self.recipe("site-giallozafferano-arancini", "https://example.com/arancini").stepPhotos, [])
+    }
+
+    func testStepPhotosThePageDoesntProveAreNoneAndTheTextStaysAsWritten() throws {
+        let page = try pageFixture("site-giallozafferano-arancini")
+        func photos(_ html: String) throws -> [[String]] {
+            guard case .success(let recipe) = BlogRecipeSource.parse(html: html, url: arancini) else { throw NoRecipe(page: "arancini") }
+            return recipe.stepPhotos
+        }
+        func first(_ of: String, _ with: String) -> String {
+            guard let range = page.range(of: of) else { return page }
+            return page.replacingCharacters(in: range, with: with)
+        }
+        // A number in the text with no photo for it.
+        XCTAssertEqual(try photos(first(#"<span class="num-step">2</span>"#, #"<span class="num-step">7</span>"#)), [])
+        // A photo dropped: its number points at nothing.
+        XCTAssertEqual(try photos(first(#"data-step="5""#, #"data-step="x""#)), [])
+        // A step missing from the page.
+        XCTAssertEqual(try photos(first(#"<div class="gz-content-recipe-step">"#, "<div>")), [])
+        // A step whose words differ from JSON-LD's.
+        XCTAssertEqual(try photos(first("Mescolate di tanto in tanto", "Girate")), [])
+    }
+
     func testACardWithAnIngredientJsonLdLacksLeavesJsonLdsLinesAlone() throws {
         let caesar = "https://www.delish.com/cooking/recipe-ideas/a19695267/caesar-salad-recipe/"
         let lines = try recipe("site-delish-caesar-salad", caesar).ingredients

@@ -405,6 +405,42 @@ final class JsonLdRecipeParserTests: XCTestCase {
         XCTAssertEqual("4 – 6", recipe.yield)
     }
 
+    // MARK: - #436, a HowToStep's directions in itemListElement
+
+    func testPanelinhasStepsAreEachOneHowToDirectionReadAsTheStep() throws {
+        let steps = try fixture("panelinha-bolo-de-banana").instructions
+        XCTAssertEqual(steps.count, 7)
+        XCTAssertEqual(steps[0], "Preaqueça o forno a 180 ºC (temperatura média).")
+        XCTAssertEqual(steps[6], "Retire o bolo do forno e deixe esfriar em temperatura ambiente antes de desenformar. Sirva a seguir.")
+        // Inside HowToSections too, flattened as any section's steps are.
+        let cake = try fixture("panelinha-bolo-aniversario").instructions
+        XCTAssertEqual(cake.count, 16)
+        XCTAssertTrue(cake[0].hasPrefix("Comece o preparo pela ganache"), cake[0])
+        XCTAssertTrue(cake[15].hasPrefix("Para decorar:"), cake[15])
+    }
+
+    func testAStepsDirectionsJoinInOrderAHowToTipAmongThemIsATipAndTheStepsOwnTextWins() throws {
+        let block = """
+        {"@type": "Recipe", "name": "R", "recipeIngredient": ["1 egg"], "recipeInstructions": [
+          {"@type": "HowToStep", "itemListElement": [
+            {"@type": "HowToDirection", "text": "Beat the <b>egg</b>."},
+            {"@type": "HowToTip", "text": "A fork will do."},
+            "Add salt.",
+            {"@type": "HowToDirection", "text": "  "},
+            {"@type": "HowToDirection", "name": "Rest it."},
+            ["nested"], 12
+          ]},
+          {"@type": "HowToStep", "text": "Fry.", "itemListElement": {"@type": "HowToDirection", "text": "Not this."}},
+          {"@type": "HowToStep", "name": "Serve.", "itemListElement": {"@type": "HowToTip", "text": "Warm plates."}},
+          {"@type": "HowToStep", "name": "Named only."},
+          {"@type": "HowToTip", "itemListElement": {"@type": "HowToDirection", "text": "A tip's own list is not read."}}
+        ]}
+        """
+        let recipe = try XCTUnwrap(JsonLdRecipeParser.parse([block], sourceUrl: sourceUrl))
+        XCTAssertEqual(recipe.instructions, ["Beat the egg. Add salt. Rest it.", "Fry.", "Serve.", "Named only."])
+        XCTAssertEqual(recipe.tips, ["A fork will do.", "Warm plates."])
+    }
+
     func testAStepWhoseTextIsAnArrayOfStringsIsOneStepItsPartsJoinedAtCommas() throws {
         let steps = try fixture("einfachbacken-lauchkuchen").instructions
         XCTAssertEqual(3, steps.count)
