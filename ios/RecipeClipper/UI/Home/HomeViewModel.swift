@@ -19,6 +19,9 @@ struct HomeUiState: Equatable {
     /// Today's next meal from Week (#402), shown in the resume card's place while nothing is
     /// being cooked (`resume` nil); nil when nothing is left to cook today.
     var today: TodayCard?
+    /// The Today card has a close button (#448, the `todayCardClose` flag): it hides the card for the
+    /// rest of the day. Never on the mid-cook card.
+    var todayClosable = false
     /// The Recipes and Lists rows' counts (#286); nil until known.
     var recipeCount: Int?
     var listCount: Int?
@@ -153,6 +156,14 @@ final class HomeViewModel {
     // Today's local time (#402); a test pins it.
     @ObservationIgnored private let zone: TimeZone
     @ObservationIgnored private var todayCancellable: AnyCancellable?
+    // "Show today's meal" and the day the Today card was closed (#448); nil counts neither.
+    @ObservationIgnored private let preferences: AppPreferences?
+    // The `todayCardClose` flag (#448), read as it stands; nil reads it as off, the card as before.
+    @ObservationIgnored private let flags: FeatureFlags?
+    @ObservationIgnored private var todaySettings: AppSettings?
+    @ObservationIgnored private var todaySettingsCancellable: AnyCancellable?
+    // Today's card as the plan has it, before the cook's choices (#448).
+    @ObservationIgnored private var plannedToday: TodayCard?
     @ObservationIgnored private var followedMoment: Moment?
     @ObservationIgnored private var dayTask: Task<Void, Never>?
     // The resume card (#286): the latest recipe followed as its cook progress is saved.
@@ -168,9 +179,12 @@ final class HomeViewModel {
         repository: RecipeRepository, backups: BackupRepository? = nil, files: BackupFiles? = nil,
         lists: ListRepository? = nil, clock: Clock = SystemClock(), sleep: @escaping Sleep = Sleeps.real,
         pasted: PastedTextRouter? = nil, mealPlan: MealPlanRepository? = nil, cooked: CookedPhotoRepository? = nil,
-        zone: TimeZone = .current
+        zone: TimeZone = .current, preferences: AppPreferences? = nil, flags: FeatureFlags? = nil
     ) {
         self.zone = zone
+        self.preferences = preferences
+        self.flags = flags
+        todaySettings = preferences?.current
         self.pasted = pasted
         self.mealPlan = mealPlan
         self.cooked = cooked
@@ -220,6 +234,13 @@ final class HomeViewModel {
     /// ends (and within a minute at most, if the clock or zone changed under it).
     private func followToday() {
         guard mealPlan != nil else { return }
+        todaySettingsCancellable = preferences?.settings
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] settings in
+                guard let self else { return }
+                todaySettings = settings
+                showToday()
+            }
         follow(moment().0)
         dayTask = Task { [weak self, sleep] in
             while !Task.isCancelled {
@@ -251,9 +272,34 @@ final class HomeViewModel {
         }
         .receive(on: DispatchQueue.main)
         .sink { [weak self] card in
-            guard let self, followedMoment == moment, uiState.today != card else { return }
-            uiState.today = card
+            guard let self, followedMoment == moment else { return }
+            plannedToday = card
+            showToday()
         }
+    }
+
+    /// Today's card as shown: the plan's, unless the cook closed it today or turned it off
+    /// (`TodayCardChoice`, #448). The flag is read as it stands each time.
+    private func showToday() {
+        let closable = flags?.isOn(.todayCardClose) ?? false
+        let shows = TodayCardChoice.shows(
+            closable: closable, showSetting: todaySettings?.showTodayCard ?? true,
+            dismissedDay: todaySettings?.todayCardDismissedDay, today: followedMoment?.day ?? moment().0.day
+        )
+        let card = shows ? plannedToday : nil
+        if uiState.today != card { uiState.today = card }
+        if uiState.todayClosable != closable { uiState.todayClosable = closable }
+    }
+
+    /// The Today card's close button (#448): the card goes for the rest of today (the clock's local
+    /// day), and comes back tomorrow. Nothing to undo, so no snackbar.
+    func onCloseToday() {
+        guard let preferences else { return }
+        let day = moment().0.day
+        preferences.todayCardDismissedDay = day
+        // At once, not only when the settings publisher echoes it back.
+        todaySettings?.todayCardDismissedDay = day
+        showToday()
     }
 
     /// The "Ask an AI" tile (#351): opens its sheet.

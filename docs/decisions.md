@@ -3127,6 +3127,47 @@ whose views strip carries the Lists card that Home's Lists row was the only way 
 - Not changed: variation D (a cooking bar docked above the tab bar on every tab) is filed separately; the
   ongoing notification and Live Activity still show a timer outside the app.
 
+## Closing the Today card (#448, 2026-11-21)
+
+The owner's request (2026-11-21): "the announcement of what to cook today should be optionally able
+to close, maybe have a setting to make that optional." Behind **`todayCardClose`** (on by default in
+debug and release, both platforms); off, no close button and no switch, and the card is #402's.
+
+- **A close button on the Today card** (#402's card: the compact one above search with `libraryFirst`,
+  Home's with it off): a small muted × on a disc of the card's own colour, in the card's top right
+  corner (over Home's photo; beside the thumbnail and name on the compact card), a 40 dp / 44 pt touch
+  target, labelled "Hide today's meal until tomorrow" for TalkBack and VoiceOver. A tap hides the card
+  **for the rest of that local day**; it returns at midnight, whatever is planned. **Per day, not per
+  meal**: the card's next meal after a window ends stays hidden too. No snackbar (nothing to undo; a
+  wrong tap costs a day's card, and the Plan tab still has the meal).
+- **The mid-cook Continue cooking card is never closable** and ignores the close and the switch: it
+  reflects a cook in progress, and is how the cook gets back to it.
+- **"Show today's meal"**, a switch, on by default, in Settings' **Plan** section (`settings/week`),
+  above the reminders: "Today's planned meal at the top of Recipes, with Start cooking. Closed, it comes
+  back tomorrow." (true with `libraryFirst` off too: Home is the Recipes tab's first screen). Off, the
+  Today card never shows; on again, it shows unless closed today. The Plan section now shows with
+  `eveningReminders` **or** `todayCardClose` (its reminder rows only with the first, the switch only with
+  the second; the index's "Reminders on/off" value only with the reminders), and the Plan tab's "Plan
+  settings" link (#412, `planSettingsLink`) follows the section.
+- **Keys** (`unit_preferences` / `UserDefaults`, the same on both): `show_today_card` (a boolean, on
+  when unset) and `today_card_dismissed_day` (the local epoch day of the last close, a Long / an
+  integer; absent when never closed). Both are in `unit_preferences.xml`, so backed up already.
+- **One pure rule**, `TodayCardChoice.shows(closable, showSetting, dismissedDay, today)` (core
+  `data/model`, iOS `Data/Model`, line for line): with the flag off it is always true; otherwise the
+  switch must be on and the close not dated today (a close dated another day, a clock moved back
+  included, counts for nothing). `HomeViewModel` applies it to #402's `TodayCard.of` with the day of
+  its injected clock, and follows `AppPreferences.settings`, so the switch and a close take effect at
+  once and the card comes back when the day turns over. iOS reads the flag as it stands each time the
+  plan or the settings change.
+- **Not changed:** the Tonight widget and the evening and Tonight reminders (#309, #397) read the plan
+  themselves, not this card, and ignore both choices: the switch is about the card only.
+- **Tests.** `TodayCardChoiceTest` / `TodayCardChoiceTests` (the rule), `TodayCardCloseViewModelTest` /
+  `TodayCardCloseTests` (closed today hidden, yesterday shown, the switch, mid-cook untouched, the flag
+  off as before, the Settings switch and section), `ShowTodayCardSettingsTest` (the switch on its page),
+  a tap on the close in `LibraryFirstScreenTest` and `HomeScreenTest`, and
+  `LibraryFirstUITests.testTheTodayCardsCloseHidesItForTheRestOfTheDay` (closed, and still closed on a
+  relaunch).
+
 ## The Recipes screen (#102)
 
 - **Owner's decision:** a Paprika-style Recipes screen *replaces* History
@@ -7329,8 +7370,8 @@ extension writes to as well.
 **Sections, in order:** Units (with "Also convert liquids" for Ounces only), Oven temperature
 (independent of units, default As written), Appearance ("Dark while cooking"), Steps
 ("Amounts in steps", off, #101; "Chef mode", behind the `chefMode` flag, #100),
-Week (the evening-before and Tonight reminders with their times, behind the `eveningReminders`
-flag, #397),
+Week (shown as Plan: "Show today's meal", behind `todayCardClose`, #448, then the evening-before and
+Tonight reminders with their times, behind the `eveningReminders` flag, #397),
 Pantry ("Expiry reminders"; asks for notifications when turned on,
 never at launch), Your recipes (export, import and the automatic copy, #150), Help ("Show
 tips again", #190), and Unlimited recipes (only with `freeTier`: "Unlock for <store price>"
@@ -7359,10 +7400,10 @@ the same on both): `unit_system`, `convert_liquids`, `temperature_unit`,
 `dark_while_cooking`, `expiry_reminders`, `evening_reminder`, `evening_reminder_minute`,
 `tonight_reminder`, `tonight_reminder_minute` (#397), `chef_mode`, `amounts_in_steps`,
 `recipe_sort` (the Recipes screen's sort), `recipes_layout` (its rows or photo grid, #380: `ROWS` or
-`GRID`, an unknown name reads as `ROWS`), the tour's `tour_sample_added` (#151) and
-
-`recipe_sort` (the Recipes screen's sort), `plan_my_week_meals` (#392: the meal types ticked in
-Plan my week, `MealType.key`s comma-joined), the tour's `tour_sample_added` (#151) and
+`GRID`, an unknown name reads as `ROWS`), `plan_my_week_meals` (#392: the meal types ticked in
+Plan my week, `MealType.key`s comma-joined), `show_today_card` and `today_card_dismissed_day`
+(#448: "Show today's meal", and the local epoch day the Today card was last closed), the tour's
+`tour_sample_added` (#151) and
 `tooltip_<id>` (#190; #151's `tour_welcome` and `tour_tip_*` are ignored), and `pantry_use_up` (#147: recipe id to when
 its sheet was settled, pruned to 12 h on each write), each enum stored by name, an
 unknown one read as the default. `AppPreferences.settings` (a Flow over the change

@@ -27,6 +27,9 @@ final class SettingsWeekRemindersTests: XCTestCase {
         let vm = vm()
         XCTAssertTrue(vm.sections.contains(.week))
         flags.set(.eveningReminders, false)
+        // Still there for "Show today's meal" (#448), until that flag goes too.
+        XCTAssertTrue(vm.sections.contains(.week))
+        flags.set(.todayCardClose, false)
         XCTAssertFalse(vm.sections.contains(.week))
     }
 

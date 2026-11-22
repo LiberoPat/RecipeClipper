@@ -31,6 +31,8 @@ struct SettingsUiState: Equatable {
     var weekRemindersBlocked: Bool { weekRemindersDenied || (!notificationsAllowed && (eveningReminder || tonightReminder)) }
     /// Ingredient amounts inside steps (#101).
     var amountsInSteps = false
+    /// "Show today's meal" (#448): the Today card at the top of Recipes or Home.
+    var showTodayCard = true
     /// e.g. "1.0 (1)", shown at the foot; tapping it `SettingsViewModel.developerTaps` times opens
     /// Developer settings (#87).
     var appVersion = ""
@@ -240,6 +242,7 @@ final class SettingsViewModel {
             tonightReminder: settings.tonightReminder,
             tonightReminderMinute: settings.tonightReminderMinute,
             amountsInSteps: settings.amountsInSteps,
+            showTodayCard: settings.showTodayCard,
             chefMode: settings.chefMode
         )
     }
@@ -247,7 +250,7 @@ final class SettingsViewModel {
     /// The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag, Pro only with `proUnlock`.
     var sections: [SettingsSection] {
         SettingsSection.allCases.filter {
-            ($0 != .unlimited || unlockRow != nil) && ($0 != .week || showsWeekReminders) && ($0 != .pro || showsPro)
+            ($0 != .unlimited || unlockRow != nil) && ($0 != .week || showsWeekReminders || showsTodayCardSetting) && ($0 != .pro || showsPro)
         }
     }
 
@@ -270,8 +273,17 @@ final class SettingsViewModel {
         uiState.weekRemindersDenied || (!uiState.notificationsAllowed && (eveningReminderOn || tonightReminderOn))
     }
 
-    /// The Week section (#397): only with the `eveningReminders` flag on.
+    /// The Week section's reminders (#397): only with the `eveningReminders` flag on.
     var showsWeekReminders: Bool { flags?.isOn(.eveningReminders) ?? false }
+
+    /// The Week section's "Show today's meal" switch (#448): only with the `todayCardClose` flag on.
+    var showsTodayCardSetting: Bool { flags?.isOn(.todayCardClose) ?? false }
+
+    /// "Show today's meal" (#448): off, the Today card never shows; on again, it shows unless closed today.
+    func onShowTodayCardChange(_ enabled: Bool) {
+        preferences.showTodayCard = enabled
+        uiState.showTodayCard = enabled
+    }
 
     /// A Week reminder's switch (#397), like the expiry reminders': on asks for notification
     /// permission first (only here, never on launch); refused, the switch stays off and the page

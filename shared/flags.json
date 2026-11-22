@@ -233,6 +233,12 @@
       "description": "Recipes written inside an article: on a page with no JSON-LD or microdata recipe, each list in the article whose items are mostly amounts (at least 3, more than half), with its method in paragraphs or an ordered list up to the next heading, is a recipe (at most 6, named by the heading above it). One opens the editor (Check the recipe) straight away in the import's place, filled in as written; several open a chooser first. The same past Cloudflare's check in the clip view. Saved only on Save, as a clip under the page's link (a later recipe adds pith_recipe=<n>). Never from prose alone, never saved unchecked. Off, such a page ends at No recipe found as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 435
+    },
+    {
+      "key": "todayCardClose",
+      "description": "Close the Today card (#448): the Today card (#402) at the top of Recipes (or Home) gains a small close button that hides it for the rest of the day (the local date is kept in settings, today_card_dismissed_day; it returns the next day), and Settings' Plan section a switch, Show today's meal (show_today_card, on by default), that hides it altogether. The mid-cook Continue cooking card is never closable and ignores both. Off, no close button and no switch: the card is as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 448
     }
   ]
 }

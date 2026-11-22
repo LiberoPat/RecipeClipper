@@ -47,6 +47,10 @@ class SettingsWeekRemindersTest {
 
         flagStore.setOverride(Flag.EVENING_REMINDERS.key, false)
         advanceUntilIdle()
+        // Still there for "Show today's meal" (#448), until that flag goes too.
+        assertTrue(SettingsSection.WEEK in vm.uiState.value.sections)
+        flagStore.setOverride(Flag.TODAY_CARD_CLOSE.key, false)
+        advanceUntilIdle()
         assertFalse(SettingsSection.WEEK in vm.uiState.value.sections)
     }
 

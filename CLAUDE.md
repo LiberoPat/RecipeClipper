@@ -228,7 +228,8 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   meals, in the meal types' order, not yet cooked (no cooking entry dated today; a
   finished run records one) and in its window (`MealWindows`: breakfast to 11:00,
   lunch to 15:00, dinner and snack all day, own types always), with Start cooking, the rest on a line under it; a note
-  shows its text; nothing left, no card. Off, always the most recent recipe. Then
+  shows its text; nothing left, no card (a × hides it until tomorrow, a Plan setting turns it
+  off: #448, `todayCardClose`; never Continue cooking). Off, always the most recent recipe. Then
   Paste a link, Scan a recipe (#226) and Type a recipe (#29) tiles, then a full-width Ask an AI tile (#351); one Recipes
   row with its count (a Lists row too only with `oneCookbook` off); the
   Settings gear. Empty sections hide. **No "Saved" section and no "Recently

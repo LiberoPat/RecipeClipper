@@ -92,7 +92,9 @@ enum class Flag(val key: String) {
     /** Step photos (#433): a thumbnail beside each step the source gives photos for, a full-screen viewer on tap, and a smaller one in cook mode. */
     STEP_PHOTOS("stepPhotos"),
     /** A recipe written inside an article (#435): a list of amounts and the method after it, offered in the editor to check. */
-    ARTICLE_RECIPES("articleRecipes");
+    ARTICLE_RECIPES("articleRecipes"),
+    /** Close the Today card (#448): a close button hides it for the rest of the day, and Settings' Plan section can hide it altogether. */
+    TODAY_CARD_CLOSE("todayCardClose");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }
