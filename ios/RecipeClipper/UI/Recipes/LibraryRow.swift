@@ -16,6 +16,9 @@ struct LibraryRow: View {
     var selecting = false
     var selected = false
 
+    /// The bookmark's width, filled or outlined: the button's touch target, so the glyph never shifts.
+    static let bookmarkSlot: CGFloat = 44
+
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -31,7 +34,7 @@ struct LibraryRow: View {
                     Image(systemName: "bookmark")
                         .foregroundStyle(Palette.muted)
                         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                        .frame(minWidth: 44, minHeight: 44)
+                        .frame(minWidth: Self.bookmarkSlot, minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -51,7 +54,8 @@ struct LibraryRow: View {
                 : AnyLayout(HStackLayout(spacing: 14))
             layout {
                 RecipeThumbnail(url: recipe.imageUrl, recipe: recipe.noPhoto)
-                HStack(spacing: 12) {
+                // No spacing: the bookmark's own slot (below) is the gap, as beside the button.
+                HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(recipe.title)
                             .textStyle(Typography.bodyLargeBold)
@@ -68,6 +72,9 @@ struct LibraryRow: View {
                         Image(systemName: "bookmark.fill")
                             .foregroundStyle(Palette.accentText)
                             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                            // The outlined bookmark's width, glyph centred, so saving a recipe never
+                            // moves the glyph or the text beside it. Not a button: a tap opens the recipe.
+                            .frame(width: Self.bookmarkSlot)
                             .accessibilityLabel(Strings.inAList)
                     }
                 }

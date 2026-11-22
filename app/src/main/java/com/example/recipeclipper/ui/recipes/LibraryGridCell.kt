@@ -75,7 +75,8 @@ internal fun LibraryGridCell(
                 }
             }
             if (recipe.isSaved) {
-                Badge(Modifier.align(Alignment.TopEnd).padding(6.dp)) {
+                // Inset 8dp: where the 48dp button's centred badge sits below, so saving doesn't move it.
+                Badge(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
                     Icon(
                         painterResource(R.drawable.ic_bookmark),
                         contentDescription = stringResource(R.string.cd_in_a_list),

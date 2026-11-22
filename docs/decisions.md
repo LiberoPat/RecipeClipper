@@ -3403,7 +3403,10 @@ off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, 
   See all together (2026-11-19: the shelf repeated Recipes' top five).
 - **A recipe in no list has an outlined bookmark** on its row (not in a view's header), opening the
   existing save-to-list sheet (checkboxes that write at once, "+ New list" inline); the recipe then
-  leaves Not in a list by itself.
+  leaves Not in a list by itself. **The filled and the outlined bookmark share one slot** (48 dp on
+  Android, 44 pt on iOS, glyph centred; a grid cell's badge too), so saving a recipe never moves the
+  glyph or the title's column ("the bookmark moves to the right when it turns red", 2026-11-22);
+  `BookmarkSlotTest` and `BookmarkSlotTests` pin it. The filled one is still not a button.
 - Unchanged and still true: the migration count (none: counts, views and the cap are queries), the
   `freeTier` flag's default (off until the store products exist), the unlock's seams and cached state.
 
