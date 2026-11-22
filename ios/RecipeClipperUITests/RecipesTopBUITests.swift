@@ -51,6 +51,40 @@ final class RecipesTopBUITests: RecipeUITestCase {
         require(more, "the title row again")
     }
 
+    // MARK: The pinned bar (#449, the owner's follow-up)
+
+    private var pinnedBar: XCUIElement { app.descendants(matching: .any)["library.pinnedBar"] }
+
+    private func scrollDown() {
+        for _ in 0..<4 { app.swipeUp(velocity: .fast) }
+    }
+
+    func testDownTheListABarPinsWithThePlusAndTheMenusSelectAndSettings() {
+        launch(.walkthrough, flags: on)
+        assertAbsent(pinnedBar, "no pinned bar at rest")
+
+        scrollDown()
+        require(pinnedBar, "the pinned bar")
+        require(app.buttons["library.add.pinned"], "its +")
+
+        require(app.buttons["library.more.pinned"]).tap()
+        require(app.buttons["Settings"], "Settings in the menu").tap()
+        require(settingsRow("oven-temperature"), "Settings")
+        back()
+
+        require(app.buttons["library.more.pinned"], "the bar, still pinned").tap()
+        require(app.buttons["Select"], "Select in the menu").tap()
+        require(app.descendants(matching: .any)["recipes.selectedCount"], "selecting")
+        assertAbsent(pinnedBar, "selecting has its own header")
+        require(app.buttons["recipes.selection.done"]).tap()
+    }
+
+    func testWithTheFlagOffNothingPins() {
+        launch(.walkthrough, flags: ["libraryFirst", "recipeFilters", "multiSelect"])
+        scrollDown()
+        assertAbsent(pinnedBar, "no pinned bar with the flag off")
+    }
+
     // MARK: The views shelf
 
     func testTheShelfSitsAboveSearchAndACellNavigates() {

@@ -105,10 +105,15 @@ internal fun LibraryTopActions(onOpenSettings: () -> Unit, onAdd: () -> Unit) {
 
 /** The paprika + (#375): the Add a recipe sheet. The tour's tooltip points at it. */
 @Composable
-internal fun LibraryAddButton(onAdd: () -> Unit) {
+internal fun LibraryAddButton(
+    onAdd: () -> Unit,
+    /** The pinned bar's + (#449) is the same button without the tour's anchor, which belongs to the title row's. */
+    anchor: Boolean = true,
+    tag: String = "libraryAdd"
+) {
     IconButton(
         onClick = onAdd,
-        modifier = Modifier.padding(start = 2.dp).tooltipAnchor(Tooltip.HOME_LINK).testTag("libraryAdd")
+        modifier = Modifier.padding(start = 2.dp).then(if (anchor) Modifier.tooltipAnchor(Tooltip.HOME_LINK) else Modifier).testTag(tag)
     ) {
         Box(
             contentAlignment = Alignment.Center,

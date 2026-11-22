@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.model.PlanDays
@@ -89,7 +90,9 @@ class RecipesTopBScreenTest {
 
     private lateinit var library: RecipesViewModel
 
-    private fun show(topB: Boolean = true): Taps {
+    private fun show(topB: Boolean = true): Taps = showAt("Quick Soup", topB)
+
+    private fun showAt(firstRow: String, topB: Boolean = true): Taps {
         val taps = Taps()
         val backup = AutoBackupFixture()
         val fixtures = PastedTextFixtures()
@@ -125,7 +128,7 @@ class RecipesTopBScreenTest {
                 )
             )
         }
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Quick Soup").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(firstRow).fetchSemanticsNodes().isNotEmpty() }
         return taps
     }
 
@@ -174,6 +177,55 @@ class RecipesTopBScreenTest {
         compose.onNodeWithTag("doneSelecting").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("libraryMore").assertIsDisplayed()
+    }
+
+    // --- The pinned bar (#449, the owner's follow-up) ---
+
+    private fun aLongLibrary() {
+        val many = (1L..30L).map { RecipeSummary(it, "Recipe $it", null, "20m", it, isSaved = false, language = "en") }
+        repository.history.value = many
+        repository.recent.value = many
+    }
+
+    @Test
+    fun downTheListABarPinsWithThePlusAndTheMenusSelectAndSettings() {
+        aLongLibrary()
+        val taps = showAt("Recipe 1")
+        // At rest: the large title, no pinned bar.
+        compose.onAllNodesWithTag("libraryPinnedBar").assertCountEquals(0)
+
+        compose.onNodeWithTag("recipesList").performScrollToIndex(25)
+        compose.waitForIdle()
+        compose.onNodeWithTag("libraryPinnedBar").assertIsDisplayed()
+        compose.onNodeWithTag("libraryAddPinned").assertIsDisplayed()
+
+        compose.onNodeWithTag("libraryMorePinned").performClick()
+        compose.onNodeWithTag("librarySettings").performClick()
+        assertEquals(1, taps.settings)
+
+        compose.onNodeWithTag("libraryMorePinned").performClick()
+        compose.onNodeWithTag("librarySelect").performClick()
+        compose.waitForIdle()
+        assertTrue(library.uiState.value.selecting)
+        // Selecting has its own bar; the pinned one steps aside.
+        compose.onAllNodesWithTag("libraryPinnedBar").assertCountEquals(0)
+        compose.onNodeWithTag("selectedCount").assertIsDisplayed()
+
+        // Back at the top, the bar goes again.
+        compose.onNodeWithTag("doneSelecting").performClick()
+        compose.onNodeWithTag("recipesList").performScrollToIndex(0)
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("libraryPinnedBar").assertCountEquals(0)
+    }
+
+    @Test
+    fun withTheFlagOffNothingPins() {
+        aLongLibrary()
+        showAt("Recipe 1", topB = false)
+
+        compose.onNodeWithTag("recipesList").performScrollToIndex(25)
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("libraryPinnedBar").assertCountEquals(0)
     }
 
     // --- The views shelf ---

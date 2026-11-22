@@ -97,10 +97,10 @@ internal fun LibraryTitleRowB(onAdd: () -> Unit, onSelect: (() -> Unit)?, onOpen
 }
 
 @Composable
-private fun LibraryMoreMenu(onSelect: (() -> Unit)?, onOpenSettings: () -> Unit) {
+private fun LibraryMoreMenu(onSelect: (() -> Unit)?, onOpenSettings: () -> Unit, tag: String = "libraryMore") {
     var open by rememberSaveable { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }, modifier = Modifier.testTag("libraryMore")) {
+        IconButton(onClick = { open = true }, modifier = Modifier.testTag(tag)) {
             Icon(
                 Icons.Default.MoreVert,
                 contentDescription = stringResource(R.string.cd_more_options),
@@ -123,6 +123,31 @@ private fun LibraryMoreMenu(onSelect: (() -> Unit)?, onOpenSettings: () -> Unit)
                 modifier = Modifier.testTag("librarySettings")
             )
         }
+    }
+}
+
+/**
+ * The slim bar pinned at the top once the large title has scrolled away (#449, the owner's follow-up: Select
+ * and Settings must stay in reach down the list): a small "Recipes", the + and the same ⋮ menu, on the ground
+ * with a hairline under it. It lies over the list rather than pushing it, so nothing jumps as it appears; the
+ * status bar above it is the Scaffold's ground, so the bar reads as edge to edge.
+ */
+@Composable
+internal fun PinnedTitleBar(onAdd: () -> Unit, onSelect: (() -> Unit)?, onOpenSettings: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).testTag("libraryPinnedBar")) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 20.dp, end = 12.dp)
+        ) {
+            Text(
+                stringResource(R.string.recipes_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f).semantics { heading() }
+            )
+            LibraryAddButton(onAdd, anchor = false, tag = "libraryAddPinned")
+            LibraryMoreMenu(onSelect, onOpenSettings, tag = "libraryMorePinned")
+        }
+        Hairline()
     }
 }
 

@@ -48,6 +48,8 @@ struct RecipesScreen: View {
     @State private var askAiVM: AskAiViewModel?
     /// Design B's filter sheet (#449).
     @State private var filterSheetOpen = false
+    /// Design B (#449): the large title has scrolled out of sight, so the slim bar pins at the top.
+    @State private var titleGone = false
     /// What a row's menu has open: the save-to-list, plan and share sheets.
     @State private var rowMenu = RowMenuPresenter()
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
@@ -75,6 +77,20 @@ struct RecipesScreen: View {
     var body: some View {
         let state = vm.uiState
         container(state)
+        // Design B's pinned bar (#449): over the list, once the large title has gone by; not while selecting,
+        // which has its own header.
+        .overlay(alignment: .top) {
+            if styleB, titleGone, !state.selecting, let root = libraryRoot {
+                PinnedTitleBar(
+                    onAdd: { addSheetOpen = true },
+                    onSelect: multiSelect && state.canSelect ? { vm.onStartSelecting() } : nil,
+                    onOpenSettings: root.onOpenSettings,
+                    inset: sideInset
+                )
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: titleGone)
         .listStyle(.plain)
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
             sideInset = ReadableWidth.inset(in: width)
@@ -355,6 +371,9 @@ struct RecipesScreen: View {
                     onSelect: multiSelect && state.canSelect ? { vm.onStartSelecting() } : nil,
                     onOpenSettings: root.onOpenSettings
                 )
+                // Gone once its foot passes the top of the scroll view; reported as it crosses, so a row the
+                // list recycles off screen keeps the last answer.
+                .onGeometryChange(for: Bool.self, of: { $0.frame(in: .scrollView).maxY < 0 }) { titleGone = $0 }
                 LibraryCard(state: root.vm.uiState, root: root, onOpenRecipe: onOpenRecipe, styleB: true)
                 if emptyLibrary {
                     EmptyLibraryView(

@@ -19,25 +19,71 @@ struct LibraryTitleRowB: View {
             ScreenTitle(Strings.recipesTitle)
                 .accessibilityAddTraits(.isHeader)
             LibraryAddButton(onAdd: onAdd)
-            Menu {
-                if let onSelect {
-                    Button(action: onSelect) { Label(Strings.select, systemImage: "checklist") }
-                        .accessibilityIdentifier("library.select")
-                }
-                Button(action: onOpenSettings) { Label(Strings.navSettings, systemImage: "gearshape") }
-                    .accessibilityIdentifier("library.settings")
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: size * 0.9, weight: .semibold))
-                    .rotationEffect(.degrees(90))
-                    .foregroundStyle(Palette.onBackground)
-                    .frame(width: max(44, size + 16), height: max(44, size + 16))
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel(Strings.moreOptions)
-            .accessibilityIdentifier("library.more")
+            LibraryMoreMenu(onSelect: onSelect, onOpenSettings: onOpenSettings)
         }
         .offset(x: 6) // optical edge, past the button's own padding
+    }
+}
+
+/// The ⋮ and its menu (#449): Select (nil: nothing to select) and Settings. In the title row and the pinned bar.
+struct LibraryMoreMenu: View {
+    let onSelect: (() -> Void)?
+    let onOpenSettings: () -> Void
+    var id = "library.more"
+    @ScaledMetric(relativeTo: .title) private var scaled: CGFloat = 20
+    private var size: CGFloat { min(scaled, 30) }
+
+    var body: some View {
+        Menu {
+            if let onSelect {
+                Button(action: onSelect) { Label(Strings.select, systemImage: "checklist") }
+                    .accessibilityIdentifier("library.select")
+            }
+            Button(action: onOpenSettings) { Label(Strings.navSettings, systemImage: "gearshape") }
+                .accessibilityIdentifier("library.settings")
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: size * 0.9, weight: .semibold))
+                .rotationEffect(.degrees(90))
+                .foregroundStyle(Palette.onBackground)
+                .frame(width: max(44, size + 16), height: max(44, size + 16))
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(Strings.moreOptions)
+        .accessibilityIdentifier(id)
+    }
+}
+
+/// The slim bar pinned at the top once the large title has scrolled away (#449, the owner's follow-up: Select
+/// and Settings must stay in reach down the list): a small "Recipes", the + and the same ⋮ menu, on the ground
+/// (behind the status bar too) with a hairline under it. It lies over the list, so nothing jumps as it appears.
+/// Android's `PinnedTitleBar`.
+struct PinnedTitleBar: View {
+    let onAdd: () -> Void
+    let onSelect: (() -> Void)?
+    let onOpenSettings: () -> Void
+    var inset: CGFloat = 16
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                Text(Strings.recipesTitle)
+                    .textStyle(Typography.titleLarge)
+                    .foregroundStyle(Palette.onBackground)
+                    .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                LibraryAddButton(onAdd: onAdd, anchored: false, id: "library.add.pinned")
+                LibraryMoreMenu(onSelect: onSelect, onOpenSettings: onOpenSettings, id: "library.more.pinned")
+            }
+            .padding(.leading, inset)
+            .padding(.trailing, max(inset - 10, 4))
+            .frame(minHeight: 52)
+            Hairline()
+        }
+        .background(Palette.background.ignoresSafeArea(edges: .top))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("library.pinnedBar")
     }
 }
 

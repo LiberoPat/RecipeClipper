@@ -49,10 +49,21 @@ struct LibraryTopActions: View {
 /// The paprika + (#375): the Add a recipe sheet. The tour's tooltip points at it.
 struct LibraryAddButton: View {
     let onAdd: () -> Void
+    /// The pinned bar's + (#449) is the same button without the tour's anchor, which belongs to the title row's.
+    var anchored = true
+    var id = "library.add"
     @ScaledMetric(relativeTo: .title) private var scaled: CGFloat = 20
     private var size: CGFloat { min(scaled, 30) }
 
-    var body: some View {
+    @ViewBuilder var body: some View {
+        if anchored {
+            button.tooltipAnchor(.homeLink, side: .below)
+        } else {
+            button
+        }
+    }
+
+    private var button: some View {
         Button(action: onAdd) {
             Image(systemName: "plus")
                 .font(.system(size: size * 0.8, weight: .semibold))
@@ -64,8 +75,7 @@ struct LibraryAddButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Strings.addRecipe)
-        .accessibilityIdentifier("library.add")
-        .tooltipAnchor(.homeLink, side: .below)
+        .accessibilityIdentifier(id)
     }
 }
 

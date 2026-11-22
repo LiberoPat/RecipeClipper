@@ -19,7 +19,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -171,6 +178,13 @@ fun RecipesScreen(
     // Design B (#449): the library's own top, and its filter sheet.
     val styleB = topB && libraryRoot != null && oneCookbook
     var filterSheetOpen by rememberSaveable { mutableStateOf(false) }
+    // Where the list is (#449): once the large title has scrolled away, a slim bar with the + and the ⋮ stays
+    // pinned. The states are the lists' own (saved across rotation), hoisted here to be read.
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    val titlePx = with(LocalDensity.current) { TITLE_ROW_HEIGHT.toPx() }
+    val listTitleGone by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > titlePx } }
+    val gridTitleGone by remember { derivedStateOf { gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > titlePx } }
     val view = state.view
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -402,13 +416,17 @@ fun RecipesScreen(
                         if (state.selecting) viewModel.onToggleSelected(recipe.id) else onOpenRecipe(recipe.id)
                     }
                     val pantryChip = RecipeQuickFilter.USES_PANTRY in state.quick
-                    if (gridEnabled && state.layout == RecipesLayout.GRID) {
+                    val showsGrid = gridEnabled && state.layout == RecipesLayout.GRID
+                    val pinned = styleB && libraryRoot != null && !state.selecting && (if (showsGrid) gridTitleGone else listTitleGone)
+                    Box(Modifier.fillMaxSize()) {
+                    if (showsGrid) {
                         // The photo grid (#380): two columns on a phone, more as the width allows.
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(GRID_CELL_MIN_WIDTH),
                             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
+                            state = gridState,
                             modifier = Modifier.fillMaxSize().testTag("recipesGrid")
                         ) {
                             item(key = "header", span = { GridItemSpan(maxLineSpan) }) { header() }
@@ -437,8 +455,9 @@ fun RecipesScreen(
                         }
                     } else {
                         LazyColumn(
+                            state = listState,
                             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize().testTag("recipesList")
                         ) {
                             item { header() }
 
@@ -467,6 +486,15 @@ fun RecipesScreen(
                             }
                         }
                     }
+                    // Design B's pinned bar (#449): over the list, once the large title has gone by.
+                    AnimatedVisibility(pinned, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopCenter)) {
+                        PinnedTitleBar(
+                            onAdd = { addSheetOpen = true },
+                            onSelect = if (multiSelect && !state.recipes.isNullOrEmpty()) ({ viewModel.onStartSelecting() }) else null,
+                            onOpenSettings = libraryRoot?.onOpenSettings ?: {}
+                        )
+                    }
+                    }
                 }
             }
         }
@@ -477,6 +505,9 @@ fun RecipesScreen(
         }
     }
 }
+
+/** Design B's title row (#449): the list's top padding, the spacer above it and its height. Past it, the bar pins. */
+private val TITLE_ROW_HEIGHT = 66.dp
 
 /** A photo cell's narrowest width: two columns on a phone (320dp of content and up), more on wider screens. */
 private val GRID_CELL_MIN_WIDTH = 140.dp
