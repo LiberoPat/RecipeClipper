@@ -446,7 +446,8 @@ struct RootView: View {
             rowActions: container.featureFlags.isOn(.rowActions),
             multiSelect: container.featureFlags.isOn(.multiSelect),
             makePlanVM: container.makeAddToPlanViewModel,
-            libraryRoot: root
+            libraryRoot: root,
+            topB: container.featureFlags.isOn(.recipesTopB)
         )
     }
 

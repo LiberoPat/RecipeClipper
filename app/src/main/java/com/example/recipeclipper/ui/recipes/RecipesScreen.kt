@@ -19,7 +19,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -143,6 +152,11 @@ fun RecipesScreen(
     askAiEnabled: Boolean = LocalFlagValues.current.isOn(Flag.ASK_AI),
     /** The Ask an AI sheet's ViewModel (#351), for the library as the first screen. */
     askAiViewModel: AskAiViewModel? = if (askAiEnabled && libraryRoot != null) hiltViewModel() else null,
+    /**
+     * The top redesigned (#449, design B): with the library as the first screen and one cookbook, a ⋮ menu
+     * (Select, Settings) after the +, the views shelf above search, the filters in a sheet behind search.
+     */
+    topB: Boolean = LocalFlagValues.current.isOn(Flag.RECIPES_TOP_B),
     // A parameter so a test can watch the one snackbar a burst shares (#268).
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -163,6 +177,20 @@ fun RecipesScreen(
     val emptyLibrary = libraryRoot != null && state.view == null && homeState?.libraryEmpty == true
     var saveSheetOpen by rememberSaveable { mutableStateOf(false) }
     var planSheetOpen by rememberSaveable { mutableStateOf(false) }
+    // Design B (#449): the library's own top, and its filter sheet.
+    val styleB = topB && libraryRoot != null && oneCookbook
+    var filterSheetOpen by rememberSaveable { mutableStateOf(false) }
+    // Where the list is (#449): once the large title has scrolled away, a slim bar with the + and the ⋮ stays
+    // pinned. The states are the lists' own (saved across rotation), hoisted here to be read.
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    // The title row's height as laid out (it grows with the font size), and the spacer above it: the bar pins
+    // once all but its last few dp have scrolled past the top, so there is never an empty strip with no title.
+    val density = LocalDensity.current
+    var titleRowPx by remember { mutableIntStateOf(with(density) { TITLE_ROW_HEIGHT.roundToPx() }) }
+    val titleGonePx by remember { derivedStateOf { titleRowPx + with(density) { (TITLE_SPACER - TITLE_SLACK).toPx() } } }
+    val listTitleGone by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > titleGonePx } }
+    val gridTitleGone by remember { derivedStateOf { gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > titleGonePx } }
     val view = state.view
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -234,6 +262,15 @@ fun RecipesScreen(
         if (saveSheetOpen && saveViewModel != null) {
             SaveToListBottomSheet(saveViewModel, onDismiss = { saveSheetOpen = false })
         }
+        if (filterSheetOpen && styleB) {
+            RecipeFilterSheet(
+                offered = state.quickFilters,
+                on = state.quick,
+                onToggle = viewModel::onQuickFilterToggle,
+                onClear = viewModel::onClearQuickFilters,
+                onDismiss = { filterSheetOpen = false }
+            )
+        }
         if (planSheetOpen && planViewModel != null) {
             AddToPlanBottomSheet(planViewModel, onDismiss = { planSheetOpen = false })
         }
@@ -264,7 +301,11 @@ fun RecipesScreen(
                                 }
                             },
                             onRemoveFromList = null,
-                            onDelete = viewModel::onRequestDeleteSelected
+                            onDelete = viewModel::onRequestDeleteSelected,
+                            // Design B (#449): Select all, beside Done.
+                            onSelectAll = if (styleB) viewModel::onSelectAll else null,
+                            allSelected = state.allSelected,
+                            hairline = !styleB
                         )
                     }
                 },
@@ -285,7 +326,35 @@ fun RecipesScreen(
                     Modifier.fillMaxSize().padding(padding),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val header: @Composable () -> Unit = {
+                    val header: @Composable () -> Unit = if (styleB && libraryRoot != null) {
+                        {
+                            RecipesHeaderB(
+                                state = state,
+                                root = RootHeader(
+                                    libraryRoot, homeState, homeTonight, emptyLibrary,
+                                    onAdd = { addSheetOpen = true },
+                                    onOpenRecipe = onOpenRecipe,
+                                    onAskAi = home?.let { it::onAskAi }.takeIf { askAiViewModel != null },
+                                    onRestore = if (home?.canRestore == true) ({ restorePicker.launch(IMPORT_MIME_TYPES) }) else null,
+                                    onChooseFolder = { folderPicker.launch(null) }
+                                ),
+                                onNewRecipe = onNewRecipe,
+                                onPasteLink = viewModel::onPasteLink,
+                                onScan = onScan.takeIf { scanEnabled },
+                                onQueryChange = viewModel::onQueryChange,
+                                onOpenView = onOpenView,
+                                onOpenLists = onOpenLists,
+                                onOpenFilters = if (quickFilters) ({ filterSheetOpen = true }) else null,
+                                onQuickToggle = viewModel::onQuickFilterToggle,
+                                onClearQuick = viewModel::onClearQuickFilters,
+                                onSort = viewModel::onSortChange,
+                                onLayout = viewModel::onLayoutChange.takeIf { gridEnabled },
+                                onSelect = if (multiSelect) ({ viewModel.onStartSelecting() }) else null,
+                                onTitleHeight = { titleRowPx = it }
+                            )
+                        }
+                    } else {
+                        {
                         RecipesHeader(
                             state = state,
                             onBack = onBack,
@@ -312,6 +381,7 @@ fun RecipesScreen(
                                 onChooseFolder = { folderPicker.launch(null) }
                             )
                         )
+                        }
                     }
                     val onSave: ((RecipeSummary) -> Unit)? = if (oneCookbook && saveViewModel != null) {
                         { recipe ->
@@ -353,13 +423,17 @@ fun RecipesScreen(
                         if (state.selecting) viewModel.onToggleSelected(recipe.id) else onOpenRecipe(recipe.id)
                     }
                     val pantryChip = RecipeQuickFilter.USES_PANTRY in state.quick
-                    if (gridEnabled && state.layout == RecipesLayout.GRID) {
+                    val showsGrid = gridEnabled && state.layout == RecipesLayout.GRID
+                    val pinned = styleB && libraryRoot != null && !state.selecting && (if (showsGrid) gridTitleGone else listTitleGone)
+                    Box(Modifier.fillMaxSize()) {
+                    if (showsGrid) {
                         // The photo grid (#380): two columns on a phone, more as the width allows.
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(GRID_CELL_MIN_WIDTH),
                             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
+                            state = gridState,
                             modifier = Modifier.fillMaxSize().testTag("recipesGrid")
                         ) {
                             item(key = "header", span = { GridItemSpan(maxLineSpan) }) { header() }
@@ -388,8 +462,9 @@ fun RecipesScreen(
                         }
                     } else {
                         LazyColumn(
+                            state = listState,
                             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 32.dp),
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize().testTag("recipesList")
                         ) {
                             item { header() }
 
@@ -418,6 +493,15 @@ fun RecipesScreen(
                             }
                         }
                     }
+                    // Design B's pinned bar (#449): over the list, once the large title has gone by.
+                    AnimatedVisibility(pinned, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopCenter)) {
+                        PinnedTitleBar(
+                            onAdd = { addSheetOpen = true },
+                            onSelect = if (multiSelect && !state.recipes.isNullOrEmpty()) ({ viewModel.onStartSelecting() }) else null,
+                            onOpenSettings = libraryRoot?.onOpenSettings ?: {}
+                        )
+                    }
+                    }
                 }
             }
         }
@@ -428,6 +512,15 @@ fun RecipesScreen(
         }
     }
 }
+
+/** Design B's title row (#449): its least height, before it is laid out. */
+private val TITLE_ROW_HEIGHT = 58.dp
+
+/** The spacer above the title row in the header item. */
+private val TITLE_SPACER = 4.dp
+
+/** How much of the title row may still show (its bottom padding, no text) when the bar pins. */
+private val TITLE_SLACK = 12.dp
 
 /** A photo cell's narrowest width: two columns on a phone (320dp of content and up), more on wider screens. */
 private val GRID_CELL_MIN_WIDTH = 140.dp
@@ -514,6 +607,80 @@ private fun RecipesHeader(
         }
         if (state.showsSortLine) {
             SortLine(state, onSort, onLayout)
+        } else {
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+/**
+ * The library's header as design B draws it (#449): the title row (the +, then the ⋮ menu with Select and
+ * Settings), Today's card, the views shelf, search with its filter button, the pills of the filters on,
+ * and the count line (the count, the sort, then the rows / grid toggle). While selecting, the bar above
+ * the rows is the whole top.
+ */
+@Composable
+private fun RecipesHeaderB(
+    state: RecipesUiState,
+    root: RootHeader,
+    onNewRecipe: () -> Unit,
+    onPasteLink: () -> Unit,
+    onScan: ((List<String>) -> Unit)?,
+    onQueryChange: (String) -> Unit,
+    onOpenView: (RecipeFilter) -> Unit,
+    onOpenLists: () -> Unit,
+    onOpenFilters: (() -> Unit)?,
+    onQuickToggle: (RecipeQuickFilter) -> Unit,
+    onClearQuick: () -> Unit,
+    onSort: (RecipeSort) -> Unit,
+    onLayout: ((RecipesLayout) -> Unit)?,
+    onSelect: (() -> Unit)?,
+    /** The title row's height as laid out, for when the pinned bar takes over (#449). */
+    onTitleHeight: (Int) -> Unit = {}
+) {
+    Column {
+        if (state.selecting) return@Column
+        Spacer(Modifier.height(TITLE_SPACER))
+        LibraryTitleRowB(
+            onAdd = root.onAdd,
+            onSelect = onSelect.takeIf { !state.recipes.isNullOrEmpty() },
+            onOpenSettings = root.root.onOpenSettings,
+            modifier = Modifier.onSizeChanged { onTitleHeight(it.height) }
+        )
+        if (root.home != null) {
+            Spacer(Modifier.height(4.dp))
+            LibraryCard(root.home, root.root, root.homeTonight, root.onOpenRecipe, styleB = true)
+            if (root.home.offersBackupFolder) {
+                Spacer(Modifier.height(12.dp))
+                BackupFolderCard(onChoose = root.onChooseFolder, onDismiss = root.root.viewModel::onBackupPromptDismissed)
+            }
+        }
+        if (root.emptyLibrary) {
+            EmptyLibrary(
+                onPasteLink = onPasteLink,
+                onScan = onScan,
+                onTypeRecipe = onNewRecipe,
+                onAskAi = root.onAskAi,
+                restore = root.home?.restore ?: BackupStatus.Idle,
+                onRestore = root.onRestore
+            )
+            Spacer(Modifier.height(12.dp))
+            return@Column
+        }
+        Spacer(Modifier.height(12.dp))
+        if (state.showsViewsStrip) {
+            ViewsShelf(state.counts, state.lists.size, onOpenView, onOpenLists)
+            Spacer(Modifier.height(12.dp))
+        }
+        SearchFieldB(
+            query = state.query,
+            onQueryChange = onQueryChange,
+            filtersOn = state.activeQuickFilters.size,
+            onOpenFilters = onOpenFilters.takeIf { state.showsFilter }
+        )
+        ActiveFilterPills(state.activeQuickFilters, onQuickToggle, onClearQuick)
+        if (state.showsSortLine) {
+            SortLine(state, onSort, onLayout, toggleLast = true)
         } else {
             Spacer(Modifier.height(12.dp))
         }
@@ -642,7 +809,13 @@ private fun DeleteBackground(dismissState: SwipeToDismissBoxState) {
  * free tier "12 of 20 recipes", #107), and the order they're in on the right.
  */
 @Composable
-private fun SortLine(state: RecipesUiState, onSort: (RecipeSort) -> Unit, onLayout: ((RecipesLayout) -> Unit)? = null) {
+private fun SortLine(
+    state: RecipesUiState,
+    onSort: (RecipeSort) -> Unit,
+    onLayout: ((RecipesLayout) -> Unit)? = null,
+    /** Design B (#449): the sort, then the toggle, last on the right. */
+    toggleLast: Boolean = false
+) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         // Inside a view the count is the view's own, not the free library's.
         val count = state.count.takeIf { state.view == null }
@@ -657,7 +830,8 @@ private fun SortLine(state: RecipesUiState, onSort: (RecipeSort) -> Unit, onLayo
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f).padding(start = 2.dp)
         )
-        if (onLayout != null) LayoutToggle(state.layout, onLayout)
+        if (onLayout != null && !toggleLast) LayoutToggle(state.layout, onLayout)
         SortMenu(state.sort, onSort)
+        if (onLayout != null && toggleLast) LayoutToggle(state.layout, onLayout)
     }
 }

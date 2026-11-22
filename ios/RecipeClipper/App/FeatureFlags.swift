@@ -88,6 +88,8 @@ enum Flag: String, CaseIterable {
     case articleRecipes
     /// Close the Today card (#448): a close button hides it for the rest of the day, and Settings' Plan section can hide it altogether.
     case todayCardClose
+    /// The top of Recipes, design B (#449): a ⋮ menu with Select and Settings, a views shelf above search, the filters in a sheet behind search with pills for those on.
+    case recipesTopB
 }
 
 /// One flag as `shared/flags.json` declares it.

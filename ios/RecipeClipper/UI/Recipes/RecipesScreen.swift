@@ -32,6 +32,12 @@ struct RecipesScreen: View {
     /// gear and a + that opens the Add a recipe sheet beside the title, Today's card above search, and the
     /// four ways in when there is nothing yet. Nil, the screen is as before.
     var libraryRoot: LibraryRoot? = nil
+    /// The top redesigned (#449, design B): with the library as the first screen and one cookbook, a ⋮ menu
+    /// (Select, Settings) after the +, the views shelf above search, the filters in a sheet behind search.
+    var topB = false
+
+    /// Design B applies to the library as the first screen only, with one cookbook's views.
+    private var styleB: Bool { topB && libraryRoot != nil && oneCookbook }
 
     @State private var scanSource: ScanSource?
     /// The library as the first screen (#375): the + 's sheet, what to do once it has gone, the
@@ -40,6 +46,10 @@ struct RecipesScreen: View {
     @State private var afterAddSheet: (() -> Void)?
     @State private var restoring = false
     @State private var askAiVM: AskAiViewModel?
+    /// Design B's filter sheet (#449).
+    @State private var filterSheetOpen = false
+    /// Design B (#449): the large title has scrolled out of sight, so the slim bar pins at the top.
+    @State private var titleGone = false
     /// What a row's menu has open: the save-to-list, plan and share sheets.
     @State private var rowMenu = RowMenuPresenter()
     /// A List's rows take insets, not a frame, so the readable column is made from the width.
@@ -67,6 +77,20 @@ struct RecipesScreen: View {
     var body: some View {
         let state = vm.uiState
         container(state)
+        // Design B's pinned bar (#449): over the list, once the large title has gone by; not while selecting,
+        // which has its own header.
+        .overlay(alignment: .top) {
+            if styleB, titleGone, !state.selecting, let root = libraryRoot {
+                PinnedTitleBar(
+                    onAdd: { addSheetOpen = true },
+                    onSelect: multiSelect && state.canSelect ? { vm.onStartSelecting() } : nil,
+                    onOpenSettings: root.onOpenSettings,
+                    inset: sideInset
+                )
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: titleGone)
         .listStyle(.plain)
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width in
             sideInset = ReadableWidth.inset(in: width)
@@ -77,12 +101,13 @@ struct RecipesScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         // The library as the first screen (#375) has its title row, gear and + in the page; the bar shows
         // only while selecting, for Done.
-        .toolbar(libraryRoot != nil && !state.selecting ? .hidden : .automatic, for: .navigationBar)
+        // Design B (#449) selects under its own header, pinned in the page, so the bar stays hidden then too.
+        .toolbar(libraryRoot != nil && (!state.selecting || styleB) ? .hidden : .automatic, for: .navigationBar)
         // Selecting (#377): Done leaves it (Back would leave the screen, so it is hidden meanwhile).
         .navigationBarBackButtonHidden(state.selecting)
-        .toolbar(state.selecting ? .hidden : .automatic, for: .tabBar)
+        .toolbar(state.selecting && !styleB ? .hidden : .automatic, for: .tabBar)
         .toolbar {
-            if state.selecting {
+            if state.selecting && !styleB {
                 ToolbarItem(placement: .principal) { RecipesSelectionTitle(count: state.selectedIds.count) }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(Strings.done, action: vm.onExitSelection)
@@ -167,6 +192,15 @@ struct RecipesScreen: View {
                     .presentationDragIndicator(.visible)
             }
         }
+        // Design B's filters (#449): the three as switches, and Clear; they act at once, as the chips did.
+        .sheet(isPresented: $filterSheetOpen) {
+            RecipeFilterSheet(
+                offered: vm.uiState.quickFilters, on: vm.uiState.quick,
+                onToggle: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         // The same picker as Settings' Import.
         .fileImporter(isPresented: $restoring, allowedContentTypes: [.json, .plainText, .zip]) { result in
             switch result {
@@ -178,7 +212,7 @@ struct RecipesScreen: View {
         // while a sheet or the file picker is up.
         .rootTooltipHost(
             libraryRoot != nil,
-            blocked: addSheetOpen || restoring || state.pastingLink || state.selecting
+            blocked: addSheetOpen || filterSheetOpen || restoring || state.pastingLink || state.selecting
                 || (libraryRoot?.vm.uiState.askAiOpen ?? false)
         )
         .overlay(alignment: .bottom) {
@@ -213,8 +247,21 @@ struct RecipesScreen: View {
         .scanSources($scanSource) { onScan?($0) }
         .rowMenuSheets(rowMenu, saveVM: saveVM)
         // The selection's actions (#377): Add to list over the ticked recipes, or Delete them, with one confirmation.
+        // Design B (#449): the count, Select all and Done, then the actions, pinned above the rows.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if state.selecting && styleB {
+                RecipesSelectionHeaderB(
+                    count: state.selectedIds.count,
+                    allSelected: state.allSelected,
+                    onSelectAll: vm.onSelectAll,
+                    onDone: vm.onExitSelection,
+                    onAddToList: saveVM.map { saveVM in { rowMenu.addToList(vm.selectedRecipes, saveVM: saveVM) } },
+                    onDelete: { vm.onRequestDelete(vm.selectedRecipes) }
+                )
+            }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if state.selecting, let saveVM {
+            if state.selecting && !styleB, let saveVM {
                 RecipesSelectionBar(
                     count: state.selectedIds.count,
                     onAddToList: { rowMenu.addToList(vm.selectedRecipes, saveVM: saveVM) },
@@ -304,6 +351,70 @@ struct RecipesScreen: View {
     /// what an empty list says. A few rows of the list, or the head of the grid's page.
     @ViewBuilder
     private func headerItems(_ state: RecipesUiState) -> some View {
+        if styleB, let root = libraryRoot {
+            headerItemsB(state, root)
+        } else {
+            headerItemsA(state)
+        }
+    }
+
+    /// Design B (#449): the title row (the +, then the ⋮ menu with Select and Settings), Today's card, the
+    /// views shelf, search with its filter button, the pills of the filters on, and the count line (the
+    /// count, the sort, then the rows / grid toggle). While selecting, the pinned header is the whole top.
+    @ViewBuilder
+    private func headerItemsB(_ state: RecipesUiState, _ root: LibraryRoot) -> some View {
+        let emptyLibrary = state.view == nil && root.vm.uiState.libraryEmpty
+        if !state.selecting {
+            VStack(alignment: .leading, spacing: 12) {
+                LibraryTitleRowB(
+                    onAdd: { addSheetOpen = true },
+                    onSelect: multiSelect && state.canSelect ? { vm.onStartSelecting() } : nil,
+                    onOpenSettings: root.onOpenSettings
+                )
+                // Gone once its foot passes the top of the scroll view; reported as it crosses, so a row the
+                // list recycles off screen keeps the last answer.
+                .onGeometryChange(for: Bool.self, of: { $0.frame(in: .scrollView).maxY < 0 }) { titleGone = $0 }
+                LibraryCard(state: root.vm.uiState, root: root, onOpenRecipe: onOpenRecipe, styleB: true)
+                if emptyLibrary {
+                    EmptyLibraryView(
+                        onPasteLink: vm.onPasteLink, onScan: onScan, onTypeRecipe: onNewRecipe,
+                        onAskAi: askAiAction(root), restore: root.vm.uiState.restore,
+                        onRestore: root.vm.canRestore ? { restoring = true } : nil
+                    )
+                } else {
+                    if state.showsViewsStrip {
+                        ViewsShelf(counts: state.counts, listCount: state.lists.count, onOpenView: onOpenView, onOpenLists: onOpenLists)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        SearchFieldB(
+                            query: state.query, onQueryChange: vm.onQueryChange,
+                            filtersOn: state.activeQuickFilters.count,
+                            onOpenFilters: quickFilters && state.showsFilter ? { filterSheetOpen = true } : nil
+                        )
+                        ActiveFilterPills(active: state.activeQuickFilters, onRemove: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters)
+                    }
+                }
+            }
+            .padding(.top, 8)
+            .padding(.bottom, emptyLibrary || !vm.showsSortLine ? 12 : 0)
+            .listRowSeparator(.hidden)
+        }
+        if !emptyLibrary {
+            if vm.showsSortLine && !state.selecting {
+                sortLine(state, toggleLast: true)
+                    .listRowSeparator(.hidden)
+            }
+            if let recipes = state.recipes, recipes.isEmpty {
+                Text(emptyMessage(state))
+                    .textStyle(Typography.bodyLarge)
+                    .foregroundStyle(Palette.muted)
+                    .listRowSeparator(.hidden)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func headerItemsA(_ state: RecipesUiState) -> some View {
         // Nothing of the cook's yet (the sample, #151, aside): the ways in take the list's place (#375).
         let emptyLibrary = libraryRoot != nil && state.view == nil && (libraryRoot?.vm.uiState.libraryEmpty ?? false)
         VStack(alignment: .leading, spacing: 12) {
@@ -431,7 +542,7 @@ struct RecipesScreen: View {
     /// The quiet line under search (#286): how many recipes on the left ("20 recipes", or on the
     /// free tier "12 of 20 recipes", #107), and the order they're in on the right, which opens
     /// the sort menu. The sort was the only item of a ⋯ menu in the toolbar before.
-    private func sortLine(_ state: RecipesUiState) -> some View {
+    private func sortLine(_ state: RecipesUiState, toggleLast: Bool = false) -> some View {
         HStack(spacing: 8) {
             Group {
                 // Inside a view the count is the view's own, not the free library's.
@@ -445,7 +556,7 @@ struct RecipesScreen: View {
             .textStyle(Typography.bodySmall)
             .foregroundStyle(Palette.muted)
             .frame(maxWidth: .infinity, alignment: .leading)
-            if gridEnabled { layoutToggle(state.layout) }
+            if gridEnabled && !toggleLast { layoutToggle(state.layout) }
             // An exclusive choice, so radio glyphs rather than a bare checkmark.
             Menu {
                 sortButton(.recentlyViewed, Strings.sortRecentlyViewed, current: state.sort)
@@ -470,6 +581,8 @@ struct RecipesScreen: View {
             .accessibilityLabel(Strings.sort)
             .accessibilityValue(sortName(state.sort))
             .accessibilityIdentifier("recipes.sort")
+            // Design B (#449): the toggle last on the right, after the sort.
+            if gridEnabled && toggleLast { layoutToggle(state.layout) }
         }
     }
 

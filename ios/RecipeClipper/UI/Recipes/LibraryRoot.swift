@@ -40,22 +40,42 @@ struct LibraryTopActions: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Strings.navSettings)
             .accessibilityIdentifier("library.settings")
-            // The paprika +: the tour's tooltip points at it.
-            Button(action: onAdd) {
-                Image(systemName: "plus")
-                    .font(.system(size: size * 0.8, weight: .semibold))
-                    .foregroundStyle(Palette.onPrimary)
-                    .frame(width: size + 16, height: size + 16)
-                    .background(Palette.primary, in: Circle())
-                    .frame(width: max(44, size + 20), height: max(44, size + 20))
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Strings.addRecipe)
-            .accessibilityIdentifier("library.add")
-            .tooltipAnchor(.homeLink, side: .below)
+            LibraryAddButton(onAdd: onAdd)
         }
         .offset(x: 6) // optical edge, past the buttons' own padding
+    }
+}
+
+/// The paprika + (#375): the Add a recipe sheet. The tour's tooltip points at it.
+struct LibraryAddButton: View {
+    let onAdd: () -> Void
+    /// The pinned bar's + (#449) is the same button without the tour's anchor, which belongs to the title row's.
+    var anchored = true
+    var id = "library.add"
+    @ScaledMetric(relativeTo: .title) private var scaled: CGFloat = 20
+    private var size: CGFloat { min(scaled, 30) }
+
+    @ViewBuilder var body: some View {
+        if anchored {
+            button.tooltipAnchor(.homeLink, side: .below)
+        } else {
+            button
+        }
+    }
+
+    private var button: some View {
+        Button(action: onAdd) {
+            Image(systemName: "plus")
+                .font(.system(size: size * 0.8, weight: .semibold))
+                .foregroundStyle(Palette.onPrimary)
+                .frame(width: size + 16, height: size + 16)
+                .background(Palette.primary, in: Circle())
+                .frame(width: max(44, size + 20), height: max(44, size + 20))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Strings.addRecipe)
+        .accessibilityIdentifier(id)
     }
 }
 
@@ -68,13 +88,15 @@ struct LibraryCard: View {
     let state: HomeUiState
     let root: LibraryRoot
     let onOpenRecipe: (Int64) -> Void
+    /// Design B (#449): the outlined card, the next meal beside a pill-shaped button.
+    var styleB = false
 
     var body: some View {
         if let latest = state.continueCooking, let resume = state.resume {
             CompactCard(
                 imageUrl: latest.imageUrl, noPhoto: latest.noPhoto, label: Strings.sectionContinueCooking, title: latest.title,
                 button: Strings.homeResumeCooking, onButton: { root.onResumeCooking(latest.id) },
-                onOpen: { onOpenRecipe(latest.id) }
+                onOpen: { onOpenRecipe(latest.id) }, styleB: styleB, lineUnderTitle: true
             ) {
                 ResumeLine(resume: resume)
             }
@@ -89,16 +111,18 @@ struct LibraryCard: View {
                 onButton: { if let id = lead.recipeId { root.onOpenPlanned(id, lead.servings, true) } },
                 onOpen: lead.recipeId.map { id in { root.onOpenPlanned(id, lead.servings, false) } },
                 // The close button (#448, `todayCardClose`): gone until tomorrow. Never on Continue cooking.
-                onClose: state.todayClosable ? { root.vm.onCloseToday() } : nil
+                onClose: state.todayClosable ? { root.vm.onCloseToday() } : nil,
+                styleB: styleB
             ) {
                 if let next = today.others.first {
                     Button {
                         if let id = next.recipeId { root.onOpenPlanned(id, next.servings, false) }
                     } label: {
-                        Text(Strings.homeTodayOther(next.mealType, next.title))
+                        Text(otherMeal(next))
                             .textStyle(Typography.bodySmall)
                             .foregroundStyle(Palette.muted)
-                            .lineLimit(1)
+                            .lineLimit(styleB ? 2 : 1)
+                            .multilineTextAlignment(.leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                     }
@@ -108,6 +132,18 @@ struct LibraryCard: View {
                 }
             }
         }
+    }
+}
+
+extension LibraryCard {
+    /// "Dinner: Lemon chicken"; in design B (#449) the meal's name in ink, its type muted.
+    fileprivate func otherMeal(_ next: TodayMeal) -> AttributedString {
+        var line = AttributedString(Strings.homeTodayOther(next.mealType, next.title))
+        if styleB, let range = line.range(of: next.title, options: .backwards) {
+            line[range].foregroundColor = Palette.onBackground
+            line[range].font = Font(AppFont.karla(Typography.bodySmall.baseSize, weight: 600))
+        }
+        return line
     }
 }
 
@@ -122,10 +158,101 @@ private struct CompactCard<Line: View>: View {
     let onOpen: (() -> Void)?
     /// The close button at the top right (#448); nil has none.
     var onClose: (() -> Void)?
+    /// Design B (#449): outlined on the ground, a paprika eyebrow, the line beside a pill button.
+    var styleB = false
+    /// B only: the line goes under the name (the step and the countdown), not beside the button.
+    var lineUnderTitle = false
     @ViewBuilder let line: () -> Line
     @Environment(\.noPhotoImage) private var noPhotoImage
 
+    static var eyebrowStyle: TextStyle {
+        TextStyle(family: .karla, baseSize: 11.5, weight: 700, baseLineHeight: 15, tracking: 0.8, relativeTo: .caption1)
+    }
+
+    static var titleStyleB: TextStyle {
+        TextStyle(family: .fraunces, baseSize: 18, weight: 600, baseLineHeight: 22, relativeTo: .headline)
+    }
+
     var body: some View {
+        if styleB { bodyB } else { bodyA }
+    }
+
+    /// Design B (#449), the mockup's card: thumbnail, eyebrow and name, then the line and the button side by side.
+    private var bodyB: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Button { onOpen?() } label: {
+                    HStack(spacing: 12) {
+                        thumbnail
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(label.uppercased())
+                                .textStyle(Self.eyebrowStyle)
+                                .foregroundStyle(Palette.accentText)
+                                .lineLimit(1)
+                                .accessibilityLabel(label)
+                                .accessibilityAddTraits(.isHeader)
+                            Text(title)
+                                .textStyle(Self.titleStyleB)
+                                .foregroundStyle(Palette.onBackground)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                            if lineUnderTitle { line() }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(onOpen == nil)
+                .accessibilityIdentifier("library.card.open")
+                if let onClose {
+                    TodayCloseButton(action: onClose)
+                        .padding(.top, -8)
+                        .padding(.trailing, -8)
+                }
+            }
+            if let button {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        if !lineUnderTitle { line() }
+                        // The button stays on the right, with or without the next meal beside it.
+                        Spacer(minLength: 0)
+                        pillButton(button).fixedSize()
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !lineUnderTitle { line() }
+                        pillButton(button)
+                    }
+                }
+            } else if !lineUnderTitle {
+                line()
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.background)
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.hairline, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("library.card")
+    }
+
+    private func pillButton(_ title: String) -> some View {
+        Button(action: onButton) {
+            Label(title, systemImage: "play.fill")
+                .labelStyle(PlayLabelStyle())
+                .textStyle(ActiveFilterPills.pillStyle)
+                .foregroundStyle(Palette.onPrimary)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 40)
+                .background(Capsule().fill(Palette.primary))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("library.card.start")
+    }
+
+    private var bodyA: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
                 Button { onOpen?() } label: {
@@ -189,6 +316,16 @@ private struct CompactCard<Line: View>: View {
 }
 
 /// Where the cook stopped: the running timer's time left, then "Step 2 of 4".
+/// The play glyph small before the words, as the mockup's Start cooking.
+private struct PlayLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 8) {
+            configuration.icon.font(.system(size: 11)).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            configuration.title
+        }
+    }
+}
+
 private struct ResumeLine: View {
     let resume: CookResume
 

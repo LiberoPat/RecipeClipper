@@ -148,6 +148,17 @@
     <string name="recipes_quick_pantry_note">Muestra las recetas de las que tienes en la despensa al menos la mitad de los ingredientes, por nombre, no por cantidad.</string>
     <string name="recipes_pantry_have">Tienes %1$d de %2$d</string>
     <string name="recipes_no_results_filters">Ninguna receta coincide con estos filtros.</string>
+    <!-- Recipes, design B (#449): the filter sheet behind search, its pills and the button's badge -->
+    <string name="recipes_filter_title">Filtrar recetas</string>
+    <string name="recipes_quick_30_or_less_hint">Tiempo total, o preparación más cocción</string>
+    <string name="recipes_quick_not_cooked_hint">Nunca marcada como cocinada</string>
+    <string name="recipes_quick_pantry_hint">Al menos la mitad de los ingredientes, por nombre</string>
+    <string name="cd_remove_filter">Quitar %1$s</string>
+    <plurals name="recipes_filters_on">
+        <item quantity="one">%1$d filtro activo</item>
+        <item quantity="many">%1$d de filtros activos</item>
+        <item quantity="other">%1$d filtros activos</item>
+    </plurals>
     <string name="cd_layout_to_grid">Ver como cuadrícula</string>
     <string name="cd_layout_to_rows">Ver como lista</string>
     <string name="tag_saved">Guardada</string>

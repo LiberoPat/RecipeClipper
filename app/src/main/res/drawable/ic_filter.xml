@@ -1,0 +1,15 @@
+<!-- The filter button at the end of Recipes' search field (#449, design B): two sliders. Drawn here for
+     the same reason as the bookmark icons (no material-icons-extended for a glyph or two). Stroked, like
+     its SF Symbol (slider.horizontal.3) on iOS; the Icon composable applies the tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4,7h9M17,7h3M4,17h3M11,17h9M15,7m-2,0a2,2 0,1 0,4 0a2,2 0,1 0,-4 0M9,17m-2,0a2,2 0,1 0,4 0a2,2 0,1 0,-4 0" />
+</vector>

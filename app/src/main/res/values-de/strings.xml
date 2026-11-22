@@ -144,6 +144,16 @@
     <string name="recipes_quick_pantry_note">Zeigt Rezepte, bei denen mindestens die Hälfte der Zutaten in deinem Vorrat ist, nach Name, nicht nach Menge.</string>
     <string name="recipes_pantry_have">Du hast %1$d von %2$d</string>
     <string name="recipes_no_results_filters">Keine Rezepte passen zu diesen Filtern.</string>
+    <!-- Recipes, design B (#449): the filter sheet behind search, its pills and the button's badge -->
+    <string name="recipes_filter_title">Rezepte filtern</string>
+    <string name="recipes_quick_30_or_less_hint">Gesamtzeit, oder Vorbereitung plus Kochen</string>
+    <string name="recipes_quick_not_cooked_hint">Nie als gekocht markiert</string>
+    <string name="recipes_quick_pantry_hint">Mindestens die Hälfte der Zutaten, nach Name</string>
+    <string name="cd_remove_filter">%1$s entfernen</string>
+    <plurals name="recipes_filters_on">
+        <item quantity="one">%1$d Filter aktiv</item>
+        <item quantity="other">%1$d Filter aktiv</item>
+    </plurals>
     <string name="cd_layout_to_grid">Als Raster anzeigen</string>
     <string name="cd_layout_to_rows">Als Liste anzeigen</string>
     <string name="tag_saved">Gespeichert</string>

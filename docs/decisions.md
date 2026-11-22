@@ -3107,7 +3107,9 @@ whose views strip carries the Lists card that Home's Lists row was the only way 
   closes the sheet and then goes where it leads (iOS waits for the sheet to be away before opening the
   next sheet). The + is a paprika circle; on a page that is not the root (a view) there is none, as
   before. **The Settings gear sits beside the Recipes title**, left of the + (the Settings rule left
-  this to the owner; this is that call). Select (#377) sits left of the gear.
+  this to the owner; this is that call). Select (#377) sits left of the gear. **Superseded with
+  `recipesTopB` on (#449, owner, 2026-11-21):** Settings and Select move into a ⋮ menu, last in the
+  title row after the +; see "The top of Recipes, design B".
 - **An empty library** (nothing, or only the tour's sample, #151): in the list's place a heading
   "Your recipes go here", the four ways in as tiles (two by two; one column at the accessibility sizes
   on iOS), the sharing line, "Restore from a backup file" (#150) with how it went, and the sample under
@@ -3516,6 +3518,74 @@ note, the empty line, the grid, the toggle, the bookmark), `SharedPrefsAppPrefer
 `DifferentialCorpusTests`, and `RecipesFiltersGridUITests`. Strings `recipes_quick_*`,
 `recipes_pantry_have`, `recipes_no_results_filters`, `cd_layout_to_*` in all six languages, drafts
 (`docs/translations.md`).
+
+## The top of Recipes, design B (#449, 2026-11-21)
+
+The owner picked variation B, "Search holds the filters", of the top-of-Recipes mockups (private
+artifact https://claude.ai/artifact/JZoooH1eVsTEZvVZBeAUsV, source
+`~/Downloads/RecipeClipper-designs/recipes-top/`, `recipes-top-B.png`), with one change of their own:
+B's checklist icon and gear became **one ⋮ menu**. Behind `recipesTopB` (on by default in debug and
+release), and only on **the library as the Recipes tab's first screen** with one cookbook (`libraryFirst`,
+#375): a view's own screen, Home and the `oneCookbook`-off pills are untouched. Off, the top is #375's.
+Nothing new is filtered, stored or counted: the views, the filters (#378), the sort, the toggle (#380)
+and selecting (#377) are the same code, moved.
+
+From the top:
+
+- **Title row:** "Recipes", the paprika + (the Add a recipe sheet, unchanged), then **⋮, last on the
+  right**. Its menu: **Select** (starts selecting with nothing ticked, as the old Select button did;
+  only while there are rows) and **Settings** (what the gear opened). **No gear and no Select button in
+  the row** (owner, 2026-11-21: this supersedes #375's "the gear beside the title" and #377's Select
+  placement). Android `LibraryTitleRowB` (`libraryMore`, `librarySelect`, `librarySettings`), iOS
+  `LibraryTitleRowB` (`library.more`, a `Menu`, the dots turned upright).
+- **Today's card, as B draws it:** outlined on the ground (1 dp hairline, radius 18) rather than filled,
+  the eyebrow in paprika ("TODAY · DINNER"), the name in Fraunces 18, and under it a row with the next
+  meal on the left ("Snack: **Banana Bread**", the name in ink) and the button on the right as a paprika
+  pill with a play glyph. Continue cooking puts its step and countdown under the name. **The close button
+  of #448 stays** at the top right, with its setting untouched (merged from `today-card-close`, PR #450).
+  What the card shows is #402's and #448's rules, unchanged.
+- **The views shelf:** one band of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat),
+  each an icon, the count in Fraunces 20 and the name (11.5, two lines when it needs them), divided by
+  hairlines; **Lists in the paprika tone** (`PaprikaTone` / `Palette.paprikaTone`: `#F6E3DA` with
+  `#8E3219` on it, `#45261C` with `#F4B7A3` on ink, the mockup's values; a new token pair, used only by
+  this design). The cells **navigate, never filter**, to the same screens as the strip's cards. They
+  share the width (Lists 1.1 to the others' 1); **when a name's longest word doesn't fit its share**
+  (German's "eingegeben", or a large font), every cell takes the width it needs and the shelf
+  **scrolls sideways**, so nothing clips (Android: a `Layout` over the cells' minimum intrinsic widths,
+  tested in German at twice the text; iOS: each name's widest word measured in its own font at the
+  current Dynamic Type size). Above search, where #378 had the chips.
+- **Search** with a **filter button at its end** (44 dp, radius 12): plain while no filter is on, the
+  paprika tone with a **badge counting the filters on** once one is (TalkBack and VoiceOver read "Filter
+  recipes, 2 filters on"). It opens **the filter sheet**: "Filter recipes", **Clear**, and the three
+  filters as **switches**, each with its line ("Total time, or prep plus cook", "Never marked as
+  cooked", "At least half the ingredients, by name"); Not cooked yet is left out inside the Cooked view as
+  before. The switches act at once (the list behind updates); there is no "Show N recipes" button,
+  which the mockup drew: the owner asked for the switches and Clear only.
+- **The filters on, as pills** under search, in the offered order, each removed by a tap on it (its ×;
+  "Remove 30 min or less" to a screen reader), then **Clear**, which turns them all off. None on, no
+  pills. The pantry filter's note ("Shows recipes where at least half…") follows the pills. The rule
+  that they combine with each other, the search and the sort, and are not remembered, is #378's.
+- **The count line:** the count, then the sort (its menu unchanged), then the rows / grid toggle, last
+  on the right (the old line had the toggle before the sort).
+- **A pinned bar down the list** (owner's follow-up, 2026-11-21: Select and Settings were out of reach once the
+  top scrolled away): when the large title has scrolled out of sight, a slim bar ("Recipes" small, the +, the
+  same ⋮) stays over the list on the ground with a hairline, never while selecting (Android `PinnedTitleBar`
+  over the `LazyColumn`/grid's state; iOS the same bar as an overlay, from the title row's frame in the scroll view).
+- **Selecting:** the bar shows the count, **Select all** (new: ticks every row in sight, the filters and
+  search applied, never one hidden; disabled once all are ticked) and Done, then Add to list (with the
+  bookmark) and Delete. On iOS it is pinned above the rows in the page (the navigation bar stays hidden)
+  and the tab bar stays, as in the mockup; on Android it is the Scaffold's top bar, as before. While
+  selecting the rest of the top (title row, card, shelf, search) is hidden, as the mockup draws it. A long
+  press on a row still opens its menu, as before.
+- **ViewModel.** `RecipesUiState.activeQuickFilters` (the filters on in the offered order: the pills, the
+  switches, the badge), `allSelected`, `onClearQuickFilters` and `onSelectAll` (`RecipeSelection.tickAll`),
+  on both platforms. The sheet's open state is the screen's (`rememberSaveable` / `@State`), like the
+  other sheets.
+- **Tests.** Android `RecipesTopBViewModelTest`, `RecipesTopBScreenTest` (the ⋮ menu, Select all, the
+  shelf above search and navigating, the sheet's switches, the badge, a pill's ×, both Clears, the
+  card's close, German at twice the text, the flag off); iOS `RecipesTopBViewModelTests` and
+  `RecipesTopBUITests` (its own shard weight). The suites written for #375 run with the flag off and
+  still pass unchanged.
 
 ## A recipe picked from the page's text (#103)
 
@@ -6327,7 +6397,8 @@ removes just its entries: the menu, or every Select), on both platforms.
     owner asked for it, only there and only through a row's menu or a selection; membership is still
     edited in the sheet everywhere else.
 - **Select** is in the long-press menu (that row ticked) and in the header on Recipes and a view
-  (beside the +; a view has no +), and in a list's overflow menu. Selecting is **ViewModel state**
+  (beside the +; a view has no +), and in a list's overflow menu. (With `recipesTopB`, #449, the
+  library's Select is in the title row's ⋮ menu instead, and selecting gains Select all.) Selecting is **ViewModel state**
   (`RecipeSelection`, shared by `RecipesViewModel` and `ListDetailViewModel`), so it survives
   rotation; it is not in `remember`. While selecting: every row leads with a checkbox and a tap
   ticks (the whole row is one checkbox for TalkBack); swipes, the long-press menu and the row's

@@ -8,7 +8,13 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -42,7 +48,13 @@ internal fun SelectionBar(
     onAddToList: (() -> Unit)?,
     onRemoveFromList: (() -> Unit)?,
     onDelete: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Select all (#449, design B): ticks every row in sight; null leaves it out. */
+    onSelectAll: (() -> Unit)? = null,
+    /** Every row in sight is ticked already: Select all has nothing to do. */
+    allSelected: Boolean = false,
+    /** The hairline under the bar; design B (#449) leaves it to the first row's own. */
+    hairline: Boolean = true
 ) {
     Surface(
         color = MaterialTheme.colorScheme.background,
@@ -58,6 +70,11 @@ internal fun SelectionBar(
                         .semantics { liveRegion = LiveRegionMode.Polite }
                         .testTag("selectedCount")
                 )
+                if (onSelectAll != null) {
+                    TextButton(onClick = onSelectAll, enabled = !allSelected, modifier = Modifier.testTag("selectAllRecipes")) {
+                        Text(stringResource(R.string.action_select_all), color = if (allSelected) Color.Unspecified else MaterialTheme.colorScheme.onBackground)
+                    }
+                }
                 TextButton(onClick = onDone, modifier = Modifier.testTag("doneSelecting")) {
                     Text(stringResource(R.string.action_done))
                 }
@@ -68,6 +85,11 @@ internal fun SelectionBar(
             ) {
                 if (onAddToList != null) {
                     OutlinedButton(onClick = onAddToList, enabled = count > 0, modifier = Modifier.testTag("addSelectedToList")) {
+                        if (onSelectAll != null) {
+                            // Design B (#449): the bookmark before the words.
+                            Icon(painterResource(R.drawable.ic_bookmark_border), contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                        }
                         Text(stringResource(R.string.row_action_add_to_list))
                     }
                 }
@@ -81,7 +103,7 @@ internal fun SelectionBar(
                     Text(stringResource(R.string.action_delete))
                 }
             }
-            Hairline()
+            if (hairline) Hairline()
         }
     }
 }

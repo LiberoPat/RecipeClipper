@@ -66,6 +66,20 @@ internal val NoPhotoTintsOnInk = listOf(
 /** The tints for the scheme in use: light, or on ink (system dark, and cook mode's "Dark while cooking"). */
 val LocalNoPhotoTints = staticCompositionLocalOf { NoPhotoTintsLight }
 
+/**
+ * The paprika tone (#449, the top of Recipes, design B): a soft paprika fill for what is on or
+ * leads (the views shelf's Lists cell, the filter button while a filter is on, the pills of the
+ * filters on), and the deep paprika that reads on it. On ink, a dim paprika with a light one.
+ */
+@Immutable
+class PaprikaTone(val fill: Color, val onFill: Color)
+
+internal val PaprikaToneLight = PaprikaTone(Color(0xFFF6E3DA), Color(0xFF8E3219))
+internal val PaprikaToneOnInk = PaprikaTone(Color(0xFF45261C), Color(0xFFF4B7A3))
+
+/** The paprika tone for the scheme in use. */
+val LocalPaprikaTone = staticCompositionLocalOf { PaprikaToneLight }
+
 // The fonts are variable files; weight is picked per entry. Below API 26 Android ignores the
 // variation and uses the file's default weight, which reads fine but not bold.
 @OptIn(ExperimentalTextApi::class)
@@ -201,7 +215,10 @@ fun RecipeClipperTheme(forceDark: Boolean = false, content: @Composable () -> Un
         }
     }
 
-    CompositionLocalProvider(LocalNoPhotoTints provides if (dark) NoPhotoTintsOnInk else NoPhotoTintsLight) {
+    CompositionLocalProvider(
+        LocalNoPhotoTints provides if (dark) NoPhotoTintsOnInk else NoPhotoTintsLight,
+        LocalPaprikaTone provides if (dark) PaprikaToneOnInk else PaprikaToneLight
+    ) {
         MaterialTheme(colorScheme = scheme, typography = AppTypography, content = content)
     }
 }

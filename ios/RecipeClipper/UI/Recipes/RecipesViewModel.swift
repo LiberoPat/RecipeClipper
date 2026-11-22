@@ -50,6 +50,16 @@ struct RecipesUiState: Equatable {
     /// The recipes a Delete (a row's menu, or the selection's) asks to confirm; empty when none.
     var confirmingDelete: [RecipeSummary] = []
 
+    /// The chips that are on, in the offered order (#449): the filter sheet's switches, the pills under
+    /// search and the count on the filter button's badge.
+    var activeQuickFilters: [RecipeQuickFilter] { quickFilters.filter { quick.contains($0) } }
+
+    /// Every listed row is ticked (#449): Select all has nothing left to tick.
+    var allSelected: Bool {
+        guard selecting, let recipes, !recipes.isEmpty else { return false }
+        return selectedIds.count == recipes.count
+    }
+
     /// The top bar's Select shows once there is a row to select.
     var canSelect: Bool { !(recipes?.isEmpty ?? true) }
 
@@ -274,6 +284,14 @@ final class RecipesViewModel {
         refreshShown()
     }
 
+    /// Clear (#449): every chip off at once, from the filter sheet or beside the pills.
+    func onClearQuickFilters() {
+        guard !uiState.quick.isEmpty else { return }
+        uiState.quick = []
+        stopCoverage()
+        refreshShown()
+    }
+
     /// The rows / grid toggle (#380): stored at once and applied at once.
     func onLayoutChange(_ layout: RecipesLayout) {
         preferences.recipesLayout = layout
@@ -414,6 +432,12 @@ final class RecipesViewModel {
 
     func onToggleSelected(_ id: Int64) {
         selection.toggle(id)
+        syncSelection()
+    }
+
+    /// Select all (#449): ticks every row in sight (the chips and the search applied), never one hidden.
+    func onSelectAll() {
+        selection.tickAll((uiState.recipes ?? []).map(\.id))
         syncSelection()
     }
 

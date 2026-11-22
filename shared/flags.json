@@ -239,6 +239,12 @@
       "description": "Close the Today card (#448): the Today card (#402) at the top of Recipes (or Home) gains a small close button that hides it for the rest of the day (the local date is kept in settings, today_card_dismissed_day; it returns the next day), and Settings' Plan section a switch, Show today's meal (show_today_card, on by default), that hides it altogether. The mid-cook Continue cooking card is never closable and ignores both. Off, no close button and no switch: the card is as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 448
+    },
+    {
+      "key": "recipesTopB",
+      "description": "The top of Recipes redesigned (#449, design B; with libraryFirst): the title row is Recipes, the + and a ⋮ menu holding Select and Settings (no gear, no Select button); the views are one segmented shelf of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat) above search, each an icon, its count and its name; the three quick filters move into a sheet behind a filter button at the end of the search field, badged with how many are on, and those on show under search as removable pills with Clear; selecting gains Select all. Off, the top is as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 449
     }
   ]
 }

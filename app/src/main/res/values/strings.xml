@@ -228,6 +228,16 @@
     <string name="recipes_quick_pantry_note">Shows recipes where at least half of the ingredients are in your pantry, by name, not by amount.</string>
     <string name="recipes_pantry_have">You have %1$d of %2$d</string>
     <string name="recipes_no_results_filters">No recipes match these filters.</string>
+    <!-- Recipes, design B (#449): the filter sheet behind search, its pills and the button's badge -->
+    <string name="recipes_filter_title">Filter recipes</string>
+    <string name="recipes_quick_30_or_less_hint">Total time, or prep plus cook</string>
+    <string name="recipes_quick_not_cooked_hint">Never marked as cooked</string>
+    <string name="recipes_quick_pantry_hint">At least half the ingredients, by name</string>
+    <string name="cd_remove_filter">Remove %1$s</string>
+    <plurals name="recipes_filters_on">
+        <item quantity="one">%1$d filter on</item>
+        <item quantity="other">%1$d filters on</item>
+    </plurals>
     <string name="cd_layout_to_grid">Show as a grid</string>
     <string name="cd_layout_to_rows">Show as a list</string>
 
