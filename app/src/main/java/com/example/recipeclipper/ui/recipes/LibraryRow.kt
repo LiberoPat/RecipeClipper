@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.recipes
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.PantryCoverage
@@ -25,6 +27,9 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.common.RecipeThumbnail
 import com.example.recipeclipper.ui.common.recipeRowClicks
 import com.example.recipeclipper.ui.recipe.sourceCreditText
+
+/** The bookmark's slot, filled or outlined: the button's 48dp target, so the glyph never shifts. */
+internal val BookmarkSlot: Dp = 48.dp
 
 /**
  * A row of the Recipes library (#286, the tidy list): photo, title, the site and total time
@@ -74,15 +79,22 @@ internal fun LibraryRow(
             if (pantry != null) PantryLine(pantry, Modifier.testTag("pantryHave-${recipe.id}"))
         }
         if (recipe.isSaved) {
-            Icon(
-                painterResource(R.drawable.ic_bookmark),
-                contentDescription = stringResource(R.string.cd_in_a_list),
-                tint = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.padding(start = 12.dp).size(20.dp)
-            )
+            // The same 48dp slot as the outlined button below, glyph centred, so saving a recipe
+            // never moves the bookmark or the text beside it.
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(BookmarkSlot)) {
+                Icon(
+                    painterResource(R.drawable.ic_bookmark),
+                    contentDescription = stringResource(R.string.cd_in_a_list),
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         } else if (onSaveToList != null && !selecting) {
             // Not while ticking: no button to tap by mistake.
-            IconButton(onClick = onSaveToList, modifier = Modifier.testTag("saveToList-${recipe.id}")) {
+            IconButton(
+                onClick = onSaveToList,
+                modifier = Modifier.size(BookmarkSlot).testTag("saveToList-${recipe.id}")
+            ) {
                 Icon(
                     painterResource(R.drawable.ic_bookmark_border),
                     contentDescription = stringResource(R.string.cd_save_to_list),
