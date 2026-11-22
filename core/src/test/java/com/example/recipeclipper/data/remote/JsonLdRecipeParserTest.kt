@@ -290,6 +290,44 @@ class JsonLdRecipeParserTest {
         )
     }
 
+    // --- A HowToStep's directions in itemListElement (#436) ---
+
+    @Test
+    fun `panelinha's steps are each one HowToDirection, read as the step`() {
+        val steps = fixture("panelinha-bolo-de-banana").instructions
+        assertEquals(7, steps.size)
+        assertEquals("Preaqueça o forno a 180 ºC (temperatura média).", steps[0])
+        assertEquals("Retire o bolo do forno e deixe esfriar em temperatura ambiente antes de desenformar. Sirva a seguir.", steps[6])
+        // Inside HowToSections too, flattened as any section's steps are.
+        val cake = fixture("panelinha-bolo-aniversario").instructions
+        assertEquals(16, cake.size)
+        assertTrue(cake[0], cake[0].startsWith("Comece o preparo pela ganache"))
+        assertTrue(cake[15], cake[15].startsWith("Para decorar:"))
+    }
+
+    @Test
+    fun `a step's directions join in order, a HowToTip among them is a tip, and the step's own text wins`() {
+        val block = """
+            {"@type": "Recipe", "name": "R", "recipeIngredient": ["1 egg"], "recipeInstructions": [
+              {"@type": "HowToStep", "itemListElement": [
+                {"@type": "HowToDirection", "text": "Beat the <b>egg</b>."},
+                {"@type": "HowToTip", "text": "A fork will do."},
+                "Add salt.",
+                {"@type": "HowToDirection", "text": "  "},
+                {"@type": "HowToDirection", "name": "Rest it."},
+                ["nested"], 12
+              ]},
+              {"@type": "HowToStep", "text": "Fry.", "itemListElement": {"@type": "HowToDirection", "text": "Not this."}},
+              {"@type": "HowToStep", "name": "Serve.", "itemListElement": {"@type": "HowToTip", "text": "Warm plates."}},
+              {"@type": "HowToStep", "name": "Named only."},
+              {"@type": "HowToTip", "itemListElement": {"@type": "HowToDirection", "text": "A tip's own list is not read."}}
+            ]}
+        """.trimIndent()
+        val recipe = JsonLdRecipeParser.parse(listOf(block), sourceUrl)!!
+        assertEquals(listOf("Beat the egg. Add salt. Rest it.", "Fry.", "Serve.", "Named only."), recipe.instructions)
+        assertEquals(listOf("A fork will do.", "Warm plates."), recipe.tips)
+    }
+
     // --- HowToTip (#432) ---
 
     @Test

@@ -859,6 +859,10 @@ has no steps. Rules, pinned by tests on the same pages on both platforms:
   per-`<p>` reading silently drops it. The notes block is not read.
 - **The photo is `og:image`** when there's no `image` itemprop (Jetpack has
   none).
+- **The site rules' cards refine it as they do JSON-LD** (#437): Jetpack
+  names its groups in `<h5>`s between the microdata's lines, and a card that
+  lines up one-to-one adds them as headings. Only the headings; the step
+  noise rules and WP Recipe Maker's parts stay JSON-LD's.
 
 iOS has no HTML parser, so its twin brings a small, forgiving element tree
 (`HtmlTree`: void and raw-text elements, comments, and implied `</p>` and
@@ -3913,7 +3917,8 @@ garnish") that the card shows.
 - **JSON-LD stays first.** The parts only refine its `recipeIngredient` lines, and only when a
   card's ingredients line up one-to-one: the same count, and each part's name found in its
   JSON-LD line (case and spacing ignored). Otherwise the JSON-LD lines stay as they were. A page
-  can hold several cards; the first that lines up is used. Microdata recipes aren't refined.
+  can hold several cards; the first that lines up is used. Microdata recipes don't get these parts
+  (only a site rule card's headings, #437).
 - **Notes stay on the line, after the name, as the card shows them.** A recipe's ingredients are
   plain lines with no notes field; adding one would mean a schema change and teaching scaling,
   conversion, groceries, editing and export about it. The scaler reads the leading amount, and
@@ -3982,7 +3987,8 @@ a bot check, so there is nothing there to write a rule for.
   keyed by host without "www." (`SourceDomain`), and a site's own cards are tried before the
   plugins'. A card is `list`, `item`, `heading` and optional `title` and `amount` selectors.
   Everything `CardHeadings` already required still holds: a heading must be a heading element,
-  end in a colon or be wholly bold, and a card is used only when its items line up one-to-one
+  end in a colon or be wholly bold (unless its card opts in with `trustHeading`, #439, below),
+  and a card is used only when its items line up one-to-one
   with `recipeIngredient` (same count, each item's letters and digits in its line). A rule can
   only add headings or drop known noise; it can't change a line.
 - **The selector subset is matched by hand** (`CardSelector`, both platforms): a tag, `.class`,
@@ -4017,6 +4023,81 @@ a bot check, so there is nothing there to write a rule for.
 - Tests: trimmed real pages in `shared/fixtures/pages/site-*.html` (`SiteRulesTest` /
   `SiteRulesTests`), and `Site` rows in the differential corpus. The site check fetches one
   page per site with rules.
+
+### The 2026-11-21 recheck's fixes (#436–#440)
+
+Five sites from the home-connection recheck (`docs/site-checkup.md`), each needing more than a
+table entry. The owner decided each; `site-rules.json` went to version 3. No new feature flag: the
+site-rule mechanisms (#118–#120) never had one, and each new one changes only the site whose rule
+names it, or (#436) reads JSON-LD that gave no step at all before.
+
+- **#436, panelinha.com.br: a HowToStep's text in its `itemListElement`.** Every step is
+  `{"@type": "HowToStep", "itemListElement": {"@type": "HowToDirection", "text": "Preaqueça o forno a
+  180 ºC (temperatura média)."}}`, with no `text` of its own, so the recipe had no steps.
+  `JsonLdRecipeParser` (both platforms) now reads a step's `itemListElement`, **only when the step has
+  no text of its own** (so no working site changes): one object or an array; each HowToDirection's
+  text (else its `name`), or a plain string, joined with a space in order, is the step; a HowToTip
+  there is a tip (#432's place for it); nested arrays and numbers are ignored and nothing deeper is
+  walked. A HowToTip's own `itemListElement` is never read. With no directions the step falls back to
+  its `name`, as before. The ingredient group headings stay lost: they are `<h3>`s outside each `<ul>`
+  in a container that also holds the step lists, which no card can pick out (no combinators). Pinned
+  by `Parse` rows and the fixtures `shared/fixtures/jsonld/panelinha-*.json` (7 steps on the banana
+  cake, 16 over the birthday cake's sections).
+- **#437, smittenkitchen.com: cards on a microdata recipe.** Its Jetpack card (no JSON-LD) names its
+  groups in `<h5>`s between the `itemprop="recipeIngredient"` items. `BlogPageParser` (iOS
+  `BlogRecipeSource.parse`) now runs `SiteRules.ingredients` on a microdata recipe too, and a
+  `smittenkitchen.com` card (`.jetpack-recipe-ingredients`, `li`, `h5`) adds "Crispy Onions:",
+  "Mushroom Sauce:", "Assembly:". Chosen over teaching `MicrodataRecipeParser` to keep headings because
+  it is the same guarded path every JSON-LD page takes: the card must line up one-to-one with the
+  microdata's own lines, which come from the same `<li>`s, so a card can only add headings, never
+  change or lose a line; the microdata parser itself is untouched; and only a site with a card (or a
+  page with a plugin card) changes. Only the cards: step noise and WP Recipe Maker stay JSON-LD's.
+  The site check reads a microdata recipe for its rule check too.
+- **#439, a card may trust its heading selector.** Giallo Zafferano names its groups in
+  `<dt class="gz-title-ingredients">` and CuisineAZ its marinade in `<li class="ingredient_step">`,
+  neither a heading element, a colon or bold text, so `CardHeadings` refused them. A card may now say
+  `"trustHeading": true`: whatever its own `heading` selector finds is a heading (a colon added, as
+  always), still only when the card lines up one-to-one. Without it nothing changed. Cards:
+  `ricette.giallozafferano.it` (`.gz-ingredients`, the block around its five `dl`s, since a card's list
+  must hold every line; `dd.gz-ingredient`; `dt.gz-title-ingredients`): "Per il riso (per circa 12
+  arancini):", "per il ripieno al ragù:" (the site's own case, as written), …; `cuisineaz.com`
+  (`section.ingredients`, `li.ingredient_item`, `li.ingredient_step`, `amount: ".ingredient_qte"`, since
+  the card writes "Magret de canard 4" where JSON-LD writes "4 Magret de canard"): "Pour la marinade:".
+  **kurashiru.com is left out**: its group names sit in `<div class="_8u4gzj9">`, a build hash that
+  changes on the site's next deploy, so a card would silently stop matching; its embedded data's
+  `{"type":"heading"}` entries need a non-card approach (#439 stays open for it).
+- **#438, Giallo Zafferano's bare photo numbers.** Its steps read "lessate il riso … con il sale
+  grosso 1 ; …", "Mescolate di tanto in tanto 2 .": numbers pointing at the step photos, which its
+  JSON-LD (plain strings) leaves out but its page shows: each step a `div.gz-content-recipe-step`
+  holding `<picture data-step="1"><img src=…></picture>` and the text's numbers as
+  `<span class="num-step">1</span>`. The text is never rewritten and the numbers never stripped;
+  instead a site rule's **`stepPhotos`** (`step`, `photo`, `number`: the photo's attribute, `marker`;
+  `PageStepPhotos`, both platforms) gives the numbers something to point at through #433's step
+  photos. **Read only when the page proves every number:** as many steps on the page as JSON-LD has,
+  each one's letters and digits found in its JSON-LD step, each step's markers exactly its photos'
+  numbers in order, those numbers 1, 2, 3… through the recipe, every photo a web image, none twice,
+  at most 8 a step, and only when JSON-LD gave no step photos of its own; anything else is no photos.
+  Because the numbers run 1, 2, 3… through the recipe, `StepPhotos.numbered`'s fallback (a photo's
+  place among the recipe's step photos) is exactly the number in the text, so **`StepPhotos.markers`
+  is not extended to bare numbers**: from the text alone "1" in "sale grosso 1 ;" can't be told from
+  "1,2 l di acqua" or "lo zafferano 3 e mescolate", and the proof is made once, at parse time, where
+  the page's markup says which numbers are markers. Known limit, as for any step photos numbered by
+  place: an edit that removes a step before others shifts the later badges off the text's numbers.
+  The arancini get 33 photos, three a step, badged 1 to 33.
+- **#440, recetas.elperiodico.com: a last step that only points at a video.** "Además, si dispones
+  de leche, no te pierdas este VÍDEO receta de galletas de avena crujientes elaboradas con este
+  ingrediente:" starts with the recipe's own words, so `stepNoise` (cut from the phrase) would have
+  left "Además, si dispones de leche," as the last step. A new kind, **`wholeStepNoise`**: phrases
+  (matched in any case, both lowercased) that make the whole last step noise; it is dropped, after
+  `stepNoise` has cut, one step at most, and never the only step. `stepNoise` is unchanged. Listed for
+  `recetas.elperiodico.com` and `recetasgratis.net` (which redirects there): "no te pierdas este VÍDEO".
+  The galletas de avena now end on "Pasado ese tiempo, deja que las galletas de avena se enfríen…".
+- Tests: fixtures `shared/fixtures/pages/site-smittenkitchen-green-bean-casserole.html`,
+  `site-giallozafferano-arancini.html`, `site-cuisineaz-baeckeoffe.html`,
+  `site-recetasgratis-galletas-avena.html` (`SiteRulesTest` / `SiteRulesTests`), `Site` rows for the new
+  cards and the whole-step kind, and `SitePh` rows (`SiteRules.stepPhotos` and the badges) in the
+  differential corpus. The site check's report names the new rules "whole step noise" and "step
+  photos", and fetches each site's page.
 
 ## Grocery lines merged with the model's help (#99)
 
@@ -6700,8 +6781,9 @@ apart from the steps, below the method, unnumbered, and out of cook mode. Behind
   `name`, through `jsonText`), never rewritten. Tips are not steps, so the rule stands: a recipe
   needs a name plus ingredients or steps, and one whose instructions are only tips has none. A
   condensed duplicate section ("Abbreviated Recipe") that would have emptied the steps is put back with its tips
-  read once. Microdata, Reddit, the splitter and the importers have no tips. A `HowToStep` that
-  nests its own `HowToTip` (schema.org allows it; no site seen) is still one step.
+  read once. Microdata, Reddit, the splitter and the importers have no tips. A `HowToStep` with
+  text of its own that also nests a `HowToTip` is still one step; one with no text reads its
+  `itemListElement` (#436, panelinha.com.br), and a `HowToTip` there is a tip.
 - **Storage:** `recipes.tips`, a JSON list like `instructions`, `NOT NULL DEFAULT '[]'` (Room 19 →
   20, `MIGRATION_19_20`; iOS `user_version` 18 → 19, `addTips`). **Stored recipes are not rewritten:**
   a King Arthur recipe saved before keeps its tips as steps until it is shared again, and the
@@ -7274,7 +7356,9 @@ still parsed, stored and exported, so turning it on shows them without a re-shar
   theirs; the site rules' step noise (#120) drops a cut-away last step's photos with it
   (`BlogPageParser.refine`). Cookist needs nothing else: every step of its three pages in #433 carries
   one `image`, and its markers are already in the text. Microdata, Reddit, the on-device model's pick
-  (#103) and the Paprika, Recipe Keeper and Mealie imports give no step photos.
+  (#103) and the Paprika, Recipe Keeper and Mealie imports give no step photos. The one exception to
+  "JSON-LD only" is a site rule's `stepPhotos` (#438, Giallo Zafferano), read from the page only
+  when it proves every number, and only when JSON-LD gave the recipe no step photos of its own.
 - **The numbers come from the markers, the text stays as written.** `StepPhotos.numbered`: a step's
   bare "(n)" markers (one or two digits in brackets) number its photos when there are exactly as many
   markers as photos; otherwise its photos take their place among the recipe's step photos (1, 2, 3...).

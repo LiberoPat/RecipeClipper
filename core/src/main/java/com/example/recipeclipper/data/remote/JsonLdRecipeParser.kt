@@ -406,14 +406,14 @@ internal object JsonLdRecipeParser {
                         val nested = item.optJSONArray("itemListElement")
                         if (nested != null) for (i in 0 until nested.length()) addStep(nested.opt(i))
                     } else {
-                        val parts = joinedParts(item.opt("text"))
-                        val stepText = when {
-                            parts == null -> jsonText(item.optString("text").ifBlank { item.optString("name") })
-                            parts.isNotEmpty() -> parts
-                            else -> jsonText(item.optString("name"))
-                        }
+                        val isTip = type.equals("HowToTip", ignoreCase = true)
+                        val own = ownText(item)
+                        // A step with no text of its own may hold it in its directions (#436).
+                        val nested = if (own == null && !isTip) directions(item.opt("itemListElement")) else null
+                        nested?.second?.let(tips::addAll)
+                        val stepText = own ?: nested?.first?.ifBlank { null } ?: jsonText(item.optString("name"))
                         if (stepText.isNotBlank()) {
-                            if (type.equals("HowToTip", ignoreCase = true)) {
+                            if (isTip) {
                                 tips.add(stepText.trim())
                             } else {
                                 steps.add(stepText.trim())
@@ -450,6 +450,47 @@ internal object JsonLdRecipeParser {
             is String -> steps.addAll(node.split("\n").map { jsonText(it).trim() }.filter { it.isNotEmpty() })
         }
         return Triple(steps, photos, tips)
+    }
+
+    /**
+     * A step's own `text` ([joinedParts] when it is an array of strings), or null when it has
+     * none that isn't blank: the step then falls back to its directions (#436) and its `name`.
+     */
+    private fun ownText(item: JSONObject): String? {
+        val parts = joinedParts(item.opt("text"))
+        if (parts != null) return parts.ifEmpty { null }
+        val raw = item.optString("text")
+        return if (raw.isBlank()) null else jsonText(raw)
+    }
+
+    /**
+     * A HowToStep's `itemListElement` (#436): schema.org lets a step hold its words as
+     * HowToDirections and HowToTips there, one object or an array of them. panelinha.com.br gives
+     * every step one HowToDirection and no `text`. The directions' texts (or a plain string),
+     * read as a step's text is ([ownText], else `name`), joined with a space in their order, are
+     * the step; a HowToTip there is a tip (#432). Null when the node holds neither; a nested
+     * array or a number is ignored, and nothing below is walked.
+     */
+    private fun directions(node: Any?): Pair<String, List<String>>? {
+        val items = when (node) {
+            is JSONObject -> listOf(node)
+            is JSONArray -> (0 until node.length()).map { node.opt(it) }
+            else -> return null
+        }
+        val texts = mutableListOf<String>()
+        val tips = mutableListOf<String>()
+        for (element in items) {
+            when (element) {
+                is String -> jsonText(element).trim().takeIf { it.isNotEmpty() }?.let(texts::add)
+                is JSONObject -> {
+                    val text = (ownText(element) ?: jsonText(element.optString("name"))).trim()
+                    if (text.isEmpty()) continue
+                    if (element.optString("@type").equals("HowToTip", ignoreCase = true)) tips += text else texts += text
+                }
+            }
+        }
+        if (texts.isEmpty() && tips.isEmpty()) return null
+        return texts.joinToString(" ") to tips
     }
 
     /**

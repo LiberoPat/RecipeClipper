@@ -36,3 +36,8 @@ https://www.epicurious.com/recipes/food/views/ba-syn-7up-cake
 https://www.delish.com/cooking/recipe-ideas/a21968799/cannoli-pie-recipe/
 https://www.750g.com/brookie-r98937.htm
 https://recetas.elperiodico.com/receta-de-galletas-de-mantequilla-caseras-31553.html  # step noise; recetasgratis.net redirects here
+https://recetas.elperiodico.com/receta-de-galletas-de-avena-faciles-y-rapidas-67303.html  # whole-step noise: the video pointer (#440)
+https://smittenkitchen.com/2013/11/green-bean-casserole-with-crispy-onions/  # a card on a microdata recipe (#437)
+https://ricette.giallozafferano.it/Arancini-di-riso.html  # trusted dt headings (#439) and the page's step photos (#438)
+https://www.cuisineaz.com/recettes/baeckeoffe-de-noel-pas-cher-121205.aspx  # the marinade's trusted heading (#439)
+https://panelinha.com.br/receita/bolo-de-banana  # no rule: each HowToStep's text is in a HowToDirection (#436)

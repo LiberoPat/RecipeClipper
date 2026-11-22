@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 2,
-  "about": "Where a recipe card on the page says more than its JSON-LD (#119, #120). Data only, read by both apps; rationale in docs/decisions.md. version: raise it on every edit (a copy fetched later would be used only if newer). cards: ingredient lists on any site (recipe plugins); sites: by host without www., each with its own cards, tried before those. A card: list, the element holding the ingredients; item, one ingredient; heading, a group's name (used only if it is h1-h6, ends in a colon or is wholly bold); title, an element inside the list to ignore; amount, elements inside an item left out when matching it (the card writes 'cups' where JSON-LD writes 'c.'). A card only adds the group headings JSON-LD drops, and only when its items line up one-to-one with JSON-LD's recipeIngredient: the same count, each item's letters and digits found in its line. stepNoise: phrases that start noise at the end of the last step (a note on when the recipe was published); from the phrase on is dropped. Rules go by the host of the link the cook shared, so a site that moved is listed under its old host and its new one. Selectors: a tag, .class, #id, [attr], [attr=v], [attr^=v], [attr*=v], compounded, in comma lists; no combinators. Values are case-sensitive.",
+  "version": 3,
+  "about": "Where a recipe card on the page says more than its JSON-LD (#119, #120). Data only, read by both apps; rationale in docs/decisions.md. version: raise it on every edit (a copy fetched later would be used only if newer). cards: ingredient lists on any site (recipe plugins); sites: by host without www., each with its own cards, tried before those. A card: list, the element holding the ingredients; item, one ingredient; heading, a group's name (used only if it is h1-h6, ends in a colon or is wholly bold); title, an element inside the list to ignore; amount, elements inside an item left out when matching it (the card writes 'cups' where JSON-LD writes 'c.'); trustHeading: true, whatever heading finds is a group's name, whatever element it is (#439). A card only adds the group headings JSON-LD (or a microdata recipe, #437) drops, and only when its items line up one-to-one with the recipe's lines: the same count, each item's letters and digits found in its line. stepNoise: phrases that start noise at the end of the last step (a note on when the recipe was published); from the phrase on is dropped. wholeStepNoise: phrases (any case) that make the whole last step noise (a pointer to a video); it is dropped, after stepNoise, unless it is the only step (#440). stepPhotos: photos the page shows beside each step and JSON-LD leaves out (#438): step, one step; photo, one of its photos (an img or an element holding one); number, the photo's attribute giving its number; marker, the step text's element holding a number; used only when every step's markers are exactly its photos' numbers, numbered 1, 2, 3... through the recipe, and the steps line up with JSON-LD's. Rules go by the host of the link the cook shared, so a site that moved is listed under its old host and its new one. Selectors: a tag, .class, #id, [attr], [attr=v], [attr^=v], [attr*=v], compounded, in comma lists; no combinators. Values are case-sensitive.",
   "cards": [
     {
       "about": "Tasty Recipes (#119)",
@@ -40,6 +40,11 @@
         { "list": "[class*=ingredients_ingredients__]", "item": "li", "heading": "h3[class*=ingredientgroup_name__]" }
       ]
     },
+    "cuisineaz.com": {
+      "cards": [
+        { "about": "the marinade's name is an li of its own (#439)", "list": "section.ingredients", "item": "li.ingredient_item", "heading": "li.ingredient_step", "amount": ".ingredient_qte", "trustHeading": true }
+      ]
+    },
     "delish.com": {
       "cards": [
         { "list": ".ingredients-body", "item": "li", "heading": "h3", "amount": "strong" }
@@ -52,10 +57,23 @@
       "stepNoise": ["Editor’s note:"]
     },
     "recetas.elperiodico.com": {
-      "stepNoise": ["Si quieres ver la preparación con más detalle", "Si te ha gustado esta receta, tienes algún comentario", "Cuéntanos en los comentarios"]
+      "stepNoise": ["Si quieres ver la preparación con más detalle", "Si te ha gustado esta receta, tienes algún comentario", "Cuéntanos en los comentarios"],
+      "wholeStepNoise": ["no te pierdas este VÍDEO"]
     },
     "recetasgratis.net": {
-      "stepNoise": ["Si quieres ver la preparación con más detalle", "Si te ha gustado esta receta, tienes algún comentario", "Cuéntanos en los comentarios"]
+      "stepNoise": ["Si quieres ver la preparación con más detalle", "Si te ha gustado esta receta, tienes algún comentario", "Cuéntanos en los comentarios"],
+      "wholeStepNoise": ["no te pierdas este VÍDEO"]
+    },
+    "ricette.giallozafferano.it": {
+      "cards": [
+        { "about": "groups named in dt elements (#439)", "list": ".gz-ingredients", "item": "dd.gz-ingredient", "heading": "dt.gz-title-ingredients", "trustHeading": true }
+      ],
+      "stepPhotos": { "step": ".gz-content-recipe-step", "photo": "picture.gz-content-recipe-step-img", "number": "data-step", "marker": "span.num-step" }
+    },
+    "smittenkitchen.com": {
+      "cards": [
+        { "about": "Jetpack's recipe block, a microdata recipe (#437)", "list": ".jetpack-recipe-ingredients", "item": "li", "heading": "h5" }
+      ]
     }
   }
 }

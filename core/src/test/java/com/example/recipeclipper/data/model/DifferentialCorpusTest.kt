@@ -146,6 +146,9 @@ import java.io.File
  * `Site("host", "markup", [lines], [steps])` rows (#120) pin [SiteRules]: JSON-LD's lines and steps
  * refined by the host's rules in `site-rules.json` (then any site's cards) on that markup; write
  * only the host (no "www."), the markup (single-quoted attributes), the lines and the steps.
+ * `SitePh("host", "markup", [steps])` rows (#438) pin [SiteRules.stepPhotos]: the step photos the
+ * host's `stepPhotos` rule proves on that markup for JSON-LD's steps (each step's links; [] for
+ * none) and their badges' numbers ([StepPhotos.numbered]); write only the host, the markup and the steps.
  *
  * `Render("yield", target, [lines], [steps])` rows (#169) pin [RecipeRenderer.content]: a recipe
  * with that yield (or nil), chosen servings (or nil), ingredients and steps, rendered in Metric
@@ -289,6 +292,10 @@ class DifferentialCorpusTest {
     private val siteRow = Regex(
         """^(\s*)Site\("([a-z0-9.-]+)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]"""
     )
+    // A page step-photo row (#438): a host, a page's markup, then JSON-LD's steps.
+    private val sitePhotoRow = Regex(
+        """^(\s*)SitePh\("([a-z0-9.-]+)", "((?:[^"\\]|\\.)*)", \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]"""
+    )
     // An article row (#435): a page with no recipe data.
     private val articleRow = Regex("""^(\s*)Article\("((?:[^"\\]|\\.)*)"""")
     // A splitter row (#208): free text, a Reddit post's or a photo's.
@@ -427,6 +434,16 @@ class DifferentialCorpusTest {
             val refined = SiteRules.ingredients(Jsoup.parse(html), url, lines)
             return m.groupValues[1] +
                 "Site(${q(host)}, ${q(html)}, ${list(lines)}, ${list(steps)}, ${list(refined)}, ${list(SiteRules.steps(url, steps))}),"
+        }
+        sitePhotoRow.find(line)?.let { m ->
+            val (host, html) = m.groupValues[2] to unescape(m.groupValues[3])
+            val steps = literal.findAll(m.groupValues[4]).map { unescape(it.groupValues[1]) }.toList()
+            val url = "https://www.$host/r"
+            val photos = StepPhotos.aligned(SiteRules.stepPhotos(Jsoup.parse(html, url), url, steps).orEmpty(), steps.size)
+            val urls = photos.joinToString(", ", "[", "]") { list(it) }
+            val badges = StepPhotos.numbered(steps, photos)
+                .joinToString(", ", "[", "]") { s -> s.joinToString(", ", "[", "]") { it.number.toString() } }
+            return m.groupValues[1] + "SitePh(${q(host)}, ${q(html)}, ${list(steps)}, $urls, $badges),"
         }
         closeRow.find(line)?.let { m ->
             val (a, b) = unescape(m.groupValues[2]) to unescape(m.groupValues[3])

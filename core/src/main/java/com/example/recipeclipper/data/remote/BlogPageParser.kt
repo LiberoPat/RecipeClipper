@@ -27,7 +27,8 @@ object BlogPageParser {
     /** [parsePage] for a page already parsed: the fetch's. */
     fun parsePage(doc: Document, url: String): FetchedPage {
         // Microdata only when there is no JSON-LD recipe, so no working site changes.
-        val recipe = jsonLdRecipe(doc, url)?.let { refine(doc, url, it) } ?: MicrodataRecipeParser.parse(doc, url)
+        val recipe = jsonLdRecipe(doc, url)?.let { refine(doc, url, it) }
+            ?: MicrodataRecipeParser.parse(doc, url)?.let { refineMicrodata(doc, url, it) }
         return if (recipe != null) {
             FetchedPage(ParseResult.Success(recipe))
         } else {
@@ -45,21 +46,34 @@ object BlogPageParser {
     /**
      * JSON-LD's recipe, refined by the page: WP Recipe Maker's ingredient parts when they line
      * up (#118), then the group headings JSON-LD drops from a plugin's card (#119) or the
-     * site's own (#120), and the site's known noise dropped from the last step (#120).
+     * site's own (#120), the step photos the site's page alone shows when it proves them (#438),
+     * and the site's known noise dropped from the last step (#120, #440).
      */
     private fun refine(doc: Document, url: String, recipe: Recipe): Recipe {
+        val photos = recipe.stepPhotos.ifEmpty { SiteRules.stepPhotos(doc, url, recipe.instructions).orEmpty() }
         val steps = SiteRules.steps(url, recipe.instructions)
         return recipe.copy(
             ingredients = SiteRules.ingredients(doc, url, WprmIngredients.refine(doc, recipe.ingredients)),
             instructions = steps,
-            // The noise rule only cuts the end of the last step, or drops it (#120): its photos go with it (#433).
-            stepPhotos = StepPhotos.aligned(recipe.stepPhotos, steps.size),
+            // The noise rules only cut the end of the last step, or drop it (#120, #440): its photos go with it (#433).
+            stepPhotos = StepPhotos.aligned(photos, steps.size),
         )
     }
 
+    /**
+     * A microdata recipe, refined by the page's cards as JSON-LD's is (#437): Smitten Kitchen's
+     * Jetpack card names its groups in `<h5>`s between the microdata's own lines. Only the
+     * headings, only when the card lines up one-to-one with the microdata's lines; nothing else.
+     */
+    private fun refineMicrodata(doc: Document, url: String, recipe: Recipe): Recipe =
+        recipe.copy(ingredients = SiteRules.ingredients(doc, url, recipe.ingredients))
+
     /** For the weekly site check (#120): whether each of [url]'s site rules still matches [doc]. */
     fun siteRuleCheck(doc: Document, url: String): Map<String, Boolean>? {
-        val recipe = jsonLdRecipe(doc, url) ?: return null
-        return SiteRules.check(doc, url, WprmIngredients.refine(doc, recipe.ingredients), recipe.instructions)
+        jsonLdRecipe(doc, url)?.let { recipe ->
+            return SiteRules.check(doc, url, WprmIngredients.refine(doc, recipe.ingredients), recipe.instructions)
+        }
+        val microdata = MicrodataRecipeParser.parse(doc, url) ?: return null
+        return SiteRules.check(doc, url, microdata.ingredients, microdata.instructions)
     }
 }

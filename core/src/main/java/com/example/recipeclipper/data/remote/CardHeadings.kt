@@ -14,9 +14,10 @@ import org.jsoup.nodes.Element
  * What a card is comes from `shared/tables/site-rules.json` ([SiteRules]), as selectors. A
  * heading is what the card shows between its lists: one its selector finds that is a heading
  * element, ends in a colon or is wholly bold (Tasty's own test for what to leave out of its
- * JSON-LD). Used only when the card's items line up one-to-one with JSON-LD's
- * `recipeIngredient`: the same count, and each item's letters and digits found in its JSON-LD
- * line (WordPress curls the card's quotes and dashes, not the JSON-LD's). Pure. The iOS app's
+ * JSON-LD), or anything it finds on a card that trusts its heading selector (#439). Used only
+ * when the card's items line up one-to-one with JSON-LD's `recipeIngredient`: the same count,
+ * and each item's letters and digits found in its JSON-LD line (WordPress curls the card's
+ * quotes and dashes, not the JSON-LD's). Pure. The iOS app's
  * `CardHeadings` is the same.
  */
 internal object CardHeadings {
@@ -25,6 +26,9 @@ internal object CardHeadings {
      * One kind of ingredient card: [list] holds it; [item] is one ingredient and [heading] a
      * group's name, both looked for only inside the list, never inside an item or the list's
      * [title]; [amount] is left out of an item's text when matching it to its JSON-LD line.
+     * With [trustHeading] (#439), whatever [heading] finds is a heading, whatever element it is:
+     * for a card whose selector names its group element exactly (Giallo Zafferano's
+     * `dt.gz-title-ingredients`), still only when the card lines up.
      */
     class Card(
         val list: CardSelector,
@@ -32,6 +36,7 @@ internal object CardHeadings {
         val heading: CardSelector,
         val title: CardSelector? = null,
         val amount: CardSelector? = null,
+        val trustHeading: Boolean = false,
     )
 
     private val headingTags = setOf("h1", "h2", "h3", "h4", "h5", "h6")
@@ -66,7 +71,7 @@ internal object CardHeadings {
             if (isItem) {
                 items.last() += Item(key(e, card.amount).ifEmpty { return null }, null)
             } else {
-                heading(e)?.let { names += it; items += mutableListOf<Item>() }
+                heading(e, card.trustHeading)?.let { names += it; items += mutableListOf<Item>() }
             }
         }
         // A heading after the last ingredient heads nothing.
@@ -81,11 +86,12 @@ internal object CardHeadings {
         return CardIngredients.text(copy)
     }
 
-    private fun heading(e: Element): String? {
+    private fun heading(e: Element, trusted: Boolean): String? {
         val text = CardIngredients.text(e)
         val bold = e.children().singleOrNull()?.takeIf { it.tagName() == "strong" || it.tagName() == "b" }
         return when {
             text.isEmpty() -> null
+            trusted -> text
             e.tagName() in headingTags -> text
             text.endsWith(":") -> text
             bold != null && CardIngredients.text(bold) == text -> text
@@ -94,7 +100,7 @@ internal object CardHeadings {
     }
 
     /** Lowercased letters and digits only, so curled quotes, dashes and spacing don't count. */
-    private fun letters(s: String): String = buildString {
+    fun letters(s: String): String = buildString {
         s.lowercase().codePoints().forEach { if (Character.isLetterOrDigit(it)) appendCodePoint(it) }
     }
 }

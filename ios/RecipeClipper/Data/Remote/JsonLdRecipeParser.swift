@@ -526,15 +526,15 @@ enum JsonLdRecipeParser {
                         for element in nested { addStep(element) }
                     }
                 } else {
-                    let stepText: String
-                    if let parts = joinedParts(opt(object, "text")) {
-                        stepText = parts.isEmpty ? jsonText(optString(object, "name")) : parts
-                    } else {
-                        let text = optString(object, "text")
-                        stepText = jsonText(text.kIsBlank ? optString(object, "name") : text)
-                    }
+                    let isTip = type.caseInsensitiveCompare("HowToTip") == .orderedSame
+                    let own = ownText(object)
+                    // A step with no text of its own may hold it in its directions (#436).
+                    let nested = (own == nil && !isTip) ? directions(opt(object, "itemListElement")) : nil
+                    if let nested { tips += nested.tips }
+                    let nestedText = nested.flatMap { $0.text.isEmpty ? nil : $0.text }
+                    let stepText = own ?? nestedText ?? jsonText(optString(object, "name"))
                     if !stepText.kIsBlank {
-                        if type.caseInsensitiveCompare("HowToTip") == .orderedSame {
+                        if isTip {
                             tips.append(stepText.kTrimmed)
                         } else {
                             steps.append(stepText.kTrimmed)
@@ -565,6 +565,49 @@ enum JsonLdRecipeParser {
             steps += s.components(separatedBy: "\n").map { jsonText($0).kTrimmed }.filter { !$0.isEmpty }
         }
         return (steps, photos, tips)
+    }
+
+    /// A step's own `text` (`joinedParts` when it is an array of strings), or nil when it has
+    /// none that isn't blank: the step then falls back to its directions (#436) and its `name`.
+    private static func ownText(_ object: [String: Any]) -> String? {
+        if let parts = joinedParts(opt(object, "text")) { return parts.isEmpty ? nil : parts }
+        let raw = optString(object, "text")
+        return raw.kIsBlank ? nil : jsonText(raw)
+    }
+
+    /// A HowToStep's `itemListElement` (#436): schema.org lets a step hold its words as
+    /// HowToDirections and HowToTips there, one object or an array of them. panelinha.com.br gives
+    /// every step one HowToDirection and no `text`. The directions' texts (or a plain string),
+    /// read as a step's text is (`ownText`, else `name`), joined with a space in their order, are
+    /// the step; a HowToTip there is a tip (#432). Nil when the node holds neither; a nested
+    /// array or a number is ignored, and nothing below is walked.
+    private static func directions(_ node: Any?) -> (text: String, tips: [String])? {
+        let items: [Any]
+        if let object = node as? [String: Any] {
+            items = [object]
+        } else if let array = node as? [Any] {
+            items = array
+        } else {
+            return nil
+        }
+        var texts: [String] = []
+        var tips: [String] = []
+        for element in items {
+            if let s = element as? String {
+                let text = jsonText(s).kTrimmed
+                if !text.isEmpty { texts.append(text) }
+            } else if let object = element as? [String: Any] {
+                let text = (ownText(object) ?? jsonText(optString(object, "name"))).kTrimmed
+                if text.isEmpty { continue }
+                if optString(object, "@type").caseInsensitiveCompare("HowToTip") == .orderedSame {
+                    tips.append(text)
+                } else {
+                    texts.append(text)
+                }
+            }
+        }
+        if texts.isEmpty && tips.isEmpty { return nil }
+        return (texts.joined(separator: " "), tips)
     }
 
     /// A HowToStep's `text` given as an array of strings, as one step (#266): einfachbacken.de

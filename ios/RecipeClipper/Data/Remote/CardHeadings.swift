@@ -9,7 +9,7 @@ import Foundation
 /// What a card is comes from `shared/tables/site-rules.json` (`SiteRules`), as selectors. A
 /// heading is what the card shows between its lists: one its selector finds that is a heading
 /// element, ends in a colon or is wholly bold (Tasty's own test for what to leave out of its
-/// JSON-LD). Used only when the card's items line up one-to-one with JSON-LD's
+/// JSON-LD), or anything it finds on a card that trusts its heading selector (#439). Used only when the card's items line up one-to-one with JSON-LD's
 /// `recipeIngredient`: the same count, and each item's letters and digits found in its JSON-LD
 /// line. Pure. A port of Android's `CardHeadings`, pinned to it by the differential corpus.
 enum CardHeadings {
@@ -17,12 +17,16 @@ enum CardHeadings {
     /// One kind of ingredient card: `list` holds it; `item` is one ingredient and `heading` a
     /// group's name, both looked for only inside the list, never inside an item or the list's
     /// `title`; `amount` is left out of an item's text when matching it to its JSON-LD line.
+    /// With `trustHeading` (#439), whatever `heading` finds is a heading, whatever element it is:
+    /// for a card whose selector names its group element exactly (Giallo Zafferano's
+    /// `dt.gz-title-ingredients`), still only when the card lines up.
     struct Card {
         let list: CardSelector
         let item: CardSelector
         let heading: CardSelector
         var title: CardSelector?
         var amount: CardSelector?
+        var trustHeading = false
     }
 
     private static let headingTags: Set<String> = ["h1", "h2", "h3", "h4", "h5", "h6"]
@@ -71,7 +75,7 @@ enum CardHeadings {
                 let key = key(tree, e, card.amount)
                 if key.isEmpty { return nil }
                 items[items.count - 1].append(CardIngredients.Item(key: key, line: nil))
-            } else if let heading = heading(tree, e) {
+            } else if let heading = heading(tree, e, trusted: card.trustHeading) {
                 names.append(heading)
                 items.append([])
             }
@@ -98,7 +102,7 @@ enum CardHeadings {
         return JsonLdRecipeParser.stripHtml(source).split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
-    private static func heading(_ tree: HtmlTree, _ e: Int) -> String? {
+    private static func heading(_ tree: HtmlTree, _ e: Int, trusted: Bool) -> String? {
         let text = CardIngredients.text(tree, e)
         let element = tree.elements[e]
         let children = element.children.compactMap { child -> Int? in
@@ -106,6 +110,7 @@ enum CardHeadings {
             return nil
         }
         if text.isEmpty { return nil }
+        if trusted { return text }
         if headingTags.contains(element.name) || text.hasSuffix(":") { return text }
         if children.count == 1, ["strong", "b"].contains(tree.elements[children[0]].name),
            CardIngredients.text(tree, children[0]) == text {
@@ -119,7 +124,7 @@ enum CardHeadings {
     ]
 
     /// Lowercased letters and digits only (Java's `isLetterOrDigit`), so curled quotes, dashes and spacing don't count.
-    private static func letters(_ s: String) -> String {
+    static func letters(_ s: String) -> String {
         var scalars = String.UnicodeScalarView()
         for u in s.lowercased().unicodeScalars where letterOrDigit.contains(u.properties.generalCategory) {
             scalars.append(u)

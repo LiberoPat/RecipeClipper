@@ -56,6 +56,22 @@ the host of the link the cook shared, not the one it redirects to, so the moved 
 listed under both. Fixtures: `site-750g-brookie`, `site-recetasgratis-*`; both pages are in
 `site-check-urls.txt`.
 
+**Follow-up: the five issues fixed** (`site-rules.json` version 3; details in `docs/decisions.md`,
+"The 2026-11-21 recheck's fixes"). Each page refetched the same day to confirm its shape.
+
+| Site | Now |
+|---|---|
+| panelinha.com.br | fixed (#436, parser): each HowToStep's HowToDirection is its step; 7 steps on the banana cake. Groups still lost (no card can pick them) |
+| smittenkitchen | fixed (#437): site cards now run on a microdata recipe; "Crispy Onions:", "Mushroom Sauce:", "Assembly:" |
+| giallozafferano.it | groups fixed (#439, a `trustHeading` card); photo numbers (#438) now point at the step photos read from its page, the text as written |
+| cuisineaz.com | fixed (#439): "Pour la marinade:" (a `trustHeading` card with `amount`) |
+| kurashiru.com | left (#439 stays open): its group element's class is a build hash, so no card |
+| recetas.elperiodico.com / recetasgratis.net | fixed (#440): a last step that only points at a video goes whole (`wholeStepNoise`) |
+
+Fixtures: `site-smittenkitchen-green-bean-casserole`, `site-giallozafferano-arancini`,
+`site-cuisineaz-baeckeoffe`, `site-recetasgratis-galletas-avena`, `jsonld/panelinha-*`; each page
+is in `site-check-urls.txt`.
+
 ### 2026-11-21
 
 Method: plain GET of recipe URLs found from each site's listing page, run
