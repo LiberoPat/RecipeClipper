@@ -531,6 +531,13 @@ enum Strings {
     static var recipesQuickNotCooked: String { String(localized: "recipes_quick_not_cooked") }
     static var recipesQuickPantry: String { String(localized: "recipes_quick_pantry") }
     static var recipesQuickPantryNote: String { String(localized: "recipes_quick_pantry_note") }
+    // Recipes, design B (#449): the filter sheet behind search, its pills and the button's badge.
+    static var recipesFilterTitle: String { String(localized: "recipes_filter_title") }
+    static var recipesQuickThirtyOrLessHint: String { String(localized: "recipes_quick_30_or_less_hint") }
+    static var recipesQuickNotCookedHint: String { String(localized: "recipes_quick_not_cooked_hint") }
+    static var recipesQuickPantryHint: String { String(localized: "recipes_quick_pantry_hint") }
+    static func removeFilter(_ name: String) -> String { String(localized: "cd_remove_filter \(name)") }
+    static func recipesFiltersOn(_ n: Int) -> String { String(localized: "recipes_filters_on \(n)") }
     static func recipesPantryHave(_ have: Int, of total: Int) -> String {
         String(localized: "recipes_pantry_have \(have) \(total)")
     }

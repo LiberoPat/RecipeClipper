@@ -233,6 +233,12 @@
       "description": "Recipes written inside an article: on a page with no JSON-LD or microdata recipe, each list in the article whose items are mostly amounts (at least 3, more than half), with its method in paragraphs or an ordered list up to the next heading, is a recipe (at most 6, named by the heading above it). One opens the editor (Check the recipe) straight away in the import's place, filled in as written; several open a chooser first. The same past Cloudflare's check in the clip view. Saved only on Save, as a clip under the page's link (a later recipe adds pith_recipe=<n>). Never from prose alone, never saved unchecked. Off, such a page ends at No recipe found as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 435
+    },
+    {
+      "key": "recipesTopB",
+      "description": "The top of Recipes redesigned (#449, design B; with libraryFirst): the title row is Recipes, the + and a ⋮ menu holding Select and Settings (no gear, no Select button); the views are one segmented shelf of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat) above search, each an icon, its count and its name; the three quick filters move into a sheet behind a filter button at the end of the search field, badged with how many are on, and those on show under search as removable pills with Clear; selecting gains Select all. Off, the top is as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 449
     }
   ]
 }

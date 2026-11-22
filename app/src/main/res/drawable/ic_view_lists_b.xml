@@ -1,0 +1,20 @@
+<!-- The views shelf's Lists cell (#449, design B): three lines with their bullets. Drawn here for the
+     same reason as the bookmark icons (no material-icons-extended). Stroked, like its SF Symbol
+     (list.bullet) on iOS; the Icon composable applies the tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M9,6h11M9,12h11M9,18h11" />
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:pathData="M4.5,6h0.01M4.5,12h0.01M4.5,18h0.01" />
+</vector>

@@ -29,6 +29,11 @@ class RecipeSelection {
         ids.update { chosen -> chosen?.let { if (id in it) it - id else it + id } }
     }
 
+    /** Select all (#449): ticks [all] as well, while selecting; ignored when not selecting. */
+    fun tickAll(all: Collection<Long>) {
+        ids.update { chosen -> chosen?.plus(all) }
+    }
+
     fun exit() {
         ids.value = null
     }

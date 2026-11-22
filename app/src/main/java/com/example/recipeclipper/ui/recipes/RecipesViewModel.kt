@@ -118,6 +118,15 @@ data class RecipesUiState(
     val quickFilters: List<RecipeQuickFilter>
         get() = RecipeQuickFilter.entries.filter { it != RecipeQuickFilter.NOT_COOKED || view != RecipeFilter.COOKED }
 
+    /**
+     * The chips that are on, in the offered order (#449): the filter sheet's switches, the pills under
+     * search and the count on the filter button's badge.
+     */
+    val activeQuickFilters: List<RecipeQuickFilter> get() = quickFilters.filter { it in quick }
+
+    /** Every listed row is ticked (#449): Select all has nothing left to tick. */
+    val allSelected: Boolean get() = selecting && !recipes.isNullOrEmpty() && selectedIds.size == recipes.size
+
     /** The rows a selection acts on, in the order listed. */
     val selected: List<RecipeSummary> get() = recipes.orEmpty().filter { it.id in selectedIds }
 
@@ -284,6 +293,11 @@ class RecipesViewModel @Inject constructor(
         quick.update { if (filter in it) it - filter else it + filter }
     }
 
+    /** Clear (#449): every chip off at once, from the filter sheet or beside the pills. */
+    fun onClearQuickFilters() {
+        quick.value = emptySet()
+    }
+
     /** The rows / grid toggle (#380): stored, so it survives leaving the screen. */
     fun onLayoutChange(value: RecipesLayout) {
         preferences.recipesLayout = value
@@ -357,6 +371,9 @@ class RecipesViewModel @Inject constructor(
     fun onToggleSelected(id: Long) = selection.toggle(id)
 
     fun onExitSelection() = selection.exit()
+
+    /** Select all (#449): ticks every row in sight (the chips and the search applied), never one hidden. */
+    fun onSelectAll() = selection.tickAll(listed.orEmpty().map { it.id })
 
     /** A row's Share (#376): the recipe's text as the reading view sends it, handed to [onReady]. */
     fun onShare(recipeId: Long, labels: RecipeShareText.Labels, onReady: (RowShare) -> Unit) {

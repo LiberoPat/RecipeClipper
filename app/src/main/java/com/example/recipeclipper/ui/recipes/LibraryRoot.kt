@@ -90,7 +90,12 @@ internal fun LibraryTopActions(onOpenSettings: () -> Unit, onAdd: () -> Unit) {
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
-    // The paprika + : the tour's tooltip points at it (#375).
+    LibraryAddButton(onAdd)
+}
+
+/** The paprika + (#375): the Add a recipe sheet. The tour's tooltip points at it. */
+@Composable
+internal fun LibraryAddButton(onAdd: () -> Unit) {
     IconButton(
         onClick = onAdd,
         modifier = Modifier.padding(start = 2.dp).tooltipAnchor(Tooltip.HOME_LINK).testTag("libraryAdd")
