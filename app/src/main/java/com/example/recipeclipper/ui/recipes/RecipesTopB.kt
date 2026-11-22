@@ -84,8 +84,13 @@ import com.example.recipeclipper.ui.theme.LocalPaprikaTone
 
 /** "Recipes", the paprika + and the ⋮ menu, last on the right: Select (null: nothing to select) and Settings. */
 @Composable
-internal fun LibraryTitleRowB(onAdd: () -> Unit, onSelect: (() -> Unit)?, onOpenSettings: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp)) {
+internal fun LibraryTitleRowB(
+    onAdd: () -> Unit,
+    onSelect: (() -> Unit)?,
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth().heightIn(min = 58.dp)) {
         Text(
             stringResource(R.string.recipes_title),
             style = MaterialTheme.typography.headlineMedium,

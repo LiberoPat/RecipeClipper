@@ -3567,6 +3567,10 @@ From the top:
   that they combine with each other, the search and the sort, and are not remembered, is #378's.
 - **The count line:** the count, then the sort (its menu unchanged), then the rows / grid toggle, last
   on the right (the old line had the toggle before the sort).
+- **A pinned bar down the list** (owner's follow-up, 2026-11-21: Select and Settings were out of reach once the
+  top scrolled away): when the large title has scrolled out of sight, a slim bar ("Recipes" small, the +, the
+  same ⋮) stays over the list on the ground with a hairline, never while selecting (Android `PinnedTitleBar`
+  over the `LazyColumn`/grid's state; iOS the same bar as an overlay, from the title row's frame in the scroll view).
 - **Selecting:** the bar shows the count, **Select all** (new: ticks every row in sight, the filters and
   search applied, never one hidden; disabled once all are ticked) and Done, then Add to list (with the
   bookmark) and Delete. On iOS it is pinned above the rows in the page (the navigation bar stays hidden)

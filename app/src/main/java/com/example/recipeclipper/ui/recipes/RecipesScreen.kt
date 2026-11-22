@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -182,9 +184,13 @@ fun RecipesScreen(
     // pinned. The states are the lists' own (saved across rotation), hoisted here to be read.
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
-    val titlePx = with(LocalDensity.current) { TITLE_ROW_HEIGHT.toPx() }
-    val listTitleGone by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > titlePx } }
-    val gridTitleGone by remember { derivedStateOf { gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > titlePx } }
+    // The title row's height as laid out (it grows with the font size), and the spacer above it: the bar pins
+    // once all but its last few dp have scrolled past the top, so there is never an empty strip with no title.
+    val density = LocalDensity.current
+    var titleRowPx by remember { mutableIntStateOf(with(density) { TITLE_ROW_HEIGHT.roundToPx() }) }
+    val titleGonePx by remember { derivedStateOf { titleRowPx + with(density) { (TITLE_SPACER - TITLE_SLACK).toPx() } } }
+    val listTitleGone by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > titleGonePx } }
+    val gridTitleGone by remember { derivedStateOf { gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > titleGonePx } }
     val view = state.view
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -343,7 +349,8 @@ fun RecipesScreen(
                                 onClearQuick = viewModel::onClearQuickFilters,
                                 onSort = viewModel::onSortChange,
                                 onLayout = viewModel::onLayoutChange.takeIf { gridEnabled },
-                                onSelect = if (multiSelect) ({ viewModel.onStartSelecting() }) else null
+                                onSelect = if (multiSelect) ({ viewModel.onStartSelecting() }) else null,
+                                onTitleHeight = { titleRowPx = it }
                             )
                         }
                     } else {
@@ -506,8 +513,14 @@ fun RecipesScreen(
     }
 }
 
-/** Design B's title row (#449): the list's top padding, the spacer above it and its height. Past it, the bar pins. */
-private val TITLE_ROW_HEIGHT = 66.dp
+/** Design B's title row (#449): its least height, before it is laid out. */
+private val TITLE_ROW_HEIGHT = 58.dp
+
+/** The spacer above the title row in the header item. */
+private val TITLE_SPACER = 4.dp
+
+/** How much of the title row may still show (its bottom padding, no text) when the bar pins. */
+private val TITLE_SLACK = 12.dp
 
 /** A photo cell's narrowest width: two columns on a phone (320dp of content and up), more on wider screens. */
 private val GRID_CELL_MIN_WIDTH = 140.dp
@@ -621,15 +634,18 @@ private fun RecipesHeaderB(
     onClearQuick: () -> Unit,
     onSort: (RecipeSort) -> Unit,
     onLayout: ((RecipesLayout) -> Unit)?,
-    onSelect: (() -> Unit)?
+    onSelect: (() -> Unit)?,
+    /** The title row's height as laid out, for when the pinned bar takes over (#449). */
+    onTitleHeight: (Int) -> Unit = {}
 ) {
     Column {
         if (state.selecting) return@Column
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(TITLE_SPACER))
         LibraryTitleRowB(
             onAdd = root.onAdd,
             onSelect = onSelect.takeIf { !state.recipes.isNullOrEmpty() },
-            onOpenSettings = root.root.onOpenSettings
+            onOpenSettings = root.root.onOpenSettings,
+            modifier = Modifier.onSizeChanged { onTitleHeight(it.height) }
         )
         if (root.home != null) {
             Spacer(Modifier.height(4.dp))
