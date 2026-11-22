@@ -91,6 +91,9 @@
     <string name="home_resume_cooking">Reprendre</string>
     <string name="home_open_recipe">Ouvrir la recette</string>
     <string name="home_today">Aujourd\'hui</string>
+    <string name="cd_close_today">Masquer le repas du jour jusqu\'à demain</string>
+    <string name="show_today_card_title">Afficher le repas du jour</string>
+    <string name="show_today_card_description">Le repas prévu aujourd\'hui, en haut de Recettes, avec Commencer à cuisiner. Fermé, il revient demain.</string>
     <string name="home_today_other">%1$s : %2$s</string>
     <string name="home_timer_left">Encore %1$s</string>
     <string name="recipes_title">Recettes</string>

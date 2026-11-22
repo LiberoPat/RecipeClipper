@@ -838,6 +838,12 @@ protocol AppPreferences: AnyObject {
     var recipeSort: RecipeSort { get set }
     /// The Recipes screen's layout (#380), rows or a photo grid: a view preference like `recipeSort`.
     var recipesLayout: RecipesLayout { get set }
+    /// "Show today's meal" (#448): the Today card (#402) at the top of Recipes or Home. On by
+    /// default; only counted with the `todayCardClose` flag.
+    var showTodayCard: Bool { get set }
+    /// The local day (an epoch day) the Today card's close button was last tapped (#448), or nil:
+    /// the card stays away for the rest of that day only.
+    var todayCardDismissedDay: Int64? { get set }
 
     /// The current values first, then every change, never repeating a value. Delivery may be
     /// asynchronous, so a subscriber receives on main.
@@ -861,7 +867,9 @@ extension AppPreferences {
             eveningReminderMinute: eveningReminderMinute,
             tonightReminder: tonightReminder,
             tonightReminderMinute: tonightReminderMinute,
-            eveningReminderChosen: eveningReminderChosen
+            eveningReminderChosen: eveningReminderChosen,
+            showTodayCard: showTodayCard,
+            todayCardDismissedDay: todayCardDismissedDay
         )
     }
 }
@@ -998,4 +1006,6 @@ struct AppSettings: Equatable {
     var tonightReminder = false
     var tonightReminderMinute = MealReminders.tonightMinute
     var eveningReminderChosen = false
+    var showTodayCard = true
+    var todayCardDismissedDay: Int64?
 }

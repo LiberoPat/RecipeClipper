@@ -19,6 +19,8 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let amountsInSteps = "amounts_in_steps"
         static let recipeSort = "recipe_sort"
         static let recipesLayout = "recipes_layout"
+        static let showTodayCard = "show_today_card"
+        static let todayCardDismissedDay = "today_card_dismissed_day"
     }
 
     private let defaults: UserDefaults
@@ -100,6 +102,20 @@ final class UserDefaultsAppPreferences: AppPreferences {
     var recipesLayout: RecipesLayout {
         get { RecipesLayout(storedName: defaults.string(forKey: Key.recipesLayout)) }
         set { defaults.set(newValue.rawValue, forKey: Key.recipesLayout) }
+    }
+
+    var showTodayCard: Bool {
+        get { defaults.object(forKey: Key.showTodayCard) as? Bool ?? true }   // on when unset
+        set { defaults.set(newValue, forKey: Key.showTodayCard) }
+    }
+
+    // An epoch day, as a number (Android stores a Long); absent when the card was never closed.
+    var todayCardDismissedDay: Int64? {
+        get { (defaults.object(forKey: Key.todayCardDismissedDay) as? NSNumber)?.int64Value }
+        set {
+            if let newValue { defaults.set(NSNumber(value: newValue), forKey: Key.todayCardDismissedDay) }
+            else { defaults.removeObject(forKey: Key.todayCardDismissedDay) }
+        }
     }
 
     /// Over `UserDefaults.didChangeNotification` (Android: the SharedPreferences change

@@ -57,6 +57,7 @@ import com.example.recipeclipper.ui.home.CookResume
 import com.example.recipeclipper.ui.home.HomeUiState
 import com.example.recipeclipper.ui.home.HomeViewModel
 import com.example.recipeclipper.ui.home.TimerTag
+import com.example.recipeclipper.ui.home.TodayCloseButton
 import com.example.recipeclipper.ui.home.TodayCard
 import com.example.recipeclipper.ui.home.TodayMeal
 import com.example.recipeclipper.ui.settings.BackupStatus
@@ -140,7 +141,9 @@ internal fun LibraryCard(state: HomeUiState, root: LibraryRoot, homeTonight: Boo
                 title = lead.title,
                 button = stringResource(R.string.action_start_cooking).takeIf { lead.recipeId != null },
                 onButton = { lead.recipeId?.let { root.onOpenPlanned(it, lead.servings, true) } },
-                onOpen = lead.recipeId?.let { id -> { root.onOpenPlanned(id, lead.servings, false) } }
+                onOpen = lead.recipeId?.let { id -> { root.onOpenPlanned(id, lead.servings, false) } },
+                // The close button (#448, `todayCardClose`): gone until tomorrow. Never on Continue cooking.
+                onClose = if (state.todayClosable) root.viewModel::onCloseToday else null
             ) { OtherMeals(today, root) }
         }
     }
@@ -156,6 +159,8 @@ private fun CompactCard(
     button: String?,
     onButton: () -> Unit,
     onOpen: (() -> Unit)?,
+    /** The close button at the top right (#448); null has none. */
+    onClose: (() -> Unit)? = null,
     line: @Composable () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
@@ -194,6 +199,7 @@ private fun CompactCard(
                 Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 line()
             }
+            if (onClose != null) TodayCloseButton(onClose, Modifier.align(Alignment.Top))
         }
         if (button != null) {
             Button(

@@ -86,6 +86,8 @@ enum Flag: String, CaseIterable {
     case stepPhotos
     /// A recipe written inside an article (#435): a list of amounts and the method after it, offered in the editor to check.
     case articleRecipes
+    /// Close the Today card (#448): a close button hides it for the rest of the day, and Settings' Plan section can hide it altogether.
+    case todayCardClose
 }
 
 /// One flag as `shared/flags.json` declares it.

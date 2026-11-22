@@ -15,6 +15,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.backup.BackupResult
 import com.example.recipeclipper.data.backup.ImportSummary
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.PlannedMeal
@@ -25,6 +28,7 @@ import com.example.recipeclipper.fake.AutoBackupFixture
 import com.example.recipeclipper.fake.FakeAppPreferences
 import com.example.recipeclipper.fake.FakeBackupFiles
 import com.example.recipeclipper.fake.FakeCookedPhotoRepository
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeListRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakePantryRepository
@@ -67,6 +71,9 @@ class LibraryFirstScreenTest {
     private val files = FakeBackupFiles()
     private val backup = AutoBackupFixture()
     private val fixtures = PastedTextFixtures()
+    // The Today card's close (#448): the flag as debug has it, and where the close is kept.
+    private val preferences = FakeAppPreferences()
+    private val flagStore = FakeFeatureFlagStore()
 
     /** What the screen handed on. */
     private class Taps {
@@ -102,7 +109,7 @@ class LibraryFirstScreenTest {
         val library = RecipesViewModel(repository, FakeAppPreferences(), lists = FakeListRepository(), pasted = fixtures.router)
         home = HomeViewModel(
             repository, backup.repository, files, backup.autoBackup, FakeListRepository(), Clock { NOW },
-            fixtures.router, plan, cooked
+            fixtures.router, plan, cooked, preferences, FeatureFlags(flagStore, FlagRegistry.definitions, isDebug = true)
         )
         val askAiViewModel = AskAiViewModel(
             FakePantryRepository(), FakeListRepository(), repository, FakeAppPreferences(), Clock { NOW }, fixtures.router
@@ -247,6 +254,45 @@ class LibraryFirstScreenTest {
         waitForText("Adobo")
         compose.onAllNodesWithTag("libraryCard").assertCountEquals(0)
         compose.onNodeWithText("Lemon chicken").assertDoesNotExist()
+    }
+
+    // --- Closing the Today card (#448) ---
+
+    @Test
+    fun theTodayCardsCloseHidesItUntilTomorrow() {
+        libraryOf(summary(9, "Newest"))
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken"))
+        show()
+
+        waitForText("Lemon chicken")
+        compose.onNodeWithContentDescription("Hide today's meal until tomorrow").assertIsDisplayed().performClick()
+
+        compose.waitUntil(timeoutMillis = 5_000) { compose.onAllNodesWithTag("libraryCard").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Lemon chicken").assertDoesNotExist()
+        assertEquals(PlanDays.today(NOW), preferences.todayCardDismissedDay)
+        // Search sits under the title again, as with nothing to cook.
+        compose.onNodeWithText("Search titles and ingredients").assertIsDisplayed()
+    }
+
+    @Test
+    fun continueCookingHasNoClose() {
+        libraryOf(summary(1, "Adobo"))
+        repository.recipes.value = mapOf(1L to recipe(1, CookProgress(active = true)))
+        show()
+
+        waitForText("CONTINUE COOKING")
+        compose.onAllNodesWithTag("todayClose").assertCountEquals(0)
+    }
+
+    @Test
+    fun withTheCloseFlagOffTheTodayCardHasNoClose() {
+        flagStore.setOverride(Flag.TODAY_CARD_CLOSE.key, false)
+        libraryOf(summary(9, "Newest"))
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken"))
+        show()
+
+        waitForText("Lemon chicken")
+        compose.onAllNodesWithTag("todayClose").assertCountEquals(0)
     }
 
     // --- The gear and the + ---

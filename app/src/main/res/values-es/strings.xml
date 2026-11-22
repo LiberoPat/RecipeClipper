@@ -91,6 +91,9 @@
     <string name="home_resume_cooking">Reanudar la receta</string>
     <string name="home_open_recipe">Abrir la receta</string>
     <string name="home_today">Hoy</string>
+    <string name="cd_close_today">Ocultar la comida de hoy hasta mañana</string>
+    <string name="show_today_card_title">Mostrar la comida de hoy</string>
+    <string name="show_today_card_description">La comida planificada para hoy, arriba en Recetas, con Empezar a cocinar. Si la cierras, vuelve mañana.</string>
     <string name="home_today_other">%1$s: %2$s</string>
     <string name="home_timer_left">Quedan %1$s</string>
     <string name="recipes_title">Recetas</string>

@@ -154,26 +154,37 @@ private extension SettingsSectionScreen {
 
     /// The Week section (#397): the evening-before reminder and the optional Tonight reminder, each a
     /// switch and, while it is on, its time; a line saying so when notifications are off.
+    /// "Show today's meal" comes first (#448, `todayCardClose`), then the reminders (#397, `eveningReminders`).
     @ViewBuilder
     var weekRows: some View {
         let state = vm.uiState
-        reminderRows(
-            .evening, title: Strings.eveningReminderTitle, description: Strings.eveningReminderDescription,
-            on: vm.eveningReminderOn, minute: state.eveningReminderMinute
-        )
-        reminderRows(
-            .tonight, title: Strings.tonightReminderTitle, description: Strings.tonightReminderDescription,
-            on: vm.tonightReminderOn, minute: state.tonightReminderMinute
-        )
-        if vm.weekRemindersBlocked {
-            Text(Strings.expiryRemindersDenied)
-                .textStyle(Typography.bodySmall)
-                .foregroundStyle(Palette.error)
-                .padding(.top, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier("settings.weekRemindersDenied")
+        if vm.showsTodayCardSetting {
+            SwitchRow(
+                title: Strings.showTodayCardTitle,
+                description: Strings.showTodayCardDescription,
+                isOn: Binding(get: { vm.uiState.showTodayCard }, set: vm.onShowTodayCardChange)
+            )
+            .accessibilityIdentifier("settings.showTodayCard")
         }
-        Color.clear.frame(height: 0).onAppear { vm.onWeekPageShown() }
+        if vm.showsWeekReminders {
+            reminderRows(
+                .evening, title: Strings.eveningReminderTitle, description: Strings.eveningReminderDescription,
+                on: vm.eveningReminderOn, minute: state.eveningReminderMinute
+            )
+            reminderRows(
+                .tonight, title: Strings.tonightReminderTitle, description: Strings.tonightReminderDescription,
+                on: vm.tonightReminderOn, minute: state.tonightReminderMinute
+            )
+            if vm.weekRemindersBlocked {
+                Text(Strings.expiryRemindersDenied)
+                    .textStyle(Typography.bodySmall)
+                    .foregroundStyle(Palette.error)
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("settings.weekRemindersDenied")
+            }
+            Color.clear.frame(height: 0).onAppear { vm.onWeekPageShown() }
+        }
     }
 
     @ViewBuilder

@@ -334,7 +334,8 @@ final class AppContainer {
         HomeViewModel(
             repository: recipeRepository, backups: backupRepository, files: backupFiles,
             lists: listRepository, clock: clock, pasted: pastedTextRouter,
-            mealPlan: mealPlanRepository, cooked: cookedPhotoRepository
+            mealPlan: mealPlanRepository, cooked: cookedPhotoRepository,
+            preferences: preferences, flags: featureFlags
         )
     }
 

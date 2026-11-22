@@ -131,6 +131,20 @@ The words to check: "the page's heading above the recipe: change it to the dish'
 *Ändere ihn in den des Gerichts, falls er das nicht ist*, *cambialo con quello del piatto se non lo
 è*, *troque pelo nome do prato se não for*) and "This page writes out more than one recipe".
 
+## Closing the Today card, 2026-11-21 (#448)
+
+Three strings on both platforms, drafts written by Claude: the close button's label for TalkBack and
+VoiceOver, `cd_close_today`, "Hide today's meal until tomorrow" (*Ocultar la comida de hoy hasta
+mañana*, *Masquer le repas du jour jusqu'à demain*, *Heutige Mahlzeit bis morgen ausblenden*,
+*Nascondi il pasto di oggi fino a domani*, *Ocultar a refeição de hoje até amanhã*), and Settings'
+switch, `show_today_card_title`, "Show today's meal" (*Mostrar la comida de hoy*, *Afficher le repas
+du jour*, *Heutige Mahlzeit zeigen*, *Mostra il pasto di oggi*, *Mostrar a refeição de hoje*) with its
+line, `show_today_card_description`, which names the Recipes tab and Start cooking by their own words
+in each language. To check: "meal" (*comida*, *repas*, *Mahlzeit*, *pasto*, *refeição*) for a planned
+breakfast or snack as much as a dinner, and the line's short "Closed, it comes back tomorrow" (*Si la
+cierras, vuelve mañana*, *Fermé, il revient demain*, *Geschlossen kommt sie morgen wieder*, *Se lo
+chiudi, torna domani*, *Se você fechar, ela volta amanhã*).
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,

@@ -79,6 +79,18 @@ interface AppPreferences {
     var recipesLayout: RecipesLayout
 
     /**
+     * "Show today's meal" (#448): the Today card (#402) at the top of Recipes or Home. On by
+     * default; only counted with the `todayCardClose` flag.
+     */
+    var showTodayCard: Boolean
+
+    /**
+     * The local day (an epoch day) the Today card's close button was last tapped (#448), or null:
+     * the card stays away for the rest of that day only.
+     */
+    var todayCardDismissedDay: Long?
+
+    /**
      * The current values first, then every change, never repeating a value. A screen that
      * collects this stays current when Settings changes a default while it is open (#24).
      */
@@ -91,7 +103,8 @@ interface AppPreferences {
             recipeSort, recipesLayout,
             eveningReminder = eveningReminder, eveningReminderMinute = eveningReminderMinute,
             tonightReminder = tonightReminder, tonightReminderMinute = tonightReminderMinute,
-            eveningReminderChosen = eveningReminderChosen
+            eveningReminderChosen = eveningReminderChosen,
+            showTodayCard = showTodayCard, todayCardDismissedDay = todayCardDismissedDay
         )
 }
 
@@ -110,5 +123,7 @@ data class AppSettings(
     val eveningReminderMinute: Int = MealReminders.EVENING_MINUTE,
     val tonightReminder: Boolean = false,
     val tonightReminderMinute: Int = MealReminders.TONIGHT_MINUTE,
-    val eveningReminderChosen: Boolean = false
+    val eveningReminderChosen: Boolean = false,
+    val showTodayCard: Boolean = true,
+    val todayCardDismissedDay: Long? = null
 )

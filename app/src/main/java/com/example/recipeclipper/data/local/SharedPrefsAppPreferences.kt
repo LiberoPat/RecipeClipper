@@ -118,6 +118,19 @@ class SharedPrefsAppPreferences @Inject constructor(
             prefs.edit { putString(KEY_RECIPES_LAYOUT, value.name) }
         }
 
+    override var showTodayCard: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_TODAY_CARD, true)
+        set(value) {
+            prefs.edit { putBoolean(KEY_SHOW_TODAY_CARD, value) }
+        }
+
+    // Stored as a Long (an epoch day); absent when the card was never closed.
+    override var todayCardDismissedDay: Long?
+        get() = if (prefs.contains(KEY_TODAY_CARD_DISMISSED)) prefs.getLong(KEY_TODAY_CARD_DISMISSED, 0L) else null
+        set(value) {
+            prefs.edit { if (value == null) remove(KEY_TODAY_CARD_DISMISSED) else putLong(KEY_TODAY_CARD_DISMISSED, value) }
+        }
+
     /**
      * Over SharedPreferences' change listener. SharedPreferences holds its listeners weakly, so
      * the listener is a local that `awaitClose` keeps alive for as long as someone collects;
@@ -183,5 +196,7 @@ class SharedPrefsAppPreferences @Inject constructor(
         const val KEY_AMOUNTS_IN_STEPS = "amounts_in_steps"
         const val KEY_RECIPE_SORT = "recipe_sort"
         const val KEY_RECIPES_LAYOUT = "recipes_layout"
+        const val KEY_SHOW_TODAY_CARD = "show_today_card"
+        const val KEY_TODAY_CARD_DISMISSED = "today_card_dismissed_day"
     }
 }

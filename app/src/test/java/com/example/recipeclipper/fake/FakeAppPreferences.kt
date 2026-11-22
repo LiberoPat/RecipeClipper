@@ -31,14 +31,16 @@ class FakeAppPreferences(
     tonightReminder: Boolean = false,
     tonightReminderMinute: Int = MealReminders.TONIGHT_MINUTE,
     /** Whether the evening switch was ever set (#413); setting [eveningReminder] sets it too. */
-    eveningReminderChosen: Boolean = false
+    eveningReminderChosen: Boolean = false,
+    showTodayCard: Boolean = true,
+    todayCardDismissedDay: Long? = null
 ) : AppPreferences {
 
     private val state = MutableStateFlow(
         AppSettings(
             unitSystem, convertLiquids, temperatureUnit, darkWhileCooking, expiryReminders, chefMode, amountsInSteps,
             recipeSort, recipesLayout, eveningReminder, eveningReminderMinute, tonightReminder, tonightReminderMinute,
-            eveningReminderChosen
+            eveningReminderChosen, showTodayCard, todayCardDismissedDay
         )
     )
 
@@ -99,4 +101,12 @@ class FakeAppPreferences(
     override var recipesLayout: RecipesLayout
         get() = state.value.recipesLayout
         set(value) = state.update { it.copy(recipesLayout = value) }
+
+    override var showTodayCard: Boolean
+        get() = state.value.showTodayCard
+        set(value) = state.update { it.copy(showTodayCard = value) }
+
+    override var todayCardDismissedDay: Long?
+        get() = state.value.todayCardDismissedDay
+        set(value) = state.update { it.copy(todayCardDismissedDay = value) }
 }

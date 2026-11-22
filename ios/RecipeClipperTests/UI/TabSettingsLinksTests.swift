@@ -13,8 +13,10 @@ final class TabSettingsLinksTests: XCTestCase {
             XCTAssertTrue(flags.planSettingsLink, "debug: \(isDebug)")
             XCTAssertTrue(flags.pantrySettingsLink, "debug: \(isDebug)")
 
-            // Settings' Plan section shows only with eveningReminders, so its link goes with it.
+            // Settings' Plan section shows only with eveningReminders or todayCardClose (#448), so its link goes with them.
             flags.set(.eveningReminders, false)
+            XCTAssertTrue(flags.planSettingsLink)
+            flags.set(.todayCardClose, false)
             XCTAssertFalse(flags.planSettingsLink)
             XCTAssertTrue(flags.pantrySettingsLink)
 

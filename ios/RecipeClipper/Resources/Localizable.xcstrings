@@ -3541,6 +3541,47 @@
         }
       }
     },
+    "cd_close_today" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heutige Mahlzeit bis morgen ausblenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide today's meal until tomorrow"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar la comida de hoy hasta mañana"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Masquer le repas du jour jusqu'à demain"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nascondi il pasto di oggi fino a domani"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar a refeição de hoje até amanhã"
+          }
+        }
+      }
+    },
     "paprika_import_title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15367,6 +15408,88 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abra o Pith para desbloquear receitas ilimitadas."
+          }
+        }
+      }
+    },
+    "show_today_card_description" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die für heute geplante Mahlzeit oben in Rezepte, mit Jetzt kochen. Geschlossen kommt sie morgen wieder."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today's planned meal at the top of Recipes, with Start cooking. Closed, it comes back tomorrow."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La comida planificada para hoy, arriba en Recetas, con Empezar a cocinar. Si la cierras, vuelve mañana."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le repas prévu aujourd'hui, en haut de Recettes, avec Commencer à cuisiner. Fermé, il revient demain."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il pasto previsto per oggi, in cima a Ricette, con Inizia a cucinare. Se lo chiudi, torna domani."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A refeição planejada para hoje, no topo de Receitas, com Começar a cozinhar. Se você fechar, ela volta amanhã."
+          }
+        }
+      }
+    },
+    "show_today_card_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heutige Mahlzeit zeigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show today's meal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar la comida de hoy"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le repas du jour"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostra il pasto di oggi"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar a refeição de hoje"
           }
         }
       }

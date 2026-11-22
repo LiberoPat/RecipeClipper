@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -244,7 +245,19 @@ private fun LazyListScope.sectionRows(
             if (state.showsChefMode) ChefModeRow(state, viewModel::onChefModeChange)
         }
         SettingsSection.WEEK -> item(key = "week") {
-            WeekReminderRows(state, actions.onWeekReminderChange, viewModel::onWeekReminderTime, actions.onOpenPro)
+            // "Show today's meal" (#448, `todayCardClose`), then the reminders (#397, `eveningReminders`).
+            if (state.showsTodayCardSetting) {
+                SwitchRow(
+                    title = stringResource(R.string.show_today_card_title),
+                    description = stringResource(R.string.show_today_card_description),
+                    checked = state.showTodayCard,
+                    onCheckedChange = viewModel::onShowTodayCardChange,
+                    modifier = Modifier.testTag("showTodayCard")
+                )
+            }
+            if (state.showsWeekReminders) {
+                WeekReminderRows(state, actions.onWeekReminderChange, viewModel::onWeekReminderTime, actions.onOpenPro)
+            }
         }
         SettingsSection.PANTRY -> item(key = "pantry") {
             SwitchRow(
