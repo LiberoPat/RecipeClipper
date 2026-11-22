@@ -52,7 +52,9 @@ internal fun SelectionBar(
     /** Select all (#449, design B): ticks every row in sight; null leaves it out. */
     onSelectAll: (() -> Unit)? = null,
     /** Every row in sight is ticked already: Select all has nothing to do. */
-    allSelected: Boolean = false
+    allSelected: Boolean = false,
+    /** The hairline under the bar; design B (#449) leaves it to the first row's own. */
+    hairline: Boolean = true
 ) {
     Surface(
         color = MaterialTheme.colorScheme.background,
@@ -101,7 +103,7 @@ internal fun SelectionBar(
                     Text(stringResource(R.string.action_delete))
                 }
             }
-            Hairline()
+            if (hairline) Hairline()
         }
     }
 }

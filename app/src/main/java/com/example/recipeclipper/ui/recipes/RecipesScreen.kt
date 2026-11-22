@@ -284,7 +284,8 @@ fun RecipesScreen(
                             onDelete = viewModel::onRequestDeleteSelected,
                             // Design B (#449): Select all, beside Done.
                             onSelectAll = if (styleB) viewModel::onSelectAll else null,
-                            allSelected = state.allSelected
+                            allSelected = state.allSelected,
+                            hairline = !styleB
                         )
                     }
                 },
@@ -592,10 +593,7 @@ private fun RecipesHeaderB(
     onSelect: (() -> Unit)?
 ) {
     Column {
-        if (state.selecting) {
-            Spacer(Modifier.height(8.dp))
-            return@Column
-        }
+        if (state.selecting) return@Column
         Spacer(Modifier.height(4.dp))
         LibraryTitleRowB(
             onAdd = root.onAdd,

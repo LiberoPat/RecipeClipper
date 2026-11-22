@@ -99,6 +99,7 @@ class RecipesTopBScreenTest {
             fixtures.router, plan, FakeCookedPhotoRepository(today = PlanDays.today(NOW)), FakeAppPreferences(),
             FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = true)
         )
+        val save = SaveToListViewModel(lists)
         compose.setContent {
             RecipesScreen(
                 onBack = {},
@@ -109,7 +110,7 @@ class RecipesTopBScreenTest {
                 scanEnabled = false,
                 oneCookbook = true,
                 multiSelect = true,
-                saveViewModel = SaveToListViewModel(lists),
+                saveViewModel = save,
                 quickFilters = true,
                 gridEnabled = true,
                 askAiEnabled = false,

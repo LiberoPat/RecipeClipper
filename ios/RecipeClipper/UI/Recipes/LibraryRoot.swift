@@ -204,7 +204,9 @@ private struct CompactCard<Line: View>: View {
             if let button {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 10) {
-                        Group { if !lineUnderTitle { line() } }.frame(maxWidth: .infinity, alignment: .leading)
+                        if !lineUnderTitle { line() }
+                        // The button stays on the right, with or without the next meal beside it.
+                        Spacer(minLength: 0)
                         pillButton(button).fixedSize()
                     }
                     VStack(alignment: .leading, spacing: 8) {

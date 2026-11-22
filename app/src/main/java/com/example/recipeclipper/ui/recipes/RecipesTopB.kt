@@ -63,6 +63,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -234,7 +235,7 @@ internal fun SearchFieldB(query: String, onQueryChange: (String) -> Unit, filter
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text(stringResource(R.string.label_search_recipes), maxLines = 1) },
+        placeholder = { Text(stringResource(R.string.label_search_recipes), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         singleLine = true,
         shape = RoundedCornerShape(14.dp),
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.onSurfaceVariant) },

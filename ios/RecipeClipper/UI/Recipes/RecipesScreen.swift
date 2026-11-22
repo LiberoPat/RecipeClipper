@@ -381,7 +381,7 @@ struct RecipesScreen: View {
             .listRowSeparator(.hidden)
         }
         if !emptyLibrary {
-            if vm.showsSortLine {
+            if vm.showsSortLine && !state.selecting {
                 sortLine(state, toggleLast: true)
                     .listRowSeparator(.hidden)
             }
