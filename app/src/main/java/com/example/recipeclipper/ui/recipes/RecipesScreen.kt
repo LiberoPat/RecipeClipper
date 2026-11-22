@@ -143,6 +143,11 @@ fun RecipesScreen(
     askAiEnabled: Boolean = LocalFlagValues.current.isOn(Flag.ASK_AI),
     /** The Ask an AI sheet's ViewModel (#351), for the library as the first screen. */
     askAiViewModel: AskAiViewModel? = if (askAiEnabled && libraryRoot != null) hiltViewModel() else null,
+    /**
+     * The top redesigned (#449, design B): with the library as the first screen and one cookbook, a ⋮ menu
+     * (Select, Settings) after the +, the views shelf above search, the filters in a sheet behind search.
+     */
+    topB: Boolean = LocalFlagValues.current.isOn(Flag.RECIPES_TOP_B),
     // A parameter so a test can watch the one snackbar a burst shares (#268).
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -163,6 +168,9 @@ fun RecipesScreen(
     val emptyLibrary = libraryRoot != null && state.view == null && homeState?.libraryEmpty == true
     var saveSheetOpen by rememberSaveable { mutableStateOf(false) }
     var planSheetOpen by rememberSaveable { mutableStateOf(false) }
+    // Design B (#449): the library's own top, and its filter sheet.
+    val styleB = topB && libraryRoot != null && oneCookbook
+    var filterSheetOpen by rememberSaveable { mutableStateOf(false) }
     val view = state.view
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -234,6 +242,15 @@ fun RecipesScreen(
         if (saveSheetOpen && saveViewModel != null) {
             SaveToListBottomSheet(saveViewModel, onDismiss = { saveSheetOpen = false })
         }
+        if (filterSheetOpen && styleB) {
+            RecipeFilterSheet(
+                offered = state.quickFilters,
+                on = state.quick,
+                onToggle = viewModel::onQuickFilterToggle,
+                onClear = viewModel::onClearQuickFilters,
+                onDismiss = { filterSheetOpen = false }
+            )
+        }
         if (planSheetOpen && planViewModel != null) {
             AddToPlanBottomSheet(planViewModel, onDismiss = { planSheetOpen = false })
         }
@@ -264,7 +281,10 @@ fun RecipesScreen(
                                 }
                             },
                             onRemoveFromList = null,
-                            onDelete = viewModel::onRequestDeleteSelected
+                            onDelete = viewModel::onRequestDeleteSelected,
+                            // Design B (#449): Select all, beside Done.
+                            onSelectAll = if (styleB) viewModel::onSelectAll else null,
+                            allSelected = state.allSelected
                         )
                     }
                 },
@@ -285,7 +305,34 @@ fun RecipesScreen(
                     Modifier.fillMaxSize().padding(padding),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val header: @Composable () -> Unit = {
+                    val header: @Composable () -> Unit = if (styleB && libraryRoot != null) {
+                        {
+                            RecipesHeaderB(
+                                state = state,
+                                root = RootHeader(
+                                    libraryRoot, homeState, homeTonight, emptyLibrary,
+                                    onAdd = { addSheetOpen = true },
+                                    onOpenRecipe = onOpenRecipe,
+                                    onAskAi = home?.let { it::onAskAi }.takeIf { askAiViewModel != null },
+                                    onRestore = if (home?.canRestore == true) ({ restorePicker.launch(IMPORT_MIME_TYPES) }) else null,
+                                    onChooseFolder = { folderPicker.launch(null) }
+                                ),
+                                onNewRecipe = onNewRecipe,
+                                onPasteLink = viewModel::onPasteLink,
+                                onScan = onScan.takeIf { scanEnabled },
+                                onQueryChange = viewModel::onQueryChange,
+                                onOpenView = onOpenView,
+                                onOpenLists = onOpenLists,
+                                onOpenFilters = if (quickFilters) ({ filterSheetOpen = true }) else null,
+                                onQuickToggle = viewModel::onQuickFilterToggle,
+                                onClearQuick = viewModel::onClearQuickFilters,
+                                onSort = viewModel::onSortChange,
+                                onLayout = viewModel::onLayoutChange.takeIf { gridEnabled },
+                                onSelect = if (multiSelect) ({ viewModel.onStartSelecting() }) else null
+                            )
+                        }
+                    } else {
+                        {
                         RecipesHeader(
                             state = state,
                             onBack = onBack,
@@ -312,6 +359,7 @@ fun RecipesScreen(
                                 onChooseFolder = { folderPicker.launch(null) }
                             )
                         )
+                        }
                     }
                     val onSave: ((RecipeSummary) -> Unit)? = if (oneCookbook && saveViewModel != null) {
                         { recipe ->
@@ -521,6 +569,80 @@ private fun RecipesHeader(
 }
 
 /**
+ * The library's header as design B draws it (#449): the title row (the +, then the ⋮ menu with Select and
+ * Settings), Today's card, the views shelf, search with its filter button, the pills of the filters on,
+ * and the count line (the count, the sort, then the rows / grid toggle). While selecting, the bar above
+ * the rows is the whole top.
+ */
+@Composable
+private fun RecipesHeaderB(
+    state: RecipesUiState,
+    root: RootHeader,
+    onNewRecipe: () -> Unit,
+    onPasteLink: () -> Unit,
+    onScan: ((List<String>) -> Unit)?,
+    onQueryChange: (String) -> Unit,
+    onOpenView: (RecipeFilter) -> Unit,
+    onOpenLists: () -> Unit,
+    onOpenFilters: (() -> Unit)?,
+    onQuickToggle: (RecipeQuickFilter) -> Unit,
+    onClearQuick: () -> Unit,
+    onSort: (RecipeSort) -> Unit,
+    onLayout: ((RecipesLayout) -> Unit)?,
+    onSelect: (() -> Unit)?
+) {
+    Column {
+        if (state.selecting) {
+            Spacer(Modifier.height(8.dp))
+            return@Column
+        }
+        Spacer(Modifier.height(4.dp))
+        LibraryTitleRowB(
+            onAdd = root.onAdd,
+            onSelect = onSelect.takeIf { !state.recipes.isNullOrEmpty() },
+            onOpenSettings = root.root.onOpenSettings
+        )
+        if (root.home != null) {
+            Spacer(Modifier.height(4.dp))
+            LibraryCard(root.home, root.root, root.homeTonight, root.onOpenRecipe, styleB = true)
+            if (root.home.offersBackupFolder) {
+                Spacer(Modifier.height(12.dp))
+                BackupFolderCard(onChoose = root.onChooseFolder, onDismiss = root.root.viewModel::onBackupPromptDismissed)
+            }
+        }
+        if (root.emptyLibrary) {
+            EmptyLibrary(
+                onPasteLink = onPasteLink,
+                onScan = onScan,
+                onTypeRecipe = onNewRecipe,
+                onAskAi = root.onAskAi,
+                restore = root.home?.restore ?: BackupStatus.Idle,
+                onRestore = root.onRestore
+            )
+            Spacer(Modifier.height(12.dp))
+            return@Column
+        }
+        Spacer(Modifier.height(12.dp))
+        if (state.showsViewsStrip) {
+            ViewsShelf(state.counts, state.lists.size, onOpenView, onOpenLists)
+            Spacer(Modifier.height(12.dp))
+        }
+        SearchFieldB(
+            query = state.query,
+            onQueryChange = onQueryChange,
+            filtersOn = state.activeQuickFilters.size,
+            onOpenFilters = onOpenFilters.takeIf { state.showsFilter }
+        )
+        ActiveFilterPills(state.activeQuickFilters, onQuickToggle, onClearQuick)
+        if (state.showsSortLine) {
+            SortLine(state, onSort, onLayout, toggleLast = true)
+        } else {
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+/**
  * What the library as the first screen (#375) adds to the header: [root]'s destinations, Home's state
  * (the card, the restore row, the folder card), and the actions that need the screen's launchers.
  */
@@ -642,7 +764,13 @@ private fun DeleteBackground(dismissState: SwipeToDismissBoxState) {
  * free tier "12 of 20 recipes", #107), and the order they're in on the right.
  */
 @Composable
-private fun SortLine(state: RecipesUiState, onSort: (RecipeSort) -> Unit, onLayout: ((RecipesLayout) -> Unit)? = null) {
+private fun SortLine(
+    state: RecipesUiState,
+    onSort: (RecipeSort) -> Unit,
+    onLayout: ((RecipesLayout) -> Unit)? = null,
+    /** Design B (#449): the sort, then the toggle, last on the right. */
+    toggleLast: Boolean = false
+) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         // Inside a view the count is the view's own, not the free library's.
         val count = state.count.takeIf { state.view == null }
@@ -657,7 +785,8 @@ private fun SortLine(state: RecipesUiState, onSort: (RecipeSort) -> Unit, onLayo
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f).padding(start = 2.dp)
         )
-        if (onLayout != null) LayoutToggle(state.layout, onLayout)
+        if (onLayout != null && !toggleLast) LayoutToggle(state.layout, onLayout)
         SortMenu(state.sort, onSort)
+        if (onLayout != null && toggleLast) LayoutToggle(state.layout, onLayout)
     }
 }

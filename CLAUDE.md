@@ -201,8 +201,9 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   Cook mode follows the system theme unless "Dark while cooking" (off by
   default) is on. Don't restore an always-dark cook mode without asking.
 - **Settings:** exclusive choices are radio rows, independent toggles are
-  switches, never a bare ✓. Reached from the gear beside the Recipes title
-  (Home's, with `libraryFirst` off); the Plan and Pantry menus link their own
+  switches, never a bare ✓. Reached from the ⋮ menu last in the Recipes title row
+  (#449, `recipesTopB`; the gear beside the title with it off, Home's with `libraryFirst`
+  off); the Plan and Pantry menus link their own
   section, on that tab's stack (#412); another entry point is the owner's call.
 - **Recipes** (#345, V4): under search, one strip of cards: Lists first (#371: opens the
   Lists screen, Back to Recipes), then the automatic views (Not in a list, Cooked, Typed by
@@ -212,6 +213,12 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   sort (#378: 30 min or less, Not cooked yet, Uses what's in my pantry: half the nameable lines Have,
   by name, each row saying "You have 6 of 8"), and a rows / photo-grid toggle beside the sort
   (`recipes_layout`, #380).
+- **Recipes' top, design B** (#449, `recipesTopB`, the library as the first screen only): the title
+  row is Recipes, the +, then a ⋮ menu (Select, Settings; no gear, no Select button); the views
+  are one segmented shelf above search (Lists in the paprika tone; it scrolls sideways rather
+  than clip); the three filters live in a sheet behind a badged button at the end of search, those
+  on shown under it as removable pills with Clear; then the count, the sort, the toggle;
+  selecting has Select all. Off, the strip and chips above.
 - **A recipe with no photo, or whose photo fails, gets a designed image** (#403, `noPhotoImage`):
   its first ingredient names in italic on one of five warm tints chosen by its uid (the title's
   first letter at 64 dp and below), never a stock image. One component per platform; the
@@ -220,7 +227,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   and there is **no Home**. Above search, a compact card (Home's, below: only when something is
   being cooked or planned today; Start cooking opens on the Recipes stack, so Back returns here
   and the card scrolls away with the list); the + opens an "Add a recipe" sheet (Paste a link,
-  Scan, Type, Ask an AI); the gear sits beside the title; an empty library shows the four ways in
+  Scan, Type, Ask an AI); Settings is in the ⋮ after it (#449); an empty library shows the four ways in
   as tiles with Restore. The first-run tip points at the +. Off, Home:
 - **Home** (#286, #402): one card at the top. Mid-cook (cook mode left on, or a
   timer running on an unfinished run; never a finished run): "Continue cooking" with

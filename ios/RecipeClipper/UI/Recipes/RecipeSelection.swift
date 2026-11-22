@@ -18,6 +18,12 @@ struct RecipeSelection: Equatable {
         chosen = ticked
     }
 
+    /// Select all (#449): ticks `all` as well, while selecting; ignored when not selecting.
+    mutating func tickAll(_ all: [Int64]) {
+        guard let ticked = chosen else { return }
+        chosen = ticked.union(all)
+    }
+
     mutating func exit() { chosen = nil }
 
     /// What an action acts on: the ticked recipes that are listed now. A search that hides a

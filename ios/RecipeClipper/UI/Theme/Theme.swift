@@ -82,6 +82,13 @@ enum Palette {
     static let error = dynamic(light: Tokens.paprika, dark: Tokens.paprikaTextOnInk)
     /// Tonal fills (the servings stepper's buttons).
     static let surfaceContainer = dynamic(light: UIColor(rgb: 0xF3EFE9), dark: UIColor(rgb: 0x26211E))
+    /// Raised tonal fills (Android's surfaceContainerHigh).
+    static let surfaceContainerHigh = dynamic(light: UIColor(rgb: 0xEEE9E2), dark: UIColor(rgb: 0x2E2825))
+    /// The paprika tone (#449, the top of Recipes, design B): a soft paprika fill for what is on or leads
+    /// (the shelf's Lists cell, the filter button with a filter on, the pills of the filters on), and the
+    /// deep paprika that reads on it. On ink, a dim paprika with a light one. Android's `PaprikaTone`.
+    static let paprikaTone = dynamic(light: UIColor(rgb: 0xF6E3DA), dark: UIColor(rgb: 0x45261C))
+    static let onPaprikaTone = dynamic(light: UIColor(rgb: 0x8E3219), dark: UIColor(rgb: 0xF4B7A3))
     /// The snackbar inverts: an ink card on the ground, a light card on ink.
     static let inverseSurface = dynamic(light: Tokens.ink, dark: Tokens.ground)
     static let inverseOnSurface = dynamic(light: Tokens.ground, dark: Tokens.ink)

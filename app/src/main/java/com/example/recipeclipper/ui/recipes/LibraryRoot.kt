@@ -4,6 +4,15 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -122,10 +131,48 @@ internal fun LibraryAddButton(onAdd: () -> Unit) {
  * It is the library's first item, so it scrolls away with the list.
  */
 @Composable
-internal fun LibraryCard(state: HomeUiState, root: LibraryRoot, homeTonight: Boolean, onOpenRecipe: (Long) -> Unit) {
+internal fun LibraryCard(
+    state: HomeUiState,
+    root: LibraryRoot,
+    homeTonight: Boolean,
+    onOpenRecipe: (Long) -> Unit,
+    /** Design B (#449): the outlined card, the other meal beside a pill-shaped button. */
+    styleB: Boolean = false
+) {
     val latest = state.continueCooking
     val resume = state.resume
     val today = state.today?.takeIf { homeTonight && resume == null }
+    if (styleB) {
+        when {
+            latest != null && resume != null -> CompactCardB(
+                imageUrl = latest.imageUrl,
+                noPhoto = latest.noPhoto,
+                label = stringResource(R.string.section_continue_cooking),
+                title = latest.title,
+                button = stringResource(R.string.home_resume_cooking),
+                onButton = { root.onResumeCooking(latest.id) },
+                onOpen = { onOpenRecipe(latest.id) },
+                under = { ResumeLine(resume) }
+            )
+            today != null -> {
+                val lead = today.lead
+                val type = lead.mealType.takeIf { it.isNotBlank() }
+                CompactCardB(
+                    imageUrl = lead.imageUrl,
+                    noPhoto = lead.noPhoto.takeIf { lead.recipeId != null },
+                    label = stringResource(R.string.home_today) + (type?.let { " · $it" } ?: ""),
+                    title = lead.title,
+                    button = stringResource(R.string.action_start_cooking).takeIf { lead.recipeId != null },
+                    onButton = { lead.recipeId?.let { root.onOpenPlanned(it, lead.servings, true) } },
+                    onOpen = lead.recipeId?.let { id -> { root.onOpenPlanned(id, lead.servings, false) } },
+                    // The close button (#448, `todayCardClose`): gone until tomorrow. Never on Continue cooking.
+                    onClose = if (state.todayClosable) root.viewModel::onCloseToday else null,
+                    beside = { OtherMeals(today, root, styleB = true) }
+                )
+            }
+        }
+        return
+    }
     when {
         latest != null && resume != null -> CompactCard(
             imageUrl = latest.imageUrl,
@@ -216,6 +263,90 @@ private fun CompactCard(
     }
 }
 
+/**
+ * The card as design B draws it (#449): outlined on the ground rather than filled, the thumbnail beside
+ * a paprika eyebrow ("TODAY · DINNER") and the name, then a row with the next meal on the left and the
+ * button as a paprika pill on the right. [under] goes under the name (the step and the countdown),
+ * [beside] beside the button (the next meal). The close button (#448) keeps its place at the top right.
+ */
+@Composable
+private fun CompactCardB(
+    imageUrl: String?,
+    noPhoto: NoPhotoSource?,
+    label: String,
+    title: String,
+    button: String?,
+    onButton: () -> Unit,
+    onOpen: (() -> Unit)?,
+    onClose: (() -> Unit)? = null,
+    under: @Composable () -> Unit = {},
+    beside: @Composable () -> Unit = {}
+) {
+    val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        Modifier.fillMaxWidth().testTag("libraryCard")
+            .clip(shape).background(colors.background).border(1.dp, colors.outlineVariant, shape).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().then(
+                if (onOpen != null) Modifier.clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClick = onOpen) else Modifier
+            )
+        ) {
+            val thumb = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp))
+            val plain: @Composable (Modifier) -> Unit = { Box(it.background(colors.tertiary.copy(alpha = 0.12f))) }
+            if (noPhoto != null && noPhotoImageOn()) {
+                RecipeImage(model = imageUrl, recipe = noPhoto, contentDescription = null, modifier = thumb, whenOff = plain)
+            } else if (imageUrl != null) {
+                AsyncImage(model = imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = thumb)
+            } else {
+                plain(thumb)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    label.uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 11.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp
+                    ),
+                    color = colors.tertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, lineHeight = 22.sp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                under()
+            }
+            if (onClose != null) TodayCloseButton(onClose, Modifier.align(Alignment.Top))
+        }
+        if (button != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { beside() }
+                Button(
+                    onClick = onButton,
+                    shape = RoundedCornerShape(50),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier.heightIn(min = 40.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(button, style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp))
+                }
+            }
+        } else {
+            beside()
+        }
+    }
+}
+
 /** Where the cook stopped: the running timer's time left, then "Step 2 of 4". */
 @Composable
 private fun ResumeLine(resume: CookResume) {
@@ -235,13 +366,25 @@ private fun ResumeLine(resume: CookResume) {
 
 /** The next meal still to cook today, on one line ("Dinner: Lemon Garlic Salmon"); it opens its recipe. */
 @Composable
-private fun OtherMeals(card: TodayCard, root: LibraryRoot) {
+private fun OtherMeals(card: TodayCard, root: LibraryRoot, styleB: Boolean = false) {
     val next: TodayMeal = card.others.firstOrNull() ?: return
+    val line = stringResource(R.string.home_today_other, next.mealType, next.title)
+    // Design B (#449): the meal's name in ink, its type muted ("Snack: Banana Bread").
+    val at = line.lastIndexOf(next.title)
+    val ink = MaterialTheme.colorScheme.onBackground
+    val text = if (styleB && at >= 0) {
+        buildAnnotatedString {
+            append(line)
+            addStyle(SpanStyle(color = ink, fontWeight = FontWeight.SemiBold), at, at + next.title.length)
+        }
+    } else {
+        AnnotatedString(line)
+    }
     Text(
-        stringResource(R.string.home_today_other, next.mealType, next.title),
+        text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
+        maxLines = if (styleB) 2 else 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.padding(top = 2.dp).fillMaxWidth().then(
             next.recipeId?.let { id ->

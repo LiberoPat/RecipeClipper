@@ -145,6 +145,26 @@ breakfast or snack as much as a dinner, and the line's short "Closed, it comes b
 cierras, vuelve mañana*, *Fermé, il revient demain*, *Geschlossen kommt sie morgen wieder*, *Se lo
 chiudi, torna domani*, *Se você fechar, ela volta amanhã*).
 
+## The top of Recipes, design B, 2026-11-21 (#449)
+
+Six strings on both platforms, drafts written by Claude; Select, Settings, Select all, Clear and "More
+options" reuse what each language already says. The filter sheet's title, `recipes_filter_title`,
+"Filter recipes" (*Filtrar recetas*, *Filtrer les recettes*, *Rezepte filtern*, *Filtra le ricette*,
+*Filtrar receitas*); the line under each switch: `recipes_quick_30_or_less_hint`, "Total time, or prep
+plus cook" (*Tiempo total, o preparación más cocción*, *Temps total, ou préparation plus cuisson*,
+*Gesamtzeit, oder Vorbereitung plus Kochen*, *Tempo totale, o preparazione più cottura*, *Tempo total, ou
+preparo mais cozimento*), `recipes_quick_not_cooked_hint`, "Never marked as cooked" (*Nunca marcada como
+cocinada*, *Jamais marquée comme cuisinée*, *Nie als gekocht markiert*, *Mai segnata come cucinata*,
+*Nunca marcada como feita*, matching each language's Cooked view) and `recipes_quick_pantry_hint`, "At
+least half the ingredients, by name" (*Al menos la mitad de los ingredientes, por nombre*, *Au moins la
+moitié des ingrédients, par nom*, *Mindestens die Hälfte der Zutaten, nach Name*, *Almeno metà degli
+ingredienti, per nome*, *Pelo menos metade dos ingredientes, pelo nome*); a pill's label for TalkBack and
+VoiceOver, `cd_remove_filter`, "Remove %s" (*Quitar*, *Retirer*, *… entfernen*, *Rimuovi*, *Remover*);
+and the filter button's state, the plural `recipes_filters_on`, "1 filter on" / "2 filters on" (*filtro
+activo*, *filtre actif*, *Filter aktiv*, *filtro attivo*, *filtro ativo*, with the `many` forms the other
+plurals use). To check: whether German's "Gesamtzeit, oder …" wants its comma, and "on" as *activo* /
+*actif* / *aktiv* / *attivo* / *ativo* for a filter that is switched on.
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,
