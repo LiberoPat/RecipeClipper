@@ -16,9 +16,6 @@ struct LibraryRow: View {
     var selecting = false
     var selected = false
 
-    /// The bookmark's width, filled or outlined: the button's touch target, so the glyph never shifts.
-    static let bookmarkSlot: CGFloat = 44
-
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -31,10 +28,7 @@ struct LibraryRow: View {
             rowButton
             if !recipe.isSaved, let onSaveToList, !selecting {
                 Button(action: onSaveToList) {
-                    Image(systemName: "bookmark")
-                        .foregroundStyle(Palette.muted)
-                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                        .frame(minWidth: Self.bookmarkSlot, minHeight: 44)
+                    BookmarkGlyph(filled: false)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -69,12 +63,9 @@ struct LibraryRow: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     if recipe.isSaved {
-                        Image(systemName: "bookmark.fill")
-                            .foregroundStyle(Palette.accentText)
-                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                            // The outlined bookmark's width, glyph centred, so saving a recipe never
-                            // moves the glyph or the text beside it. Not a button: a tap opens the recipe.
-                            .frame(width: Self.bookmarkSlot)
+                        // The same slot as the outlined button's, so saving a recipe never moves the
+                        // glyph or the text beside it. Not a button: a tap opens the recipe.
+                        BookmarkGlyph(filled: true)
                             .accessibilityLabel(Strings.inAList)
                     }
                 }
@@ -104,5 +95,23 @@ struct LibraryRow: View {
                 }
             }
         }
+    }
+}
+
+/// A row's bookmark, filled (the recipe is in a list) or outlined (the save-to-list button's label).
+/// Both are the same slot, glyph centred, so the glyph never moves when a recipe is saved
+/// (`BookmarkSlotTests`); this is the one place the slot's size is written.
+struct BookmarkGlyph: View {
+    /// The slot: the button's touch target.
+    static let slot = CGSize(width: 44, height: 44)
+
+    let filled: Bool
+
+    var body: some View {
+        Image(systemName: filled ? "bookmark.fill" : "bookmark")
+            .foregroundStyle(filled ? Palette.accentText : Palette.muted)
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            .frame(width: Self.slot.width)
+            .frame(minHeight: Self.slot.height)
     }
 }

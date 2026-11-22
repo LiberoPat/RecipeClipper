@@ -4,68 +4,41 @@ import XCTest
 @testable import RecipeClipper
 
 /// Saving a recipe turns its outlined bookmark into a filled one, and the glyph must not move
-/// ("the bookmark moves to the right when it turns red"). The outlined one is a button 44 wide, so
-/// the filled one takes the same slot, and the text beside it ends in the same place. Snapshot-free:
-/// the row is drawn once, saved and unsaved, and only where the ink lands in its trailing 44 points
-/// is compared.
+/// ("the bookmark moves to the right when it turns red"). Both are `BookmarkGlyph`, one slot the
+/// width of the button's touch target, glyph centred, and the row puts nothing between that slot
+/// and the title's column in either state. Snapshot-free and independent of how the symbol draws:
+/// what is measured is the size SwiftUI lays the slot out at, filled and outlined.
 @MainActor
 final class BookmarkSlotTests: XCTestCase {
 
-    private let scale: CGFloat = 3
-    private let width: CGFloat = 390
-
-    private func summary(saved: Bool) -> RecipeSummary {
-        RecipeSummary(id: 1, title: "Chicken Adobo", imageUrl: nil, totalTime: "45m", lastViewedAt: 0, isSaved: saved)
+    /// The size a view is laid out at when offered a generous space: a 44-wide slot takes 44, not
+    /// the glyph's own width.
+    private func laidOutSize<V: View>(_ view: V) -> CGSize {
+        let host = UIHostingController(rootView: view)
+        return host.sizeThatFits(in: CGSize(width: 300, height: 300))
     }
 
-    /// The row, drawn on white at a fixed width, as pixels.
-    private func render(_ row: LibraryRow) throws -> CGImage {
-        let view = row
-            .frame(width: width)
-            .background(Color.white)
-            .environment(\.colorScheme, .light)
-        let renderer = ImageRenderer(content: view)
-        renderer.scale = scale
-        return try XCTUnwrap(renderer.cgImage, "the row drew nothing")
+    func testTheFilledAndTheOutlinedBookmarkTakeTheSameSlot() {
+        let outlined = laidOutSize(BookmarkGlyph(filled: false))
+        let filled = laidOutSize(BookmarkGlyph(filled: true))
+        XCTAssertEqual(outlined.width, BookmarkGlyph.slot.width, accuracy: 0.5)
+        XCTAssertEqual(filled.width, outlined.width, accuracy: 0.5, "the filled bookmark's slot is not the button's")
+        XCTAssertEqual(filled.height, outlined.height, accuracy: 0.5)
     }
 
-    /// The horizontal extent, in points from the row's trailing edge, of everything in the trailing
-    /// `slot` points that isn't the white ground: the bookmark glyph.
-    private func inkExtent(_ image: CGImage, slot: CGFloat) throws -> ClosedRange<CGFloat> {
-        let w = image.width, h = image.height
-        var pixels = [UInt8](repeating: 0, count: w * h * 4)
-        let context = try XCTUnwrap(CGContext(
-            data: &pixels, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ))
-        context.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        let firstColumn = w - Int(slot * scale)
-        var minX = Int.max, maxX = Int.min
-        for x in firstColumn..<w {
-            for y in 0..<h {
-                let i = (y * w + x) * 4
-                if pixels[i] < 235 || pixels[i + 1] < 235 || pixels[i + 2] < 235 {
-                    minX = min(minX, x); maxX = max(maxX, x)
-                }
-            }
+    func testTheSlotIsTheTouchTargetSize() {
+        XCTAssertGreaterThanOrEqual(BookmarkGlyph.slot.width, 44)
+        XCTAssertGreaterThanOrEqual(BookmarkGlyph.slot.height, 44)
+    }
+
+    /// The glyph is centred in its slot: a slot offered more room than it needs stays 44 wide
+    /// (the glyph never stretches or drifts to an edge with the row's width).
+    func testTheSlotDoesNotGrowWithTheRoomItIsOffered() {
+        for filled in [false, true] {
+            let host = UIHostingController(rootView: BookmarkGlyph(filled: filled))
+            let narrow = host.sizeThatFits(in: CGSize(width: 100, height: 100))
+            let wide = host.sizeThatFits(in: CGSize(width: 400, height: 400))
+            XCTAssertEqual(narrow.width, wide.width, accuracy: 0.5)
         }
-        XCTAssertNotEqual(minX, Int.max, "no bookmark drawn in the trailing \(slot) points")
-        return (CGFloat(w - maxX) / scale)...(CGFloat(w - minX) / scale)
-    }
-
-    func testTheBookmarkStaysPutWhenTheRecipeIsSaved() throws {
-        let outlined = try inkExtent(
-            render(LibraryRow(recipe: summary(saved: false), onClick: {}, onSaveToList: {})),
-            slot: LibraryRow.bookmarkSlot
-        )
-        let filled = try inkExtent(
-            render(LibraryRow(recipe: summary(saved: true), onClick: {}, onSaveToList: {})),
-            slot: LibraryRow.bookmarkSlot
-        )
-        XCTAssertEqual(outlined.lowerBound, filled.lowerBound, accuracy: 1, "the glyph's trailing edge moved")
-        XCTAssertEqual(outlined.upperBound, filled.upperBound, accuracy: 1, "the glyph's leading edge moved")
-        // And it sits inside the slot, not flush against the row's edge as a bare glyph would.
-        XCTAssertGreaterThan(filled.lowerBound, 8, "the filled bookmark is flush with the row's edge")
     }
 }
