@@ -87,7 +87,9 @@ struct LibraryCard: View {
                 title: lead.title,
                 button: lead.recipeId == nil ? nil : Strings.startCooking,
                 onButton: { if let id = lead.recipeId { root.onOpenPlanned(id, lead.servings, true) } },
-                onOpen: lead.recipeId.map { id in { root.onOpenPlanned(id, lead.servings, false) } }
+                onOpen: lead.recipeId.map { id in { root.onOpenPlanned(id, lead.servings, false) } },
+                // The close button (#448, `todayCardClose`): gone until tomorrow. Never on Continue cooking.
+                onClose: state.todayClosable ? { root.vm.onCloseToday() } : nil
             ) {
                 if let next = today.others.first {
                     Button {
@@ -118,12 +120,14 @@ private struct CompactCard<Line: View>: View {
     let button: String?
     let onButton: () -> Void
     let onOpen: (() -> Void)?
+    /// The close button at the top right (#448); nil has none.
+    var onClose: (() -> Void)?
     @ViewBuilder let line: () -> Line
     @Environment(\.noPhotoImage) private var noPhotoImage
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 Button { onOpen?() } label: {
                     HStack(spacing: 12) {
                         thumbnail
@@ -142,6 +146,11 @@ private struct CompactCard<Line: View>: View {
                 .buttonStyle(.plain)
                 .disabled(onOpen == nil)
                 .accessibilityIdentifier("library.card.open")
+                if let onClose {
+                    TodayCloseButton(action: onClose)
+                        .padding(.top, -8)
+                        .padding(.trailing, -8)
+                }
             }
             line()
             if let button {

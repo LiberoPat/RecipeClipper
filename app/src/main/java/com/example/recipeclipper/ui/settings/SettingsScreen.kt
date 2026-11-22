@@ -164,7 +164,8 @@ private fun sectionValue(section: SettingsSection, state: SettingsUiState): Stri
     SettingsSection.STEPS -> stringResource(
         if (state.amountsInSteps) R.string.settings_value_amounts_on else R.string.settings_value_amounts_off
     )
-    SettingsSection.WEEK -> stringResource(
+    // The reminders' value; with only "Show today's meal" there (#448, no `eveningReminders`), none.
+    SettingsSection.WEEK -> if (!state.showsWeekReminders) null else stringResource(
         if (state.eveningReminder || state.tonightReminder) R.string.settings_value_reminders_on else R.string.settings_value_reminders_off
     )
     SettingsSection.PANTRY -> stringResource(

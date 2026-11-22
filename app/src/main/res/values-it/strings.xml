@@ -91,6 +91,9 @@
     <string name="home_resume_cooking">Riprendi a cucinare</string>
     <string name="home_open_recipe">Apri la ricetta</string>
     <string name="home_today">Oggi</string>
+    <string name="cd_close_today">Nascondi il pasto di oggi fino a domani</string>
+    <string name="show_today_card_title">Mostra il pasto di oggi</string>
+    <string name="show_today_card_description">Il pasto previsto per oggi, in cima a Ricette, con Inizia a cucinare. Se lo chiudi, torna domani.</string>
     <string name="home_today_other">%1$s: %2$s</string>
     <string name="home_timer_left">Ancora %1$s</string>
     <string name="recipes_title">Ricette</string>

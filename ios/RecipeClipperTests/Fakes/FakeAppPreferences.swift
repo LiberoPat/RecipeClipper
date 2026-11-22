@@ -22,7 +22,9 @@ final class FakeAppPreferences: AppPreferences {
         tonightReminder: Bool = false,
         tonightReminderMinute: Int = MealReminders.tonightMinute,
         /// Whether the evening switch was ever set (#413); setting `eveningReminder` sets it too.
-        eveningReminderChosen: Bool = false
+        eveningReminderChosen: Bool = false,
+        showTodayCard: Bool = true,
+        todayCardDismissedDay: Int64? = nil
     ) {
         subject = CurrentValueSubject(AppSettings(
             unitSystem: unitSystem,
@@ -38,7 +40,9 @@ final class FakeAppPreferences: AppPreferences {
             eveningReminderMinute: eveningReminderMinute,
             tonightReminder: tonightReminder,
             tonightReminderMinute: tonightReminderMinute,
-            eveningReminderChosen: eveningReminderChosen
+            eveningReminderChosen: eveningReminderChosen,
+            showTodayCard: showTodayCard,
+            todayCardDismissedDay: todayCardDismissedDay
         ))
     }
 
@@ -116,5 +120,15 @@ final class FakeAppPreferences: AppPreferences {
     var chefMode: Bool {
         get { subject.value.chefMode }
         set { subject.value.chefMode = newValue }
+    }
+
+    var showTodayCard: Bool {
+        get { subject.value.showTodayCard }
+        set { subject.value.showTodayCard = newValue }
+    }
+
+    var todayCardDismissedDay: Int64? {
+        get { subject.value.todayCardDismissedDay }
+        set { subject.value.todayCardDismissedDay = newValue }
     }
 }

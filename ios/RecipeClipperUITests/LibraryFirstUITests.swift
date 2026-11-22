@@ -196,6 +196,26 @@ final class LibraryFirstUITests: RecipeUITestCase {
         assertAbsent(app.buttons["Open recipe"])
     }
 
+    /// The Today card's close (#448, `todayCardClose`): gone until tomorrow, and still gone on a relaunch
+    /// the same day. The twin of Android's `theTodayCardsCloseHidesItUntilTomorrow`.
+    func testTheTodayCardsCloseHidesItForTheRestOfTheDay() {
+        let flags = on + ["homeTonight", "todayCardClose"]
+        launch(.standard, flags: flags, extraArguments: planToday("dinner:Chicken Adobo"))
+
+        require(app.buttons["library.card.start"], "the card")
+        let close = require(app.buttons["today.close"], "the card's close")
+        XCTAssertEqual(close.label, "Hide today's meal until tomorrow")
+        close.tap()
+
+        assertAbsent(app.buttons["library.card.start"], "the card, closed")
+        require(search, "search under the title")
+
+        app.terminate()
+        launch(.standard, keepPrefs: true, flags: flags, extraArguments: planToday("dinner:Chicken Adobo"))
+        require(search)
+        assertAbsent(app.buttons["library.card.start"], "still closed today")
+    }
+
     func testWithTheTodayFlagOffOnlyACookingRecipeGetsACard() {
         launch(.standard, flags: on, extraArguments: planToday("dinner:Banana Bread"))
 

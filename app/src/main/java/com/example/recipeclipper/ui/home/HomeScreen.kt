@@ -145,7 +145,9 @@ fun HomeScreen(
                             TodayCard(
                                 today,
                                 onStartCooking = { meal -> meal.recipeId?.let { onOpenPlanned(it, meal.servings, true) } },
-                                onOpen = { meal -> meal.recipeId?.let { onOpenPlanned(it, meal.servings, false) } }
+                                onOpen = { meal -> meal.recipeId?.let { onOpenPlanned(it, meal.servings, false) } },
+                                // Closed until tomorrow (#448, `todayCardClose`); Continue cooking has none.
+                                onClose = viewModel::onCloseToday.takeIf { state.todayClosable }
                             )
                         }
                     } else if (!homeTonight || state.resume != null) {

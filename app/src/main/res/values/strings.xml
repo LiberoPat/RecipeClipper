@@ -167,6 +167,9 @@
     <string name="home_resume_cooking">Resume cooking</string>
     <string name="home_open_recipe">Open recipe</string>
     <string name="home_today">Today</string>
+    <string name="cd_close_today">Hide today\'s meal until tomorrow</string>
+    <string name="show_today_card_title">Show today\'s meal</string>
+    <string name="show_today_card_description">Today\'s planned meal at the top of Recipes, with Start cooking. Closed, it comes back tomorrow.</string>
     <string name="home_today_other">%1$s: %2$s</string>
     <string name="home_timer_left">%1$s left</string>
 

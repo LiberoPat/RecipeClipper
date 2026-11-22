@@ -67,8 +67,12 @@ data class SettingsUiState(
     /** Turning reminders on was refused (notifications not allowed): the switch stays off and
      *  says why, until it is turned on successfully. */
     val expiryRemindersDenied: Boolean = false,
-    /** The Week section (#397): only with the `eveningReminders` flag. */
+    /** The Week section's reminders (#397): only with the `eveningReminders` flag. */
     val showsWeekReminders: Boolean = false,
+    /** The Week section's "Show today's meal" switch (#448): only with the `todayCardClose` flag. */
+    val showsTodayCardSetting: Boolean = false,
+    /** "Show today's meal" (#448): the Today card at the top of Recipes or Home. */
+    val showTodayCard: Boolean = true,
     /**
      * The evening-before reminder of tomorrow's meals, and its time (minutes since midnight). As it
      * runs: without Pro (#413) its default "on" is not the cook's, so it shows off ([ProReminders]).
@@ -116,7 +120,7 @@ data class SettingsUiState(
     /** The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag, Pro only with `proUnlock`. */
     val sections: List<SettingsSection>
         get() = SettingsSection.entries.filter {
-            (it != SettingsSection.UNLIMITED || unlock != null) && (it != SettingsSection.WEEK || showsWeekReminders) &&
+            (it != SettingsSection.UNLIMITED || unlock != null) && (it != SettingsSection.WEEK || showsWeekReminders || showsTodayCardSetting) &&
                 (it != SettingsSection.PRO || showsPro)
         }
 
@@ -282,7 +286,8 @@ class SettingsViewModel @Inject constructor(
                             showsPaprikaImport = paprika != null && values.isOn(Flag.PAPRIKA_IMPORT),
                             showsRecipeKeeperImport = paprika != null && values.isOn(Flag.RECIPE_KEEPER_IMPORT),
                             showsMealieImport = mealie != null && values.isOn(Flag.MEALIE_IMPORT),
-                            showsWeekReminders = values.isOn(Flag.EVENING_REMINDERS)
+                            showsWeekReminders = values.isOn(Flag.EVENING_REMINDERS),
+                            showsTodayCardSetting = values.isOn(Flag.TODAY_CARD_CLOSE)
                         )
                     }
                     if (values.isOn(Flag.CHEF_MODE)) askChefSupport()
@@ -349,6 +354,8 @@ class SettingsViewModel @Inject constructor(
         expiryReminders = expiryReminders,
         expiryRemindersDenied = previous?.expiryRemindersDenied ?: false,
         showsWeekReminders = previous?.showsWeekReminders ?: (featureFlags?.isOn(Flag.EVENING_REMINDERS) ?: false),
+        showsTodayCardSetting = previous?.showsTodayCardSetting ?: (featureFlags?.isOn(Flag.TODAY_CARD_CLOSE) ?: false),
+        showTodayCard = showTodayCard,
         eveningReminder = ProReminders.runs(eveningReminder, eveningReminderChosen, proState),
         eveningReminderMinute = eveningReminderMinute,
         tonightReminder = ProReminders.runs(tonightReminder, chosen = true, proState),
@@ -406,6 +413,12 @@ class SettingsViewModel @Inject constructor(
     fun onDarkWhileCookingChange(enabled: Boolean) {
         preferences.darkWhileCooking = enabled
         _uiState.update { it.copy(darkWhileCooking = enabled) }
+    }
+
+    /** "Show today's meal" (#448): off, the Today card never shows; on again, it shows unless closed today. */
+    fun onShowTodayCardChange(enabled: Boolean) {
+        preferences.showTodayCard = enabled
+        _uiState.update { it.copy(showTodayCard = enabled) }
     }
 
     fun onAmountsInStepsChange(enabled: Boolean) {

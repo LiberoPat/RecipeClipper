@@ -74,7 +74,9 @@ struct HomeScreen: View {
                         TodayCardView(
                             card: today,
                             onStartCooking: { meal in meal.recipeId.map { onOpenPlanned($0, meal.servings, true) } },
-                            onOpen: { meal in meal.recipeId.map { onOpenPlanned($0, meal.servings, false) } }
+                            onOpen: { meal in meal.recipeId.map { onOpenPlanned($0, meal.servings, false) } },
+                            // Closed until tomorrow (#448, `todayCardClose`); Continue cooking has none.
+                            onClose: state.todayClosable ? { vm.onCloseToday() } : nil
                         )
                         .padding(.top, 16)
                     }

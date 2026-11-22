@@ -89,6 +89,9 @@
     <string name="home_resume_cooking">Kochen fortsetzen</string>
     <string name="home_open_recipe">Rezept öffnen</string>
     <string name="home_today">Heute</string>
+    <string name="cd_close_today">Heutige Mahlzeit bis morgen ausblenden</string>
+    <string name="show_today_card_title">Heutige Mahlzeit zeigen</string>
+    <string name="show_today_card_description">Die für heute geplante Mahlzeit oben in Rezepte, mit Jetzt kochen. Geschlossen kommt sie morgen wieder.</string>
     <string name="home_today_other">%1$s: %2$s</string>
     <string name="home_timer_left">Noch %1$s</string>
     <string name="recipes_title">Rezepte</string>

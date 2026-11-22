@@ -209,8 +209,10 @@ class TabSettingsLinksTest {
             assertTrue(values.planSettingsLink)
             assertTrue(values.pantrySettingsLink)
         }
-        // Settings' Plan section shows only with eveningReminders, so its link goes with it.
+        // Settings' Plan section shows only with eveningReminders or todayCardClose (#448), so its link goes with them.
         flagStore.setOverride(Flag.EVENING_REMINDERS.key, false)
+        assertTrue(flags.values.first().planSettingsLink)
+        flagStore.setOverride(Flag.TODAY_CARD_CLOSE.key, false)
         assertFalse(flags.values.first().planSettingsLink)
         assertTrue(flags.values.first().pantrySettingsLink)
 

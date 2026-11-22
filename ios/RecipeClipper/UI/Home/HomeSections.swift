@@ -114,6 +114,9 @@ struct TodayCardView: View {
     let card: TodayCard
     let onStartCooking: (TodayMeal) -> Void
     let onOpen: (TodayMeal) -> Void
+    /// The close button (#448, `todayCardClose`): in the top right corner, over the photo, it hides
+    /// the card until tomorrow; nil has none.
+    var onClose: (() -> Void)?
     @Environment(\.noPhotoImage) private var noPhotoImage
 
     var body: some View {
@@ -163,6 +166,9 @@ struct TodayCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.surfaceContainer)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(alignment: .topTrailing) {
+            if let onClose { TodayCloseButton(action: onClose).padding(4) }
+        }
     }
 
     /// The meal's photo, or its recipe's designed image (#403: its first ingredient names on its
@@ -187,5 +193,28 @@ struct TodayCardView: View {
         } else {
             Palette.accentText.opacity(0.12).frame(height: 56).accessibilityHidden(true)
         }
+    }
+}
+
+/// The Today card's close button (#448): a small muted ×, at the card's top right, hiding the card
+/// until tomorrow. A 44 pt touch target around a 28 pt disc of the card's own colour, so it reads
+/// over Home's photo too; Home's card and the library's share it.
+struct TodayCloseButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.muted)
+                .frame(width: 28, height: 28)
+                .background(Palette.surfaceContainer.opacity(0.9), in: Circle())
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        // Plain: in a list row, buttons with the default style all fire on one tap.
+        .buttonStyle(.plain)
+        .accessibilityLabel(Strings.closeToday)
+        .accessibilityIdentifier("today.close")
     }
 }

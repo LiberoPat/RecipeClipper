@@ -12,6 +12,10 @@ import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.backup.AutoBackupPolicy
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.local.AppSettings
 import com.example.recipeclipper.data.importFile
 import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.edit.PastedTextRouter
@@ -22,6 +26,7 @@ import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.data.model.TodayCardChoice
 import com.example.recipeclipper.ui.recipe.CookController
 import com.example.recipeclipper.ui.recipe.CookSession
 import com.example.recipeclipper.ui.settings.BackupStatus
@@ -65,6 +70,11 @@ data class HomeUiState(
      * being cooked ([resume] null); null when nothing is left to cook today.
      */
     val today: TodayCard? = null,
+    /**
+     * The Today card has a close button (#448, the `todayCardClose` flag): it hides the card for
+     * the rest of the day. Never on the mid-cook card.
+     */
+    val todayClosable: Boolean = false,
     /** The Recipes and Lists rows' counts (#286); null until known. */
     val recipeCount: Int? = null,
     val listCount: Int? = null,
@@ -189,7 +199,11 @@ class HomeViewModel @Inject constructor(
     private val pasted: PastedTextRouter? = null,
     // Today's meals from Week, and which are cooked (#402); null shows no Today card.
     private val mealPlan: MealPlanRepository? = null,
-    private val cooked: CookedPhotoRepository? = null
+    private val cooked: CookedPhotoRepository? = null,
+    // "Show today's meal" and the day the Today card was closed (#448); null counts neither.
+    private val preferences: AppPreferences? = null,
+    // The `todayCardClose` flag (#448); null reads it as off, the card as before.
+    private val featureFlags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val link = MutableStateFlow<String?>(null)
@@ -250,14 +264,31 @@ class HomeViewModel @Inject constructor(
         }
     }.distinctUntilChanged { a, b -> a.day == b.day && MealWindows.ended(a.millisOfDay) == MealWindows.ended(b.millisOfDay) }
 
-    /** Today's card (#402), followed as the plan, the cooked entries and the day change. */
+    /** The Today card can be closed, and hidden in Settings (#448): the `todayCardClose` flag. */
+    private val todayClosable: Flow<Boolean> =
+        featureFlags?.values?.map { it.isOn(Flag.TODAY_CARD_CLOSE) }?.distinctUntilChanged() ?: flowOf(false)
+
+    /** The flag with the cook's two choices (#448), followed as Settings or a close changes them. */
+    private val todayChoices: Flow<Pair<Boolean, AppSettings?>> =
+        combine(todayClosable, preferences?.settings ?: flowOf(null), ::Pair)
+
+    /**
+     * Today's card (#402), followed as the plan, the cooked entries and the day change; none while
+     * the cook closed it today or turned it off ([TodayCardChoice], #448).
+     */
     private val todayCard: Flow<TodayCard?> =
         if (mealPlan == null) flowOf(null) else today.flatMapLatest { (day, millisOfDay) ->
             combine(
                 mealPlan.observeDays(day, day),
                 mealPlan.observeMealTypes(),
-                cooked?.observeCookedOn(day) ?: flowOf(emptySet())
-            ) { meals, types, cookedIds -> TodayCard.of(meals, types, day, cookedIds, millisOfDay) }
+                cooked?.observeCookedOn(day) ?: flowOf(emptySet()),
+                todayChoices
+            ) { meals, types, cookedIds, (closable, settings) ->
+                val shows = TodayCardChoice.shows(
+                    closable, settings?.showTodayCard ?: true, settings?.todayCardDismissedDay, day
+                )
+                if (shows) TodayCard.of(meals, types, day, cookedIds, millisOfDay) else null
+            }
         }
 
     private val counts: Flow<Pair<Int, Int?>> = combine(
@@ -274,12 +305,12 @@ class HomeViewModel @Inject constructor(
      * once crashed the LazyColumn, one recipe in two sections under one key.
      */
     val uiState: StateFlow<HomeUiState> = combine(
-        combine(combine(recentRecipes, resume, askAi, ::Triple), todayCard, ::Pair),
+        combine(combine(recentRecipes, resume, askAi, ::Triple), todayCard, todayClosable, ::Triple),
         counts,
         combine(link, linkNoRecipe, ::Pair),
         restore,
         backupState
-    ) { (recentResumeAsk, todayCard), (recipeCount, listCount), (linkInput, noRecipe), restoring, backup ->
+    ) { (recentResumeAsk, todayCard, todayClosable), (recipeCount, listCount), (linkInput, noRecipe), restoring, backup ->
         // The sample alone (#151) still offers the restore row, and no folder card: there is
         // nothing of the user's to restore over or to lose.
         val (recentAndSample, resume, askAiOpen) = recentResumeAsk
@@ -294,6 +325,7 @@ class HomeViewModel @Inject constructor(
             // Only the latest recipe's own place: never the one before it, for a moment.
             resume = resume?.takeIf { it.recipeId == latest?.id },
             today = todayCard,
+            todayClosable = todayClosable,
             recipeCount = recipeCount,
             listCount = listCount,
             restore = if (backups != null) restoring else BackupStatus.Idle,
@@ -310,6 +342,14 @@ class HomeViewModel @Inject constructor(
     /** The "Paste a link" tile (#286): opens the dialog, empty. */
     fun onPasteLink() {
         link.value = ""
+    }
+
+    /**
+     * The Today card's close button (#448): the card goes for the rest of today (the clock's local
+     * day), and comes back tomorrow. Nothing to undo, so no snackbar.
+     */
+    fun onCloseToday() {
+        preferences?.todayCardDismissedDay = PlanDays.today(clock.now())
     }
 
     /** The "Ask an AI" tile (#351): opens its sheet. */

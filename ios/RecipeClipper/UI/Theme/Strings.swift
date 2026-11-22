@@ -480,6 +480,10 @@ enum Strings {
     static var homeOpenRecipe: String { String(localized: "home_open_recipe") }
     static func homeTimerLeft(_ clock: String) -> String { String(localized: "home_timer_left \(clock)") }
     static var homeToday: String { String(localized: "home_today") }
+    /// The Today card's close button (#448), for VoiceOver.
+    static var closeToday: String { String(localized: "cd_close_today") }
+    static var showTodayCardTitle: String { String(localized: "show_today_card_title") }
+    static var showTodayCardDescription: String { String(localized: "show_today_card_description") }
     static func homeTodayOther(_ mealType: String, _ title: String) -> String {
         String(localized: "home_today_other \(mealType) \(title)")
     }

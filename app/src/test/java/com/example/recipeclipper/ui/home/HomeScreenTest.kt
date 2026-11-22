@@ -14,6 +14,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.FlagRegistry
+import com.example.recipeclipper.fake.FakeAppPreferences
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.data.model.CookProgress
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.PlannedMeal
@@ -90,17 +94,25 @@ class HomeScreenTest {
 
     private val plan = FakeMealPlanRepository()
     private val cooked = FakeCookedPhotoRepository(today = PlanDays.today(NOW))
+    // The Today card's close (#448): where the close is kept.
+    private val preferences = FakeAppPreferences()
 
     private fun show(
         oneCookbook: Boolean = false,
         askAi: Boolean = false,
         pasted: PastedTextRouter? = null,
-        homeTonight: Boolean = false
+        homeTonight: Boolean = false,
+        /** The `todayCardClose` flag (#448), as debug has it; off passes no flags at all. */
+        todayClose: Boolean = false
     ): Taps {
         val taps = Taps()
         // Built outside setContent: a ViewModel constructed inside a composable would be
         // rebuilt on every recomposition. A fixed clock, so a timer's time left is known.
-        val viewModel = HomeViewModel(repository, lists = lists, clock = Clock { NOW }, pasted = pasted, mealPlan = plan, cooked = cooked)
+        val viewModel = HomeViewModel(
+            repository, lists = lists, clock = Clock { NOW }, pasted = pasted, mealPlan = plan, cooked = cooked,
+            preferences = preferences,
+            featureFlags = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = true).takeIf { todayClose }
+        )
         compose.setContent {
             HomeScreen(
                 onOpenUrl = { taps.url = it },
@@ -354,6 +366,32 @@ class HomeScreenTest {
 
     private fun planned(id: Long, type: Long, recipeId: Long?, title: String?, note: String? = null, servings: Int? = null) =
         PlannedMeal(id, PlanDays.today(NOW), type, recipeId, title, null, servings, note)
+
+    @Test
+    fun theTodayCardsCloseHidesItUntilTomorrow() {
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken"))
+        repository.recent.value = listOf(summary(9, "Newest"))
+        show(homeTonight = true, todayClose = true)
+
+        compose.onNodeWithText("Lemon chicken").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Hide today's meal until tomorrow").performClick()
+
+        compose.waitUntil(timeoutMillis = 5_000) { compose.onAllNodesWithTag("todayCard").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Lemon chicken").assertDoesNotExist()
+        assertEquals(PlanDays.today(NOW), preferences.todayCardDismissedDay)
+        // No snackbar: nothing to undo. The ways in stay.
+        compose.onNodeWithText("Paste a link").assertIsDisplayed()
+    }
+
+    @Test
+    fun theTodayCardHasNoCloseWithTheFlagOff() {
+        plan.meals.value = listOf(planned(1, FakeMealPlanRepository.DINNER, 5, "Lemon chicken"))
+        repository.recent.value = listOf(summary(9, "Newest"))
+        show(homeTonight = true)
+
+        compose.onNodeWithText("Lemon chicken").assertIsDisplayed()
+        compose.onAllNodesWithTag("todayClose").assertCountEquals(0)
+    }
 
     @Test
     fun todaysMealLeadsWithStartCookingAtThePlannedServings() {
