@@ -29,8 +29,10 @@
 	</dict>
 	<key>UIAppFonts</key>
 	<array>
-		<string>fraunces.ttf</string>
-		<string>karla.ttf</string>
+		<string>bricolage-bold.ttf</string>
+		<string>bricolage-extrabold.ttf</string>
+		<string>instrument-regular.ttf</string>
+		<string>instrument-semibold.ttf</string>
 	</array>
 </dict>
 </plist>

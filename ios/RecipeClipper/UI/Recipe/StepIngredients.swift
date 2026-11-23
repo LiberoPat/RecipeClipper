@@ -1,7 +1,7 @@
 import Foundation
 
 /// Cook mode's ingredients bar, opened (#286; Android's `StepIngredients`): the lines the
-/// current step names first, under "In this step" and washed in paprika (`now`), then the rest
+/// current step names first, under "In this step" and washed in basil (`now`), then the rest
 /// under "Later" (`later`). Each is line indexes into the shown ingredients, in the order they
 /// show; every line, headings included, is in exactly one of them, so ticks stay keyed by line
 /// index.

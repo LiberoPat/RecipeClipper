@@ -11,7 +11,7 @@ final class ThemeTests: XCTestCase {
     /// On a slow first run, `ImageRenderer.cgImage` can hand back an image before the render
     /// pipeline has actually composited anything into it — every pixel reads black regardless
     /// of the fill colour, for ~10–14 s while the pipeline warms up (#77). None of the tokens
-    /// this file checks against are pure black (the closest, ink, is 0x1C1917), so a still-black
+    /// this file checks against are pure black (the closest, the dark ground, is 0x0E1310), so a still-black
     /// sample is never a real answer: retry until a real frame lands, or give up after a bound
     /// generous enough to cover that warm-up on a slow machine. This replaces a fixed delay with
     /// waiting for the actual condition, and never masks a genuine black-pixel regression, since
@@ -49,57 +49,111 @@ final class ThemeTests: XCTestCase {
     }
 
     func testTheGroundFollowsAForcedColorScheme() throws {
-        assertColor(try pixel(Palette.background, scheme: .light), 0xFBF9F6)
-        assertColor(try pixel(Palette.background, scheme: .dark), 0x1C1917)
+        assertColor(try pixel(Palette.background, scheme: .light), 0xFFFFFF)
+        assertColor(try pixel(Palette.background, scheme: .dark), 0x0E1310)
     }
 
     func testTextAccentUsesTheOnInkVariantInDark() throws {
-        assertColor(try pixel(Palette.accentText, scheme: .light), 0xBF4A2B)
-        assertColor(try pixel(Palette.accentText, scheme: .dark), 0xE2735A)
-        assertColor(try pixel(Palette.muted, scheme: .dark), 0xA39A90)
+        assertColor(try pixel(Palette.accentText, scheme: .light), 0x25683E)
+        assertColor(try pixel(Palette.accentText, scheme: .dark), 0x7ED39C)
+        assertColor(try pixel(Palette.muted, scheme: .dark), 0x9BA89F)
     }
 
-    func testTheBundledFontsAreRegistered() {
-        XCTAssertEqual(AppFont.fraunces(20, weight: 600).familyName, "Fraunces")
-        XCTAssertEqual(AppFont.karla(17, weight: 400).familyName, "Karla")
+    /// Every bundled static weight registers under its PostScript name (`UIAppFonts`), and the
+    /// theme's fonts are those, never a system fallback.
+    func testTheBundledFontsAreRegistered() throws {
+        for (display, weight) in [(true, 600.0), (true, 700), (true, 800), (false, 400), (false, 500), (false, 600), (false, 700)] {
+            let name = AppFont.fontName(display: display, weight: weight)
+            let font = try XCTUnwrap(UIFont(name: name, size: 17), "\(name) is not registered")
+            XCTAssertEqual(font.fontName, name)
+        }
+        XCTAssertEqual(AppFont.fontName(display: true, weight: 700), "BricolageGrotesque-24ptBold")
+        XCTAssertEqual(AppFont.fontName(display: false, weight: 400), "InstrumentSans-Regular")
+        XCTAssertEqual(AppFont.bricolage(20, weight: 700).fontName, "BricolageGrotesque-24ptBold")
+        XCTAssertEqual(AppFont.instrumentSans(17, weight: 400).fontName, "InstrumentSans-Regular")
     }
 
-    /// The bundled fonts are variable; a weight that doesn't reach the `wght` axis would render
-    /// every style at the file's default weight. Bold text sets wider than regular.
-    func testTheWeightAxisActuallyVaries() {
+    /// A weight picks the nearest bundled one, so each role really changes weight: bold text sets
+    /// wider than regular.
+    func testTheWeightActuallyVaries() {
         func width(_ font: UIFont) -> CGFloat {
             ("Recipe Clipper guacamole" as NSString).size(withAttributes: [.font: font]).width
         }
-        XCTAssertGreaterThan(width(AppFont.karla(17, weight: 700)), width(AppFont.karla(17, weight: 400)) + 1)
-        XCTAssertGreaterThan(width(AppFont.fraunces(30, weight: 700)), width(AppFont.fraunces(30, weight: 300)) + 1)
+        XCTAssertEqual(AppFont.fontName(display: true, weight: 720), "BricolageGrotesque-24ptBold")
+        XCTAssertEqual(AppFont.fontName(display: false, weight: 650), "InstrumentSans-SemiBold")
+        XCTAssertGreaterThan(width(AppFont.instrumentSans(17, weight: 700)), width(AppFont.instrumentSans(17, weight: 400)) + 1)
+        XCTAssertGreaterThan(width(AppFont.bricolage(30, weight: 800)), width(AppFont.bricolage(30, weight: 600)) + 1)
     }
 
-    /// The UIKit tint (alerts, menus, cursors) is the same paprika as `accentText`, never blue.
-    func testTheUIKitTintIsPaprikaInBothSchemes() {
+    /// The UIKit tint (alerts, menus, cursors) is the same basil as `accentText`, never blue.
+    func testTheUIKitTintIsBasilInBothSchemes() {
         func rgb(_ style: UIUserInterfaceStyle) -> Int {
             let c = Palette.uiAccentText.resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
             var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
             c.getRed(&r, green: &g, blue: &b, alpha: &a)
             return Int((r * 255).rounded()) << 16 | Int((g * 255).rounded()) << 8 | Int((b * 255).rounded())
         }
-        XCTAssertEqual(rgb(.light), 0xBF4A2B)
-        XCTAssertEqual(rgb(.dark), 0xE2735A)
+        XCTAssertEqual(rgb(.light), 0x25683E)
+        XCTAssertEqual(rgb(.dark), 0x7ED39C)
+    }
+
+    /// Direction A, "Market" (#455): the key tokens' values in light and dark, resolved exactly
+    /// from the dynamic colours, so a stray revert of any of them fails here.
+    func testMarketsKeyTokensInLightAndDark() {
+        func rgb(_ color: Color, _ style: UIUserInterfaceStyle) -> Int {
+            let c = UIColor(color).resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            c.getRed(&r, green: &g, blue: &b, alpha: &a)
+            return Int((r * 255).rounded()) << 16 | Int((g * 255).rounded()) << 8 | Int((b * 255).rounded())
+        }
+        let expected: [(String, Color, Int, Int)] = [
+            ("background", Palette.background, 0xFFFFFF, 0x0E1310),
+            ("onBackground", Palette.onBackground, 0x14201A, 0xEDF3EE),
+            ("muted", Palette.muted, 0x56645B, 0x9BA89F),
+            ("hairline", Palette.hairline, 0xE1E7E2, 0x28332C),
+            ("primary", Palette.primary, 0x2C7A4A, 0x5DBE80),
+            ("onPrimary", Palette.onPrimary, 0xFFFFFF, 0x06170C),
+            ("accentText", Palette.accentText, 0x25683E, 0x7ED39C),
+            ("surfaceContainer", Palette.surfaceContainer, 0xF2F6F2, 0x17201A),
+            ("surfaceContainerHigh", Palette.surfaceContainerHigh, 0xE6EDE7, 0x202B24),
+            ("accentTone", Palette.accentTone, 0xE1F0E5, 0x1B3324),
+            ("onAccentTone", Palette.onAccentTone, 0x1C5232, 0xA9E3BC),
+            ("outline", Palette.outline, 0x9AA79E, 0x6B7A70),
+        ]
+        for (name, color, light, dark) in expected {
+            XCTAssertEqual(String(rgb(color, .light), radix: 16), String(light, radix: 16), "\(name) light")
+            XCTAssertEqual(String(rgb(color, .dark), radix: 16), String(dark, radix: 16), "\(name) dark")
+        }
+        let tints: [(Int, Int, Int, Int)] = [
+            (0xDDEFE2, 0x1C5232, 0x1B3324, 0xA9E3BC),
+            (0xFBF0C2, 0x5F4A00, 0x3A3210, 0xF6DE7A),
+            (0xFADBD2, 0x842913, 0x3D1D15, 0xF7B8A6),
+            (0xDCEAF5, 0x1D4A6E, 0x162A3A, 0xA9CDEA),
+            (0xEFE6D6, 0x5A4729, 0x2F2A20, 0xE3D3B4),
+        ]
+        for (i, (ground, ink, groundOnInk, inkOnInk)) in tints.enumerated() {
+            let tint = Palette.noPhotoTint(i)
+            XCTAssertEqual(rgb(tint.ground, .light), ground, "tint \(i) ground")
+            XCTAssertEqual(rgb(tint.ink, .light), ink, "tint \(i) ink")
+            XCTAssertEqual(rgb(tint.ground, .dark), groundOnInk, "tint \(i) ground on ink")
+            XCTAssertEqual(rgb(tint.ink, .dark), inkOnInk, "tint \(i) ink on ink")
+        }
     }
 
     /// Every token against Theme.kt, in both schemes.
     func testEveryTokenMatchesThemeKt() throws {
         let expected: [(Color, Int, Int)] = [
-            (Palette.background, 0xFBF9F6, 0x1C1917),
-            (Palette.onBackground, 0x1C1917, 0xFBF9F6),
-            (Palette.muted, 0x6B6259, 0xA39A90),
-            (Palette.hairline, 0xE7E1D9, 0x3A342F),
-            (Palette.accentText, 0xBF4A2B, 0xE2735A),
-            (Palette.primary, 0xBF4A2B, 0xBF4A2B),
-            (Palette.error, 0xBF4A2B, 0xE2735A),
-            (Palette.surfaceContainer, 0xF3EFE9, 0x26211E),
-            (Palette.inverseSurface, 0x1C1917, 0xFBF9F6),
-            (Palette.inverseOnSurface, 0xFBF9F6, 0x1C1917),
-            (Palette.inversePrimary, 0xE2735A, 0xBF4A2B),
+            (Palette.background, 0xFFFFFF, 0x0E1310),
+            (Palette.onBackground, 0x14201A, 0xEDF3EE),
+            (Palette.muted, 0x56645B, 0x9BA89F),
+            (Palette.hairline, 0xE1E7E2, 0x28332C),
+            (Palette.accentText, 0x25683E, 0x7ED39C),
+            (Palette.primary, 0x2C7A4A, 0x5DBE80),
+            (Palette.error, 0xB2371F, 0xF4A28C),
+            (Palette.surfaceContainer, 0xF2F6F2, 0x17201A),
+            (Palette.inverseSurface, 0x14201A, 0xEDF3EE),
+            (Palette.inverseOnSurface, 0xFFFFFF, 0x0E1310),
+            (Palette.inversePrimary, 0x7ED39C, 0x25683E),
         ]
         for (color, light, dark) in expected {
             assertColor(try pixel(color, scheme: .light), light)
@@ -113,19 +167,20 @@ final class ThemeTests: XCTestCase {
     /// design at the default size must not move.
     func testDefaultSizesMatchThemeKt() {
         let expected: [(TextStyle, CGFloat, CGFloat)] = [
-            (Typography.headlineMedium, 30, 36),
-            (Typography.headlineSmall, 26, 32),
-            (Typography.titleLarge, 22, 28),
-            (Typography.titleMedium, 19, 26),
-            (Typography.titleSmall, 15, 20),
-            (Typography.bodyLarge, 17, 26),
-            (Typography.bodyLargeBold, 17, 26),
-            (Typography.bodyMedium, 15, 22),
+            (Typography.headlineMedium, 32, 38),
+            (Typography.headlineSmall, 27, 32),
+            (Typography.titleLarge, 22, 27),
+            (Typography.titleMedium, 19, 24),
+            (Typography.titleSmall, 16, 21),
+            (Typography.bodyLarge, 17, 25),
+            (Typography.bodyLargeBold, 17, 25),
+            (Typography.bodyMedium, 15, 21),
             (Typography.bodySmall, 13, 18),
-            (Typography.labelLarge, 16, 20),
+            (Typography.labelLarge, 15, 20),
             (Typography.labelMedium, 13, 16),
             (Typography.labelSmall, 12, 16),
-            (Typography.cookStep, 21, 30),
+            (Typography.cookStep, 21, 29),
+            (Typography.stepNumber, 18, 24),
             (Typography.timerClock, 30, 36),
         ]
         XCTAssertEqual(expected.count, Typography.all.count, "a role without a pinned default size")
@@ -158,11 +213,11 @@ final class ThemeTests: XCTestCase {
         }
     }
 
-    /// The scaled font is still the bundled variable font, at a weight that still varies.
+    /// The scaled font is still the bundled font, at a weight that still varies.
     func testScaledFontsKeepTheirFamilyAndWeight() {
         let ax5 = UIContentSizeCategory.accessibilityExtraExtraExtraLarge
-        XCTAssertEqual(Typography.headlineMedium.uiFont(for: ax5).familyName, "Fraunces")
-        XCTAssertEqual(Typography.bodyLarge.uiFont(for: ax5).familyName, "Karla")
+        XCTAssertEqual(Typography.headlineMedium.uiFont(for: ax5).fontName, "BricolageGrotesque-24ptBold")
+        XCTAssertEqual(Typography.bodyLarge.uiFont(for: ax5).fontName, "InstrumentSans-Regular")
         func width(_ font: UIFont) -> CGFloat {
             ("Recipe Clipper guacamole" as NSString).size(withAttributes: [.font: font]).width
         }

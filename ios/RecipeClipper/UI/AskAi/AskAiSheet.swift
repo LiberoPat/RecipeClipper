@@ -56,7 +56,7 @@ struct AskAiSheet: View {
                         .textStyle(Typography.labelLarge)
                         .foregroundStyle(Palette.accentText)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(RoundedRectangle(cornerRadius: 14).strokeBorder(Palette.outline, lineWidth: 1))
+                        .background(Capsule().strokeBorder(Palette.outline, lineWidth: 1))
                 }
                 .padding(.top, 12)
                 .accessibilityIdentifier("askAiPaste")
@@ -168,7 +168,7 @@ private struct PromptField: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: Radius.field)
                     .strokeBorder(focused ? Palette.primary : Palette.outline, lineWidth: focused ? 2 : 1)
             )
             .accessibilityIdentifier(identifier)
@@ -205,7 +205,7 @@ private struct PromptButtons: View {
                     .textStyle(Typography.labelLarge)
                     .foregroundStyle(Palette.accentText)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: 14).strokeBorder(Palette.outline, lineWidth: 1))
+                    .background(Capsule().strokeBorder(Palette.outline, lineWidth: 1))
             }
             .disabled(!enabled)
             .opacity(enabled ? 1 : 0.4)

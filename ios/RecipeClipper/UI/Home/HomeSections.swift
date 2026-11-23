@@ -49,7 +49,7 @@ struct ResumeCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.surfaceContainer)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.card))
     }
 
     /// The recipe's photo, or its designed image (#403: its first ingredient names on its tint,
@@ -75,7 +75,7 @@ struct ResumeCard: View {
         }
     }
 
-    /// A running timer's time left, on the paprika wash, then the step.
+    /// A running timer's time left, on the basil wash, then the step.
     @ViewBuilder private func place(_ resume: CookResume) -> some View {
         if let seconds = resume.timerSecondsLeft {
             Label(Strings.homeTimerLeft(StepTimers.clock(seconds)), systemImage: "timer")
@@ -83,7 +83,7 @@ struct ResumeCard: View {
                 .foregroundStyle(Palette.accentText)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
-                .background(Palette.accentText.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                .background(Palette.accentText.opacity(0.12), in: Capsule())
         }
         Text(Strings.cookPosition(resume.step, of: resume.stepCount))
             .textStyle(Typography.bodySmall)
@@ -165,7 +165,7 @@ struct TodayCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.surfaceContainer)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.card))
         .overlay(alignment: .topTrailing) {
             if let onClose { TodayCloseButton(action: onClose).padding(4) }
         }
@@ -208,7 +208,7 @@ struct TodayCloseButton: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Palette.muted)
                 .frame(width: 28, height: 28)
-                .background(Palette.surfaceContainer.opacity(0.9), in: Circle())
+                .background(Palette.surfaceContainerHigh, in: Circle())
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }

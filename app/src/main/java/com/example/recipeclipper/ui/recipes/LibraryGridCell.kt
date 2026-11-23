@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +30,7 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.ui.common.RecipeImage
 import com.example.recipeclipper.ui.common.recipeRowClicks
 import com.example.recipeclipper.ui.recipe.sourceCreditText
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * One recipe of the Recipes photo grid (#380): the photo, square, with the bookmark on its corner
@@ -56,11 +56,11 @@ internal fun LibraryGridCell(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(Corners.Photo)
             .recipeRowClicks(selecting, selected, onClick, onLongClick)
     ) {
         Box {
-            val shape = RoundedCornerShape(10.dp)
+            val shape = Corners.Photo
             // The photo, or the recipe's designed image when it has none or the photo fails (#403).
             RecipeImage(
                 model = recipe.imageUrl,

@@ -26,9 +26,9 @@ struct CheckCard: View {
             .focused($focused)
             .padding(.horizontal, 14)
             .frame(minHeight: 48)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Palette.background))
+            .background(RoundedRectangle(cornerRadius: Radius.field).fill(Palette.background))
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: Radius.field)
                     .strokeBorder(focused ? Palette.primary : Palette.outline, lineWidth: focused ? 2 : 1)
             )
             .accessibilityIdentifier("edit.checkLine.\(index)")
@@ -51,7 +51,7 @@ struct CheckCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 16).fill(Palette.surfaceContainer))
+        .background(RoundedRectangle(cornerRadius: Radius.card).fill(Palette.surfaceContainer))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("edit.check.\(index)")
     }
@@ -67,9 +67,9 @@ struct CheckCard: View {
                     .foregroundStyle(Palette.onBackground)
                     .frame(minWidth: 44, minHeight: 44)
                     .padding(.horizontal, 2)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Palette.background))
-                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.outline, lineWidth: 1))
-                    .contentShape(RoundedRectangle(cornerRadius: 10))
+                    .background(RoundedRectangle(cornerRadius: Radius.field).fill(Palette.background))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.field).strokeBorder(Palette.outline, lineWidth: 1))
+                    .contentShape(RoundedRectangle(cornerRadius: Radius.field))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Strings.photoFractionChip(fraction, check.flag.shown))

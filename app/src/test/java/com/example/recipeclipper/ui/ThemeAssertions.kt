@@ -1,17 +1,16 @@
 package com.example.recipeclipper.ui
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.text.TextLayoutResult
-import org.junit.Assert.assertEquals
-
-/** The theme's `primary` in light and dark alike: what a TextButton's label is drawn in. */
-private val Paprika = Color(0xFFBF4A2B)
+import com.example.recipeclipper.ui.theme.Accent
+import com.example.recipeclipper.ui.theme.AccentOnInk
+import org.junit.Assert.assertTrue
 
 /**
- * Asserts this TextButton label (an unmerged Text node) is paprika, the app's primary. A dialog,
+ * Asserts this TextButton label (an unmerged Text node) is basil, the app's primary (the light
+ * scheme's, or the on-ink one's). A dialog,
  * sheet or menu composed outside its screen's `RecipeClipperTheme` gets Material's baseline scheme
  * instead, and the label comes out purple (#6750A4): #142 and #186. Read from the text's own
  * layout, since colour isn't a semantics property.
@@ -21,5 +20,8 @@ fun SemanticsNodeInteraction.assertInAppTheme() {
     fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
     val color = results.firstOrNull()?.layoutInput?.style?.color
         ?: throw AssertionError("No text layout on this node; is it an unmerged Text?")
-    assertEquals("Not the app's theme: Material's baseline purple is #FF6750A4", Paprika, color)
+    assertTrue(
+        "Not the app's theme ($color): Material's baseline purple is #FF6750A4",
+        color == Accent || color == AccentOnInk
+    )
 }

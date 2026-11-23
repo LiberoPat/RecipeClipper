@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -36,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.AskAiPrompt
 import com.example.recipeclipper.ui.plan.DayStrip
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * What "Plan my week" asks, once it is the chosen prompt (#392, #367): the meals as chips (the
@@ -131,11 +131,11 @@ private fun Note(text: String, tag: String, error: Boolean = false) {
     )
 }
 
-/** A multi-select chip: outlined, ringed in paprika when chosen, read as a checkbox. */
+/** A multi-select chip: outlined, ringed in basil when chosen, read as a checkbox. */
 @Composable
 private fun ChoiceChip(label: String, selected: Boolean, tag: String, onClick: () -> Unit) {
     Surface(
-        shape = RoundedCornerShape(50),
+        shape = Corners.Pill,
         color = Color.Transparent,
         border = BorderStroke(
             if (selected) 2.dp else 1.dp,

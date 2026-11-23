@@ -79,7 +79,7 @@ struct RecipeThumbnail: View {
     var body: some View {
         RecipeImage(url: url, recipe: recipe)
             .frame(width: size, height: size)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.photo))
             .accessibilityHidden(true)
     }
 }

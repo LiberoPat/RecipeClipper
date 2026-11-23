@@ -30,7 +30,7 @@ struct PageThumbnails: View {
                     Rectangle().fill(Palette.hairline).frame(height: 200)
                 }
                 .frame(maxWidth: .infinity, maxHeight: 480)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.photo))
                 .accessibilityLabel(description(page))
             }
         }
@@ -48,8 +48,8 @@ struct PageThumbnails: View {
                     }
                 }
                 .frame(width: 56, height: 72)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(open ? Palette.primary : .clear, lineWidth: 2))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.small))
+                .overlay(RoundedRectangle(cornerRadius: Radius.small).strokeBorder(open ? Palette.primary : .clear, lineWidth: 2))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(description(index))

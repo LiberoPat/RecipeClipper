@@ -208,7 +208,7 @@ private struct MultilineField: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: Radius.field)
                     .strokeBorder(focused ? Palette.primary : Palette.outline, lineWidth: focused ? 2 : 1)
             )
     }

@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +55,7 @@ import com.example.recipeclipper.data.model.PantryList
 import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.ui.plan.shortDate
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.tour.tooltipAnchor
 import kotlinx.coroutines.launch
 
@@ -182,7 +182,7 @@ internal fun PantryRow(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.tertiary,
                                     modifier = Modifier
-                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, Corners.Pill)
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                         .testTag("low-${item.id}")
                                 )
@@ -270,8 +270,8 @@ private fun OnListTag(itemId: Long, onTakeOffList: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
+            .clip(Corners.Pill)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, Corners.Pill)
             .clickable(onClickLabel = stringResource(R.string.pantry_take_off_list), role = Role.Button, onClick = onTakeOffList)
             .semantics { contentDescription = description }
             .padding(horizontal = if (iconOnly) 6.dp else 8.dp, vertical = 4.dp)

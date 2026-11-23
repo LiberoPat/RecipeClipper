@@ -30,18 +30,18 @@ final class FittedRowsTests: XCTestCase {
         _ lines: [String], _ size: DynamicTypeSize, meals: Bool, seen: Seen? = nil, appeared: XCTestExpectation? = nil
     ) -> some View {
         FittedRows(rows: lines) {
-            Text("Groceries").font(.custom("Fraunces-Regular", size: 17)).lineLimit(1)
+            Text("Groceries").font(.custom("BricolageGrotesque-24ptBold", size: 17)).lineLimit(1)
         } row: { line in
             VStack(alignment: .leading, spacing: 0) {
-                if meals { Text("Dinner").font(.custom("Karla-Regular", size: 12)) }
-                Text(line).font(.custom("Karla-Regular", size: 15))
+                if meals { Text("Dinner").font(.custom("InstrumentSans-Regular", size: 12)) }
+                Text(line).font(.custom("InstrumentSans-Regular", size: 15))
             }
             .onAppear {
                 seen?.rows.append(line)
                 appeared?.fulfill()
             }
         } more: { count, beside in
-            Text(beside ? "+\(count)" : "+\(count) more").font(.custom("Karla-Regular", size: 14)).onAppear {
+            Text(beside ? "+\(count)" : "+\(count) more").font(.custom("InstrumentSans-Regular", size: 14)).onAppear {
                 seen?.more = count
                 seen?.beside = beside
             }

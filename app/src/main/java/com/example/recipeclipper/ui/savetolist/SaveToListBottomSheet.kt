@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.triStateToggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeList
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * Spotify's add-to-playlist model: checkboxes, because a recipe belongs in as many lists as
@@ -167,7 +167,7 @@ private fun NewListField(
             onValueChange = onValueChange,
             label = { Text(stringResource(R.string.label_list_name)) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = Corners.Field,
             modifier = Modifier.fillMaxWidth()
         )
         if (note != null) {

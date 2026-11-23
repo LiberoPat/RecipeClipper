@@ -1,12 +1,12 @@
-Bundled here: fraunces.ttf (Fraunces, the variable font as published) and fraunces-italic.ttf
-(Fraunces Italic, one instance of the published variable font: weight 400, optical size 36,
-no soft or wonky forms, Latin glyphs only; #403). Both are under the licence below.
+Bundled here: instrument-regular.ttf, instrument-medium.ttf, instrument-semibold.ttf and instrument-bold.ttf (Instrument Sans,
+static instances of the published variable font: weights 400, 500, 600 and 700,
+width 100; #455). All are under the licence below.
 
-Copyright 2018 The Fraunces Project Authors (https://github.com/undercasetype/Fraunces)
+Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
-http://scripts.sil.org/OFL
+https://scripts.sil.org/OFL
 
 
 -----------------------------------------------------------

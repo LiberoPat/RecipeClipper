@@ -143,6 +143,7 @@ object MealReminderNotifications {
         )
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_tab_week)
+            .setColor(ContextCompat.getColor(context, R.color.accent))
             .setContentTitle(title)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)

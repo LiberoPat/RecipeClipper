@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,6 +35,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.Servings
+import com.example.recipeclipper.ui.theme.Corners
 import java.util.Date
 import java.util.Locale
 
@@ -83,7 +83,7 @@ internal fun weekRange(start: Long): String = format(start, "EEEMMMd") + " – "
 
 /**
  * The strip of days in a plan sheet: today and the next 13 (#232), each a short weekday over its date.
- * The chosen day is ringed in paprika, today's date is paprika text. An exclusive choice, so
+ * The chosen day is ringed in basil, today's date is basil text. An exclusive choice, so
  * each cell is `selectable` with a radio-button role.
  */
 @Composable
@@ -94,7 +94,7 @@ internal fun DayStrip(days: List<Long>, today: Long, selected: Long, onSelect: (
     ) {
         days.forEach { day ->
             val isSelected = day == selected
-            val shape = RoundedCornerShape(12.dp)
+            val shape = Corners.Field
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
@@ -125,7 +125,7 @@ internal fun DayStrip(days: List<Long>, today: Long, selected: Long, onSelect: (
     }
 }
 
-/** The meal types as a row of outlined choices, the chosen one ringed in paprika. */
+/** The meal types as a row of outlined choices, the chosen one ringed in basil. */
 @Composable
 internal fun MealTypeChoices(types: List<MealType>, selected: Long?, onSelect: (Long) -> Unit) {
     Row(
@@ -135,7 +135,7 @@ internal fun MealTypeChoices(types: List<MealType>, selected: Long?, onSelect: (
         types.forEach { type ->
             val isSelected = type.id == selected
             Surface(
-                shape = RoundedCornerShape(50),
+                shape = Corners.Pill,
                 color = Color.Transparent,
                 border = BorderStroke(
                     if (isSelected) 2.dp else 1.dp,

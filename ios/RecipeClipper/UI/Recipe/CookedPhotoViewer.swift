@@ -77,7 +77,7 @@ struct CookedPhotoViewer: View {
                 .textInputAutocapitalization(.sentences)
                 .textStyle(Typography.bodyLarge)
                 .padding(10)
-                .background(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.outline, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: Radius.field).strokeBorder(Palette.outline, lineWidth: 1))
                 .focused($typingNote)
                 .accessibilityIdentifier("cooked.note")
             }

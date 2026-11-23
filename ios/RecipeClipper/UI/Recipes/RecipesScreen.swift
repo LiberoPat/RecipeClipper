@@ -645,7 +645,7 @@ private struct SearchField: View {
         }
         .padding(.horizontal, 14)
         .frame(minHeight: 52)
-        .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.outline, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Radius.field).fill(Palette.surfaceContainer))
     }
 }
 
@@ -680,7 +680,7 @@ struct Snackbar: View {
         .padding(.leading, 16)
         .padding(.trailing, 4)
         .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Palette.inverseSurface))
+        .background(RoundedRectangle(cornerRadius: Radius.field).fill(Palette.inverseSurface))
         .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
     }
 }

@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Ink ground for system dark mode; also the window background so there is no light
+    <!-- The on-ink ground for system dark mode; also the window background so there is no light
          flash before Compose draws (see ui/theme/Theme.kt DarkScheme). -->
-    <color name="ground">#1C1917</color>
+    <color name="ground">#0E1310</color>
+    <!-- The app's accent for notifications, on ink (AccentTextOnInk). -->
+    <color name="accent">#7ED39C</color>
     <!-- The home-screen widgets (#309): the theme's tokens, on-ink at night. -->
-    <color name="widget_ground">#1C1917</color>
-    <color name="widget_ink">#FBF9F6</color>
-    <color name="widget_muted">#A39A90</color>
-    <color name="widget_accent">#E2735A</color>
+    <color name="widget_ground">#0E1310</color>
+    <color name="widget_ink">#EDF3EE</color>
+    <color name="widget_muted">#9BA89F</color>
+    <color name="widget_accent">#7ED39C</color>
 </resources>

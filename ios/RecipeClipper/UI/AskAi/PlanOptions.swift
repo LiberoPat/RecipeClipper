@@ -76,7 +76,7 @@ struct PlanOptions: View {
             .accessibilityIdentifier(id)
     }
 
-    /// A multi-select chip: outlined, ringed in paprika when chosen, read as selected.
+    /// A multi-select chip: outlined, ringed in basil when chosen, read as selected.
     private func chip(_ label: String, selected: Bool, id: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)

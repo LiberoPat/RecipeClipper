@@ -76,9 +76,9 @@ struct StepPhotoThumbnail: View {
                         }
                     if case .stack(_, _, let more) = thumb {
                         Text(verbatim: "+\(more)")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(Font(AppFont.instrumentSans(10, weight: 700)))
                             .monospacedDigit()
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(Palette.onPrimary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 1)
                             .background(Capsule().fill(Palette.primary))
@@ -133,7 +133,7 @@ private struct StepPhotoBadge: View {
 
     var body: some View {
         Text(verbatim: "\(number)")
-            .font(.system(size: 10.5, weight: .bold))
+            .font(Font(AppFont.instrumentSans(10.5, weight: 700)))
             .monospacedDigit()
             .foregroundStyle(Color(uiColor: Tokens.ground))
             .padding(.horizontal, 5)
@@ -160,11 +160,11 @@ private struct StepPhotoImage: View {
     }
 }
 
-/// The viewer's dark ground and its words, in both themes (#433).
+/// The viewer's dark ground and its words, in both themes (#433): the theme's on-ink set.
 private enum ViewerColors {
-    static let ground = Color(red: 0x0E / 255, green: 0x0C / 255, blue: 0x0B / 255)
-    static let text = Color(red: 0xF1 / 255, green: 0xEC / 255, blue: 0xE6 / 255)
-    static let stepNumber = Color(uiColor: Tokens.paprikaTextOnInk)
+    static let ground = Color(uiColor: Tokens.inkGround)
+    static let text = Color(uiColor: Tokens.textOnInk)
+    static let stepNumber = Color(uiColor: Tokens.accentTextOnInk)
 }
 
 /// Every step photo of the recipe, full screen on a dark ground (#433): close, "Photo 3 of 7",
