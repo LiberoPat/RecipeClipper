@@ -25,7 +25,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -38,7 +37,7 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.NoPhoto
 import com.example.recipeclipper.data.model.NoPhotoSource
-import com.example.recipeclipper.ui.theme.Fraunces
+import com.example.recipeclipper.ui.theme.Bricolage
 import com.example.recipeclipper.ui.theme.LocalNoPhotoTints
 
 /** How a recipe with no photo is drawn (#403). [Auto] picks by the size it is given. */
@@ -59,9 +58,9 @@ fun noPhotoImageOn(): Boolean = LocalFlagValues.current.isOn(Flag.NO_PHOTO_IMAGE
 
 /**
  * The designed image of a recipe with no photo (#403): never a stock image, only the recipe's
- * own words on one of five warm tints chosen by its uid. A small surface ([MonogramMaxSize] and
- * below, by the size it is drawn at) gets the title's first letter; a larger one the recipe's
- * first ingredient names in italic (the first only in a square cover or cell, up to three in a
+ * own words on one of five tints chosen by its uid, in Bricolage (#455). A small surface
+ * ([MonogramMaxSize] and below, by the size it is drawn at) gets the title's first letter; a larger
+ * one the recipe's first ingredient names, upright (the first only in a square cover or cell, up to three in a
  * band or a banner), or the letter when it has no ingredient lines. A title with no letter and
  * no names is a plain tint tile.
  *
@@ -115,8 +114,8 @@ private fun BoxScope.Monogram(letter: String, ink: Color, size: Dp) {
         letter,
         color = ink,
         style = TextStyle(
-            fontFamily = Fraunces,
-            fontWeight = FontWeight.Normal,
+            fontFamily = Bricolage,
+            fontWeight = FontWeight.Bold,
             fontSize = fontSize,
             lineHeight = fontSize,
             lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both)
@@ -145,7 +144,7 @@ private fun BoxScope.Label(
     }.let { with(density) { it.toSp() } }
     val text: AnnotatedString = buildAnnotatedString {
         names.forEachIndexed { i, name ->
-            if (i > 0) withStyle(SpanStyle(color = ink.copy(alpha = 0.5f), fontStyle = FontStyle.Normal)) { append("  ·  ") }
+            if (i > 0) withStyle(SpanStyle(color = ink.copy(alpha = 0.5f))) { append("  ·  ") }
             append(name)
         }
     }
@@ -153,11 +152,11 @@ private fun BoxScope.Label(
         text,
         color = ink,
         style = TextStyle(
-            fontFamily = Fraunces,
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight.Normal,
+            fontFamily = Bricolage,
+            fontWeight = FontWeight.SemiBold,
             fontSize = fontSize,
-            lineHeight = fontSize * 1.12f,
+            lineHeight = fontSize * 1.15f,
+            letterSpacing = fontSize * -0.01f,
             textAlign = if (band) TextAlign.Start else TextAlign.Center
         ),
         maxLines = maxLines,

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,10 +20,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
- * The quiet "Pro" mark on a Week planning extra's entry point (#413): paprika text in a thin
- * paprika outline, no fill. The extra stays visible; a tap on it opens the Pro screen. iOS's
+ * The quiet "Pro" mark on a Week planning extra's entry point (#413): basil text in a thin
+ * basil outline, no fill. The extra stays visible; a tap on it opens the Pro screen. iOS's
  * `ProBadge` is the same pill.
  */
 @Composable
@@ -35,7 +35,7 @@ fun ProBadge(modifier: Modifier = Modifier) {
         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 11.sp, letterSpacing = 0.4.sp),
         color = accent,
         modifier = modifier
-            .border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(50))
+            .border(1.dp, accent.copy(alpha = 0.5f), Corners.Pill)
             .padding(horizontal = 7.dp, vertical = 1.dp)
             .testTag("proBadge")
     )

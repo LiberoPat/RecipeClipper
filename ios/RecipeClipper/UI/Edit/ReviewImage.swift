@@ -112,7 +112,7 @@ struct StripView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.photo))
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
         .accessibilityElement()
         .accessibilityLabel(Strings.photoStripDescription)

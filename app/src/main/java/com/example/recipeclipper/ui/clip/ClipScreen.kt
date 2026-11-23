@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -62,6 +61,7 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.common.LibraryFullDialog
 import com.example.recipeclipper.ui.common.noticeMessage
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.data.model.ClipDraft
 import com.example.recipeclipper.data.model.ClipField
@@ -398,7 +398,7 @@ private fun HintBar(state: ClipUiState, viewModel: ClipViewModel) {
                     Button(
                         onClick = viewModel::onConfirm,
                         modifier = Modifier.weight(1f).testTag("clip.confirm"),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = Corners.Pill
                     ) {
                         Text(
                             when (hint.field) {
@@ -442,7 +442,7 @@ private fun HintBar(state: ClipUiState, viewModel: ClipViewModel) {
                         model = photo,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(36.dp).clip(RoundedCornerShape(6.dp))
+                        modifier = Modifier.size(36.dp).clip(Corners.Small)
                     )
                     Spacer(Modifier.width(10.dp))
                 }
@@ -521,11 +521,11 @@ private fun androidx.compose.foundation.layout.RowScope.FieldButton(
         }
     }
     if (armed) {
-        Button(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(10.dp), contentPadding = padding) {
+        Button(onClick = onClick, modifier = modifier, shape = Corners.Pill, contentPadding = padding) {
             content()
         }
     } else {
-        OutlinedButton(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(10.dp), contentPadding = padding) {
+        OutlinedButton(onClick = onClick, modifier = modifier, shape = Corners.Pill, contentPadding = padding) {
             content()
         }
     }
@@ -612,7 +612,7 @@ private fun ReviewPane(state: ClipUiState, viewModel: ClipViewModel, modifier: M
                 onClick = viewModel::onSave,
                 enabled = !state.saving,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Pill,
                 colors = ButtonDefaults.buttonColors()
             ) { Text(stringResource(R.string.clip_save)) }
         }

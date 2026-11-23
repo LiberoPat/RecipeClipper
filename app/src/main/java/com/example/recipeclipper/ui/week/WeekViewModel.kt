@@ -109,7 +109,7 @@ data class MenusUiState(
 )
 
 /**
- * One button of the day strip (#286): [isToday] fills it in paprika, [hasMeals] puts a dot under
+ * One button of the day strip (#286): [isToday] fills it in basil, [hasMeals] puts a dot under
  * it.
  */
 data class StripDay(val day: Long, val isToday: Boolean, val hasMeals: Boolean)

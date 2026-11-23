@@ -54,9 +54,9 @@ enum NoPhotoLayout: Equatable {
 }
 
 /// The designed image of a recipe with no photo (#403): never a stock image, only the recipe's
-/// own words on one of five warm tints chosen by its uid. A small surface (64 pt and below, by the
-/// size it is drawn at) gets the title's first letter; a larger one the recipe's first ingredient
-/// names in italic (the first only in a square cover or cell, up to three in a band or a banner),
+/// own words on one of five tints chosen by its uid, in Bricolage (#455). A small surface (64 pt and
+/// below, by the size it is drawn at) gets the title's first letter; a larger one the recipe's
+/// first ingredient names, upright (the first only in a square cover or cell, up to three in a band or a banner),
 /// or the letter when it has no ingredient lines. A title with no letter and no names is a plain
 /// tint tile.
 ///
@@ -80,7 +80,7 @@ struct RecipeImagePlaceholder: View {
                         label(art.labels, ink: tint.ink, size: proxy.size, layout: layout)
                     } else if let letter = art.initial {
                         Text(letter)
-                            .font(Font(AppFont.fraunces(min(proxy.size.width, proxy.size.height) * 0.56, weight: 400)))
+                            .font(Font(AppFont.bricolage(min(proxy.size.width, proxy.size.height) * 0.56, weight: 700)))
                             .foregroundStyle(tint.ink)
                             .lineLimit(1)
                     }
@@ -114,28 +114,20 @@ struct RecipeImagePlaceholder: View {
             band = false
             points = max(10, min(size.width, size.height) * 0.18)
         }
-        let font = Font(italicFraunces(points))
+        let font = Font(AppFont.bricolage(points, weight: 600))
         var text = Text(names[0]).font(font)
         for name in names.dropFirst() {
             text = text + Text("  ·  ").font(font).foregroundStyle(ink.opacity(0.5)) + Text(name).font(font)
         }
         return text
+            .tracking(points * -0.01)
             .foregroundStyle(ink)
             .multilineTextAlignment(band ? .leading : .center)
             .lineLimit(maxLabelLines)
-            .lineSpacing(points * 0.04)
+            .lineSpacing(points * 0.06)
             .padding(.horizontal, band ? 18 : 4)
             .padding(.vertical, band ? 14 : 4)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: band ? .bottomLeading : .center)
-    }
-
-    /// The bundled Fraunces Italic (`fraunces-italic.ttf`, one instance: weight 400, Latin; #403).
-    /// Should the font not register, the upright slanted the way the design's italic leans.
-    private func italicFraunces(_ size: CGFloat) -> UIFont {
-        if let italic = UIFont(name: "Fraunces-Italic", size: size) { return italic }
-        let upright = AppFont.fraunces(size, weight: 400)
-        let slant = CGAffineTransform(a: 1, b: 0, c: CGFloat(tan(12.0 * .pi / 180)), d: 1, tx: 0, ty: 0)
-        return UIFont(descriptor: upright.fontDescriptor.withMatrix(slant), size: size)
     }
 }
 

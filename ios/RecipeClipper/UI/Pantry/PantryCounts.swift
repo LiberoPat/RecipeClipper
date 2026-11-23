@@ -25,8 +25,8 @@ struct PantryCounts: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(Palette.surfaceContainer))
-                    .contentShape(RoundedRectangle(cornerRadius: 14))
+                    .background(RoundedRectangle(cornerRadius: Radius.card).fill(Palette.surfaceContainer))
+                    .contentShape(RoundedRectangle(cornerRadius: Radius.card))
                 }
                 // Not the default style, so in the List's row each box takes only its own taps.
                 .buttonStyle(CountBoxStyle())

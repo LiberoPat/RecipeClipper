@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -52,6 +51,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.remote.LineFlag
 import com.example.recipeclipper.data.remote.PhotoBox
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * The pictures read, as a row of thumbnails over the cards (#286), with "2 pages · 5 lines to
@@ -68,7 +68,7 @@ internal fun PageThumbnails(post: PhotoPost, state: EditRecipeUiState, onPage: (
     ) {
         post.imageUrls.forEachIndexed { index, image ->
             val open = state.openPage == index
-            val shape = RoundedCornerShape(8.dp)
+            val shape = Corners.Photo
             PageImage(
                 image, state.scan, pageDescription(post, state, index), ContentScale.Crop,
                 Modifier
@@ -95,7 +95,7 @@ internal fun PageThumbnails(post: PhotoPost, state: EditRecipeUiState, onPage: (
         PageImage(
             image, state.scan, pageDescription(post, state, state.openPage), ContentScale.FillWidth,
             Modifier.fillMaxWidth().heightIn(max = 480.dp).padding(bottom = 12.dp)
-                .clip(RoundedCornerShape(12.dp)).testTag("edit.openPage")
+                .clip(Corners.Photo).testTag("edit.openPage")
         )
     }
 }
@@ -160,7 +160,7 @@ internal fun Strip(strip: PhotoStrip, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(height)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(Corners.Photo)
                 .then(if (loaded) Modifier else Modifier.background(MaterialTheme.colorScheme.surfaceVariant))
         )
     }
@@ -211,7 +211,7 @@ internal fun CheckCard(
         Modifier
             .fillMaxWidth()
             .padding(bottom = 10.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(Corners.Card)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(12.dp)
             .testTag("edit.check.$index")
@@ -224,7 +224,7 @@ internal fun CheckCard(
             value = check.flag.raw,
             onValueChange = { onLine(index, it) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = Corners.Field,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.background,
                 unfocusedContainerColor = MaterialTheme.colorScheme.background
@@ -250,7 +250,7 @@ private fun FractionChips(index: Int, flag: LineFlag, fractions: List<String>, o
             val spoken = stringResource(R.string.photo_fraction_chip, fraction, flag.shown)
             OutlinedButton(
                 onClick = { onFraction(flag, fraction) },
-                shape = RoundedCornerShape(10.dp),
+                shape = Corners.Pill,
                 contentPadding = PaddingValues(horizontal = 12.dp),
                 modifier = Modifier
                     .semantics { contentDescription = spoken }

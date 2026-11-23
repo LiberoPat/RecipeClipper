@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The recipes a grocery line is for (#422; Android's `RecipeTagRow`), as small tags on their own
-/// line under its amount and note, so the two never blur: each a rounded paprika wash with a book
+/// line under its amount and note, so the two never blur: each a rounded basil wash with a book
 /// glyph, "Mushroom omelette · Thu" when it is planned, wrapping. Up to three show; more, the first
 /// two and a quiet "+N" (`GroceryRecipeTags.shown`). A tap opens the recipe (`onOpen`);
 /// `idPrefix` names them for UI tests ("<prefix>-<recipe id>-<day>"). Used by Groceries and Shop for
@@ -32,7 +32,7 @@ struct RecipeTagRow: View {
 }
 
 /// One tag: a button that reads "For Mushroom omelette, Thursday". The wash is the accent text
-/// colour (paprika on the ground, the lighter on-ink paprika in dark), as the Home timer's tag. The
+/// colour (basil on the ground, the lighter on-ink basil in dark), as the Home timer's tag. The
 /// touch area is a little taller than the pill, so a thumb finds it without taking much of the row's
 /// own tap.
 private struct RecipeTagChip: View {
@@ -51,7 +51,7 @@ private struct RecipeTagChip: View {
             .foregroundStyle(Palette.accentText)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Palette.accentText.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+            .background(Palette.accentText.opacity(0.12), in: Capsule())
             .padding(.vertical, 3)
             .contentShape(Rectangle())
         }

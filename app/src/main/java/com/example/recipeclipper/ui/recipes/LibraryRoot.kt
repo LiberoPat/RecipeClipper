@@ -4,7 +4,6 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.filled.PlayArrow
@@ -29,7 +28,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
@@ -71,6 +69,7 @@ import com.example.recipeclipper.ui.home.TodayCard
 import com.example.recipeclipper.ui.home.TodayMeal
 import com.example.recipeclipper.ui.settings.BackupStatus
 import com.example.recipeclipper.ui.settings.BackupStatusText
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
@@ -103,7 +102,7 @@ internal fun LibraryTopActions(onOpenSettings: () -> Unit, onAdd: () -> Unit) {
     LibraryAddButton(onAdd)
 }
 
-/** The paprika + (#375): the Add a recipe sheet. The tour's tooltip points at it. */
+/** The basil + (#375): the Add a recipe sheet. The tour's tooltip points at it. */
 @Composable
 internal fun LibraryAddButton(
     onAdd: () -> Unit,
@@ -223,20 +222,20 @@ private fun CompactCard(
     val colors = MaterialTheme.colorScheme
     Column(
         Modifier.fillMaxWidth().testTag("libraryCard")
-            .clip(RoundedCornerShape(16.dp)).background(colors.surfaceContainer).padding(10.dp),
+            .clip(Corners.Card).background(colors.surfaceContainer).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().then(
-                if (onOpen != null) Modifier.clip(RoundedCornerShape(10.dp)).clickable(role = Role.Button, onClick = onOpen) else Modifier
+                if (onOpen != null) Modifier.clip(Corners.Photo).clickable(role = Role.Button, onClick = onOpen) else Modifier
             )
         ) {
             // The photo; with none, the recipe's designed image (#403, `noPhotoImage`) or a plain themed
             // block: never a stock image.
-            val thumb = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp))
-            val plain: @Composable (Modifier) -> Unit = { Box(it.background(colors.tertiary.copy(alpha = 0.12f))) }
+            val thumb = Modifier.size(64.dp).clip(Corners.Photo)
+            val plain: @Composable (Modifier) -> Unit = { Box(it.background(colors.secondaryContainer)) }
             if (noPhoto != null && noPhotoImageOn()) {
                 RecipeImage(model = imageUrl, recipe = noPhoto, contentDescription = null, modifier = thumb, whenOff = plain)
             } else if (imageUrl != null) {
@@ -261,7 +260,7 @@ private fun CompactCard(
         if (button != null) {
             Button(
                 onClick = onButton,
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Pill,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
             ) { Text(button) }
         }
@@ -269,9 +268,9 @@ private fun CompactCard(
 }
 
 /**
- * The card as design B draws it (#449): outlined on the ground rather than filled, the thumbnail beside
- * a paprika eyebrow ("TODAY · DINNER") and the name, then a row with the next meal on the left and the
- * button as a paprika pill on the right. [under] goes under the name (the step and the countdown),
+ * The card as design B laid it out (#449), in Market's dress (#455): a soft filled panel (B's outline
+ * read as a form field on white), the thumbnail beside a basil eyebrow ("TODAY · DINNER") and the
+ * name, then a row with the next meal on the left and the button as a basil pill on the right. [under] goes under the name (the step and the countdown),
  * [beside] beside the button (the next meal). The close button (#448) keeps its place at the top right.
  */
 @Composable
@@ -288,21 +287,21 @@ private fun CompactCardB(
     beside: @Composable () -> Unit = {}
 ) {
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(18.dp)
+    val shape = Corners.Card
     Column(
         Modifier.fillMaxWidth().testTag("libraryCard")
-            .clip(shape).background(colors.background).border(1.dp, colors.outlineVariant, shape).padding(12.dp),
+            .clip(shape).background(colors.surfaceContainer).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().then(
-                if (onOpen != null) Modifier.clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClick = onOpen) else Modifier
+                if (onOpen != null) Modifier.clip(Corners.Photo).clickable(role = Role.Button, onClick = onOpen) else Modifier
             )
         ) {
-            val thumb = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp))
-            val plain: @Composable (Modifier) -> Unit = { Box(it.background(colors.tertiary.copy(alpha = 0.12f))) }
+            val thumb = Modifier.size(64.dp).clip(Corners.Photo)
+            val plain: @Composable (Modifier) -> Unit = { Box(it.background(colors.secondaryContainer)) }
             if (noPhoto != null && noPhotoImageOn()) {
                 RecipeImage(model = imageUrl, recipe = noPhoto, contentDescription = null, modifier = thumb, whenOff = plain)
             } else if (imageUrl != null) {
@@ -323,7 +322,7 @@ private fun CompactCardB(
                 )
                 Text(
                     title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, lineHeight = 22.sp),
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp)
@@ -337,7 +336,7 @@ private fun CompactCardB(
                 Box(Modifier.weight(1f)) { beside() }
                 Button(
                     onClick = onButton,
-                    shape = RoundedCornerShape(50),
+                    shape = Corners.Pill,
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     modifier = Modifier.heightIn(min = 40.dp)
                 ) {
@@ -474,15 +473,15 @@ private fun WayInRow(way: WayIn) {
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(colors.tertiary.copy(alpha = 0.12f))
+            modifier = Modifier.size(40.dp).clip(Corners.Photo).background(colors.secondaryContainer)
         ) {
-            Icon(painterResource(way.icon), null, tint = colors.tertiary, modifier = Modifier.size(20.dp))
+            Icon(painterResource(way.icon), null, tint = colors.onSecondaryContainer, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f)) {
             Text(stringResource(way.name), style = MaterialTheme.typography.titleSmall)
             Text(stringResource(way.hint), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         }
-        Text("›", style = MaterialTheme.typography.titleLarge, color = colors.onSurfaceVariant)
+        Icon(painterResource(R.drawable.ic_chevron_right), null, tint = colors.onSurfaceVariant, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -545,7 +544,7 @@ private fun WayTile(way: WayIn, modifier: Modifier) {
     val colors = MaterialTheme.colorScheme
     Column(
         verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = modifier.clip(RoundedCornerShape(14.dp)).background(colors.surfaceContainer)
+        modifier = modifier.clip(Corners.Card).background(colors.surfaceContainer)
             .clickable(role = Role.Button, onClick = way.onClick).padding(12.dp).testTag(way.tag)
     ) {
         Icon(painterResource(way.icon), null, tint = colors.tertiary, modifier = Modifier.size(20.dp))

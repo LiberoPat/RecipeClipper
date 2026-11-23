@@ -4,6 +4,7 @@ import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -38,10 +38,12 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +55,8 @@ import com.example.recipeclipper.data.model.StepAmounts
 import com.example.recipeclipper.data.model.StepPhoto
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.ui.theme.Bricolage
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.tour.TooltipSide
 import com.example.recipeclipper.ui.tour.tooltipAnchor
 
@@ -237,7 +241,7 @@ private val LINE_INSET = 8.dp
 
 /**
  * The bar's ingredient [lines], by index: a heading as a subheading, any other line a row to
- * tick, [washed] in paprika for "In this step" (#286). Keyed by index, so each line keeps its
+ * tick, [washed] in basil for "In this step" (#286). Keyed by index, so each line keeps its
  * own row as the groups change.
  */
 @Composable
@@ -313,8 +317,8 @@ private fun CookStep(
         Column(
             Modifier
                 .fillMaxWidth()
-                .border(BorderStroke(2.dp, colors.primary), RoundedCornerShape(18.dp))
-                .padding(20.dp)
+                .border(BorderStroke(2.dp, colors.primary), Corners.Card)
+                .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -365,7 +369,7 @@ private fun CookStep(
             // Its tooltip goes below the card, never over the step's text.
             Button(
                 onClick = actions.onStepDone,
-                shape = RoundedCornerShape(14.dp),
+                shape = Corners.Pill,
                 modifier = Modifier.fillMaxWidth().height(52.dp).tooltipAnchor(Tooltip.COOK_DONE_NEXT, TooltipSide.BELOW)
             ) {
                 Text(
@@ -391,7 +395,7 @@ private fun CookStep(
         Row {
             Text(
                 "${index + 1}",
-                style = MaterialTheme.typography.titleMedium,
+                style = StepNumberStyle,
                 color = if (done) colors.onSurfaceVariant else colors.tertiary,
                 modifier = Modifier.width(32.dp)
             )
@@ -437,7 +441,7 @@ private fun CurrentTimer(
         if (timerSeconds == null) return
         OutlinedButton(
             onClick = { actions.onTimerStart(step) },
-            shape = RoundedCornerShape(12.dp),
+            shape = Corners.Pill,
             border = BorderStroke(1.dp, colors.outline),
             // Below it is the Done button, not the step's text.
             modifier = Modifier.tooltipAnchor(Tooltip.COOK_TIMER, TooltipSide.BELOW)
@@ -450,11 +454,17 @@ private fun CurrentTimer(
         return
     }
 
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.tooltipAnchor(Tooltip.COOK_TIMER, TooltipSide.BELOW)) {
+    // Market (#455): the running timer sits on the accent tone, its digits in Bricolage ExtraBold.
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.tooltipAnchor(Tooltip.COOK_TIMER, TooltipSide.BELOW)
+            .clip(Corners.Photo).background(colors.secondaryContainer)
+            .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp)
+    ) {
         Column(Modifier.weight(1f)) {
             Text(
                 StepTimers.clock(timer.remainingSeconds),
-                style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
+                style = TimerClockStyle,
                 color = if (timer.finished) colors.tertiary else colors.onSurface
             )
             if (timer.finished) {
@@ -483,6 +493,15 @@ private fun CurrentTimer(
         }
     }
 }
+
+/** A step's number in cook mode and the reading view: Bricolage ExtraBold, in the accent (#455). */
+internal val StepNumberStyle = TextStyle(fontFamily = Bricolage, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, lineHeight = 24.sp)
+
+/** The running timer's digits: Bricolage ExtraBold, tabular (#455). */
+private val TimerClockStyle = TextStyle(
+    fontFamily = Bricolage, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 34.sp,
+    letterSpacing = (-0.3).sp, fontFeatureSettings = "tnum"
+)
 
 /** Cook mode holds the screen awake: nobody wants it dimming with flour on their hands. */
 @Composable

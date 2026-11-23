@@ -5,7 +5,7 @@ import SwiftUI
 // on. What each filter selects is `RecipeFilterChoices`' (Data/Model), the view screens' and #378's own rules.
 // Android's `RecipesFilterSheet.kt`.
 
-/// Lists, left of search (#454): the icon, "Lists" and how many, in the paprika tone. It opens the Lists screen,
+/// Lists, left of search (#454): the icon, "Lists" and how many, in the accent tone. It opens the Lists screen,
 /// Back returns. It takes the width its words need and never clips; search takes the rest.
 struct ListsPill: View {
     let count: Int
@@ -25,12 +25,12 @@ struct ListsPill: View {
             }
             .lineLimit(1)
             .fixedSize()
-            .foregroundStyle(Palette.onPaprikaTone)
+            .foregroundStyle(Palette.onAccentTone)
             .padding(.leading, 12)
             .padding(.trailing, 14)
             .frame(minHeight: 52)
-            .background(Palette.paprikaTone, in: RoundedRectangle(cornerRadius: SearchRow.radius))
-            .contentShape(RoundedRectangle(cornerRadius: SearchRow.radius))
+            .background(Palette.accentTone, in: RoundedRectangle(cornerRadius: Radius.field))
+            .contentShape(RoundedRectangle(cornerRadius: Radius.field))
         }
         .buttonStyle(.plain)
         .fixedSize()
@@ -39,11 +39,6 @@ struct ListsPill: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("recipes.listsPill")
     }
-}
-
-/// Search's corner radius (design B's), which the Lists pill beside it shares so the two read as one row.
-enum SearchRow {
-    static let radius: CGFloat = 14
 }
 
 /// The pills of the filters on (#454), each removed by a tap on it, then Clear; with the pantry on, its line.
@@ -84,11 +79,11 @@ struct ChoicePills: View {
                     .font(.system(size: 11, weight: .bold))
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
-            .foregroundStyle(Palette.onPaprikaTone)
+            .foregroundStyle(Palette.onAccentTone)
             .padding(.leading, 12)
             .padding(.trailing, 10)
             .frame(minHeight: 32)
-            .background(Palette.paprikaTone, in: Capsule())
+            .background(Palette.accentTone, in: Capsule())
             // The 44pt touch target is the outer frame; the pill is the shape inside it.
             .frame(minHeight: 44)
             .contentShape(Rectangle())
@@ -244,7 +239,7 @@ private struct ChoiceSegments<Option: Identifiable & Hashable & RawRepresentable
             VStack(spacing: 0) { segments(oneLine: false) }
         }
         .padding(3)
-        .background(Palette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 12))
+        .background(Palette.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: Radius.field))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(id)
     }
@@ -263,7 +258,7 @@ private struct ChoiceSegments<Option: Identifiable & Hashable & RawRepresentable
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(on ? Palette.background : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+                    .background(on ? Palette.background : Color.clear, in: RoundedRectangle(cornerRadius: Radius.small))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

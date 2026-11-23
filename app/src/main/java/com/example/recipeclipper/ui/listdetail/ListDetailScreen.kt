@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -72,6 +71,7 @@ import com.example.recipeclipper.ui.recipes.SelectionBar
 import com.example.recipeclipper.ui.recipes.shareRecipeText
 import com.example.recipeclipper.ui.savetolist.SaveToListBottomSheet
 import com.example.recipeclipper.ui.savetolist.SaveToListViewModel
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -283,7 +283,7 @@ fun ListDetailScreen(
                         onValueChange = viewModel::onRenameValueChange,
                         label = { Text(stringResource(R.string.label_list_name)) },
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = Corners.Field,
                         modifier = Modifier.fillMaxWidth()
                     )
                 },

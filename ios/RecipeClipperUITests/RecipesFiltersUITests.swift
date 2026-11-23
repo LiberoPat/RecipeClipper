@@ -100,6 +100,21 @@ final class RecipesFiltersUITests: RecipeUITestCase {
         XCTAssertEqual(filter.value as? String ?? "", "")
     }
 
+    /// German at a large accessibility size: the count keeps one line ("4 Rezepte", never "Reze / pte"), the
+    /// sort moving under it if the two don't fit side by side; and the Lists pill stays whole beside search.
+    func testInGermanAtALargeSizeTheCountNeverBreaksInsideAWord() {
+        launch(.standard, flags: on, extraArguments: [
+            "-AppleLanguages", "(de)", "-AppleLocale", "de_DE",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"
+        ])
+        let count = require(app.staticTexts["recipes.listed"], "the count")
+        XCTAssertEqual(count.label, "4 Rezepte")
+        XCTAssertGreaterThan(count.frame.width, count.frame.height * 2, "one line, not \"Reze / pte\": \(count.frame)")
+        let pill = require(listsPill)
+        XCTAssertTrue(pill.label.hasPrefix("Listen, "), pill.label)
+        XCTAssertLessThanOrEqual(pill.frame.maxX, require(app.textFields.firstMatch).frame.minX + 1)
+    }
+
     func testWithTheFlagOffDesignBStays() {
         launch(.standard, flags: ["libraryFirst", "recipesTopB", "recipeFilters", "recipesGrid", "multiSelect"])
         require(app.descendants(matching: .any)["recipes.viewsShelf"], "design B's shelf")

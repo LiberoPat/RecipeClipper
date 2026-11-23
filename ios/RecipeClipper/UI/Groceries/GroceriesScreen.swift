@@ -322,7 +322,7 @@ private struct AisleLabel: View {
     }
 }
 
-/// A row's tick (#286): a ring on the right, under the thumb, that fills paprika with a check.
+/// A row's tick (#286): a ring on the right, under the thumb, that fills basil with a check.
 /// Drawn only: the row around it is the control, and carries the selected trait.
 private struct RoundTick: View {
     let checked: Bool

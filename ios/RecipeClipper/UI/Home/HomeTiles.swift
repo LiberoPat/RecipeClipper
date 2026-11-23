@@ -53,7 +53,7 @@ struct AddRecipeBlock: View {
     }
 }
 
-/// One way in: an icon, its name and a short muted line; `filled` is the paprika one.
+/// One way in: an icon, its name and a short muted line; `filled` is the basil one.
 private struct HomeTile: View {
     let icon: String
     let name: String
@@ -73,8 +73,8 @@ private struct HomeTile: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(filled ? Palette.primary : Palette.surfaceContainer, in: RoundedRectangle(cornerRadius: 16))
-        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .background(filled ? Palette.primary : Palette.surfaceContainer, in: RoundedRectangle(cornerRadius: Radius.card))
+        .contentShape(RoundedRectangle(cornerRadius: Radius.card))
         .accessibilityElement(children: .combine)
     }
 
@@ -84,8 +84,8 @@ private struct HomeTile: View {
             .foregroundStyle(filled ? Palette.onPrimary : Palette.accentText)
             .frame(width: 36, height: 36)
             .background(
-                filled ? Color.white.opacity(0.18) : Palette.accentText.opacity(0.12),
-                in: RoundedRectangle(cornerRadius: 10)
+                filled ? Palette.onPrimary.opacity(0.18) : Palette.accentText.opacity(0.12),
+                in: RoundedRectangle(cornerRadius: Radius.small)
             )
             .accessibilityHidden(true)
     }

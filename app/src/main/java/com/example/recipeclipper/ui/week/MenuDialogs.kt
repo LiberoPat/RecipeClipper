@@ -1,7 +1,6 @@
 package com.example.recipeclipper.ui.week
 
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -17,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.Menu
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * A name for a menu (#52): "Save week as menu" starts empty, "Rename" starts on the menu's name.
@@ -40,7 +40,7 @@ internal fun MenuNameDialog(
                 onValueChange = { text = it },
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.menu_name_hint)) },
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Field,
                 modifier = Modifier.fillMaxWidth().testTag("menuName")
             )
         },

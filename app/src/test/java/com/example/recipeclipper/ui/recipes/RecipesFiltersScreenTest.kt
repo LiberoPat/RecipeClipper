@@ -2,7 +2,10 @@ package com.example.recipeclipper.ui.recipes
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
@@ -283,6 +286,16 @@ class RecipesFiltersScreenTest {
         assertTrue("the pill is laid out whole: ${pill.boundsInRoot} vs ${pill.size}", pill.boundsInRoot.width >= pill.size.width - 1f)
         assertTrue("search keeps room beside it: $search", search.width > 0f && pill.boundsInRoot.right <= search.left)
         compose.onNodeWithText("Listen").assertIsDisplayed()
+        // The count never breaks inside a word ("Reze / pte"): one line, the sort moving under it if need be.
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithTag("recipesCountLine").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals("the count on one line", 1, layouts.single().lineCount)
+        assertEquals("5 Rezepte", layouts.single().layoutInput.text.text)
+        val count = layouts.single()
+        assertTrue(
+            "not cut short: ${count.size}, the line ends at ${count.getLineRight(0)}",
+            !count.isLineEllipsized(0) && count.getLineRight(0) <= count.size.width + 1f
+        )
 
         openSheet()
         val any = compose.onNodeWithTag("recipeFilterOrigin-ANYWHERE").performScrollTo().fetchSemanticsNode().boundsInRoot

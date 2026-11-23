@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +37,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -64,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import com.example.recipeclipper.ui.theme.Corners
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -764,7 +767,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
         onValueChange = onQueryChange,
         label = { Text(stringResource(R.string.label_search_recipes)) },
         singleLine = true,
-        shape = RoundedCornerShape(12.dp),
+        shape = Corners.Field,
         trailingIcon = if (query.isNotEmpty()) {
             {
                 IconButton(onClick = { onQueryChange("") }) {
@@ -843,6 +846,7 @@ private fun DeleteBackground(dismissState: SwipeToDismissBoxState) {
  * The quiet line under search (#286): how many recipes on the left ("20 recipes", or on the
  * free tier "12 of 20 recipes", #107), and the order they're in on the right.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SortLine(
     state: RecipesUiState,
@@ -851,7 +855,13 @@ private fun SortLine(
     /** Design B (#449): the sort, then the toggle, last on the right. */
     toggleLast: Boolean = false
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    // The count never breaks inside a word (#454: German at twice the text read "Reze / pte"): it keeps one
+    // line, and when it and the controls don't fit side by side the controls move under it.
+    FlowRow(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        itemVerticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
         // Inside a view the count is the view's own, not the free library's.
         val count = state.count.takeIf { state.view == null }
         val listed = state.listed
@@ -863,10 +873,15 @@ private fun SortLine(
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f).padding(start = 2.dp)
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 2.dp, end = 8.dp).testTag("recipesCountLine")
         )
-        if (onLayout != null && !toggleLast) LayoutToggle(state.layout, onLayout)
-        SortMenu(state.sort, onSort)
-        if (onLayout != null && toggleLast) LayoutToggle(state.layout, onLayout)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onLayout != null && !toggleLast) LayoutToggle(state.layout, onLayout)
+            SortMenu(state.sort, onSort)
+            if (onLayout != null && toggleLast) LayoutToggle(state.layout, onLayout)
+        }
     }
 }

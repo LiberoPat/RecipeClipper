@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.plan.dayTitle
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * "Add to groceries" (#50, Paprika's basket): every line to buy, grouped by recipe (with its
@@ -113,7 +113,7 @@ fun AddToGroceriesSheet(viewModel: AddToGroceriesViewModel, onDismiss: () -> Uni
                         Button(
                             onClick = viewModel::onAdd,
                             enabled = state.tickedCount > 0 && !state.added,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = Corners.Pill,
                             modifier = Modifier.fillMaxWidth().testTag("addToGroceriesButton")
                         ) {
                             Text(stringResource(R.string.action_add_to_groceries))

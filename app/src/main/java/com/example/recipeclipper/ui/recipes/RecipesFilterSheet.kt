@@ -54,7 +54,8 @@ import com.example.recipeclipper.data.model.RecipeFilterChoices
 import com.example.recipeclipper.data.model.RecipeFilterPill
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.settings.SwitchRow
-import com.example.recipeclipper.ui.theme.LocalPaprikaTone
+import com.example.recipeclipper.ui.theme.Corners
+import com.example.recipeclipper.ui.theme.LocalAccentTone
 
 /*
  * Recipes' views folded into the filter sheet (#454, `recipesFilters`, over design B): the Lists pill left of
@@ -62,23 +63,20 @@ import com.example.recipeclipper.ui.theme.LocalPaprikaTone
  * on. What each filter selects is `RecipeFilterChoices`' (core), the view screens' and #378's own rules.
  */
 
-/** Search's corner radius (design B's), which the Lists pill beside it shares so the two read as one row. */
-internal val SearchRowRadius = 14.dp
-
 /**
- * Lists, left of search (#454): the bookmark, "Lists" and how many, in the paprika tone. It opens the Lists
+ * Lists, left of search (#454): the bookmark, "Lists" and how many, in the accent tone. It opens the Lists
  * screen, Back returns. It takes the width its words need and never clips; search takes the rest.
  */
 @Composable
 internal fun ListsPill(count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val tone = LocalPaprikaTone.current
+    val tone = LocalAccentTone.current
     val name = stringResource(R.string.nav_lists)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier
             .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(SearchRowRadius))
+            .clip(Corners.Field)
             .background(tone.fill)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = "$name, $count" }
@@ -102,7 +100,7 @@ internal fun ListsPill(count: Int, onClick: () -> Unit, modifier: Modifier = Mod
 @Composable
 internal fun ChoicePills(pills: List<RecipeFilterPill>, onRemove: (RecipeFilterPill) -> Unit, onClear: () -> Unit) {
     if (pills.isEmpty()) return
-    val tone = LocalPaprikaTone.current
+    val tone = LocalAccentTone.current
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         itemVerticalAlignment = Alignment.CenterVertically,
@@ -114,7 +112,7 @@ internal fun ChoicePills(pills: List<RecipeFilterPill>, onRemove: (RecipeFilterP
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.minimumInteractiveComponentSize()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(Corners.Pill)
                     .background(tone.fill)
                     .clickable(role = Role.Button) { onRemove(pill) }
                     .semantics(mergeDescendants = true) { contentDescription = removeLabel }
@@ -286,7 +284,7 @@ private fun <T> ChoiceSegments(
     val colors = MaterialTheme.colorScheme
     Box(
         Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(Corners.Field)
             .background(colors.surfaceContainerHigh)
             .padding(3.dp)
             .selectableGroup()
@@ -299,7 +297,7 @@ private fun <T> ChoiceSegments(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .heightIn(min = 44.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(Corners.Small)
                         .background(if (on) colors.background else colors.surfaceContainerHigh)
                         .selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(option) })
                         .padding(horizontal = 8.dp, vertical = 6.dp)

@@ -8,14 +8,14 @@ import android.text.TextPaint
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.res.ResourcesCompat
 import com.example.recipeclipper.R
+import com.example.recipeclipper.ui.theme.AccentText
 import com.example.recipeclipper.ui.theme.Ink
 import com.example.recipeclipper.ui.theme.Muted
-import com.example.recipeclipper.ui.theme.Paprika
 import java.util.Locale
 
 /**
- * The printed card's look (#318): the theme's type, Fraunces over Karla, in ink, muted and
- * paprika on white paper, in points (a PDF page is measured in 1/72 inch). Light whatever the
+ * The printed card's look (#318): the theme's type, Bricolage Grotesque over Instrument Sans, in
+ * ink, muted and basil on white paper, in points (a PDF page is measured in 1/72 inch). Light whatever the
  * phone's theme: it is for paper.
  */
 internal class PrintStyle(context: Context, locale: Locale = Locale.getDefault()) {
@@ -27,18 +27,19 @@ internal class PrintStyle(context: Context, locale: Locale = Locale.getDefault()
     val contentWidth = pageWidth - 2 * margin
     val contentHeight = pageHeight - 2 * margin
 
-    private val display: Typeface = font(context, R.font.fraunces, Typeface.SERIF)
-    private val body: Typeface = font(context, R.font.karla, Typeface.SANS_SERIF)
+    // The static weights (#455; iOS's PrintStyle the same): Bricolage SemiBold for headings, Bold
+    // for step numbers, Instrument Sans Regular for the text.
+    private val display: Typeface = font(context, R.font.bricolage_semibold, Typeface.SANS_SERIF)
+    private val displayBold: Typeface = font(context, R.font.bricolage_bold, Typeface.SANS_SERIF)
+    private val body: Typeface = font(context, R.font.instrument_regular, Typeface.SANS_SERIF)
 
-    // The weights the screen uses (Theme.kt's `variable`, iOS's PrintStyle): 500 for headings,
-    // 600 for step numbers, set on the variable font through the paint (#331).
-    val title = paint(display, 24f, INK, weight = 500)
-    val bookTitle = paint(display, 34f, INK, weight = 500)
-    val section = paint(display, 15f, PAPRIKA, weight = 500)
-    val group = paint(display, 12f, MUTED, weight = 500)
-    val stepNumber = paint(display, 11.5f, PAPRIKA, weight = 600)
-    val text = paint(body, 11f, INK, weight = 400)
-    val muted = paint(body, 10f, MUTED, weight = 400)
+    val title = paint(display, 24f, INK)
+    val bookTitle = paint(display, 34f, INK)
+    val section = paint(display, 15f, ACCENT)
+    val group = paint(display, 12f, MUTED)
+    val stepNumber = paint(displayBold, 11.5f, ACCENT)
+    val text = paint(body, 11f, INK)
+    val muted = paint(body, 10f, MUTED)
 
     /** [s] wrapped to [width] in [paint], left aligned unless [centre]. */
     fun layout(s: CharSequence, paint: TextPaint, width: Float = contentWidth, centre: Boolean = false): StaticLayout =
@@ -47,11 +48,10 @@ internal class PrintStyle(context: Context, locale: Locale = Locale.getDefault()
             .setLineSpacing(0f, 1.15f)
             .build()
 
-    private fun paint(face: Typeface, size: Float, color: Int, weight: Int) = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
+    private fun paint(face: Typeface, size: Float, color: Int) = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
         typeface = face
         textSize = size
         this.color = color
-        fontVariationSettings = "'wght' $weight" // ignored by a fallback face with no such axis
     }
 
     private fun font(context: Context, id: Int, fallback: Typeface): Typeface =
@@ -65,7 +65,7 @@ internal class PrintStyle(context: Context, locale: Locale = Locale.getDefault()
         // The theme's light tokens: paper is always light.
         val INK = Ink.toArgb()
         val MUTED = Muted.toArgb()
-        val PAPRIKA = Paprika.toArgb()
+        val ACCENT = AccentText.toArgb()
         private val LETTER_COUNTRIES = setOf("US", "CA", "MX", "PH")
     }
 }

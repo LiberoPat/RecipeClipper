@@ -73,7 +73,7 @@ struct CullNote: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Palette.hairline))
+        .background(RoundedRectangle(cornerRadius: Radius.field).fill(Palette.surfaceContainer))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("recipes.cullNote")
     }

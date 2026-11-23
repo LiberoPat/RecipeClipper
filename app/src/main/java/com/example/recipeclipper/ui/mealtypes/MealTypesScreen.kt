@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -43,6 +42,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -110,7 +110,7 @@ fun MealTypesScreen(
                         value = state.renameText,
                         onValueChange = viewModel::onRenameTextChange,
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = Corners.Field,
                         modifier = Modifier.fillMaxWidth().testTag("renameMealType")
                     )
                 },
@@ -199,7 +199,7 @@ private fun NameField(
             onValueChange = onValueChange,
             label = { Text(stringResource(R.string.label_meal_type_name)) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = Corners.Field,
             modifier = Modifier.fillMaxWidth()
         )
         Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * "Add this list" (#149): the lines of a list shared in or pasted, each ticked to start, and one
@@ -89,7 +89,7 @@ fun ReceiveListSheet(viewModel: ReceiveListViewModel, onAddedToPantry: () -> Uni
                 Button(
                     onClick = viewModel::onAddToGroceries,
                     enabled = enabled,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = Corners.Pill,
                     modifier = Modifier.fillMaxWidth().testTag("receiveToGroceries")
                 ) {
                     Text(stringResource(R.string.action_add_to_groceries))
@@ -98,7 +98,7 @@ fun ReceiveListSheet(viewModel: ReceiveListViewModel, onAddedToPantry: () -> Uni
                 OutlinedButton(
                     onClick = viewModel::onAddToPantry,
                     enabled = enabled,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = Corners.Pill,
                     modifier = Modifier.fillMaxWidth().testTag("receiveToPantry")
                 ) {
                     Text(stringResource(R.string.action_add_to_pantry))

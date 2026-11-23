@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -41,6 +40,7 @@ import com.example.recipeclipper.data.model.PantryStock
 import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.ui.plan.shortDate
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.Corners
 
 /** An item's edit sheet (#194): its stock, name, quantity, staple switch and use-by date, and Delete. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,7 +78,7 @@ internal fun EditSheet(editing: PantryEditing, viewModel: PantryViewModel) {
                 onValueChange = viewModel::onEditName,
                 label = { Text(stringResource(R.string.pantry_label_name)) },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Field,
                 modifier = Modifier.fillMaxWidth().testTag("pantryEditName")
             )
             Spacer(Modifier.height(8.dp))
@@ -87,7 +87,7 @@ internal fun EditSheet(editing: PantryEditing, viewModel: PantryViewModel) {
                 onValueChange = viewModel::onEditQuantity,
                 label = { Text(stringResource(R.string.pantry_label_quantity)) },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Field,
                 modifier = Modifier.fillMaxWidth().testTag("pantryEditQuantity")
             )
             Spacer(Modifier.height(12.dp))

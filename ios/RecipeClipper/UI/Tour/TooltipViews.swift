@@ -196,7 +196,7 @@ private struct TooltipPopover<Bubble: View>: ViewModifier {
     }
 }
 
-/// The bubble (#190): in the theme's inverse colours, in Karla, one button ("Got it" is its
+/// The bubble (#190): in the theme's inverse colours, in Instrument Sans, one button ("Got it" is its
 /// visible label) that VoiceOver reads as it appears. Wider at the accessibility text sizes.
 private struct TooltipBubble: View {
     let tooltip: Tooltip

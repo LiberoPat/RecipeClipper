@@ -574,19 +574,43 @@ struct RecipesScreen: View {
     /// free tier "12 of 20 recipes", #107), and the order they're in on the right, which opens
     /// the sort menu. The sort was the only item of a ⋯ menu in the toolbar before.
     private func sortLine(_ state: RecipesUiState, toggleLast: Bool = false) -> some View {
-        HStack(spacing: 8) {
-            Group {
-                // Inside a view the count is the view's own, not the free library's.
-                if let count = vm.count, state.view == nil {
-                    Text(Strings.recipesCount(count.saved, of: count.max))
-                        .accessibilityIdentifier("recipes.count")
-                } else {
-                    Text(Strings.recipesListed(state.listed ?? 0))
-                }
+        // The count never breaks inside a word (#454: German at large sizes read "Reze / pte"): the count and
+        // the controls share one line when both fit whole, else the controls move under the count.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                countText(state).fixedSize()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                sortControls(state, toggleLast: toggleLast).fixedSize()
             }
-            .textStyle(Typography.bodySmall)
-            .foregroundStyle(Palette.muted)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 0) {
+                countText(state)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                sortControls(state, toggleLast: toggleLast)
+            }
+        }
+    }
+
+    /// "20 recipes", or on the free tier "12 of 20 recipes", on one line.
+    private func countText(_ state: RecipesUiState) -> some View {
+        Group {
+            // Inside a view the count is the view's own, not the free library's.
+            if let count = vm.count, state.view == nil {
+                Text(Strings.recipesCount(count.saved, of: count.max))
+                    .accessibilityIdentifier("recipes.count")
+            } else {
+                Text(Strings.recipesListed(state.listed ?? 0))
+                    .accessibilityIdentifier("recipes.listed")
+            }
+        }
+        .textStyle(Typography.bodySmall)
+        .foregroundStyle(Palette.muted)
+        .lineLimit(1)
+    }
+
+    /// The sort's menu and the rows / grid toggle (before it, or with design B after it).
+    @ViewBuilder
+    private func sortControls(_ state: RecipesUiState, toggleLast: Bool) -> some View {
+        HStack(spacing: 8) {
             if gridEnabled && !toggleLast { layoutToggle(state.layout) }
             // An exclusive choice, so radio glyphs rather than a bare checkmark.
             Menu {
@@ -605,6 +629,7 @@ struct RecipesScreen: View {
                     Text(sortName(state.sort))
                         .textStyle(Typography.labelMedium)
                         .foregroundStyle(Palette.onBackground)
+                        .lineLimit(1)
                 }
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
@@ -676,7 +701,7 @@ private struct SearchField: View {
         }
         .padding(.horizontal, 14)
         .frame(minHeight: 52)
-        .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.outline, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Radius.field).fill(Palette.surfaceContainer))
     }
 }
 
@@ -711,7 +736,7 @@ struct Snackbar: View {
         .padding(.leading, 16)
         .padding(.trailing, 4)
         .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Palette.inverseSurface))
+        .background(RoundedRectangle(cornerRadius: Radius.field).fill(Palette.inverseSurface))
         .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
     }
 }

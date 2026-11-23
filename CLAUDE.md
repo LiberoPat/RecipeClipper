@@ -194,10 +194,13 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   (readable, muted). A boolean on the recipe screen, not a destination; it
   holds `FLAG_KEEP_SCREEN_ON`; ingredients collapse to a tap-to-expand bar.
   Tapping a step makes it current; only "Done — next step" advances.
-- **Theme:** Fraunces (display) over Karla (body); ground `#FBF9F6`, ink
-  `#1C1917`, muted `#6B6259`, hairline `#E7E1D9`, paprika `#BF4A2B`. Dark mode
-  is the system's call (no in-app toggle) and uses the on-ink tokens
-  (`MutedOnInk`, `HairlineOnInk`, `PaprikaTextOnInk`). No Material purple.
+- **Theme: Market** (#455, owner's pick): Bricolage Grotesque (display) over
+  Instrument Sans (body), static weights; ground `#FFFFFF`, surface `#F2F6F2`,
+  ink `#14201A`, muted `#56645B`, hairline `#E1E7E2`, basil `Accent` `#2C7A4A`
+  (`AccentText` `#25683E`), `AccentTone` `#E1F0E5`/`#1C5232`; corners 18 cards,
+  14 photos and fields, pill buttons (`Corners` / `Radius`). Dark mode is the
+  system's call (no in-app toggle) and uses the on-ink tokens (ground `#0E1310`,
+  `MutedOnInk`, `HairlineOnInk`, `AccentOnInk`, `AccentTextOnInk`). No Material purple.
   Cook mode follows the system theme unless "Dark while cooking" (off by
   default) is on. Don't restore an always-dark cook mode without asking.
 - **Settings:** exclusive choices are radio rows, independent toggles are
@@ -215,7 +218,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   (`recipes_layout`, #380).
 - **Recipes' top, design B** (#449, `recipesTopB`, the library as the first screen only): the title
   row is Recipes, the +, then a ⋮ menu (Select, Settings; no gear, no Select button); the views
-  are one segmented shelf above search (Lists in the paprika tone; it scrolls sideways rather
+  are one segmented shelf above search (Lists in the accent tone; it scrolls sideways rather
   than clip); the three filters live in a sheet behind a badged button at the end of search, those
   on shown under it as removable pills with Clear; then the count, the sort, the toggle;
   selecting has Select all. Off, the strip and chips above.
@@ -225,7 +228,7 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   chat), the choices segmented. They select what the view screens did (the same SQL), combine
   with search and sort, show as pills; not remembered. Off, design B's shelf.
 - **A recipe with no photo, or whose photo fails, gets a designed image** (#403, `noPhotoImage`):
-  its first ingredient names in italic on one of five warm tints chosen by its uid (the title's
+  its first ingredient names, upright in Bricolage, on one of Market's five tints chosen by its uid (the title's
   first letter at 64 dp and below), never a stock image. One component per platform; the
   Lists cover of an empty list keeps the outlined bookmark tile.
 - **Library first** (#375, `libraryFirst`, needs `oneCookbook`): the Recipes tab opens the library

@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +37,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.backup.BackupError
 import com.example.recipeclipper.data.backup.PantryDestination
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -205,7 +205,7 @@ private fun WideButton(label: String, enabled: Boolean, tag: String, onClick: ()
     Button(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(12.dp),
+        shape = Corners.Pill,
         modifier = Modifier.fillMaxWidth().testTag(tag)
     ) {
         Text(label)

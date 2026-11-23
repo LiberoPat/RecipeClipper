@@ -6,7 +6,7 @@ import UIKit
 // filters (#378) in a sheet behind a button at the end of the search field, and those on as pills under
 // it. The filters behave exactly as the chips did; only where they live changed. Android's `RecipesTopB.kt`.
 
-/// "Recipes", the paprika + and the ⋮ menu, last on the right: Select (nil: nothing to select) and Settings.
+/// "Recipes", the basil + and the ⋮ menu, last on the right: Select (nil: nothing to select) and Settings.
 struct LibraryTitleRowB: View {
     let onAdd: () -> Void
     let onSelect: (() -> Void)?
@@ -87,8 +87,8 @@ struct PinnedTitleBar: View {
     }
 }
 
-/// The views as one segmented shelf: Lists (in the paprika tone), then Not in a list, Cooked, Typed by you and
-/// From a chat, each its icon, its count in Fraunces and its name. Each opens its own screen, as the strip's
+/// The views as one segmented shelf: Lists (in the accent tone), then Not in a list, Cooked, Typed by you and
+/// From a chat, each its icon, its count in Bricolage and its name. Each opens its own screen, as the strip's
 /// cards did. The five share the width (Lists a little more); when a name's longest word would not fit
 /// (German, or Dynamic Type), every cell takes the width it needs and the shelf scrolls sideways, so
 /// nothing is ever clipped.
@@ -102,9 +102,9 @@ struct ViewsShelf: View {
     @State private var width: CGFloat = 0
 
     static let countStyle = TextStyle(
-        family: .fraunces, baseSize: 20, weight: 600, baseLineHeight: 22, relativeTo: .title3, tabularDigits: true
+        family: .bricolage, baseSize: 20, weight: 600, baseLineHeight: 22, relativeTo: .title3, tabularDigits: true
     )
-    static let nameStyle = TextStyle(family: .karla, baseSize: 11.5, weight: 700, baseLineHeight: 13.5, relativeTo: .caption1)
+    static let nameStyle = TextStyle(family: .instrumentSans, baseSize: 11.5, weight: 700, baseLineHeight: 13.5, relativeTo: .caption1)
 
     private struct Cell {
         let icon: String
@@ -140,7 +140,7 @@ struct ViewsShelf: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             .background(Palette.surfaceContainer)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.card))
         }
         .scrollDisabled(fits)
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
@@ -165,16 +165,16 @@ struct ViewsShelf: View {
             VStack(spacing: 2) {
                 Image(systemName: cell.icon)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(cell.lead ? Palette.onPaprikaTone : Palette.accentText)
+                    .foregroundStyle(cell.lead ? Palette.onAccentTone : Palette.accentText)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     .frame(height: 20)
                 Text(cell.count.map(String.init) ?? " ")
                     .textStyle(Self.countStyle)
-                    .foregroundStyle(cell.lead ? Palette.onPaprikaTone : Palette.onBackground)
+                    .foregroundStyle(cell.lead ? Palette.onAccentTone : Palette.onBackground)
                     .lineLimit(1)
                 Text(cell.name)
                     .textStyle(Self.nameStyle)
-                    .foregroundStyle(cell.lead ? Palette.onPaprikaTone : Palette.muted)
+                    .foregroundStyle(cell.lead ? Palette.onAccentTone : Palette.muted)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -183,7 +183,7 @@ struct ViewsShelf: View {
             .padding(.bottom, 9)
             .frame(width: width > 0 ? width : nil)
             .frame(maxHeight: .infinity, alignment: .top)
-            .background(cell.lead ? Palette.paprikaTone : Color.clear)
+            .background(cell.lead ? Palette.accentTone : Color.clear)
             .overlay(alignment: .leading) {
                 if divider { Rectangle().fill(Palette.hairline).frame(width: 1) }
             }
@@ -206,7 +206,7 @@ struct ViewsShelf: View {
     }
 }
 
-/// Search, with the filter button at its end (`onOpenFilters`; nil with the chips' flag off): the paprika
+/// Search, with the filter button at its end (`onOpenFilters`; nil with the chips' flag off): the basil
 /// tone and a badge counting the filters on, once one is.
 struct SearchFieldB: View {
     let query: String
@@ -240,7 +240,7 @@ struct SearchFieldB: View {
         .padding(.leading, 14)
         .padding(.trailing, onOpenFilters == nil ? 14 : 4)
         .frame(minHeight: 52)
-        .background(RoundedRectangle(cornerRadius: SearchRow.radius).strokeBorder(Palette.muted, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Radius.field).fill(Palette.surfaceContainer))
     }
 }
 
@@ -252,14 +252,14 @@ private struct FilterButton: View {
         Button(action: action) {
             Image(systemName: "slider.horizontal.3")
                 .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(on > 0 ? Palette.onPaprikaTone : Palette.onBackground)
+                .foregroundStyle(on > 0 ? Palette.onAccentTone : Palette.onBackground)
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .frame(width: 44, height: 44)
-                .background(on > 0 ? Palette.paprikaTone : Color.clear, in: RoundedRectangle(cornerRadius: 12))
+                .background(on > 0 ? Palette.accentTone : Color.clear, in: RoundedRectangle(cornerRadius: Radius.field - 3))
                 .overlay(alignment: .topTrailing) {
                     if on > 0 {
                         Text("\(on)")
-                            .font(.system(size: 10.5, weight: .bold))
+                            .font(Font(AppFont.instrumentSans(10.5, weight: 700)))
                             .foregroundStyle(Palette.onPrimary)
                             .dynamicTypeSize(...DynamicTypeSize.large)
                             .padding(.horizontal, 4)
@@ -316,11 +316,11 @@ struct ActiveFilterPills: View {
                     .font(.system(size: 11, weight: .bold))
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
-            .foregroundStyle(Palette.onPaprikaTone)
+            .foregroundStyle(Palette.onAccentTone)
             .padding(.leading, 12)
             .padding(.trailing, 10)
             .frame(minHeight: 32)
-            .background(Palette.paprikaTone, in: Capsule())
+            .background(Palette.accentTone, in: Capsule())
             // The 44pt touch target is the outer frame; the pill is the shape inside it.
             .frame(minHeight: 44)
             .contentShape(Rectangle())
@@ -330,7 +330,7 @@ struct ActiveFilterPills: View {
         .accessibilityIdentifier("recipes.filterPill.\(filter.rawValue)")
     }
 
-    static let pillStyle = TextStyle(family: .karla, baseSize: 14, weight: 700, baseLineHeight: 18, relativeTo: .subheadline)
+    static let pillStyle = TextStyle(family: .instrumentSans, baseSize: 14, weight: 700, baseLineHeight: 18, relativeTo: .subheadline)
 }
 
 /// The filter sheet: the three filters as switches (Not cooked yet left out inside the Cooked view), and Clear.
@@ -381,7 +381,7 @@ struct RecipeFilterSheet: View {
     }
 }
 
-/// Selecting, as design B draws it (#449): the count in Fraunces, Select all and Done, then Add to list and
+/// Selecting, as design B draws it (#449): the count in Bricolage, Select all and Done, then Add to list and
 /// Delete, pinned above the rows. Android's `SelectionBar` with Select all.
 struct RecipesSelectionHeaderB: View {
     let count: Int

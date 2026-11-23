@@ -1,4 +1,8 @@
-Copyright 2019 The Karla Project Authors (https://github.com/googlefonts/karla)
+Bundled here: instrument_regular.ttf, instrument_medium.ttf, instrument_semibold.ttf and instrument_bold.ttf (Instrument Sans,
+static instances of the published variable font: weights 400, 500, 600 and 700,
+width 100; #455). All are under the licence below.
+
+Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
