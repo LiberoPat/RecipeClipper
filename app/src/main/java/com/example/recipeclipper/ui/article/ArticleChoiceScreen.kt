@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -31,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.recipe.BackButton
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -83,7 +83,7 @@ private fun Choices(state: ArticleChoiceUiState, onCheck: (String, Int) -> Unit,
             model = image,
             contentDescription = state.headline,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp))
+            modifier = Modifier.fillMaxWidth().height(200.dp).clip(Corners.Photo)
         )
         Spacer(Modifier.height(16.dp))
     }

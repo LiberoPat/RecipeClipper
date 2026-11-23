@@ -261,7 +261,7 @@ struct WeekScreen: View {
     ) -> some View {
         HStack(spacing: 4) {
             Button(action: onPrevious) {
-                Text("‹").textStyle(Typography.headlineSmall).frame(minWidth: 40, minHeight: 40)
+                Image(systemName: "chevron.left").font(.title3.weight(.semibold)).frame(minWidth: 40, minHeight: 40)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(previous)
@@ -273,7 +273,7 @@ struct WeekScreen: View {
                 .minimumScaleFactor(0.75)
                 .accessibilityIdentifier(labelIdentifier)
             Button(action: onNext) {
-                Text("›").textStyle(Typography.headlineSmall).frame(minWidth: 40, minHeight: 40)
+                Image(systemName: "chevron.right").font(.title3.weight(.semibold)).frame(minWidth: 40, minHeight: 40)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(next)
@@ -289,8 +289,8 @@ struct WeekScreen: View {
 }
 
 /// The day strip (#286; Android's DayStripRow): the seven days the header names, each a short
-/// weekday over its date with a paprika dot under a day that has meals; today is filled in
-/// paprika. A tap brings that day to the top of the list. VoiceOver reads the full date, and
+/// weekday over its date with a basil dot under a day that has meals; today is filled in
+/// basil. A tap brings that day to the top of the list. VoiceOver reads the full date, and
 /// "meals planned" as the month says it.
 private struct DayStripRow: View {
     let days: [StripDay]
@@ -316,7 +316,7 @@ private struct DayStripRow: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 7)
-                    .background(cell.isToday ? Palette.primary : Color.clear, in: RoundedRectangle(cornerRadius: 12))
+                    .background(cell.isToday ? Palette.primary : Color.clear, in: RoundedRectangle(cornerRadius: Radius.field))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -497,8 +497,8 @@ private struct DaySection: View {
     }
 }
 
-/// The month view (#52): the locale's weekdays over whole weeks. A day with meals has a paprika
-/// dot; today's date is paprika text; the days before and after the month are muted. Tapping any
+/// The month view (#52): the locale's weekdays over whole weeks. A day with meals has a basil
+/// dot; today's date is basil text; the days before and after the month are muted. Tapping any
 /// day opens its week.
 private struct MonthGrid: View {
     let month: MonthUiState
@@ -615,7 +615,7 @@ private struct MealRow: View {
                         )
                     )
                         .frame(width: 44, height: 44)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: Radius.small))
                 }
                 VStack(alignment: .leading, spacing: 0) {
                     Text(mealTypeName).textStyle(Typography.labelMedium).foregroundStyle(Palette.muted)

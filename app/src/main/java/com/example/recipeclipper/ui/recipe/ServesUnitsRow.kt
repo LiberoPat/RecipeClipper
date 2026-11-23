@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,6 +103,7 @@ private fun ServesStepper(servings: ServingsScale, kind: YieldKind, onChange: (I
         FilledTonalIconButton(
             onClick = { onChange(servings.target - 1) },
             enabled = servings.target > 1,
+            colors = stepperColors(),
             modifier = Modifier.semantics { contentDescription = decreaseDescription }
         ) { Text("−", style = MaterialTheme.typography.titleLarge) }
         Text(
@@ -116,10 +118,18 @@ private fun ServesStepper(servings: ServingsScale, kind: YieldKind, onChange: (I
         FilledTonalIconButton(
             onClick = { onChange(servings.target + 1) },
             enabled = servings.target < Servings.MAX,
+            colors = stepperColors(),
             modifier = Modifier.semantics { contentDescription = increaseDescription }
         ) { Text("+", style = MaterialTheme.typography.titleLarge) }
     }
 }
+
+/** The stepper's − and +: ink on the raised herb-wash circle (#455), not the accent tone. */
+@Composable
+private fun stepperColors() = IconButtonDefaults.filledTonalIconButtonColors(
+    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface
+)
 
 /**
  * The current unit choice as tappable text; tapping opens the three mutually exclusive

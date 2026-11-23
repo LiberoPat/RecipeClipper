@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Warm off-white ground; also the window background so there is no white flash on launch. -->
-    <color name="ground">#FBF9F6</color>
-    <!-- Paprika, the app's one accent. The launcher composes the mark over it. -->
+    <!-- White ground (Market, #455); also the window and splash background so there is no
+         flash on launch. -->
+    <color name="ground">#FFFFFF</color>
+    <!-- The launcher icon's ground: the old paprika, kept until the icon itself is redrawn
+         (a separate decision, #455). The launcher composes the mark over it. -->
     <color name="ic_launcher_background">#BF4A2B</color>
+    <!-- The app's accent for notifications (basil, the theme's AccentText). -->
+    <color name="accent">#25683E</color>
     <!-- The home-screen widgets (#309): the theme's tokens, on-ink at night. -->
-    <color name="widget_ground">#FBF9F6</color>
-    <color name="widget_ink">#1C1917</color>
-    <color name="widget_muted">#6B6259</color>
-    <color name="widget_accent">#BF4A2B</color>
+    <color name="widget_ground">#FFFFFF</color>
+    <color name="widget_ink">#14201A</color>
+    <color name="widget_muted">#56645B</color>
+    <color name="widget_accent">#25683E</color>
 </resources>

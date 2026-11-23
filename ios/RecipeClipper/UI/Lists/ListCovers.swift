@@ -1,6 +1,6 @@
 import SwiftUI
 
-private let coverRadius: CGFloat = 12
+private let coverRadius: CGFloat = Radius.photo
 private let mosaicGap: CGFloat = 2
 
 /// One list on the Lists screen (#286): its cover, then its name and count under it. One

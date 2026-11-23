@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +35,7 @@ import com.example.recipeclipper.ui.common.RecipeImage
 import com.example.recipeclipper.ui.common.noPhotoImageOn
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * Continue cooking (#286): the most recent recipe's photo, or a plain themed band when it has
@@ -47,7 +47,7 @@ import androidx.compose.ui.semantics.Role
 internal fun ResumeCard(recipe: RecipeSummary, resume: CookResume?, onResume: () -> Unit, onOpen: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(
-        Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(colors.surfaceContainer)
+        Modifier.padding(top = 16.dp).fillMaxWidth().clip(Corners.Card).background(colors.surfaceContainer)
     ) {
         Column(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen)) {
             if (noPhotoImageOn()) {
@@ -68,7 +68,7 @@ internal fun ResumeCard(recipe: RecipeSummary, resume: CookResume?, onResume: ()
                     modifier = Modifier.fillMaxWidth().height(136.dp)
                 )
             } else {
-                Box(Modifier.fillMaxWidth().height(56.dp).background(colors.tertiary.copy(alpha = 0.12f)))
+                Box(Modifier.fillMaxWidth().height(56.dp).background(colors.secondaryContainer))
             }
             Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
                 Text(
@@ -101,7 +101,7 @@ internal fun ResumeCard(recipe: RecipeSummary, resume: CookResume?, onResume: ()
             }
             Button(
                 onClick = if (resume != null) onResume else onOpen,
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Pill,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
             ) {
                 Text(stringResource(if (resume != null) R.string.home_resume_cooking else R.string.home_open_recipe))
@@ -110,14 +110,14 @@ internal fun ResumeCard(recipe: RecipeSummary, resume: CookResume?, onResume: ()
     }
 }
 
-/** A running timer's time left, "18:42 left", on the paprika wash. */
+/** A running timer's time left, "18:42 left", on the accent tone. */
 @Composable
 internal fun TimerTag(secondsLeft: Int) {
-    val accent = MaterialTheme.colorScheme.tertiary
+    val accent = MaterialTheme.colorScheme.onSecondaryContainer
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(accent.copy(alpha = 0.12f))
+        modifier = Modifier.clip(Corners.Pill).background(MaterialTheme.colorScheme.secondaryContainer)
             .padding(horizontal = 7.dp, vertical = 2.dp)
     ) {
         Icon(painterResource(R.drawable.ic_timer), contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))

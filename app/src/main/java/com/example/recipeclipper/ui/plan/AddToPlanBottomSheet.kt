@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.MealType
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * "Add to plan" (#49), from the recipe screen's overflow menu: a day of this week or next, a
@@ -103,7 +103,7 @@ internal fun PlanSheetContent(
         Button(
             onClick = onConfirm,
             enabled = confirmEnabled,
-            shape = RoundedCornerShape(14.dp),
+            shape = Corners.Pill,
             modifier = Modifier.fillMaxWidth().height(52.dp)
         ) {
             Text(confirmLabel, style = MaterialTheme.typography.labelLarge)

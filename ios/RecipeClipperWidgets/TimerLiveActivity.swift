@@ -50,7 +50,7 @@ private struct LockScreenTimer: View {
             TimerLabels(context: context, inverted: false)
             Spacer(minLength: 8)
             Countdown(context: context)
-                .font(WidgetFont.fraunces(34, .medium).monospacedDigit())
+                .font(WidgetFont.bricolage(34, .heavy).monospacedDigit())
                 .foregroundStyle(Palette.accentText)
         }
     }
@@ -66,10 +66,10 @@ private struct TimerLabels: View {
         let step = context.attributes.step + 1
         VStack(alignment: .leading, spacing: 2) {
             Text(context.isStale ? WidgetStrings.timerNotificationTitle(step: step) : WidgetStrings.timerRunningTitle(step: step))
-                .font(WidgetFont.fraunces(17, .semibold))
+                .font(WidgetFont.bricolage(17, .bold))
                 .foregroundStyle(inverted ? Color.white : Palette.onBackground)
             Text(context.attributes.recipeTitle)
-                .font(WidgetFont.karla(15, .regular))
+                .font(WidgetFont.instrumentSans(15, .regular))
                 .foregroundStyle(inverted ? Color.white.opacity(0.7) : Palette.muted)
                 .lineLimit(1)
         }

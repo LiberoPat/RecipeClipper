@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -48,6 +47,7 @@ import com.example.recipeclipper.ui.common.FreshNudgeNote
 import com.example.recipeclipper.ui.common.noticeMessage
 import com.example.recipeclipper.ui.plan.dayTitle
 import com.example.recipeclipper.ui.recipe.BackButton
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -88,7 +88,7 @@ fun MealPlanReviewScreen(
                     Button(
                         onClick = viewModel::onSave,
                         enabled = !state.loading && !state.saving && state.savingCount > 0,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = Corners.Pill,
                         modifier = Modifier.testTag("mealplan_save")
                     ) { Text(stringResource(R.string.action_save)) }
                 }

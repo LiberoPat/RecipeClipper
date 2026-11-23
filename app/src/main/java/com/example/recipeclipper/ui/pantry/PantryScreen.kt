@@ -15,7 +15,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -60,6 +59,7 @@ import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TooltipHost
 import kotlinx.coroutines.launch
@@ -209,7 +209,7 @@ fun PantryScreen(
                                 // An amount may come first (#302), and the field says so.
                                 placeholder = { Text(stringResource(R.string.pantry_add_example)) },
                                 singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = Corners.Field,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions = KeyboardActions(onDone = { viewModel.onAddTyped() }),
                                 trailingIcon = {
@@ -226,7 +226,7 @@ fun PantryScreen(
                                     onValueChange = viewModel::onQueryChange,
                                     label = { Text(stringResource(R.string.pantry_search_hint)) },
                                     singleLine = true,
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = Corners.Field,
                                     modifier = Modifier.fillMaxWidth().testTag("pantrySearch")
                                 )
                             }

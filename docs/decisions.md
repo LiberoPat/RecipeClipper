@@ -34,13 +34,13 @@ Exists today:
   `RecipeScreen` is the entry point and picks between `ReadingView`,
   `CookView` and a small loading/error view; `ServesUnitsRow` is the inline
   servings stepper and unit menu; `RecipeComponents` holds shared pieces.
-- `ui/theme/Theme.kt` — palette, typography, and `RecipeClipperTheme(cookMode)`.
-  Fraunces and Karla are bundled as variable fonts in `res/font` (SIL OFL;
-  licences in `assets/licenses`). Weight variation needs API 26+; below that
-  the default weight is used. `secondary`, `tertiary` and the dark scheme's
-  muted/hairline/paprika-text colours are derived, since the spec only names
-  the light-side tokens. `tertiary` is the accent-for-text slot; `primary` is
-  the filled-button paprika. Two schemes: `RecipeClipperTheme(forceDark)`
+- `ui/theme/Theme.kt` — palette, typography, shapes (`Corners`) and
+  `RecipeClipperTheme(cookMode)`. Market (#455, below): Bricolage Grotesque and
+  Instrument Sans are bundled as static weights in `res/font` (SIL OFL;
+  licences in `assets/licenses`). `tertiary` is the accent-for-text slot
+  (`AccentText`, `AccentTextOnInk`); `primary` is the filled-button basil
+  (`Accent`, `AccentOnInk` with dark words on ink); `secondaryContainer` is the
+  `AccentTone`. Two schemes: `RecipeClipperTheme(forceDark)`
   takes `DarkScheme` when `forceDark` or `isSystemInDarkTheme()`, else
   `LightScheme`. There used to be a third, `CookScheme`, forced whenever cook
   mode was active; it was deleted once cook mode began following the system
@@ -48,7 +48,7 @@ Exists today:
   was lost. `forceDark` is now passed only as `cooking && darkWhileCooking`.
   Status/nav bar icon appearance is light-appearance only when `LightScheme`
   is actually showing. `res/values-night/` gives the
-  window background/status/nav bar colour (ink `#1C1917`) so there's no
+  window background/status/nav bar colour (the on-ink ground `#0E1310`) so there's no
   light flash before Compose draws. Not verified on a device — no emulator
   run was done for this change; only build + lint were checked.
 - `data/local/AppPreferences` — the global defaults, in SharedPreferences
@@ -191,7 +191,7 @@ Exists today:
   question as the open one below about a recipe falling out of its last
   list; a manual delete answers a different question (an explicit user
   action) and this settles it. Two entry points, two confirmations: a
-  History row swipes away (`SwipeToDismissBox`, red-paprika background) with
+  History row swipes away (`SwipeToDismissBox`, the theme's `error` background) with
   an undo `Snackbar`; the recipe screen deletes via an overflow menu → an
   `AlertDialog` naming the recipe → `onBack()` (no undo there — the screen
   showing the recipe is already gone by the time a snackbar would appear).
@@ -536,7 +536,7 @@ jump back without losing progress) and only the "Done — next step" button
 advances. Leaning that way; confirm when cooking with it.
 
 **Ingredients for this step (#286, the owner's pick, 2026-10-19).** Opening the ingredients bar
-lists the lines the current step names first, washed in paprika, under "In this step", then the
+lists the lines the current step names first, washed in basil, under "In this step", then the
 rest under "Later"; the bar's label, Start timer and "Done — next step" are as before. Which
 lines: `StepAmounts.named`, the amounts-in-steps matching (#101, #254): every line a mention
 names, whether it lends an amount, is a link, or stays as written (the step already says how
@@ -555,13 +555,14 @@ always the step's own, so the link opens the bar on them in "In this step", thei
 stronger wash over the group's. Known limit, the matching's: "the chicken" doesn't name "2 lb
 chicken thighs" (only describing words may be dropped), so that line sits under "Later".
 
-**Design language:** Fraunces (display) over Karla (body); warm off-white
-ground `#FBF9F6`, ink `#1C1917`, muted `#6B6259`, hairline `#E7E1D9`,
-paprika accent `#BF4A2B`. System dark mode inverts to `#1C1917`, using the
-on-ink token set (`MutedOnInk`, `HairlineOnInk`, `PaprikaTextOnInk`) — the
-spec's own muted and paprika are too dim to read there. No manual light/dark
-toggle for the app as a whole: the system setting decides. Avoid the default
-Material purple.
+**Design language:** Market since #455 ("Visual identity: Market", below):
+Bricolage Grotesque (display) over Instrument Sans (body) on a white ground
+`#FFFFFF`, ink `#14201A`, muted `#56645B`, hairline `#E1E7E2`, basil accent
+`#2C7A4A`. System dark mode uses the on-ink token set (ground `#0E1310`,
+`TextOnInk`, `MutedOnInk`, `HairlineOnInk`, `AccentOnInk`, `AccentTextOnInk`).
+No manual light/dark toggle for the app as a whole: the system setting
+decides. Avoid the default Material purple. (Until #455: Fraunces over Karla,
+`#FBF9F6` ground, paprika `#BF4A2B`.)
 
 **Android: every dialog, sheet and menu is composed inside its screen's
 `RecipeClipperTheme` block** (#142, #186). The theme is per screen, so one
@@ -570,7 +571,7 @@ over any screen (the tab bar, the received-file sheet) carry their own. The
 #186 sweep moved Recipes' Paste a link, List detail's Rename, the full-screen
 cooked photo with its date picker, and Edit's library-full prompt inside
 (`LibraryFullDialog` no longer wraps itself); a Robolectric test on each checks
-its button is paprika.
+its button is the app's primary (basil since #455; `assertInAppTheme`).
 
 *Revised.* Cook mode used to invert to ink unconditionally, on the reasoning
 that a screen propped up across a kitchen reads better dark. In practice a
@@ -1183,9 +1184,10 @@ unchanged.
   extension can't use `Strings.swift` (it formats the app's types), so
   `WidgetStrings` (`UI/Theme`, compiled into both targets; `Strings` delegates
   the keys it shares) reads the catalog, compiled into its bundle too. Its
-  text is Fraunces and Karla by name (`WidgetFont`): a `Font` made from
-  `AppFont`'s variable-axis UIFont crashed the extension, which WidgetKit
-  can't encode. The system asks once, on the first activity, whether to allow
+  text is Bricolage Grotesque and Instrument Sans by PostScript name
+  (`WidgetFont`, #455): a `Font` made from a UIFont with extra descriptor
+  attributes (the variable axes Fraunces once took) crashed the extension,
+  which WidgetKit can't encode. The system asks once, on the first activity, whether to allow
   Live Activities.
 - **The flag off** shows nothing new, and ending never checks the flag; turned
   off mid-cook, the reconcile above removes every countdown.
@@ -1695,7 +1697,7 @@ The first real tab of #46, still behind the #47 flag.
 - **The day strip** (#286, the owner's pick V2 "Day strip", 2026-10-19; both platforms). Under
   ‹ range ›, a row of the seven days the header names: the same block ‹ › move, so it follows
   free scrolling too. Each is a short weekday over its date; today, when it's among them, is
-  filled in paprika, and a paprika dot (white on today) sits under each day with something
+  filled in basil, and a basil dot (white on today) sits under each day with something
   planned. A tap brings that day to the top through the same `scrollTo` as an arrow or the month
   (`onStripDaySelected`). The two can't fight: the strip only asks for scrolls and never follows
   the list itself (it is `WeekUiState.strip`, from the block at the top), and the tapped day is in
@@ -1911,7 +1913,7 @@ The third tab of #46, still behind the #47 flag.
     "× 2": the lines above it already say that. A row only typed in shows what it did before,
     with no recipe line, and so does a recipe that's gone. The ViewModel works the lines out
     (`recipeLines`, by the row's id) whenever the list or the recipes' titles change.
-  - **The tick** is a ring on the right, under the thumb. It fills paprika with a white check.
+  - **The tick** is a ring on the right, under the thumb. It fills basil with a white check.
     The ring is drawn in muted, as the old checkbox was, so it stands out. The whole row is
     still the control: Android's row keeps `Role.Checkbox` and its toggle state, and iOS's
     keeps the selected trait. The tick sits level with the row's first line.
@@ -2020,7 +2022,7 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   before): "Ran out" or "Running low" adds its name as a typed item, silently,
   and the row shows the basket Groceries tag. Typing a name already in the pantry puts it back
   in stock rather than adding a twin.
-- **Expiry**: a badge only (#52 later added an opt-in morning reminder) (Expired before today; the date in paprika from today
+- **Expiry**: a badge only (#52 later added an opt-in morning reminder) (Expired before today; the date in basil from today
   to 3 days ahead), no notifications, as the epic says. Sort by aisle (the
   default) or by expiry (soonest first, undated last), from the menu as radio
   choices.
@@ -2056,7 +2058,7 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   out" section last; each row shows its quantity as written on the right (no
   button since 2026-09-29) and a "Low" tag while running low; tap for the edit
   sheet (the stock, quantity as written, "Always have", a use-by date, Delete
-  with undo), with swipes as shortcuts; touch and hold selects several (#258). Expired or within 3 days shows a paprika
+  with undo), with swipes as shortcuts; touch and hold selects several (#258). Expired or within 3 days shows a basil
   badge; an opt-in 9:00 notification lists what expires today or tomorrow
   (Settings → Pantry). Running low or out puts its name on the grocery list
   silently; the row shows the Groceries tab's basket tag whenever a grocery line names the
@@ -2085,7 +2087,7 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   when the row heads the section (Run out always does), so the heading shows too; a zero is
   off, and a box that is off is drawn at half strength. Hidden while the pantry is empty. **While selecting (#258) they stay, dimmed and off,
   rather than hiding,** so the rows never move under the finger that has just started
-  selecting. The colours are the theme's: In stock ink, Running low the Low tag's paprika text
+  selecting. The colours are the theme's: In stock ink, Running low the Low tag's basil text
   (the mockup's amber isn't a theme token), Run out muted like its section, on the
   `surfaceContainer` fill. The add and search fields and the list are unchanged.
 - **An amount typed with the name** (#302, the owner's choice, 2026-10-22; both platforms).
@@ -2120,14 +2122,14 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
 Saved recipes for a pantry item about to expire, behind the `useItUp` flag (on).
 
 - **Where it shows: the Pantry row and the expiry reminder,** both opening one sheet. The row
-  is where the use-by date already is, so the line ("3 saved recipes use it", paprika, under
+  is where the use-by date already is, so the line ("3 saved recipes use it", basil, under
   the date) sits beside what it explains and costs nothing when there's no match. The
   reminder is where the cook learns something expires, so its tap opens the Pantry with the
   sheet on everything due (Android `UseItUpInbox`, iOS `Router.useItUpPending`); with no
   saved recipe for any of it, the Pantry opens as before. The Week's ⋮ was the issue's third
   idea: left out, since planning from the Pantry already lands on the Week.
 - **Soon is the reminder's window** (`ExpiryReminders.due`): in stock, not a staple, expiring
-  today or tomorrow. Not the paprika badge's three days: the line and the morning note then
+  today or tomorrow. Not the basil badge's three days: the line and the morning note then
   name the same items. An item past its date isn't offered.
 - **Only saved recipes** (in at least one list, `ListDao.observeSavedRecipes`). Not history:
   a recipe merely opened isn't one the cook chose to keep, and the issue rules out anything
@@ -2188,7 +2190,7 @@ its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
     every step is filled or skipped, the header is the Done prompt ("7 steps added. Tap Done to
     review and save.").
   - **Visible when armed.** While a text step is armed the page outlines what a tap takes, a
-    light dotted paprika outline (`rgba(191,74,43,.55)`, the same on light and dark pages): for
+    light dotted accent outline (basil, `rgba(44,122,74,.55)` since #455, the same on light and dark pages): for
     Name each paragraph, list item and heading; for Ingredients and Steps each list as a whole
     (a list comes whole) and the paragraphs and headings. On Photo the images are outlined
     instead. Tapping a field button changes the header and the outlines at once, so a tap never
@@ -2296,7 +2298,7 @@ its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
   selected button to VoiceOver, as every tick in the app): native rows now (`ClipTextRow`,
   `ClipTextView`), not a web page, so the ticks are the ViewModel's (`ticked`) and survive
   rotation, where a web view's selection was lost with its reload.
-  - **Ticked lines are the selection,** washed in paprika (the app's 14% wash, as #254's), and
+  - **Ticked lines are the selection,** washed in basil (the app's 14% wash, as #254's), and
     the dock says "3 lines selected · tap the field they go in" (the count in ink, the rest
     muted, over the field buttons). Both orders work as on the page: armed, the step's confirm
     adds them; with nothing armed, a field's button does (#251). The page under the Text view
@@ -2304,7 +2306,7 @@ its select-then-tag toolbar (#237), and guided steps (#251) put it in order.
   - **A run in two taps:** with lines ticked, a tap on a line past them ticks every line up to
     it, as a second tap stretched a selection (#237); a tap in a gap ticks that line, a ticked
     line unticks. Not for Name, where each tap ticks its own line.
-  - **Adds stay marked:** a line an add took has a paprika bar, and the add's first line its tag
+  - **Adds stay marked:** a line an add took has a basil bar, and the add's first line its tag
     ("Ingredients · 3"), which takes the add back as the page's tag does. New text (more
     comments loaded) is new rows, with the old marks dropped, as a page loses its marks on a reload.
   - **The dotted outlines aren't drawn in the Text view:** the checkboxes already show what a tap
@@ -2535,7 +2537,7 @@ The optional extras of #46, one PR each.
   platforms), four to six rows, the days before and after the month muted but tappable. The
   month arithmetic is plain integers (Hinnant's civil-from-days), like the rest of `PlanDays`:
   no `java.time` on minSdk 24.
-- **A day with meals shows a paprika dot, not a count or titles.** The month answers "which
+- **A day with meals shows a basil dot, not a count or titles.** The month answers "which
   days are planned"; the week answers "what". Screen readers hear "…, meals planned".
 - **Tapping a day scrolls the days to it** (#232: that day at the top, the header naming its
   block from today; before, it opened the day's locale week). Which month opens: today's for
@@ -2881,19 +2883,19 @@ A mention gets an amount only when every rule holds; otherwise it stays exactly 
   name stay after the amount: "the melted butter" → "115 g melted butter".
 - **Japanese is a no-op** (no spaces, so no word boundaries), and so is a language without words.
 
-Where it shows: the inserted amount is a separate run of the text, in the paprika text accent
+Where it shows: the inserted amount is a separate run of the text, in the basil text accent
 and a heavier weight (Android SemiBold, iOS strongly emphasised); in a done cook-mode step it
 keeps only the weight, so the dimmed row stays dim. The screen checks the flag; the ViewModel
 computes the parts only while the switch is on, and again on every servings or units change.
 
 **Ingredient links (#254, the owner's call, 2026-10-14).** A mention naming several lines with
 different amounts, where the step doesn't say which, is a link: the mention's own words in the
-paprika text accent, underlined, never a number. `StepAmounts.Part.lines` holds the lines (the
+basil text accent, underlined, never a number. `StepAmounts.Part.lines` holds the lines (the
 corpus marks it `⟪butter|0,1⟫`), and which lines match is the core's, pinned by the corpus. A
 tap is `onIngredientLink(step, lines)`; the ViewModel holds `IngredientJump` (the lines, the
 step, whether they are still highlighted, the scroll the view still owes) and fades the
 highlight after 3 s (`HIGHLIGHT_MILLIS`, iOS `highlightDuration`, through the injected sleep).
-The view does the scrolling. Reading view: scroll to the first line, a fading paprika wash on
+The view does the scrolling. Reading view: scroll to the first line, a fading basil wash on
 the lines, and a "Back to step N" chip above Start cooking that scrolls back and ends the jump.
 Cook mode: the folded ingredients bar opens with the lines highlighted and the chip under them;
 the chip folds it again (only if the link opened it), as do toggling the bar, starting or
@@ -3054,7 +3056,7 @@ bends the settled link field: an always-visible field became a tile that opens i
   `recipe/{id}?cook=true` (which resumes, never restarts: #333). Otherwise it shows only the name and **"Open recipe"** (decided
   here: the plain wording). The photo and name also open the recipe, as the Continue cooking
   row did. A recipe with no photo gets its designed image, 112 dp tall (#403, below; a short band in
-  the paprika wash with `noPhotoImage` off), never a stock image.
+  the basil wash with `noPhotoImage` off), never a stock image.
   A newer recipe never shows the last one's place, even for a moment.
 - **Add a recipe:** Paste a link opens the Recipes screen's dialog (Android `PasteLinkDialog`,
   iOS the same alert), whose Go is enabled only for what `UrlInput` reads as a link, so
@@ -3123,7 +3125,7 @@ whose views strip carries the Lists card that Home's Lists row was the only way 
   existing dialog, #372), Scan a recipe (#226, `photoText`), Type a recipe (#29), Ask an AI (#351,
   `askAi`), each with Home's tile line, then "Or share a link to Recipe Clipper from any app." A choice
   closes the sheet and then goes where it leads (iOS waits for the sheet to be away before opening the
-  next sheet). The + is a paprika circle; on a page that is not the root (a view) there is none, as
+  next sheet). The + is a basil circle; on a page that is not the root (a view) there is none, as
   before. **The Settings gear sits beside the Recipes title**, left of the + (the Settings rule left
   this to the owner; this is that call). Select (#377) sits left of the gear. **Superseded with
   `recipesTopB` on (#449, owner, 2026-11-21):** Settings and Select move into a ⋮ menu, last in the
@@ -3223,7 +3225,7 @@ debug and release, both platforms); off, no close button and no switch, and the 
   Settings.
 - **The tidy list (#286, the owner's pick V1).** Each row is the photo, the
   title, then the site and total time ("sundaysupper.blog · 1h 15m"), with a
-  filled paprika bookmark for a recipe in any list instead of the word
+  filled basil bookmark for a recipe in any list instead of the word
   "Saved" (its spoken label is "Saved to a list"). The site is credited as
   the reading view credits it, through one helper on each platform
   (`sourceCreditText`, `Strings.sourceCredit`): the domain, "Clipped by you ·
@@ -3484,7 +3486,7 @@ the search's own).
   - **Why half and not all.** "All of it" would match almost nothing (nobody has every line); "any
     one" would match nearly everything (everyone has salt or eggs). Half is the plainest middle the
     cook can check by eye. The rule is **not a hidden verdict**: with the chip on, **each row it
-    keeps says "You have 6 of 8"** (`recipes_pantry_have`, under the site and time; a paprika line,
+    keeps says "You have 6 of 8"** (`recipes_pantry_have`, under the site and time; a basil line,
     like Use it up's) and one muted line under the chips says "Shows recipes where at least half of
     the ingredients are in your pantry, by name, not by amount." Both count the nameable lines, so
     a recipe of ten lines with two unnameable says "of 8". No model decisions (#104): a name match
@@ -3553,30 +3555,31 @@ and selecting (#377) are the same code, moved.
 
 From the top:
 
-- **Title row:** "Recipes", the paprika + (the Add a recipe sheet, unchanged), then **⋮, last on the
+- **Title row:** "Recipes", the accent + (the Add a recipe sheet, unchanged), then **⋮, last on the
   right**. Its menu: **Select** (starts selecting with nothing ticked, as the old Select button did;
   only while there are rows) and **Settings** (what the gear opened). **No gear and no Select button in
   the row** (owner, 2026-11-21: this supersedes #375's "the gear beside the title" and #377's Select
   placement). Android `LibraryTitleRowB` (`libraryMore`, `librarySelect`, `librarySettings`), iOS
   `LibraryTitleRowB` (`library.more`, a `Menu`, the dots turned upright).
-- **Today's card, as B draws it:** outlined on the ground (1 dp hairline, radius 18) rather than filled,
-  the eyebrow in paprika ("TODAY · DINNER"), the name in Fraunces 18, and under it a row with the next
-  meal on the left ("Snack: **Banana Bread**", the name in ink) and the button on the right as a paprika
-  pill with a play glyph. Continue cooking puts its step and countdown under the name. **The close button
+- **Today's card, as B draws it:** outlined on the ground (1 dp hairline, radius 18) rather than filled
+  (Market, #455, bends this back to a soft filled panel on the surface colour: on white the outline read
+  as a form field), the eyebrow in the accent ("TODAY · DINNER"), the name in the display face at 18, and
+  under it a row with the next meal on the left ("Snack: **Banana Bread**", the name in ink) and the button
+  on the right as an accent pill with a play glyph. Continue cooking puts its step and countdown under the name. **The close button
   of #448 stays** at the top right, with its setting untouched (merged from `today-card-close`, PR #450).
   What the card shows is #402's and #448's rules, unchanged.
 - **The views shelf:** one band of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat),
-  each an icon, the count in Fraunces 20 and the name (11.5, two lines when it needs them), divided by
-  hairlines; **Lists in the paprika tone** (`PaprikaTone` / `Palette.paprikaTone`: `#F6E3DA` with
-  `#8E3219` on it, `#45261C` with `#F4B7A3` on ink, the mockup's values; a new token pair, used only by
-  this design). The cells **navigate, never filter**, to the same screens as the strip's cards. They
+  each an icon, the count in the display face at 20 and the name (11.5, two lines when it needs them), divided by
+  hairlines; **Lists in the accent tone** (`AccentTone` / `Palette.accentTone`; introduced here as the
+  paprika tone, `#F6E3DA` with `#8E3219` on it, `#45261C` with `#F4B7A3` on ink; since #455 Market's
+  basil tone, `#E1F0E5` with `#1C5232`, `#1B3324` with `#A9E3BC` on ink, also the tab bar's indicator). The cells **navigate, never filter**, to the same screens as the strip's cards. They
   share the width (Lists 1.1 to the others' 1); **when a name's longest word doesn't fit its share**
   (German's "eingegeben", or a large font), every cell takes the width it needs and the shelf
   **scrolls sideways**, so nothing clips (Android: a `Layout` over the cells' minimum intrinsic widths,
   tested in German at twice the text; iOS: each name's widest word measured in its own font at the
   current Dynamic Type size). Above search, where #378 had the chips.
 - **Search** with a **filter button at its end** (44 dp, radius 12): plain while no filter is on, the
-  paprika tone with a **badge counting the filters on** once one is (TalkBack and VoiceOver read "Filter
+  accent tone with a **badge counting the filters on** once one is (TalkBack and VoiceOver read "Filter
   recipes, 2 filters on"). It opens **the filter sheet**: "Filter recipes", **Clear**, and the three
   filters as **switches**, each with its line ("Total time, or prep plus cook", "Never marked as
   cooked", "At least half the ingredients, by name"); Not cooked yet is left out inside the Cooked view as
@@ -4553,8 +4556,8 @@ flag, on by default.
   (`RecipeRenderer.content`: its chosen servings, the cook's units and temperatures, the
   model's decisions). The file, `<list name>.pdf`, goes to the share sheet as Send as file's
   does (Android: `cacheDir/exports/cookbook/`, through the app's FileProvider).
-- **The look:** the theme's type, Fraunces over Karla, at the screen's weights (500 for
-  headings, 600 for step numbers), in ink, muted and paprika on white, whatever the phone's
+- **The look:** the theme's type, Bricolage Grotesque over Instrument Sans (since #455; SemiBold for
+  headings, Bold for step numbers), in ink, muted and basil on white, whatever the phone's
   theme. US Letter in the US, Canada, Mexico and the Philippines, A4 elsewhere; the print
   dialog fits it to the paper.
 - **Where pages break is pure and shared:** the platforms measure each block's lines (a
@@ -4700,8 +4703,8 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   picks the side itself.
 - **Android's bubble** is a `Popup` of its own, placed from the control's window bounds
   (`Modifier.tooltipAnchor`, a `Modifier.Node` reporting `onGloballyPositioned` to its screen's
-  `TooltipHost`), in the theme's inverse colours (ink with ground text and "Got it" in paprika on
-  ink; the reverse in dark mode) and Karla, with an arrow drawn at the control. It is **not
+  `TooltipHost`), in the theme's inverse colours (ink with ground text and "Got it" in light basil on
+  ink; the reverse in dark mode) and Instrument Sans, with an arrow drawn at the control. It is **not
   focusable**, so a tap outside it and TalkBack reach the screen as before (no focus trap), and a
   live region announces it. "Something covers the screen" is the window losing focus (a dialog,
   a sheet, a menu and the share sheet are windows of their own), the keyboard, or the screen's
@@ -4710,7 +4713,7 @@ tip". Settings' "Show the tour again" became **"Show tips again"**.
   which a tooltip that waits for "Got it" doesn't want.
 - **iOS's bubble** is SwiftUI's `.popover` kept a popover on iPhone
   (`presentationCompactAdaptation(.popover)`), shown from our state (`.tooltipAnchor` on the
-  control, `.tooltipHost` on the screen), in the same inverse colours and Karla, wider at the
+  control, `.tooltipHost` on the screen), in the same inverse colours and Instrument Sans, wider at the
   accessibility text sizes; VoiceOver reads it as it appears, and its escape gesture or a tap
   outside closes it. **Not TipKit**, though it is first-party and has `popoverTip`: TipKit keeps
   its own datastore of which tips were shown and closed, which can only be reset before
@@ -4804,7 +4807,7 @@ offer for the first was replaced and gone. Owner's decisions:
   Restocking (from the row, or putting away) returns an item to In stock; it never takes the
   line off the list.
 - **The tag is the Groceries tab's basket and label** (owner, 2026-09-29, testing on a phone:
-  "On list" wasn't understood). The same outlined paprika chip, same place (after the name and
+  "On list" wasn't understood). The same outlined basil chip, same place (after the name and
   "Low", wrapping under a long name or large text), same meaning and tap, but it wears the tab's
   own icon (`ic_tab_groceries`; iOS `basket`) and its "Groceries" label, so it says where the
   item went. Spoken, it's "On your grocery list", and its action "Remove from grocery list". At
@@ -6281,8 +6284,8 @@ platforms. Supersedes the "recipe line" bullet of #286 above while the flag is o
 
 - **A row is: the name; its amount and note as plain text, as before** (an added-up row's lines, the
   "× 3" row, the lines that sit together); **then the recipes it is for, each a tag on a line of its
-  own.** A tag is a small rounded pill tinted with the paprika wash (the accent-for-text token at 12%:
-  paprika on the ground, the lighter on-ink paprika in dark mode, as the Home timer's tag) with a
+  own.** A tag is a small rounded pill tinted with the accent wash (the accent-for-text token at 12%:
+  basil on the ground, the lighter on-ink basil in dark mode, as the Home timer's tag) with a
   small book glyph (Android's hand-drawn `ic_book`, iOS's SF Symbol `book`), "Mushroom omelette · Thu"
   when the line came from the plan (the day is `plannedDay`, short weekday as Week's), just the title
   when it came from "Add to groceries" on the recipe. Tags wrap.
@@ -6691,8 +6694,8 @@ takes its place. `proUnlock` off: `freeTier` and `oneCookbook` decide exactly as
   store has given one; no figure otherwise), **Restore purchases**, the pending or failed line (#107's
   words), and "Free. No ads. No account. No subscription." Bought, the button gives way to "Pro is
   unlocked. Thank you!". The Settings index row says "Unlocked" when Pro.
-- **The badge** (`ProBadge` on both): "Pro" in the accent paprika (tertiary / `accentText`) inside a
-  thin paprika outline at half strength, 11pt semibold Karla, no fill: quiet, no Material purple. It
+- **The badge** (`ProBadge` on both): "Pro" in the accent (tertiary / `accentText`) inside a
+  thin accent outline at half strength, 11pt semibold Instrument Sans, no fill: quiet, no Material purple. It
   sits after a locked extra's own label; a locked extra with no button of its own gets one muted line
   with the badge (`ProTeaserRow`). An iOS context menu can't draw an outline, so Skip's menu item says
   "Pro" as its subtitle there.
@@ -6890,6 +6893,85 @@ owner's): the pending PITH trademark application (USPTO 50168836) and the domain
   code identifiers stay `week`.
 - **Tests** match the new labels (`AppShellTest`, the walkthroughs, the iOS UI tests' `tab("Plan")`
   and `buttons["Plan"]`); `AutoBackupPolicyTest(s)` pins the old prefix's copies.
+
+## Visual identity: Market (owner's pick, 2026-11-22)
+
+The owner felt the app looked "very much a Claude AI UI" (a serif display over a warm off-white,
+one terracotta accent) and asked for a revamp. Of five directions (private artifact
+https://claude.ai/artifact/C2M4o4HiQSShy7B5uK8VX6, source
+`~/Downloads/RecipeClipper-designs/visual-revamp/`, `revamp-A.png`) they picked **A, "Market"**:
+bright, fresh and green, crisp white, basil, a lively grotesk; "a well-lit kitchen counter on a
+Saturday". #455. The HTML's `.t-A` and `.t-A.dk` variables are the source of every value here.
+
+- **Type:** **Bricolage Grotesque** (display: the screen titles, the recipe's name, section
+  headings, card names, times, step numbers, the timer, the no-photo image) over **Instrument Sans**
+  (body, labels, buttons). Both SIL OFL from Google Fonts; the licences are
+  `assets/licenses/OFL-*.txt` and iOS `Resources/Licenses/OFL-*.txt`. **Static weights, bundled
+  once per platform:** Bricolage 600, 700, 800 and Instrument Sans 400, 500, 600, 700, made with
+  fontTools' instancer from the published variable files (Bricolage at optical size 24, the
+  design's display sizes 19-32, and width 100; "optical size on" in the mockup, fixed at the size
+  most of the type sits at). Android `res/font/bricolage_*.ttf`, `instrument_*.ttf` (`Bricolage`,
+  `InstrumentSans` families); iOS `Resources/Fonts/bricolage-*.ttf`, `instrument-*.ttf` in
+  `UIAppFonts` (the widgets register the four they use), picked by PostScript name nearest the
+  weight asked (`AppFont.bricolage`, `AppFont.instrumentSans`, `AppFont.fontName`). The display
+  slots are Bold, tracked -0.025em as the design: headlineMedium 32, headlineSmall 27 (the
+  recipe), titleLarge 22, titleMedium 19 (cards); titleSmall is Instrument SemiBold 16 (rows),
+  labels SemiBold, buttons Bold. Fraunces, its italic and Karla are gone.
+- **Colour, light:** ground `#FFFFFF`, surface `#F2F6F2` (cards, the search field:
+  `surfaceContainer`), raised surface `#E6EDE7` (steppers, a card's close button:
+  `surfaceContainerHigh`), ink `#14201A`, muted `#56645B`, hairline `#E1E7E2`, basil `Accent`
+  `#2C7A4A` with white on it (`primary`), `AccentText` `#25683E` (`tertiary`, the accent for
+  words and icons: a shade deeper than the fill, the design's `accTx`), `AccentTone` `#E1F0E5` with
+  `#1C5232` on it (`secondaryContainer`: the tab bar's indicator, the filter button with a filter on,
+  the pills, the Lists cell), outline `#9AA79E` (checkboxes).
+- **Colour, dark (the on-ink set):** ground `#0E1310` (`InkGround`), sheets `#151C17`, surface
+  `#17201A`, raised `#202B24`, text `#EDF3EE`, muted `#9BA89F`, hairline `#28332C`, basil
+  `#5DBE80` with **dark words** `#06170C` on it (the old dark scheme kept paprika with white; a light
+  basil fill reads better on the green-black ground, as the design draws it), `AccentTextOnInk`
+  `#7ED39C`, tone `#1B3324` with `#A9E3BC`, outline `#6B7A70`. Dark mode stays the system's call;
+  cook mode follows it unless "Dark while cooking" is on.
+- **Two colours the design doesn't name.** Errors and the swipe-to-delete ground were paprika,
+  which doubled as the accent; on a green accent they need their own: a tomato `Danger` `#B2371F`
+  (`DangerOnInk` `#F4A28C`), from the no-photo tomato tint's family (6.1:1 on white, 9.3:1 on the
+  dark ground). **Lemon** `#F3C845`, in the design's palette, colours only its illustrations;
+  nothing in the app calls for a second accent yet, so it is not a token.
+- **Shape:** 18 for cards and panels, 14 for photos, thumbnails, fields and the timer box, 20 for
+  the reading view's hero photo, 26 for a sheet's top, pills for buttons, chips and badges, 8 for
+  tags, 7 for checkboxes (`Corners` in Theme.kt and Material's `Shapes`; iOS `Radius`). Rows are flat
+  with hairlines.
+- **Component treatments** (the design's, inside today's layouts): the Today card a soft filled panel on the surface
+  (#449's outline bends back: on white it read as a form field), its close button on the raised
+  surface; the search field filled, radius 14, no border at rest; the tab bar's open tab in the
+  tone's deep basil (Android on a tone pill; iOS's system bar takes the colour); cook mode's current
+  step a 2 dp basil ring at 18, its timer in a tone box at 14 with Bricolage ExtraBold digits; step
+  numbers in Bricolage ExtraBold basil, the times row's values in Bricolage Bold; the servings
+  stepper's − and + circles on the raised surface; the ingredient checkbox 22 dp, radius 7, the
+  outline colour, filled basil when ticked (Android draws its own, since Material's can't take the
+  radius; same semantics); the Settings rows' and the Plan's period chevrons are stroke icons
+  (`ic_chevron_right` / `_left`, autoMirrored; iOS's SF Symbols), not "›" glyphs, which the new
+  faces draw heavy. Every hard-coded radius moved onto the tokens (Android 108 in 49 files) and
+  every literal colour onto the theme; white on a primary fill is `onPrimary`.
+- **Token names describe roles now:** `Paprika`, `PaprikaTextOnInk`, `PaprikaTone` /
+  `LocalPaprikaTone` (#449) and iOS `Palette.paprikaTone` became `Accent`, `AccentTextOnInk`,
+  `AccentTone` / `LocalAccentTone`, `Palette.accentTone`, keeping the on-ink pattern for dark mode.
+  `ThemeTokensTest` (Android) and `ThemeTests` (iOS) pin A's values in light and dark, so a
+  stray revert fails.
+- **Outside the app's screens:** the widgets (`widget_*` colours, a sans title; iOS `WidgetFont`
+  by PostScript name), the Live Activity (Bricolage ExtraBold countdown), the notifications' accent
+  (`R.color.accent`, set on every builder), the launch background (`ground`, iOS `LaunchBackground`:
+  white, `#0E1310` dark), the share extension (registers the seven fonts from the app's bundle),
+  print (Bricolage SemiBold headings, Bold step numbers, basil on white) and the clip view's page
+  outlines (`clipper.js`, basil).
+- **Not changed:** the app icon (its paprika ground stays, `ic_launcher_background`; the icon is a
+  separate decision), every layout (the top of Recipes is being redrawn separately, branch
+  `recipes-filters`: the mockup's "Lists 6" button beside search is that work's), and the icon set
+  (Material and SF Symbols; the design's 1.8 px stroke icons would be a set of their own).
+- **No feature flag** (owner's choice, an exception to #87's rule): a look half-applied behind a
+  switch isn't useful, and the old look would have to be kept alive beside the new in every screen.
+- **Left for later** (owner, 2026-11-23): row titles are Instrument Sans Bold 17, the design's are
+  650 at 16; form fields other than search stay outlined; the cook step's "STEP 3" eyebrow is
+  SemiBold, the design's 800; the icon set; the light checkbox outline `#9AA79E` is about 2.5:1 on
+  white, under the 3:1 guideline for controls (A's value, kept; the old outline was no better).
 
 ## Fraction glyphs read from a photo (#245, 2026-10-13)
 
@@ -7309,20 +7391,17 @@ is the blank tile or band it was).
 - **The drawing is one component per platform:** Android `RecipeImagePlaceholder` / `RecipeImage`
   (`ui/common/RecipeImagePlaceholder.kt`), iOS `RecipeImagePlaceholder` / `RecipeImage`
   (`UI/Common/RecipeImagePlaceholder.swift`). The style is picked by the size it is given, not
-  the screen: the shorter side 64 dp/pt or less is the monogram (Fraunces, 56% of the side);
-  larger is the label, in Fraunces italic at 18% of the side (never under 10), centred, the
+  the screen: the shorter side 64 dp/pt or less is the monogram (Bricolage Bold since #455, 56% of the side);
+  larger is the label, upright in Bricolage SemiBold at 18% of the side (never under 10), centred, the
   first name only; a surface at least 1.5 times wider than tall (Home's band at 112, the
   reading view's banner at 150) sets up to three names low and left at 21 (25 from 140 tall),
   joined by a half-faded dot. No ingredient lines gives the monogram; no letter either, a plain
-  tint tile. The five tints (paprika, saffron, sage, cocoa, rose) are theme tokens, light and
-  on ink (`NoPhotoTint`, `LocalNoPhotoTints`; iOS `Tokens.noPhotoLight/OnInk`,
-  `Palette.noPhotoTint`), the mockup's values. The italic is the real Fraunces Italic
-  (`res/font/fraunces_italic.ttf`, iOS `Resources/Fonts/fraunces-italic.ttf`, in `UIAppFonts`,
-  PostScript name `Fraunces-Italic`): one instance of the published variable font (weight 400,
-  optical size 36, no soft or wonky forms) subset to Latin, 55 KB, under the same OFL as the
-  upright (`OFL-Fraunces.txt` says so). Android registers it in the `Fraunces` family as its
-  italic; iOS falls back to the slanted upright only if the font did not register. The upright
-  is the published file, unsubset.
+  tint tile. The five tints are theme tokens, light and on ink (`NoPhotoTint`, `LocalNoPhotoTints`;
+  iOS `Tokens.noPhotoLight/OnInk`, `Palette.noPhotoTint`): since #455 Market's basil, lemon, tomato,
+  sky and oat, the revamp mockup's values (until then paprika, saffron, sage, cocoa and rose, with
+  the label in a bundled Fraunces Italic; Bricolage has no italic, so the names stand upright, as
+  the design draws them). The names keep their own case: the design sets them lowercase, which
+  would misspell German nouns ("Zucker").
 - **Where it shows:** Recipes and list rows, Home's Recently viewed (84), Week rows (44), the
   Lists covers, Home's Continue cooking band (112 with no photo, 136 with one) and the reading
   view's banner (150 with no photo, 200 with one). A photo that fails to load shows the same
@@ -7398,12 +7477,12 @@ still parsed, stored and exported, so turning it on shows them without a re-shar
 - **The reading view** (`StepPhotoThumbnail`, iOS `StepPhotoThumbnail`): a step with photos gets a
   54 dp square, 9 dp corners, at the right of its text, 12 dp from it, badged bottom left with the first
   photo's number (white on ink at 78%). Two or more stack: the second behind, offset 4 dp right and up,
-  at 55%, with a paprika "+1" (count − 1) pill top right. A step without has no thumbnail and today's
+  at 55%, with a basil "+1" (count − 1) pill top right. A step without has no thumbnail and today's
   full-width text. One button for a screen reader: "Photo 3 of step 2" or "2 photos of step 3", action
   "View full screen".
-- **The viewer** (`StepPhotoViewer`): full screen on `#0E0C0B` in both themes, words `#F1ECE6`: Close,
-  "Photo 3 of 7", "Step 3", the photo fitted, page dots, then the step's number (Fraunces, the on-ink
-  paprika) and its text as the reading view shows it (temperatures converted; not Chef mode's short
+- **The viewer** (`StepPhotoViewer`): full screen on the on-ink ground (`#0E1310` since #455) in both
+  themes, words `TextOnInk`: Close, "Photo 3 of 7", "Step 3", the photo fitted, page dots, then the
+  step's number (Bricolage, `AccentTextOnInk`) and its text as the reading view shows it (temperatures converted; not Chef mode's short
   version). Swipes through every step photo of the recipe in step order. The page shown is the
   ViewModel's (`stepPhotoViewer`, the photo's place among all of them), so a rotation keeps it.
 - **Cook mode**: done and upcoming rows carry the first photo at 40 dp (7 dp corners, no badge or

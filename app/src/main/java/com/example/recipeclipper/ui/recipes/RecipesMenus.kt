@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
@@ -36,6 +35,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.ui.edit.ScanChoices
 import com.example.recipeclipper.ui.edit.rememberScanSources
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * The + in the Recipes header (#102): type a recipe in, paste a link, or, with [onScan] (the
@@ -86,7 +86,7 @@ internal fun SortMenu(sort: RecipeSort, onSort: (RecipeSort) -> Unit) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(Corners.Small)
                 .clickable(role = Role.Button) { expanded = true }
                 .minimumInteractiveComponentSize()
                 .padding(horizontal = 4.dp)
@@ -155,7 +155,7 @@ internal fun PasteLinkDialog(
                 } else {
                     null
                 },
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Field,
                 modifier = Modifier.testTag("pasteField")
             )
         },

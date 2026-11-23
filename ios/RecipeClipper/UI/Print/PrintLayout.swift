@@ -1,7 +1,7 @@
 import UIKit
 
-/// The printed card's look (#318): the theme's type, Fraunces over Karla, in ink, muted and
-/// paprika on white paper, in points. Light whatever the phone's theme: it is for paper. Android's
+/// The printed card's look (#318): the theme's type, Bricolage Grotesque over Instrument Sans, in
+/// ink, muted and basil on white paper, in points. Light whatever the phone's theme: it is for paper. Android's
 /// `PrintStyle`.
 struct PrintStyle {
     /// US Letter in the US and Canada, A4 elsewhere; the print dialog fits it to the paper.
@@ -18,15 +18,16 @@ struct PrintStyle {
     // The theme's light tokens: paper is always light.
     static let ink = Tokens.ink
     static let muted = Tokens.muted
-    static let paprika = Tokens.paprika
+    static let accent = Tokens.accentText
 
-    let title = AppFont.fraunces(24, weight: 500)
-    let bookTitle = AppFont.fraunces(34, weight: 500)
-    let section = AppFont.fraunces(15, weight: 500)
-    let group = AppFont.fraunces(12, weight: 500)
-    let stepNumber = AppFont.fraunces(11.5, weight: 600)
-    let text = AppFont.karla(11, weight: 400)
-    let small = AppFont.karla(10, weight: 400)
+    // Android's PrintStyle: Bricolage SemiBold for headings, Bold for step numbers (#455).
+    let title = AppFont.bricolage(24, weight: 600)
+    let bookTitle = AppFont.bricolage(34, weight: 600)
+    let section = AppFont.bricolage(15, weight: 600)
+    let group = AppFont.bricolage(12, weight: 600)
+    let stepNumber = AppFont.bricolage(11.5, weight: 700)
+    let text = AppFont.instrumentSans(11, weight: 400)
+    let small = AppFont.instrumentSans(10, weight: 400)
 
     func string(_ s: String, _ font: UIFont, _ color: UIColor, centre: Bool = false) -> NSAttributedString {
         let paragraph = NSMutableParagraphStyle()
@@ -110,14 +111,14 @@ extension PrintStyle {
             case .title(let s): return textBlock(string(s, title, Self.ink), space: 0, keep: keep)
             case .credit(let s): return textBlock(string(s, small, Self.muted), space: 4, keep: keep)
             case .meta(let s): return textBlock(string(s, small, Self.muted), space: 6, keep: keep)
-            case .section(let s): return textBlock(string(s, section, Self.paprika), space: 18, keep: keep)
+            case .section(let s): return textBlock(string(s, section, Self.accent), space: 18, keep: keep)
             case .groupHeading(let s): return textBlock(string(s, group, Self.muted), space: 8, keep: keep)
             case .ingredient(let s):
                 return textBlock(string(s, text, Self.ink), space: 4, keep: false, x: margin + 14, width: contentWidth - 14,
                                  marker: string("•", small, Self.muted))
             case .step(let n, let s):
                 return textBlock(string(s, text, Self.ink), space: 8, keep: false, x: margin + 22, width: contentWidth - 22,
-                                 marker: string("\(n).", stepNumber, Self.paprika))
+                                 marker: string("\(n).", stepNumber, Self.accent))
             case .note(let s): return textBlock(string(s, text, Self.ink), space: 4, keep: keep)
             // A tip (#432): a plain paragraph, unnumbered, a little apart from the next.
             case .tip(let s): return textBlock(string(s, text, Self.ink), space: 8, keep: keep)

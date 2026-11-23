@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
@@ -35,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * One cookbook (#345, V4): under search, one strip of cards: Lists first (#371: it opens the Lists
@@ -100,7 +100,7 @@ private fun ViewCard(
             .width(104.dp)
             // The same height whether a name takes one line or two, so the strip reads as a row.
             .heightIn(min = 112.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(Corners.Card)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = label }

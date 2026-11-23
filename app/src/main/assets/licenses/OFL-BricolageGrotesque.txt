@@ -1,4 +1,8 @@
-Copyright 2019 The Karla Project Authors (https://github.com/googlefonts/karla)
+Bundled here: bricolage_semibold.ttf, bricolage_bold.ttf and bricolage_extrabold.ttf (Bricolage Grotesque, static
+instances of the published variable font: weights 600, 700 and 800, optical size 24,
+width 100; #455). All are under the licence below.
+
+Copyright 2022 The Bricolage Grotesque Project Authors (https://github.com/ateliertriay/bricolage)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +24,7 @@ import coil.compose.AsyncImage
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.PhotoPost
 import com.example.recipeclipper.data.model.ParseError
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * A load that failed: what went wrong, and what can be done about it. Every error offers
@@ -63,22 +63,22 @@ internal fun RecipeErrorView(
                 // A post with a photo (#198): Try again, and beside it the
                 // photo read on the device, for the cook to check.
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                    OutlinedButton(onClick = actions.onRetry, shape = Corners.Pill) {
                         Text(stringResource(R.string.action_try_again))
                     }
-                    Button(onClick = { onReadPhoto(photoPost) }, shape = RoundedCornerShape(12.dp)) {
+                    Button(onClick = { onReadPhoto(photoPost) }, shape = Corners.Pill) {
                         Text(stringResource(R.string.action_read_photo))
                     }
                 }
             } else if (clipUrl == null) {
-                Button(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                Button(onClick = actions.onRetry, shape = Corners.Pill) {
                     Text(stringResource(R.string.action_try_again))
                 }
             } else {
                 // A page with no recipe data (#37): Try again stays first,
                 // outlined; clipping it by hand is the one filled button, and
                 // reporting the site (#30) is the quiet option under it.
-                OutlinedButton(onClick = actions.onRetry, shape = RoundedCornerShape(12.dp)) {
+                OutlinedButton(onClick = actions.onRetry, shape = Corners.Pill) {
                     Text(stringResource(R.string.action_try_again))
                 }
                 Spacer(Modifier.height(20.dp))
@@ -90,7 +90,7 @@ internal fun RecipeErrorView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = { onClip(clipUrl) }, shape = RoundedCornerShape(12.dp)) {
+                Button(onClick = { onClip(clipUrl) }, shape = Corners.Pill) {
                     Text(stringResource(R.string.action_clip_it_yourself))
                 }
             }
@@ -145,7 +145,7 @@ private fun PostPreview(post: ParseError.NoTranscription) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(Corners.Photo)
         )
         Spacer(Modifier.height(16.dp))
     }

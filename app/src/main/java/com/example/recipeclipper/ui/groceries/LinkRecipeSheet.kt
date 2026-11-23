@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -29,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * "For a recipe…" (#422): the cook's recipes, most recently viewed first, searchable by title or
@@ -57,7 +57,7 @@ internal fun LinkRecipeSheet(
                     onValueChange = onQueryChange,
                     label = { Text(stringResource(R.string.label_search_recipes)) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = Corners.Field,
                     modifier = Modifier.fillMaxWidth().testTag("linkSearch")
                 )
                 Spacer(Modifier.height(8.dp))

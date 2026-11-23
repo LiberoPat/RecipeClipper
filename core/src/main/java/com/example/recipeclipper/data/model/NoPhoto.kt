@@ -26,13 +26,13 @@ data class NoPhotoArt(val initial: String?, val labels: List<String>, val tint: 
  * first letter, skipping a leading article from `shared/tables/<language>/articles.json`; the
  * first ingredient names as written, without amount or unit (read by [IngredientName]),
  * skipping headings and the language's staples (`staples.json`: salt, pepper, oil, water);
- * and one of [TINTS] warm tints from a stable hash of the recipe's uid, so a recipe keeps its
+ * and one of [TINTS] tints from a stable hash of the recipe's uid, so a recipe keeps its
  * colour everywhere and after a rename. Pure, and written twice (iOS's `NoPhoto`): the hash is
  * FNV-1a, the same on both, so a recipe has one colour on both platforms.
  */
 object NoPhoto {
 
-    /** Paprika, saffron, sage, cocoa and rose. */
+    /** Basil, lemon, tomato, sky and oat (#455). */
     const val TINTS = 5
 
     private class Articles(words: LanguageWords) {

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -43,6 +42,7 @@ import com.example.recipeclipper.data.model.CookedPhoto
 import com.example.recipeclipper.data.model.Tooltip
 import com.example.recipeclipper.ui.plan.fullDate
 import com.example.recipeclipper.ui.plan.shortDate
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.tour.tooltipAnchor
 import java.io.File
 
@@ -73,7 +73,7 @@ internal fun CookedPhotosSection(
             AddPhotoMenu(sources, onMarkCooked) { open ->
                 OutlinedButton(
                     onClick = open,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = Corners.Pill,
                     modifier = Modifier.tooltipAnchor(Tooltip.RECIPE_MADE_THIS)
                 ) {
                     Text(stringResource(R.string.action_i_made_this))
@@ -89,7 +89,7 @@ internal fun CookedPhotosSection(
                     Column(
                         Modifier.width(THUMB).clickable { onOpen(photo) }.semantics { contentDescription = label }
                     ) {
-                        CookedImage(photo, Modifier.size(THUMB).clip(RoundedCornerShape(10.dp)), ContentScale.Crop)
+                        CookedImage(photo, Modifier.size(THUMB).clip(Corners.Photo), ContentScale.Crop)
                         Text(
                             shortDate(photo.day),
                             style = MaterialTheme.typography.labelMedium,
@@ -101,7 +101,7 @@ internal fun CookedPhotosSection(
                 item(key = "cooked-add") {
                     AddPhotoMenu(sources, onMarkCooked) { open ->
                         Box(
-                            Modifier.size(THUMB).tooltipAnchor(Tooltip.RECIPE_MADE_THIS).clip(RoundedCornerShape(10.dp))
+                            Modifier.size(THUMB).tooltipAnchor(Tooltip.RECIPE_MADE_THIS).clip(Corners.Photo)
                                 .background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = open),
                             contentAlignment = Alignment.Center
                         ) {

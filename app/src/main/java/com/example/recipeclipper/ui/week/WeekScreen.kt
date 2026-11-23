@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.week
 
+import androidx.compose.ui.res.painterResource
 import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -27,7 +28,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -111,6 +111,7 @@ import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.sharefile.shareFileUri
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TooltipHost
 import java.io.File
@@ -345,7 +346,7 @@ private fun PeriodNavigation(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         IconButton(onClick = onPrevious, modifier = Modifier.semantics { contentDescription = previousDescription }) {
-            Text("‹", style = MaterialTheme.typography.headlineSmall)
+            Icon(painterResource(R.drawable.ic_chevron_left), contentDescription = null)
         }
         // One line: the range names both weekdays since #232, so it shrinks a little beside
         // "Today" rather than squeeze the button or wrap.
@@ -359,7 +360,7 @@ private fun PeriodNavigation(
                 modifier = Modifier.weight(1f, fill = false).testTag(labelTag)
             )
             IconButton(onClick = onNext, modifier = Modifier.semantics { contentDescription = nextDescription }) {
-                Text("›", style = MaterialTheme.typography.headlineSmall)
+                Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null)
             }
         }
         if (backLabel != null) {
@@ -370,7 +371,7 @@ private fun PeriodNavigation(
 
 /**
  * The day strip (#286): the seven days the header names, each a short weekday over its date with
- * a paprika dot under a day that has meals; today is filled in paprika. A tap brings that day to
+ * a basil dot under a day that has meals; today is filled in basil. A tap brings that day to
  * the top of the list. Screen readers hear the full date, and "meals planned" as the month says it.
  */
 @Composable
@@ -388,7 +389,7 @@ private fun DayStripRow(days: List<StripDay>, onSelect: (Long) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(Corners.Field)
                         .background(if (cell.isToday) colors.primary else Color.Transparent)
                         .clickable(role = Role.Button) { onSelect(cell.day) }
                         .testTag("stripDay-${cell.day}")
@@ -423,8 +424,8 @@ private fun DayStripRow(days: List<StripDay>, onSelect: (Long) -> Unit) {
 }
 
 /**
- * The month view (#52): the locale's weekdays over whole weeks. A day with meals has a paprika
- * dot; today's date is paprika text; the days before and after the month are muted. Tapping any
+ * The month view (#52): the locale's weekdays over whole weeks. A day with meals has a basil
+ * dot; today's date is basil text; the days before and after the month are muted. Tapping any
  * day opens its week.
  */
 @Composable
@@ -452,7 +453,7 @@ private fun MonthGrid(month: MonthUiState, today: Long, onSelect: (Long) -> Unit
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(Corners.Small)
                             .clickable(role = Role.Button) { onSelect(cell.day) }
                             .testTag("monthDay-${cell.day}")
                             .clearAndSetSemantics { contentDescription = description }
@@ -839,7 +840,7 @@ private fun MealRow(
                     model = meal.imageUrl,
                     recipe = NoPhotoSource(meal.recipeUid ?: "recipe-${meal.recipeId}", meal.title.orEmpty(), meal.language),
                     contentDescription = null,
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp))
+                    modifier = Modifier.size(44.dp).clip(Corners.Photo)
                 )
                 Spacer(Modifier.width(12.dp))
             }
@@ -942,7 +943,7 @@ private fun AddToDaySheet(
                     onValueChange = onQueryChange,
                     label = { Text(stringResource(R.string.label_search_or_note)) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = Corners.Field,
                     modifier = Modifier.fillMaxWidth().testTag("addSearch")
                 )
                 if (adding.query.isNotBlank()) {

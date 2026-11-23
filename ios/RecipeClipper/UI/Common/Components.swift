@@ -18,7 +18,7 @@ struct SectionHeading: View {
     }
 }
 
-/// A large Fraunces title in the content, under the native navigation bar.
+/// A large Bricolage title in the content, under the native navigation bar.
 struct ScreenTitle: View {
     let text: String
     var style: TextStyle = Typography.headlineMedium
@@ -51,9 +51,9 @@ struct CheckboxGlyph: View {
     private var size: CGFloat { min(scaledSize, 30) }
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(checked || partial ? Palette.primary : Palette.muted, lineWidth: 2)
-                .background(RoundedRectangle(cornerRadius: 4).fill(checked ? Palette.primary : .clear))
+            RoundedRectangle(cornerRadius: Radius.check)
+                .strokeBorder(checked || partial ? Palette.primary : Palette.outline, lineWidth: 2)
+                .background(RoundedRectangle(cornerRadius: Radius.check).fill(checked ? Palette.primary : .clear))
             if checked {
                 Image(systemName: mixed ? "minus" : "checkmark")
                     .font(.system(size: size * 0.6, weight: .bold))
@@ -109,9 +109,9 @@ struct IngredientRow: View {
     let text: String
     let checked: Bool
     let onCheckedChange: (Bool) -> Void
-    /// A step's ingredient link points here (#254): a paprika wash that fades out.
+    /// A step's ingredient link points here (#254): a basil wash that fades out.
     var highlighted = false
-    /// Cook mode's "In this step" (#286): a lighter paprika wash that stays.
+    /// Cook mode's "In this step" (#286): a lighter basil wash that stays.
     var washed = false
 
     // Stronger on a washed row, so a link's lines still stand out.
@@ -130,7 +130,7 @@ struct IngredientRow: View {
             }
             .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: Radius.small)
                     .fill(Palette.accentText.opacity(wash))
                     .padding(.horizontal, -6)
                     .animation(.easeOut(duration: highlighted ? 0.15 : 0.9), value: highlighted)
@@ -163,7 +163,8 @@ struct NavRow<Subtitle: View>: View {
                         Text(detail).textStyle(Typography.bodyMedium).foregroundStyle(Palette.muted)
                             .padding(.trailing, 6)
                     }
-                    Text("›").textStyle(Typography.titleLarge).foregroundStyle(Palette.muted)
+                    Image(systemName: "chevron.right").font(.body.weight(.semibold)).foregroundStyle(Palette.muted)
+                        .accessibilityHidden(true)
                 }
                 .padding(.vertical, 14)
                 .contentShape(Rectangle())
@@ -180,7 +181,7 @@ extension NavRow where Subtitle == EmptyView {
     }
 }
 
-/// The filled paprika button (Material's Button with the primary slot).
+/// The filled basil pill (Material's Button with the primary slot).
 struct PrimaryButtonStyle: ButtonStyle {
     var minHeight: CGFloat = 44
     var fillWidth = false
@@ -194,7 +195,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .wrappedLabelPadding(8, alignment: .center)
             .frame(maxWidth: fillWidth ? .infinity : nil)
             .frame(minHeight: minHeight)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Palette.primary))
+            .background(Capsule().fill(Palette.primary))
             .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.4)
     }
 }
@@ -244,7 +245,7 @@ struct OutlinedField: View {
                 .wrappedLabelPadding(10)
                 .frame(minHeight: 52)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: Radius.field)
                         .strokeBorder(
                             isError ? Palette.error : (focused ? Palette.primary : Palette.outline),
                             lineWidth: focused || isError ? 2 : 1
@@ -463,7 +464,7 @@ struct OutlinedActionStyle: ButtonStyle {
             .padding(.horizontal, 16)
             .wrappedLabelPadding(8)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.outline, lineWidth: 1))
+            .background(Capsule().strokeBorder(Palette.outline, lineWidth: 1))
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.6 : 1)
     }

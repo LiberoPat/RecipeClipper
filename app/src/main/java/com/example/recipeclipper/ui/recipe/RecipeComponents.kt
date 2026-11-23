@@ -4,8 +4,12 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.clip
@@ -22,7 +26,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +47,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.StepAmounts
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * A step's text with the amounts inserted from its ingredient lines (#101) set apart, in
@@ -96,7 +100,7 @@ internal fun Modifier.stepLinkActions(parts: List<StepAmounts.Part>?, onLink: ((
 internal fun BackToStepChip(step: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(50),
+        shape = Corners.Pill,
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 2.dp,
@@ -150,19 +154,19 @@ internal fun IngredientRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    // A step's ingredient link points here (#254): a paprika wash that fades out.
+    // A step's ingredient link points here (#254): an accent wash that fades out.
     highlighted: Boolean = false,
-    // Cook mode's "In this step" (#286): a lighter paprika wash that stays.
+    // Cook mode's "In this step" (#286): a lighter accent wash that stays.
     washed: Boolean = false,
     // Room between the wash's edge and the checkbox and text.
     inset: Dp = 0.dp
 ) {
-    val paprika = MaterialTheme.colorScheme.tertiary
+    val accent = MaterialTheme.colorScheme.tertiary
     val wash by animateColorAsState(
         when {
             // Stronger on a washed row, so the link's lines still stand out.
-            highlighted -> paprika.copy(alpha = if (washed) 0.3f else 0.14f)
-            washed -> paprika.copy(alpha = 0.12f)
+            highlighted -> accent.copy(alpha = if (washed) 0.3f else 0.14f)
+            washed -> accent.copy(alpha = 0.12f)
             else -> Color.Transparent
         },
         animationSpec = tween(if (highlighted) 150 else 900),
@@ -172,12 +176,12 @@ internal fun IngredientRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.Small)
             .background(wash)
             .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange)
             .padding(vertical = 6.dp, horizontal = inset)
     ) {
-        Checkbox(checked = checked, onCheckedChange = null)
+        IngredientCheck(checked)
         Spacer(Modifier.width(12.dp))
         Text(
             text,
@@ -187,6 +191,28 @@ internal fun IngredientRow(
             color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant
             else MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+/**
+ * The ingredient checkbox (#455, Market): a 22 dp box rounded 7, outlined in the theme's outline,
+ * filled basil with a check when ticked. It only draws the state; the row is the toggle.
+ */
+@Composable
+private fun IngredientCheck(checked: Boolean) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .padding(1.dp)
+            .size(22.dp)
+            .clip(Corners.Check)
+            .then(
+                if (checked) Modifier.background(colors.primary)
+                else Modifier.border(2.dp, colors.outline, Corners.Check)
+            )
+    ) {
+        if (checked) Icon(Icons.Default.Check, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(16.dp))
     }
 }
 

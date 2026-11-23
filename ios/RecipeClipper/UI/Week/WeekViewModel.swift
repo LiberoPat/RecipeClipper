@@ -69,7 +69,7 @@ struct ScrollTarget: Equatable {
     let id: Int
 }
 
-/// One button of the day strip (#286): `isToday` fills it in paprika, `hasMeals` puts a dot under
+/// One button of the day strip (#286): `isToday` fills it in basil, `hasMeals` puts a dot under
 /// it.
 struct StripDay: Equatable, Identifiable {
     let day: Int64

@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -34,12 +33,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.ClipField
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * The Text view (#213), line by line since #286: the post's lines as rows, each with a checkbox.
- * A ticked line is washed in paprika; the ticked lines are the selection, so the dock counts them
+ * A ticked line is washed in basil; the ticked lines are the selection, so the dock counts them
  * and a field takes them (armed, through the confirm; or a field's button straight away). A line
- * an add took keeps a paprika bar, and the add's first line its tag, which takes the add back,
+ * an add took keeps a basil bar, and the add's first line its tag, which takes the add back,
  * as on the page. The rows and ticks are the ViewModel's, so they survive rotation.
  */
 @Composable
@@ -100,7 +100,7 @@ private fun CommentsHeading() {
 
 /**
  * A line: the whole row ticks its checkbox (a checkbox to tests and screen readers); ticked, it
- * is washed in paprika. A line an add took has a paprika bar, and its add's first line the tag.
+ * is washed in basil. A line an add took has a basil bar, and its add's first line the tag.
  */
 @Composable
 private fun LineRow(
@@ -111,14 +111,14 @@ private fun LineRow(
     onLine: (Int) -> Unit,
     onTag: (String) -> Unit
 ) {
-    val paprika = MaterialTheme.colorScheme.primary
+    val accent = MaterialTheme.colorScheme.primary
     val wash = MaterialTheme.colorScheme.tertiary.copy(alpha = WASH_ALPHA)
     Column(Modifier.thread(row.depth)) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .background(if (ticked) wash else Color.Transparent)
-                .drawBehind { if (mark != null) drawRect(paprika, size = Size(3.dp.toPx(), size.height)) }
+                .drawBehind { if (mark != null) drawRect(accent, size = Size(3.dp.toPx(), size.height)) }
                 .padding(start = 8.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -144,8 +144,8 @@ private fun LineRow(
                     modifier = Modifier
                         .padding(start = 8.dp)
                         .minimumInteractiveComponentSize()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(paprika)
+                        .clip(Corners.Small)
+                        .background(accent)
                         .clickable(role = Role.Button) { onTag(mark.mark.id) }
                         .padding(horizontal = 9.dp, vertical = 5.dp)
                         .testTag("clip.tag.${mark.mark.id}"),
@@ -159,7 +159,7 @@ private fun LineRow(
     }
 }
 
-/** The ticked lines' wash: the app's paprika wash (as a step's ingredient link, #254). */
+/** The ticked lines' wash: the app's basil wash (as a step's ingredient link, #254). */
 private const val WASH_ALPHA = 0.14f
 
 /** How far each level of reply is indented, as the page did. */

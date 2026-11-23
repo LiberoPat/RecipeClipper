@@ -124,7 +124,7 @@ private struct StepButton: View {
                 .textStyle(Typography.titleLarge)
                 .foregroundStyle(Palette.onBackground)
                 .frame(width: size, height: size)
-                .background(Circle().fill(Palette.surfaceContainer))
+                .background(Circle().fill(Palette.surfaceContainerHigh))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

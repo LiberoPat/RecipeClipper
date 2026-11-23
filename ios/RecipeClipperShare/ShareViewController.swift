@@ -188,7 +188,9 @@ let shareLog = Logger(subsystem: "com.liberopat.recipeclipper", category: "share
 enum ShareFonts {
     static func registerFromContainingApp() {
         let appBundle = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
-        for name in ["fraunces.ttf", "karla.ttf"] {
+        for name in ["bricolage-semibold.ttf", "bricolage-bold.ttf", "bricolage-extrabold.ttf",
+                     "instrument-regular.ttf", "instrument-medium.ttf", "instrument-semibold.ttf",
+                     "instrument-bold.ttf"] {
             let url = appBundle.appendingPathComponent(name)
             var error: Unmanaged<CFError>?
             if !CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error) {
