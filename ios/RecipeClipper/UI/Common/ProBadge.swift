@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// The badge's type: Karla 11pt semibold, a little tracked, as Android's (labelSmall at 11sp, SemiBold).
-private let badgeStyle = TextStyle(family: .karla, baseSize: 11, weight: 600, baseLineHeight: 14, tracking: 0.4, relativeTo: .caption2)
+/// The badge's type: Instrument Sans 11pt semibold, a little tracked, as Android's (labelSmall at 11sp, SemiBold).
+private let badgeStyle = TextStyle(family: .instrumentSans, baseSize: 11, weight: 600, baseLineHeight: 14, tracking: 0.4, relativeTo: .caption2)
 
-/// The quiet "Pro" mark on a Week planning extra's entry point (#413; Android's `ProBadge`): paprika
-/// text in a thin paprika outline, no fill. The extra stays visible; a tap on it opens the Pro screen.
+/// The quiet "Pro" mark on a Week planning extra's entry point (#413; Android's `ProBadge`): basil
+/// text in a thin basil outline, no fill. The extra stays visible; a tap on it opens the Pro screen.
 struct ProBadge: View {
     var body: some View {
         Text(Strings.proBadge)

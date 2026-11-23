@@ -42,9 +42,9 @@ struct TonightWidget: Widget {
             HomeWidgetCard(title: WidgetStrings.tonight, rows: entry.rows, empty: WidgetStrings.tonightEmpty) { meal in
                 VStack(alignment: .leading, spacing: 0) {
                     if !meal.mealType.isEmpty {
-                        Text(meal.mealType).font(WidgetFont.karla(12, .regular)).foregroundStyle(Palette.muted)
+                        Text(meal.mealType).font(WidgetFont.instrumentSans(12, .regular)).foregroundStyle(Palette.muted)
                     }
-                    Text(meal.title).font(WidgetFont.karla(15, .regular)).foregroundStyle(Palette.onBackground)
+                    Text(meal.title).font(WidgetFont.instrumentSans(15, .regular)).foregroundStyle(Palette.onBackground)
                 }
             }
             .widgetURL(AppLinks.tab("week"))
@@ -61,7 +61,7 @@ struct GroceriesWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "Groceries", provider: HomeWidgetProvider(plan: { await WidgetData.shared.groceries(now: $0) })) { entry in
             HomeWidgetCard(title: WidgetStrings.groceries, rows: entry.rows, empty: WidgetStrings.groceriesEmpty) { line in
-                Text(line).font(WidgetFont.karla(15, .regular)).foregroundStyle(Palette.onBackground)
+                Text(line).font(WidgetFont.instrumentSans(15, .regular)).foregroundStyle(Palette.onBackground)
             }
             .widgetURL(AppLinks.tab("groceries"))
         }
@@ -71,7 +71,7 @@ struct GroceriesWidget: Widget {
     }
 }
 
-/// The card both widgets share: the title in paprika, then as many rows as fit and "+N more"
+/// The card both widgets share: the title in basil, then as many rows as fit and "+N more"
 /// (`FittedRows`), or a muted line when there are none; only the app's name with the flag off,
 /// and only the title while the database can't be read (#329: never "Nothing planned" unread).
 private struct HomeWidgetCard<Row: Equatable, RowView: View>: View {
@@ -82,7 +82,7 @@ private struct HomeWidgetCard<Row: Equatable, RowView: View>: View {
 
     private var heading: some View {
         Text(rows == .off ? WidgetStrings.appName : title)
-            .font(WidgetFont.fraunces(17, .semibold))
+            .font(WidgetFont.bricolage(17, .bold))
             .foregroundStyle(Palette.accentText)
             .lineLimit(1)
             .minimumScaleFactor(0.5)
@@ -96,13 +96,13 @@ private struct HomeWidgetCard<Row: Equatable, RowView: View>: View {
             case .rows(let all) where all.isEmpty:
                 VStack(alignment: .leading, spacing: 4) {
                     heading
-                    Text(empty).font(WidgetFont.karla(14, .regular)).foregroundStyle(Palette.muted)
+                    Text(empty).font(WidgetFont.instrumentSans(14, .regular)).foregroundStyle(Palette.muted)
                         .minimumScaleFactor(0.5)
                 }
             case .rows(let all):
                 FittedRows(rows: all, header: { heading }, row: row) { count, beside in
                     Text(beside ? WidgetStrings.moreBeside(count) : WidgetStrings.more(count))
-                        .font(WidgetFont.karla(14, .regular)).foregroundStyle(Palette.muted)
+                        .font(WidgetFont.instrumentSans(14, .regular)).foregroundStyle(Palette.muted)
                 }
             }
         }

@@ -141,7 +141,7 @@ extension LibraryCard {
         var line = AttributedString(Strings.homeTodayOther(next.mealType, next.title))
         if styleB, let range = line.range(of: next.title, options: .backwards) {
             line[range].foregroundColor = Palette.onBackground
-            line[range].font = Font(AppFont.karla(Typography.bodySmall.baseSize, weight: 600))
+            line[range].font = Font(AppFont.instrumentSans(Typography.bodySmall.baseSize, weight: 600))
         }
         return line
     }
@@ -166,11 +166,11 @@ private struct CompactCard<Line: View>: View {
     @Environment(\.noPhotoImage) private var noPhotoImage
 
     static var eyebrowStyle: TextStyle {
-        TextStyle(family: .karla, baseSize: 11.5, weight: 700, baseLineHeight: 15, tracking: 0.8, relativeTo: .caption1)
+        TextStyle(family: .instrumentSans, baseSize: 11.5, weight: 700, baseLineHeight: 15, tracking: 0.8, relativeTo: .caption1)
     }
 
     static var titleStyleB: TextStyle {
-        TextStyle(family: .fraunces, baseSize: 18, weight: 600, baseLineHeight: 22, relativeTo: .headline)
+        TextStyle(family: .bricolage, baseSize: 18, weight: 600, baseLineHeight: 22, relativeTo: .headline)
     }
 
     var body: some View {

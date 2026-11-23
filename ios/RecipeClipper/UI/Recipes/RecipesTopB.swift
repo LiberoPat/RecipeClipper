@@ -102,9 +102,9 @@ struct ViewsShelf: View {
     @State private var width: CGFloat = 0
 
     static let countStyle = TextStyle(
-        family: .fraunces, baseSize: 20, weight: 600, baseLineHeight: 22, relativeTo: .title3, tabularDigits: true
+        family: .bricolage, baseSize: 20, weight: 600, baseLineHeight: 22, relativeTo: .title3, tabularDigits: true
     )
-    static let nameStyle = TextStyle(family: .karla, baseSize: 11.5, weight: 700, baseLineHeight: 13.5, relativeTo: .caption1)
+    static let nameStyle = TextStyle(family: .instrumentSans, baseSize: 11.5, weight: 700, baseLineHeight: 13.5, relativeTo: .caption1)
 
     private struct Cell {
         let icon: String
@@ -165,16 +165,16 @@ struct ViewsShelf: View {
             VStack(spacing: 2) {
                 Image(systemName: cell.icon)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(cell.lead ? Palette.onPaprikaTone : Palette.accentText)
+                    .foregroundStyle(cell.lead ? Palette.onAccentTone : Palette.accentText)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     .frame(height: 20)
                 Text(cell.count.map(String.init) ?? " ")
                     .textStyle(Self.countStyle)
-                    .foregroundStyle(cell.lead ? Palette.onPaprikaTone : Palette.onBackground)
+                    .foregroundStyle(cell.lead ? Palette.onAccentTone : Palette.onBackground)
                     .lineLimit(1)
                 Text(cell.name)
                     .textStyle(Self.nameStyle)
-                    .foregroundStyle(cell.lead ? Palette.onPaprikaTone : Palette.muted)
+                    .foregroundStyle(cell.lead ? Palette.onAccentTone : Palette.muted)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -183,7 +183,7 @@ struct ViewsShelf: View {
             .padding(.bottom, 9)
             .frame(width: width > 0 ? width : nil)
             .frame(maxHeight: .infinity, alignment: .top)
-            .background(cell.lead ? Palette.paprikaTone : Color.clear)
+            .background(cell.lead ? Palette.accentTone : Color.clear)
             .overlay(alignment: .leading) {
                 if divider { Rectangle().fill(Palette.hairline).frame(width: 1) }
             }
@@ -252,10 +252,10 @@ private struct FilterButton: View {
         Button(action: action) {
             Image(systemName: "slider.horizontal.3")
                 .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(on > 0 ? Palette.onPaprikaTone : Palette.onBackground)
+                .foregroundStyle(on > 0 ? Palette.onAccentTone : Palette.onBackground)
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .frame(width: 44, height: 44)
-                .background(on > 0 ? Palette.paprikaTone : Color.clear, in: RoundedRectangle(cornerRadius: 12))
+                .background(on > 0 ? Palette.accentTone : Color.clear, in: RoundedRectangle(cornerRadius: 12))
                 .overlay(alignment: .topTrailing) {
                     if on > 0 {
                         Text("\(on)")
@@ -316,11 +316,11 @@ struct ActiveFilterPills: View {
                     .font(.system(size: 11, weight: .bold))
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
-            .foregroundStyle(Palette.onPaprikaTone)
+            .foregroundStyle(Palette.onAccentTone)
             .padding(.leading, 12)
             .padding(.trailing, 10)
             .frame(minHeight: 32)
-            .background(Palette.paprikaTone, in: Capsule())
+            .background(Palette.accentTone, in: Capsule())
             // The 44pt touch target is the outer frame; the pill is the shape inside it.
             .frame(minHeight: 44)
             .contentShape(Rectangle())
@@ -330,7 +330,7 @@ struct ActiveFilterPills: View {
         .accessibilityIdentifier("recipes.filterPill.\(filter.rawValue)")
     }
 
-    static let pillStyle = TextStyle(family: .karla, baseSize: 14, weight: 700, baseLineHeight: 18, relativeTo: .subheadline)
+    static let pillStyle = TextStyle(family: .instrumentSans, baseSize: 14, weight: 700, baseLineHeight: 18, relativeTo: .subheadline)
 }
 
 /// The filter sheet: the three filters as switches (Not cooked yet left out inside the Cooked view), and Clear.

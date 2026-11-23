@@ -74,10 +74,15 @@ targets:
         CFBundleLocalizations: [en, es, fr, de, it, pt-BR]
         UILaunchScreen:
           UIColorName: LaunchBackground
+        # Market (#455): Bricolage Grotesque over Instrument Sans, static weights.
         UIAppFonts:
-          - fraunces.ttf
-          - fraunces-italic.ttf
-          - karla.ttf
+          - bricolage-semibold.ttf
+          - bricolage-bold.ttf
+          - bricolage-extrabold.ttf
+          - instrument-regular.ttf
+          - instrument-medium.ttf
+          - instrument-semibold.ttf
+          - instrument-bold.ttf
         CFBundleURLTypes:
           - CFBundleURLName: com.liberopat.recipeclipper
             CFBundleURLSchemes: [recipeclipper]
@@ -215,8 +220,10 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         UIAppFonts:
-          - fraunces.ttf
-          - karla.ttf
+          - bricolage-bold.ttf
+          - bricolage-extrabold.ttf
+          - instrument-regular.ttf
+          - instrument-semibold.ttf
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:

@@ -121,6 +121,7 @@ object ExpiryNotifications {
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_tab_pantry)
+            .setColor(ContextCompat.getColor(context, R.color.accent))
             .setContentTitle(context.getString(R.string.expiry_notification_title))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))

@@ -62,10 +62,12 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.StepPhoto
 import com.example.recipeclipper.ui.common.LocalFlagValues
-import com.example.recipeclipper.ui.theme.Fraunces
+import com.example.recipeclipper.ui.theme.AccentTextOnInk
+import com.example.recipeclipper.ui.theme.Bricolage
 import com.example.recipeclipper.ui.theme.Ground
 import com.example.recipeclipper.ui.theme.Ink
-import com.example.recipeclipper.ui.theme.PaprikaTextOnInk
+import com.example.recipeclipper.ui.theme.InkGround
+import com.example.recipeclipper.ui.theme.TextOnInk
 
 /** True with the `stepPhotos` flag on (#433); off, every step is drawn as it was. */
 @Composable
@@ -77,9 +79,10 @@ internal val StepThumbnailSize = 54.dp
 /** Cook mode's done and upcoming rows: smaller, no badge. */
 internal val StepThumbnailSmall = 40.dp
 
-// The viewer's ground and words, the same in light and dark: a photo reads best on near-black.
-private val ViewerGround = Color(0xFF0E0C0B)
-private val ViewerInk = Color(0xFFF1ECE6)
+// The viewer's ground and words, the same in light and dark: a photo reads best on near-black,
+// the theme's on-ink set.
+private val ViewerGround = InkGround
+private val ViewerInk = TextOnInk
 
 /**
  * A step's photos as one thumbnail (#433, option B): the first photo, square and rounded, with a
@@ -290,7 +293,7 @@ private fun PageDots(count: Int, current: Int) {
     }
 }
 
-/** The step the photo shows: its number in Fraunces paprika, then its text as the reading view shows it. */
+/** The step the photo shows: its number in Bricolage basil, then its text as the reading view shows it. */
 @Composable
 private fun StepCaption(step: Int, text: String) {
     Row(
@@ -303,8 +306,8 @@ private fun StepCaption(step: Int, text: String) {
     ) {
         Text(
             "${step + 1}",
-            style = TextStyle(fontFamily = Fraunces, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp),
-            color = PaprikaTextOnInk,
+            style = TextStyle(fontFamily = Bricolage, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, lineHeight = 22.sp),
+            color = AccentTextOnInk,
             modifier = Modifier.width(28.dp)
         )
         Spacer(Modifier.width(2.dp))

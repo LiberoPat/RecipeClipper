@@ -60,8 +60,8 @@ final class ThemeTests: XCTestCase {
     }
 
     func testTheBundledFontsAreRegistered() {
-        XCTAssertEqual(AppFont.fraunces(20, weight: 600).familyName, "Fraunces")
-        XCTAssertEqual(AppFont.karla(17, weight: 400).familyName, "Karla")
+        XCTAssertEqual(AppFont.bricolage(20, weight: 600).familyName, "Fraunces")
+        XCTAssertEqual(AppFont.instrumentSans(17, weight: 400).familyName, "Karla")
     }
 
     /// The bundled fonts are variable; a weight that doesn't reach the `wght` axis would render
@@ -70,8 +70,8 @@ final class ThemeTests: XCTestCase {
         func width(_ font: UIFont) -> CGFloat {
             ("Recipe Clipper guacamole" as NSString).size(withAttributes: [.font: font]).width
         }
-        XCTAssertGreaterThan(width(AppFont.karla(17, weight: 700)), width(AppFont.karla(17, weight: 400)) + 1)
-        XCTAssertGreaterThan(width(AppFont.fraunces(30, weight: 700)), width(AppFont.fraunces(30, weight: 300)) + 1)
+        XCTAssertGreaterThan(width(AppFont.instrumentSans(17, weight: 700)), width(AppFont.instrumentSans(17, weight: 400)) + 1)
+        XCTAssertGreaterThan(width(AppFont.bricolage(30, weight: 700)), width(AppFont.bricolage(30, weight: 300)) + 1)
     }
 
     /// The UIKit tint (alerts, menus, cursors) is the same paprika as `accentText`, never blue.

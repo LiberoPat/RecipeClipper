@@ -73,7 +73,7 @@ import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeQuickFilter
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.settings.SwitchRow
-import com.example.recipeclipper.ui.theme.LocalPaprikaTone
+import com.example.recipeclipper.ui.theme.LocalAccentTone
 
 /*
  * The top of Recipes, design B (#449, `recipesTopB`, with the library as the first screen): the title
@@ -223,7 +223,7 @@ private fun shelfIcon(view: RecipeFilter): Painter = when (view) {
 @Composable
 private fun ShelfCell(icon: Painter, count: Int?, name: String, lead: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
-    val tone = LocalPaprikaTone.current
+    val tone = LocalAccentTone.current
     val hairline = colors.outlineVariant
     val label = if (count != null) "$name, $count" else name
     Column(
@@ -289,7 +289,7 @@ internal fun SearchFieldB(query: String, onQueryChange: (String) -> Unit, filter
 @Composable
 private fun FilterButton(on: Int, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    val tone = LocalPaprikaTone.current
+    val tone = LocalAccentTone.current
     val title = stringResource(R.string.recipes_filter_title)
     val state = if (on > 0) pluralStringResource(R.plurals.recipes_filters_on, on, on) else null
     Box(
@@ -333,7 +333,7 @@ private fun FilterButton(on: Int, onClick: () -> Unit) {
 @Composable
 internal fun ActiveFilterPills(active: List<RecipeQuickFilter>, onRemove: (RecipeQuickFilter) -> Unit, onClear: () -> Unit) {
     if (active.isEmpty()) return
-    val tone = LocalPaprikaTone.current
+    val tone = LocalAccentTone.current
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         itemVerticalAlignment = Alignment.CenterVertically,
