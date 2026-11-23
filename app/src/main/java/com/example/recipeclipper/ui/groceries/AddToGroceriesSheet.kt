@@ -33,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.plan.dayTitle
 import com.example.recipeclipper.ui.recipe.SectionHeading
 
@@ -48,6 +50,7 @@ fun AddToGroceriesSheet(viewModel: AddToGroceriesViewModel, onDismiss: () -> Uni
     LaunchedEffect(state.added) {
         if (state.added) onDismiss()
     }
+    val showPantryLabel = LocalFlagValues.current.isOn(Flag.GROCERY_PANTRY_LABEL)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         val sources = state.sources
@@ -104,7 +107,18 @@ fun AddToGroceriesSheet(viewModel: AddToGroceriesViewModel, onDismiss: () -> Uni
                             ) {
                                 Checkbox(checked = ticked, onCheckedChange = null)
                                 Spacer(Modifier.width(12.dp))
-                                Text(line, style = MaterialTheme.typography.bodyLarge)
+                                Column {
+                                    Text(line, style = MaterialTheme.typography.bodyLarge)
+                                    // Why the line started unticked (#457): the pantry has it. A fact about the
+                                    // pantry, so it stays when the cook ticks the line anyway.
+                                    if (showPantryLabel && id in state.inPantry) {
+                                        Text(
+                                            stringResource(R.string.what_i_need_have),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

@@ -8,11 +8,14 @@ struct SourceLine: Hashable {
 }
 
 /// The "Add to groceries" sheet (#50): one recipe's lines or every planned recipe's, each
-/// ticked to start unless the pantry has it (#51). `sources` is nil while the week's are loading. `added` is set once the
-/// ticked lines are written; the sheet closes on it.
+/// ticked to start unless the pantry has it (#51). `sources` is nil while the week's are loading.
+/// `inPantry` holds the lines that started unticked because the pantry has them, so the sheet can
+/// say why; a tick later never changes it (a fact about the pantry, not about the tick). `added` is
+/// set once the ticked lines are written; the sheet closes on it.
 struct AddToGroceriesUiState: Equatable {
     var sources: [GrocerySource]?
     var unticked: Set<SourceLine> = []
+    var inPantry: Set<SourceLine> = []
     var added = false
 
     var tickedCount: Int {
@@ -66,6 +69,7 @@ final class AddToGroceriesViewModel {
             for (index, line) in source.lines.enumerated()
             where PantryMatch.covered(line, language: source.language, pantry: items, decisions: decided) {
                 uiState.unticked.insert(SourceLine(source: source.key, index: index))
+                uiState.inPantry.insert(SourceLine(source: source.key, index: index))
             }
             if let words = LanguageWords.forTag(source.language) {
                 let names = source.lines.compactMap { IngredientName.of($0, words: words) }

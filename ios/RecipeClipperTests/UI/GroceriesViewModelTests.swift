@@ -465,6 +465,42 @@ final class GroceriesViewModelTests: XCTestCase {
         XCTAssertTrue(vm.uiState.added)
     }
 
+    /// #457: the sheet says why a line started unticked. The mark is a fact about the pantry, so a
+    /// tick never moves it, and a line the pantry lacks never has it.
+    func testALineThePantryHasIsMarkedAndKeepsTheMarkWhenTicked() async {
+        let pantry = FakePantryRepository([
+            PantryItem(id: 1, name: "flour", quantity: nil, language: "en", aisle: .other, inStock: true, alwaysHave: false, purchasedDay: 1, expiresDay: nil),
+            PantryItem(id: 3, name: "milk", quantity: nil, language: "en", aisle: .other, inStock: false, alwaysHave: false, purchasedDay: 1, expiresDay: nil),
+        ])
+        let vm = AddToGroceriesViewModel(repository: repository, preferences: FakeAppPreferences(), pantry: pantry)
+        vm.setRecipe(7, title: "Pancakes", language: "en", rendered: ["2 cups flour", "1 cup milk", "2 eggs"])
+        await vm.loading?.value
+
+        let flour = SourceLine(source: "recipe-7", index: 0)
+        // The pantry line starts unticked and marked; the others start ticked and unmarked.
+        XCTAssertEqual(vm.uiState.unticked, [flour])
+        XCTAssertEqual(vm.uiState.inPantry, [flour])
+
+        // Ticking the marked line anyway keeps the mark; unticking another never adds one.
+        vm.onToggle(flour)
+        vm.onToggle(SourceLine(source: "recipe-7", index: 2))
+        XCTAssertEqual(vm.uiState.unticked, [SourceLine(source: "recipe-7", index: 2)])
+        XCTAssertEqual(vm.uiState.inPantry, [flour])
+
+        // What is added is unchanged: the ticked lines, the marked one included.
+        vm.onAdd()
+        await settleMain()
+        XCTAssertEqual(repository.items.value.map(\.text), ["2 cups flour", "1 cup milk"])
+    }
+
+    func testWithAnEmptyPantryNothingIsMarked() async {
+        let vm = AddToGroceriesViewModel(repository: repository, preferences: FakeAppPreferences(), pantry: FakePantryRepository())
+        vm.setRecipe(7, title: "Pancakes", language: "en", rendered: ["2 cups flour"])
+        await vm.loading?.value
+        XCTAssertTrue(vm.uiState.inPantry.isEmpty)
+        XCTAssertTrue(vm.uiState.unticked.isEmpty)
+    }
+
     func testTheWeeksRecipesComeAtTheirPlannedServingsInTheUsersUnits() async {
         repository.planned = [
             PlannedIngredients(entryId: 1, day: 100, servings: 8, recipeId: 7, title: "Pancakes",
