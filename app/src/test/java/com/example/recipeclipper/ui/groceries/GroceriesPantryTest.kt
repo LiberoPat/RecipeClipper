@@ -180,6 +180,42 @@ class GroceriesPantryTest {
         assertEquals(listOf("1 cup milk", "2 eggs"), groceries.items.value.map { it.text })
     }
 
+    // #457: the sheet says why a line started unticked. The mark is a fact about the pantry, so a
+    // tick never moves it, and a line the pantry lacks never has it.
+    @Test
+    fun `the sheet marks a line the pantry has, keeps the mark when it is ticked, and leaves the rest`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val pantry = FakePantryRepository(listOf(pantryItem(1, "flour", inStock = true), pantryItem(3, "milk", inStock = false)))
+            val vm = AddToGroceriesViewModel(groceries, FakeAppPreferences(), pantry)
+            vm.setRecipe(7, "Pancakes", "en", listOf("2 cups flour", "1 cup milk", "2 eggs"))
+            advanceUntilIdle()
+
+            val flour = SourceLine("recipe-7", 0)
+            // The pantry line starts unticked and marked; the others start ticked and unmarked.
+            assertEquals(setOf(flour), vm.uiState.value.unticked)
+            assertEquals(setOf(flour), vm.uiState.value.inPantry)
+
+            // Ticking the marked line anyway keeps the mark; unticking another never adds one.
+            vm.onToggle(flour)
+            vm.onToggle(SourceLine("recipe-7", 2))
+            assertEquals(setOf(SourceLine("recipe-7", 2)), vm.uiState.value.unticked)
+            assertEquals(setOf(flour), vm.uiState.value.inPantry)
+
+            // What is added is unchanged: the ticked lines, the marked one included.
+            vm.onAdd()
+            advanceUntilIdle()
+            assertEquals(listOf("2 cups flour", "1 cup milk"), groceries.items.value.map { it.text })
+        }
+
+    @Test
+    fun `with an empty pantry nothing is marked`() = runTest(mainDispatcherRule.dispatcher) {
+        val vm = AddToGroceriesViewModel(groceries, FakeAppPreferences(), FakePantryRepository())
+        vm.setRecipe(7, "Pancakes", "en", listOf("2 cups flour"))
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.inPantry.isEmpty())
+        assertTrue(vm.uiState.value.unticked.isEmpty())
+    }
+
     // #406: one tri-state row over the put-away sheet. It only moves ticks: nothing is written
     // until the sheet's button.
     @Test
