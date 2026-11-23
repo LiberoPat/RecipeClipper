@@ -3615,7 +3615,7 @@ holds: they are now asked through the filters.
   `ListsPill`, tag `recipesListsPill`; iOS `ListsPill`, `recipes.listsPill`; TalkBack and VoiceOver read
   "Lists, 6"). It opens the existing Lists screen; Back returns to Recipes. The pill takes the width its
   words need and never clips (one line, no wrapping); search takes the rest, its placeholder ending in an
-  ellipsis when the row is tight (German at twice the text: "Listen 7" whole, "Titel und Zu…"). It shows
+  ellipsis when the row is tight (German at twice the text on Android: "Listen 7" whole, then "Titel u…"). It shows
   when the shelf did (a recipe or a list to show), and not over an empty library, as before.
 - **Search keeps its filter button** with the badge, which now counts the pills below.
 - **The filter sheet, in two groups** (small-capital headings, as the Add a recipe block's):
