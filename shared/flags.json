@@ -253,6 +253,12 @@
       "issue": 457
     },
     {
+      "key": "planPantryNote",
+      "description": "A quiet pantry note on the Plan (#456): under each planned recipe from today on, one muted line naming the ingredients the pantry hasn't got, by name only (PantryMatch, as #378's \"Uses what's in my pantry\"; presence only, never \"enough\"): \"Not in your pantry: tahini, sumac\", up to three names, past that two and \"and N more\". None for a note, a past meal, when every nameable line is had, or when the pantry has nothing in the recipe's language. A tap opens it in place (every name, and Add to groceries: the missing lines at the planned servings, through What I need's path, with one Undo); with all of them on the grocery list it says \"On your grocery list\". Nothing in the add-to-plan flow. Off, the Plan is as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 456
+    },
+    {
       "key": "recipesFilters",
       "description": "Recipes' views folded into the filter sheet (#454; with recipesTopB and libraryFirst): the five-cell views shelf is gone; a compact Lists pill with its count sits left of search and opens the Lists screen; the filter sheet holds two groups, The recipe (30 min or less, Cooked: Any / Cooked / Not yet, Uses what's in my pantry) and Where it is, where it came from (Not in a list, Came from: Anywhere / Typed by you / From a chat). Each applies at once, combines with the search and the sort, shows as a removable pill and counts in the badge; Not in a list, Cooked, Typed by you and From a chat select what their view screens did. Not remembered. Off, design B as before.",
       "defaults": { "debug": true, "release": true },

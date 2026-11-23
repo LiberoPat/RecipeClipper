@@ -668,6 +668,18 @@
     <string name="fresh_keeps">Hält sich nach dem Kauf etwa %1$s Tage</string>
     <string name="fresh_nudge">%1$s: hält sich nach dem Kauf etwa %2$s Tage. Früher kochen?</string>
     <string name="fresh_nudge_swap">Mit %1$s tauschen</string>
+    <string name="plan_pantry_missing">Nicht in deinem Vorrat: %1$s</string>
+    <plurals name="plan_pantry_missing_more">
+        <item quantity="one">Nicht in deinem Vorrat: %1$s und %2$d weitere</item>
+        <item quantity="other">Nicht in deinem Vorrat: %1$s und %2$d weitere</item>
+    </plurals>
+    <string name="plan_pantry_on_list">Auf deiner Einkaufsliste</string>
+    <string name="plan_pantry_show_all">Zeigen, was fehlt</string>
+    <string name="plan_pantry_show_less">Weniger zeigen</string>
+    <plurals name="plan_pantry_added">
+        <item quantity="one">%1$d zum Einkauf hinzugefügt</item>
+        <item quantity="other">%1$d zum Einkauf hinzugefügt</item>
+    </plurals>
     <!-- What I need (#302): the pantry's amount beside the week's, never compared -->
     <string name="what_i_need_pantry_amount">Du hast %1$s</string>
     <string name="what_i_need_pantry_and_week">Du hast %1$s · die Rezepte dieser Woche verwenden %2$s</string>

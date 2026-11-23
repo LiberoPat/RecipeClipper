@@ -92,6 +92,8 @@ enum Flag: String, CaseIterable {
     case recipesTopB
     /// Say why a line starts unticked (#457): the Add to groceries sheet marks a line the pantry has "In your pantry".
     case groceryPantryLabel
+    /// A quiet pantry note on the Plan (#456): under a planned recipe, the ingredients the pantry hasn't got, by name only.
+    case planPantryNote
     /// Recipes' views folded into the filter sheet (#454): a Lists pill left of search, Cooked and Came from as choices, Not in a list as a switch; needs `recipesTopB`.
     case recipesFilters
 }

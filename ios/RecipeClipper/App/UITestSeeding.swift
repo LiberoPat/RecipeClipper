@@ -56,6 +56,9 @@ enum UITestSeeding {
     /// meals planned for today after the scenario is seeded, each `<built-in meal type>:<recipe
     /// title>`, or `#<text>` for a note.
     static let planTodayFlag = "-uiTestPlanToday"
+    /// `-uiTestPantry "dashi,tofu,spaghetti"` (#456): English pantry items in stock, added after the
+    /// scenario is seeded.
+    static let pantryFlag = "-uiTestPantry"
 
     /// With `-uiTestReceiveFile`, a shared file (#149) as another phone would send it, opened
     /// once at launch as if from Messages (a UI test can't drive another app's "Open in"):
@@ -294,6 +297,7 @@ enum UITestSeeding {
                     default: try seedStandard(conn, now: now)
                     }
                     try seedPlanToday(conn, now: now)
+                    try seedPantryItems(conn, now: now)
                 }
             } catch {
                 fatalError("UI test seed: \(error)")
@@ -329,6 +333,18 @@ enum UITestSeeding {
                     day: today, mealTypeId: type.id, recipeId: recipeId, servings: nil, note: nil, sortOrder: 0, updatedAt: now
                 ))
             }
+        }
+    }
+
+    /// The pantry for `-uiTestPantry` (#456): each name an English item in stock, in Other.
+    private static func seedPantryItems(_ conn: SQLiteConnection, now: Int64) throws {
+        guard let index = arguments.firstIndex(of: pantryFlag), index + 1 < arguments.count else { return }
+        let pantry = PantryDao(db: conn)
+        for name in arguments[index + 1].split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }) {
+            _ = try pantry.insert(PantryItemRecord(
+                name: name, quantity: nil, language: "en", aisle: Aisle.other.key, inStock: true, alwaysHave: false,
+                purchasedDay: nil, expiresDay: nil, updatedAt: now
+            ))
         }
     }
 
