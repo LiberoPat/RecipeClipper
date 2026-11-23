@@ -19,8 +19,6 @@ final class MealReminderCoordinator {
     private let scheduler: MealReminderScheduler
     private let clock: Clock
     private let zone: TimeZone?
-    /// Pro (#413): without it only a reminder the cook switched on runs (`ProReminders`).
-    private let pro: ProAccess
     private var settings: AppSettings
     private var meals: [PlannedMeal]?
     private var types: [MealType]?
@@ -33,9 +31,8 @@ final class MealReminderCoordinator {
     /// `zone` nil is the phone's current one, read each time.
     init(
         mealPlan: MealPlanRepository, recipes: RecipeRepository, preferences: AppPreferences, flags: FeatureFlags,
-        scheduler: MealReminderScheduler, clock: Clock, zone: TimeZone? = nil, pro: ProAccess = UngatedProAccess()
+        scheduler: MealReminderScheduler, clock: Clock, zone: TimeZone? = nil
     ) {
-        self.pro = pro
         self.mealPlan = mealPlan
         self.recipes = recipes
         self.preferences = preferences
@@ -56,7 +53,6 @@ final class MealReminderCoordinator {
             }
             .store(in: &subscriptions)
         followFlag()
-        followPro()
         subscribePlan()
     }
 
@@ -70,16 +66,6 @@ final class MealReminderCoordinator {
             Task { @MainActor in
                 self?.reschedule()
                 self?.followFlag()
-            }
-        }
-    }
-
-    /// A purchase, a refund or the Developer override (#413) plans again at once.
-    private func followPro() {
-        _ = withObservationTracking { pro.state } onChange: { [weak self] in
-            Task { @MainActor in
-                self?.reschedule()
-                self?.followPro()
             }
         }
     }
@@ -119,9 +105,8 @@ final class MealReminderCoordinator {
         let today = self.today
         let minute = Int((now + offset - today * PlanDays.millisPerDay) / 60_000)
         let settings = self.settings
-        let pro = self.pro.state
-        let evening = ProReminders.runs(on: settings.eveningReminder, chosen: settings.eveningReminderChosen, pro: pro)
-        let tonight = ProReminders.runs(on: settings.tonightReminder, chosen: true, pro: pro)
+        let evening = settings.eveningReminder
+        let tonight = settings.tonightReminder
         planning = Task { [recipes, scheduler] in
             var scheduled: [ScheduledMealReminder] = []
             if evening {

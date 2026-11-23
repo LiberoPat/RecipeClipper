@@ -57,12 +57,6 @@ object Routes {
     // Settings' pages (#286), one per section of its index: `settings/units`, `settings/help`…
     fun settingsSection(section: SettingsSection) = "settings/${section.route}"
 
-    // The Pro screen (#413) on the Recipes stack: Settings' Pro page, and where every locked extra here leads.
-    val PRO = settingsSection(SettingsSection.PRO)
-
-    // The same screen on the Week's own stack, so Back returns to the week.
-    const val WEEK_PRO = "week/pro"
-
     // Settings' Plan and Pantry pages (#412), each linked from its tab's menu and opened on that tab's
     // own stack, so Back returns to the tab: `settings/week` and `settings/pantry` belong to Recipes'.
     const val WEEK_SETTINGS = "week/settings"
@@ -223,8 +217,7 @@ fun NavGraphBuilder.mealPlanDestination(
                 navController.popBackStack()
                 if (planned) navController.selectTab(Tab.WEEK)
             },
-            viewModel = viewModel(entry),
-            onOpenPro = { navController.navigate(Routes.PRO) }
+            viewModel = viewModel(entry)
         )
     }
 }
@@ -253,8 +246,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             onOpenLists = { navController.navigate(Routes.LISTS) },
             onOpenSettings = { navController.navigate(Routes.SETTINGS) },
             onNewRecipe = { navController.navigate(Routes.NEW_RECIPE) },
-            onScan = { navController.navigate(Routes.scan(it)) },
-            onOpenPro = { navController.navigate(Routes.PRO) }
+            onScan = { navController.navigate(Routes.scan(it)) }
         )
     }
 
@@ -294,8 +286,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onResumeCooking = { navController.navigate(Routes.cookRecipe(it)) },
                 // Today's meal: on this stack, so Back returns to the library (Home's went to the Week's).
-                onOpenPlanned = { id, servings, cook -> navController.navigate(Routes.plannedRecipe(id, servings, cook)) },
-                onOpenPro = { navController.navigate(Routes.PRO) }
+                onOpenPlanned = { id, servings, cook -> navController.navigate(Routes.plannedRecipe(id, servings, cook)) }
             )
         )
     }
@@ -334,8 +325,7 @@ fun NavGraphBuilder.recipesDestinations(navController: NavHostController) {
             SettingsSectionScreen(
                 section,
                 onBack = { navController.popBackStack() },
-                onShowTips = { tooltips?.onReplay() },
-                onOpenPro = { navController.navigate(Routes.PRO) }
+                onShowTips = { tooltips?.onReplay() }
             )
         }
     }

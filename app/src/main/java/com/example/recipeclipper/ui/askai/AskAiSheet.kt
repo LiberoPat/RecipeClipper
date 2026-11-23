@@ -42,7 +42,6 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.AskAiPrompt
 import com.example.recipeclipper.ui.common.LocalFlagValues
-import com.example.recipeclipper.ui.common.ProTeaserRow
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.recipe.SectionHeading
@@ -63,9 +62,7 @@ fun AskAiSheet(
     onDismiss: () -> Unit,
     /** "Paste the answer" (#372): where the pasted text leads, the sheet already closed. */
     onOpenPasted: (PasteTarget) -> Unit = {},
-    viewModel: AskAiViewModel = hiltViewModel(),
-    /** The Pro screen (#413): the locked choices of Plan my week open it, the sheet closed first. */
-    onOpenPro: () -> Unit = {}
+    viewModel: AskAiViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val words = askAiWords(LocalResources.current)
@@ -128,14 +125,6 @@ fun AskAiSheet(
             }
             // The plan's own choices (#392, #367), under the flag, once it is the chosen prompt.
             if (state.plan && state.kind == AskAiKind.PLAN_MY_WEEK) PlanOptions(state, viewModel)
-            // Without Pro (#413) the plan is the free week of dinners; its choices are one locked line.
-            if (state.planLocked && state.kind == AskAiKind.PLAN_MY_WEEK) {
-                ProTeaserRow(
-                    text = stringResource(R.string.pro_teaser_plan),
-                    onClick = { dismiss(); onOpenPro() },
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
             Spacer(Modifier.height(16.dp))
             PromptButtons(
                 enabled = state.canSend,

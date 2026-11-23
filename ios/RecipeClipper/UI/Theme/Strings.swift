@@ -385,26 +385,16 @@ enum Strings {
         }
     }
 
-    // Pro (#413): the badge on a locked Week extra, the Pro screen, and the locked lines.
+    // Pro (#413): the badge, and the Pro screen (listed only while Pro adds something).
     static var proBadge: String { String(localized: "pro_badge") }
     static var proTitle: String { String(localized: "pro_title") }
     static var proIntro: String { String(localized: "pro_intro") }
-    static var proFeatureFreshTitle: String { String(localized: "pro_feature_fresh_title") }
-    static var proFeatureFreshBody: String { String(localized: "pro_feature_fresh_body") }
-    static var proFeatureRemindersTitle: String { String(localized: "pro_feature_reminders_title") }
-    static var proFeatureRemindersBody: String { String(localized: "pro_feature_reminders_body") }
-    static var proFeatureSkipTitle: String { String(localized: "pro_feature_skip_title") }
-    static var proFeatureSkipBody: String { String(localized: "pro_feature_skip_body") }
-    static var proFeaturePlanTitle: String { String(localized: "pro_feature_plan_title") }
-    static var proFeaturePlanBody: String { String(localized: "pro_feature_plan_body") }
     static var proOneTime: String { String(localized: "pro_one_time") }
     static var proUnlock: String { String(localized: "pro_unlock") }
     static func proUnlockPrice(_ price: String) -> String { String(localized: "pro_unlock_price \(price)") }
     static var proRestore: String { String(localized: "pro_restore") }
     static var proUnlocked: String { String(localized: "pro_unlocked") }
     static var proFreeLine: String { String(localized: "pro_free_line") }
-    static var proTeaserFresh: String { String(localized: "pro_teaser_fresh") }
-    static var proTeaserPlan: String { String(localized: "pro_teaser_plan") }
     static var done: String { String(localized: "action_done") }
     static var close: String { String(localized: "action_close") }
 

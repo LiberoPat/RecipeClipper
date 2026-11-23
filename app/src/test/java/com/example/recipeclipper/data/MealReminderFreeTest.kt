@@ -7,7 +7,6 @@ import com.example.recipeclipper.data.model.PlanDays
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.fake.FakeAppPreferences
-import com.example.recipeclipper.fake.FakeEntitlements
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeMealPlanRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository.Companion.DINNER
@@ -25,12 +24,12 @@ import org.junit.Test
 import java.util.TimeZone
 
 /**
- * The evening and Tonight reminders under Pro (#397, #413). Without Pro a reminder the cook
- * switched on keeps running; the evening one's default "on" (never stored) arms nothing; with Pro
- * the default stands, as before. The alarms and the receiver's [MealReminderCoordinator.due] agree.
+ * The evening and Tonight reminders (#397) are free for everyone (owner, 2026-11-23: nothing is Pro
+ * today): the evening one's default "on" arms and sends for a cook who never touched the switch,
+ * a Tonight one switched on runs, and one switched off arms nothing. iOS: `MealReminderFreeTests`.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class MealReminderProTest {
+class MealReminderFreeTest {
 
     private val today = 20_000L
     private val now = PlanDays.utcMillis(today) + 8 * 3_600_000L
@@ -38,7 +37,6 @@ class MealReminderProTest {
     private val plan = FakeMealPlanRepository()
     private val recipes = FakeRecipeRepository()
     private val flags = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = true)
-    private val entitlements = FakeEntitlements()
 
     private class RecordingScheduler : MealReminderScheduler {
         val replaced = mutableListOf<List<MealReminderAlarm>>()
@@ -51,7 +49,7 @@ class MealReminderProTest {
     private val scheduler = RecordingScheduler()
 
     private fun coordinator(preferences: FakeAppPreferences) =
-        MealReminderCoordinator(plan, recipes, preferences, flags, scheduler, { now }, DefaultProAccess(flags, entitlements))
+        MealReminderCoordinator(plan, recipes, preferences, flags, scheduler, { now })
             .apply { useZone(TimeZone.getTimeZone("UTC")) }
 
     private fun started(coordinator: MealReminderCoordinator): TestScope = TestScope(StandardTestDispatcher()).also {
@@ -70,15 +68,15 @@ class MealReminderProTest {
         )
     }
 
-    @Test fun `without Pro the evening reminder's default arms nothing and sends nothing`() = runTest {
+    @Test fun `without Pro the evening reminder's default arms and sends`() = runTest {
         planTomorrow()
         val coordinator = coordinator(FakeAppPreferences(eveningReminder = true, eveningReminderChosen = false))
         started(coordinator)
-        assertEquals(emptyList<MealReminderAlarm>(), scheduler.replaced.last())
-        assertNull(coordinator.due(MealReminderKind.EVENING, today))
+        assertEquals(listOf(MealReminderKind.EVENING), scheduler.replaced.last().map { it.kind })
+        assertNotNull(coordinator.due(MealReminderKind.EVENING, today))
     }
 
-    @Test fun `without Pro a reminder the cook switched on keeps running`() = runTest {
+    @Test fun `without Pro both reminders run when the cook switched them on`() = runTest {
         planTomorrow()
         val preferences = FakeAppPreferences(eveningReminder = true, eveningReminderChosen = true, tonightReminder = true)
         val coordinator = coordinator(preferences)
@@ -87,21 +85,11 @@ class MealReminderProTest {
         assertNotNull(coordinator.due(MealReminderKind.EVENING, today))
     }
 
-    @Test fun `with Pro the default evening reminder runs, as before`() = runTest {
+    @Test fun `a reminder switched off arms nothing and sends nothing`() = runTest {
         planTomorrow()
-        entitlements.state.value = UnlockState(unlocked = true)
-        val coordinator = coordinator(FakeAppPreferences(eveningReminder = true, eveningReminderChosen = false))
+        val coordinator = coordinator(FakeAppPreferences(eveningReminder = false, eveningReminderChosen = true))
         started(coordinator)
-        assertEquals(listOf(MealReminderKind.EVENING), scheduler.replaced.last().map { it.kind })
-        assertNotNull(coordinator.due(MealReminderKind.EVENING, today))
-    }
-
-    @Test fun `buying Pro re-arms the default reminder at once`() = runTest {
-        val coordinator = coordinator(FakeAppPreferences(eveningReminder = true, eveningReminderChosen = false))
-        val scope = started(coordinator)
         assertTrue(scheduler.replaced.last().isEmpty())
-        entitlements.state.value = UnlockState(unlocked = true)
-        scope.runCurrent()
-        assertEquals(listOf(MealReminderKind.EVENING), scheduler.replaced.last().map { it.kind })
+        assertNull(coordinator.due(MealReminderKind.EVENING, today))
     }
 }

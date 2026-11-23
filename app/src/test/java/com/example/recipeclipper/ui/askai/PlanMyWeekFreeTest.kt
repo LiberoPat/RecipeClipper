@@ -6,19 +6,15 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.recipeclipper.data.Clock
-import com.example.recipeclipper.data.DefaultProAccess
-import com.example.recipeclipper.data.UnlockState
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.fake.FakeAppPreferences
-import com.example.recipeclipper.fake.FakeEntitlements
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeListRepository
 import com.example.recipeclipper.fake.FakeMealPlanRepository
@@ -34,24 +30,20 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Plan my week's choices (#392, #367) under Pro (#413): without it Plan my week is still there, as
- * the free week of dinners it was before #392, and its choices are one locked line that opens the
- * Pro screen; with Pro the choices are back. Single-recipe prompts are never gated. iOS: `AskAiProTests`.
+ * Plan my week's choices (#392, #367) are free for everyone (owner, 2026-11-23: nothing is Pro
+ * today): the meals, the start day and the cook's own recipes show with no locked line. iOS: `FreeExtrasTests`.
  */
 @RunWith(AndroidJUnit4::class)
-class PlanMyWeekProTest {
+class PlanMyWeekFreeTest {
 
     @get:Rule
     val compose = createComposeRule()
 
     private val flags = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = true)
-    private val entitlements = FakeEntitlements()
-    private var proOpened = 0
-    private var dismissed = 0
 
     private fun viewModel() = AskAiViewModel(
         FakePantryRepository(), FakeListRepository(), FakeRecipeRepository(), FakeAppPreferences(), Clock { 1_800_000_000_000L }, null,
-        FakeMealPlanRepository(), FakePlanChoices(), flags, DefaultProAccess(flags, entitlements)
+        FakeMealPlanRepository(), FakePlanChoices(), flags
     )
 
     private fun clipboard(): String? =
@@ -60,7 +52,7 @@ class PlanMyWeekProTest {
 
     private fun show(vm: AskAiViewModel = viewModel()): AskAiViewModel {
         compose.setContent {
-            RecipeClipperTheme { AskAiSheet(onDismiss = { dismissed++ }, viewModel = vm, onOpenPro = { proOpened++ }) }
+            RecipeClipperTheme { AskAiSheet(onDismiss = {}, viewModel = vm) }
         }
         compose.onNodeWithTag("askAiKind-PLAN_MY_WEEK").performClick()
         compose.waitForIdle()
@@ -69,41 +61,26 @@ class PlanMyWeekProTest {
 
     private fun count(tag: String) = compose.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().size
 
-    @Test fun `locked, Plan my week is the free week of dinners and its choices are one locked line`() {
+    @Test fun `the choices are there for everyone and there is no locked line`() {
         val vm = show()
         assertTrue(flags.isOn(Flag.PLAN_MY_WEEK_PLUS))
-        assertEquals(0, count("askAiPlan"))
-        assertFalse(vm.uiState.value.plan)
-        assertTrue(vm.uiState.value.planLocked)
-        compose.onNodeWithText("Choose the meals, the first day and your own recipes").performScrollTo().assertIsDisplayed()
-
-        compose.onNodeWithTag("askAiCopy").performScrollTo().performClick()
-        compose.waitForIdle()
-        assertTrue(clipboard()!!.startsWith("Plan one dinner recipe for each of these days:"))
-    }
-
-    @Test fun `the locked line closes the sheet and opens the Pro screen`() {
-        show()
-        compose.onNodeWithTag("proTeaser").performScrollTo().performClick()
-        compose.waitForIdle()
-        assertEquals(1, proOpened)
-        assertEquals(1, dismissed)
-    }
-
-    @Test fun `with Pro the choices are back and there is no locked line`() {
-        entitlements.state.value = UnlockState(unlocked = true)
-        val vm = show()
         compose.onNodeWithTag("askAiPlan").assertIsDisplayed()
         assertEquals(0, count("proTeaser"))
+        assertEquals(0, count("proBadge"))
         assertTrue(vm.uiState.value.plan)
-        assertFalse(vm.uiState.value.planLocked)
     }
 
-    @Test fun `the other prompts are never locked`() {
+    @Test fun `the prompt carries the choices, not the plain week of dinners`() {
+        show()
+        compose.onNodeWithTag("askAiCopy").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertFalse(clipboard()!!.startsWith("Plan one dinner recipe for each of these days:"))
+    }
+
+    @Test fun `the other prompts have no locked line either`() {
         val vm = viewModel()
-        compose.setContent { RecipeClipperTheme { AskAiSheet(onDismiss = {}, viewModel = vm, onOpenPro = { proOpened++ }) } }
+        compose.setContent { RecipeClipperTheme { AskAiSheet(onDismiss = {}, viewModel = vm) } }
         compose.waitForIdle()
         assertEquals(0, count("proTeaser"))
-        assertEquals(0, proOpened)
     }
 }

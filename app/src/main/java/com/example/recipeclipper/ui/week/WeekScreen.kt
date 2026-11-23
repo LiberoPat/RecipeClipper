@@ -92,8 +92,6 @@ import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.TooltipScreen
 import com.example.recipeclipper.ui.common.FreshNudgeNote
-import com.example.recipeclipper.ui.common.ProBadge
-import com.example.recipeclipper.ui.common.ProTextButton
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.common.MenuItemText
 import com.example.recipeclipper.ui.common.UndoSnackbarEffect
@@ -140,8 +138,6 @@ fun WeekScreen(
     viewModel: WeekViewModel = hiltViewModel(),
     groceriesViewModel: AddToGroceriesViewModel? = null,
     shopForWeek: Boolean = LocalFlagValues.current.isOn(Flag.SHOP_FOR_WEEK),
-    /** The Pro screen (#413): without Pro, Skip and the fresh-food swap open it. */
-    onOpenPro: () -> Unit = {},
     /** Settings' Plan section (#412), from the menu; null leaves the item out. */
     onOpenSettings: (() -> Unit)? = null
 ) {
@@ -261,7 +257,7 @@ fun WeekScreen(
                             MonthGrid(month = month, today = state.today, onSelect = viewModel::onMonthDaySelected)
                         }
                     } else {
-                        DayList(state, listState, viewModel, onOpenRecipe, onOpenPro)
+                        DayList(state, listState, viewModel, onOpenRecipe)
                     }
                 }
             }
@@ -603,8 +599,7 @@ private fun DayList(
     state: WeekUiState,
     listState: LazyListState,
     viewModel: WeekViewModel,
-    onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit,
-    onOpenPro: () -> Unit
+    onOpenRecipe: (recipeId: Long, servings: Int?) -> Unit
 ) {
     val typeNames = remember(state.mealTypes) { state.mealTypes.associate { it.id to it.name } }
 
@@ -656,11 +651,9 @@ private fun DayList(
                 onMove = viewModel::onMoveStart,
                 onRemove = viewModel::onRemove,
                 canSkip = state::canSkip,
-                // Without Pro (#413) Skip and the swap stay, with the badge, and open the Pro screen.
-                onSkip = if (state.proLocked) ({ _ -> onOpenPro() }) else viewModel::onSkipStart,
+                onSkip = viewModel::onSkipStart,
                 freshNudges = state.freshNudges,
-                onFreshSwap = if (state.proLocked) ({ _ -> onOpenPro() }) else viewModel::onFreshSwap,
-                proLocked = state.proLocked,
+                onFreshSwap = viewModel::onFreshSwap,
                 pantryGaps = state.pantryGaps,
                 onAddMissing = viewModel::onAddMissingToGroceries
             )
@@ -739,7 +732,6 @@ private fun DaySection(
     onSkip: (PlannedMeal) -> Unit,
     freshNudges: Map<Long, FreshNudge>,
     onFreshSwap: (Long) -> Unit,
-    proLocked: Boolean = false,
     pantryGaps: Map<Long, PantryGap> = emptyMap(),
     onAddMissing: (Long) -> Unit = {}
 ) {
@@ -757,15 +749,12 @@ private fun DaySection(
                     // visible on today's (#398).
                     onSkip = if (canSkip(meal)) ({ onSkip(meal) }) else null,
                     skipVisible = isToday,
-                    skipLocked = proLocked,
                     pantryGap = pantryGaps[meal.id],
                     onAddMissing = { onAddMissing(meal.id) }
                 )
                 // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
                 freshNudges[meal.id]?.let { nudge ->
-                    FreshNudgeNote(
-                        nudge, { onFreshSwap(meal.id) }, Modifier.padding(start = 56.dp).testTag("fresh-${meal.id}"), locked = proLocked
-                    )
+                    FreshNudgeNote(nudge, { onFreshSwap(meal.id) }, Modifier.padding(start = 56.dp).testTag("fresh-${meal.id}"))
                 }
             }
         }
@@ -816,8 +805,6 @@ private fun MealRow(
     onRemove: () -> Unit,
     onSkip: (() -> Unit)? = null,
     skipVisible: Boolean = false,
-    // Without Pro (#413): Skip keeps its place with the Pro badge, and its tap opens the Pro screen.
-    skipLocked: Boolean = false,
     pantryGap: PantryGap? = null,
     onAddMissing: () -> Unit = {}
 ) {
@@ -874,12 +861,9 @@ private fun MealRow(
                 )
             }
             if (onSkip != null && skipVisible) {
-                ProTextButton(
-                    label = stringResource(R.string.action_skip_today),
-                    locked = skipLocked,
-                    onClick = onSkip,
-                    modifier = Modifier.testTag("skip-${meal.id}")
-                )
+                TextButton(onClick = onSkip, modifier = Modifier.testTag("skip-${meal.id}")) {
+                    Text(stringResource(R.string.action_skip_today))
+                }
             }
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -893,7 +877,6 @@ private fun MealRow(
             if (onSkip != null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_skip)) },
-                    trailingIcon = if (skipLocked) ({ ProBadge() }) else null,
                     modifier = Modifier.testTag("skipMenu-${meal.id}"),
                     onClick = {
                         menuOpen = false

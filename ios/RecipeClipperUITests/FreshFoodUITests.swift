@@ -33,7 +33,8 @@ final class FreshFoodUITests: RecipeUITestCase {
     }
 
     func testPerishablesFiveDaysOutAreBuyLaterAndTheSwapBringsThemBackToNow() {
-        launch(.standard, flags: ["shopForWeek", "freshFood"])
+        // `proUnlock` is the gating flag: Pro is locked (none is ever bought here), and these are free anyway.
+        launch(.standard, flags: ["shopForWeek", "freshFood", "proUnlock"])
         require(tabBar.buttons["Plan"], "the Plan tab").tap()
         require(app.staticTexts["weekRange"], "the Week")
         plan("Spaghetti Carbonara", on: today)

@@ -14,11 +14,8 @@ struct SettingsUiState: Equatable {
     /// Turning reminders on was refused (notifications not allowed): the switch stays off and
     /// says why, until it is turned on successfully.
     var expiryRemindersDenied = false
-    /// The evening-before reminder of tomorrow's meals (#397) as stored, and its time (minutes since
-    /// midnight). What runs and shows under Pro (#413) is `SettingsViewModel.eveningReminderOn`.
+    /// The evening-before reminder of tomorrow's meals (#397), and its time (minutes since midnight).
     var eveningReminder = true
-    /// Whether the cook ever set the evening switch (#413).
-    var eveningReminderChosen = false
     var eveningReminderMinute = MealReminders.eveningMinute
     /// The optional afternoon Tonight reminder, and its time.
     var tonightReminder = false
@@ -237,7 +234,6 @@ final class SettingsViewModel {
             darkWhileCooking: settings.darkWhileCooking,
             expiryReminders: settings.expiryReminders,
             eveningReminder: settings.eveningReminder,
-            eveningReminderChosen: settings.eveningReminderChosen,
             eveningReminderMinute: settings.eveningReminderMinute,
             tonightReminder: settings.tonightReminder,
             tonightReminderMinute: settings.tonightReminderMinute,
@@ -247,30 +243,21 @@ final class SettingsViewModel {
         )
     }
 
-    /// The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag, Pro only with `proUnlock`.
+    /// The index's rows (#286), in order: Unlimited recipes only with the `freeTier` flag, Pro only with `proUnlock` and an extra to show.
     var sections: [SettingsSection] {
         SettingsSection.allCases.filter {
             ($0 != .unlimited || unlockRow != nil) && ($0 != .week || showsWeekReminders || showsTodayCardSetting) && ($0 != .pro || showsPro)
         }
     }
 
-    /// The Pro row (#413): only with the `proUnlock` flag; `isPro` says "Unlocked" on it.
-    var showsPro: Bool { pro.state.gated }
+    /// The Pro row (#413): only with the `proUnlock` flag and at least one Pro extra (none today, so
+    /// no row); `isPro` says "Unlocked" on it.
+    var showsPro: Bool { pro.state.showsPage }
     var isPro: Bool { pro.state.isPro }
-
-    /// Without Pro the Week reminders that are off carry the Pro badge and open the Pro screen (#413).
-    var remindersLocked: Bool { pro.state.locked }
-
-    /// The reminders as they run (#413, `ProReminders`): without Pro the evening one's default "on" is
-    /// not the cook's, so it shows off; one the cook switched on stays on.
-    var eveningReminderOn: Bool {
-        ProReminders.runs(on: uiState.eveningReminder, chosen: uiState.eveningReminderChosen, pro: pro.state)
-    }
-    var tonightReminderOn: Bool { ProReminders.runs(on: uiState.tonightReminder, chosen: true, pro: pro.state) }
 
     /// The Week page says notifications are off: refused just now, or a running reminder they block.
     var weekRemindersBlocked: Bool {
-        uiState.weekRemindersDenied || (!uiState.notificationsAllowed && (eveningReminderOn || tonightReminderOn))
+        uiState.weekRemindersDenied || (!uiState.notificationsAllowed && (uiState.eveningReminder || uiState.tonightReminder))
     }
 
     /// The Week section's reminders (#397): only with the `eveningReminders` flag on.
@@ -290,9 +277,6 @@ final class SettingsViewModel {
     /// says why. Returns the work so a test can await it.
     @discardableResult
     func onWeekReminderChange(_ kind: MealReminderKind, _ on: Bool) -> Task<Void, Never>? {
-        // Without Pro (#413) a reminder that is off doesn't go on: its switch opens the Pro screen instead.
-        let shown = kind == .evening ? eveningReminderOn : tonightReminderOn
-        if on && remindersLocked && !shown { return nil }
         guard on else {
             setWeekReminder(kind, false)
             return nil
@@ -310,7 +294,6 @@ final class SettingsViewModel {
         case .evening:
             preferences.eveningReminder = on
             uiState.eveningReminder = on
-            uiState.eveningReminderChosen = true
         case .tonight:
             preferences.tonightReminder = on
             uiState.tonightReminder = on

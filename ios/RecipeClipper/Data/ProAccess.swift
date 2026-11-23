@@ -1,7 +1,20 @@
 import Foundation
 
-/// Pro (#413) at one moment (Android's `ProState`): the one place a screen learns whether the Week
-/// planning extras are open. `gated` is the `proUnlock` flag (off, nothing is gated: the app as
+/// One thing Pro adds: a title and a line for the Pro screen's list (Android's `ProExtra`).
+struct ProExtra: Equatable, Sendable {
+    let title: String
+    let body: String
+}
+
+/// What Pro adds, the one list per platform (Android's `ProExtras`). **Empty** (owner, 2026-11-23): the
+/// Week extras of #413 are all free, and Pro is kept for future AI features. While it is empty nothing
+/// is gated, and Settings has no Pro row and no screen opens the Pro page; the first entry brings them back.
+enum ProExtras {
+    static let all: [ProExtra] = []
+}
+
+/// Pro (#413) at one moment (Android's `ProState`): the one place a screen learns whether the Pro
+/// extras are open (`available` says which there are, none today). `gated` is the `proUnlock` flag (off, nothing is gated: the app as
 /// before #413). `isPro` is the one-time unlock of #107, bought on this Apple Account or counted as
 /// bought in Developer settings: a cook who unlocked "unlimited recipes" is Pro, since it is the same
 /// product and the same cached entitlement. `price` is the store's own formatted price, nil until it
@@ -11,15 +24,20 @@ struct ProState: Equatable, Sendable {
     var isPro = false
     var pending = false
     var price: String?
+    /// What Pro adds (`ProExtras.all`); the Pro page and its Settings row exist only while this isn't empty.
+    var available: [ProExtra] = ProExtras.all
 
-    /// The Week planning extras may be used: nothing is gated, or the cook has Pro.
+    /// Whether Settings lists the Pro page: the flag is on and Pro adds something.
+    var showsPage: Bool { gated && !available.isEmpty }
+
+    /// The Pro extras may be used: nothing is gated, or the cook has Pro.
     var extras: Bool { !gated || isPro }
 
     /// An extra shows its Pro badge and opens the Pro screen instead of acting.
     var locked: Bool { !extras }
 }
 
-/// Reads `ProState` (#413) for ViewModels and the reminders, and runs the purchase and restore,
+/// Reads `ProState` (#413) for ViewModels, and runs the purchase and restore,
 /// which are `Entitlements`' (StoreKit, #107). Implementations read observable sources, so a view
 /// or a ViewModel's computed state reading `state` follows it; nothing reads a build constant.
 /// `UngatedProAccess` is the default where none is given (tests that don't care): every extra open.
@@ -37,14 +55,4 @@ final class UngatedProAccess: ProAccess {
     nonisolated init() {}
     func purchase() async -> PurchaseOutcome { .failed }
     func restore() async -> PurchaseOutcome { .failed }
-}
-
-/// The evening and Tonight reminders under Pro (#397, #413; Android's `ProReminders`). Locked, a
-/// reminder the cook switched on themselves keeps running (nothing already set up is taken away)
-/// and can still be turned off or retimed; only switching one on needs Pro. The evening reminder's
-/// default (on, never stored) is a Pro default: a cook without Pro who never touched the switch gets
-/// no reminder.
-enum ProReminders {
-    /// Whether a reminder stored as `on` runs: `chosen` is whether the cook ever set its switch.
-    static func runs(on: Bool, chosen: Bool, pro: ProState) -> Bool { on && (pro.extras || chosen) }
 }

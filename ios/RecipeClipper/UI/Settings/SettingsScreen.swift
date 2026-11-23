@@ -56,7 +56,7 @@ struct SettingsScreen: View {
         case .week:
             // The reminders' value; with only "Show today's meal" there (#448, no `eveningReminders`), none.
             guard vm.showsWeekReminders else { return nil }
-            return vm.eveningReminderOn || vm.tonightReminderOn ? Strings.settingsValueRemindersOn : Strings.settingsValueRemindersOff
+            return state.eveningReminder || state.tonightReminder ? Strings.settingsValueRemindersOn : Strings.settingsValueRemindersOff
         case .pantry: return state.expiryReminders ? Strings.settingsValueRemindersOn : Strings.settingsValueRemindersOff
         // The automatic copy's "Last backed up", as its page says it, but how long ago.
         case .yourRecipes:

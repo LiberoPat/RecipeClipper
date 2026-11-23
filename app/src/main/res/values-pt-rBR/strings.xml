@@ -1082,22 +1082,12 @@
     <string name="pro_badge">Pro</string>
     <string name="pro_title">Pith Pro</string>
     <string name="pro_intro">Extras para planejar sua semana. Todo o resto do Pith continua grátis.</string>
-    <string name="pro_feature_fresh_title">Compras em duas vezes</string>
-    <string name="pro_feature_fresh_body">Compre os frescos mais tarde na semana e veja quando uma refeição está planejada para depois do que os ingredientes duram, com uma troca em um toque.</string>
-    <string name="pro_feature_reminders_title">Lembretes à noite</string>
-    <string name="pro_feature_reminders_body">Na noite anterior: as refeições de amanhã e o que precisa começar antes. E um opcional no próprio dia.</string>
-    <string name="pro_feature_skip_title">Pular uma refeição</string>
-    <string name="pro_feature_skip_body">Adie o resto da semana em um dia ou mova uma refeição para o próximo dia livre, com um só desfazer.</string>
-    <string name="pro_feature_plan_title">Planejar minha semana, do seu jeito</string>
-    <string name="pro_feature_plan_body">Peça a uma IA as refeições e os dias que você escolher, com suas receitas, novas ou uma mistura.</string>
     <string name="pro_one_time">Compra única, nunca uma assinatura.</string>
     <string name="pro_unlock">Desbloquear Pro</string>
     <string name="pro_unlock_price">Desbloquear Pro por %1$s</string>
     <string name="pro_restore">Restaurar compras</string>
     <string name="pro_unlocked">O Pro está desbloqueado. Obrigado!</string>
     <string name="pro_free_line">Grátis. Sem anúncios. Sem conta. Sem assinatura.</string>
-    <string name="pro_teaser_fresh">Comprar os frescos mais tarde na semana</string>
-    <string name="pro_teaser_plan">Escolher as refeições, o primeiro dia e suas próprias receitas</string>
     <!-- Step photos (#433) -->
     <string name="step_photo_open">Foto %1$d do passo %2$d</string>
     <plurals name="step_photos_open">

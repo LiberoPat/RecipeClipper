@@ -8,13 +8,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.recipeclipper.data.DefaultProAccess
+import com.example.recipeclipper.R
+import com.example.recipeclipper.data.ProExtra
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.UnlockState
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.fake.FakeEntitlements
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
+import com.example.recipeclipper.fake.FakeProAccess
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -35,8 +37,11 @@ class ProScreenTest {
     private val flags = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = true)
     private var back = 0
 
+    // Pro adds nothing today (2026-11-23), so the screen is shown with an extra of the test's own.
+    private val testExtra = ProExtra(R.string.action_move, R.string.action_remove_from_plan)
+
     private fun show(entitlements: FakeEntitlements): ProViewModel {
-        val vm = ProViewModel(DefaultProAccess(flags, entitlements))
+        val vm = ProViewModel(FakeProAccess(flags, entitlements, listOf(testExtra)))
         compose.setContent { ProScreen(onBack = { back++ }, viewModel = vm) }
         return vm
     }
@@ -45,7 +50,7 @@ class ProScreenTest {
     fun saysWhatProAddsThatItIsOneTimeAndThatTheAppIsFree() {
         show(FakeEntitlements())
         compose.onNodeWithText("Pith Pro").assertIsDisplayed()
-        listOf("Shop in two trips", "Evening reminders", "Skip a meal", "Plan my week, your way").forEach {
+        listOf("Move…", "Remove from plan").forEach {
             compose.onNodeWithText(it).performScrollTo().assertIsDisplayed()
         }
         compose.onNodeWithText("One-time purchase, never a subscription.").performScrollTo().assertIsDisplayed()

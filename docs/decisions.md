@@ -1734,7 +1734,10 @@ The first real tab of #46, still behind the #47 flag.
   and the next 13 days, #232) and meal types as "Add to plan". Drag and drop
   across day sections was left out, because it needs experimental Compose
   APIs and gives no parity with iOS for the same result.
-- **Skip tonight** (#398, `skipTonight` flag, both platforms). A planned meal's long-press menu
+- **Skip tonight** (#398, `skipTonight` flag, both platforms). **Free for everyone** (owner,
+  2026-11-23: "Skip shouldn't be in Pro"; #413 had put it behind the Pro badge for two days): no
+  badge on today's Skip or the menu item, no Pro screen, no gate in `WeekViewModel.onSkipStart`.
+  A planned meal's long-press menu
   gains **Skip…** beside Move, and today's planned meals show a visible **Skip** button; neither is
   offered for a meal planned in the past (`PlanShift.canSkip`: day before today). It opens a small
   sheet with three one-tap choices, each followed by one undo snackbar that restores exactly what
@@ -2607,6 +2610,8 @@ The optional extras of #46, one PR each.
   means Dinner), its recipes come in like listed ones, and a menu left with no meals is dropped.
 
 ## The evening-before reminder, and Tonight (#397)
+
+**Free for everyone** (owner, 2026-11-23). #413 made switching a reminder on a Pro act, and the evening one's default "on" a Pro default; neither holds now: anyone can switch either reminder on, and the default applies to all (`ProReminders` is gone; the coordinators and Settings read the setting as stored).
 
 The owner's hardest part of the app is shopping and then cooking through the week
 (2026-11-19): fresh food going off, time on weeknights, plans changing, forgetting
@@ -6153,6 +6158,8 @@ the Paprika import is the first user, behind `paprikaImport`).
 
 ## Fresh food: shop in two trips, and cook the delicate meals first (#396, 2026-11-19)
 
+**Free for everyone** (owner, 2026-11-23). #413 put Buy later and the swap behind Pro for two days; both are free again, with no badge, locked line or Pro screen, on the Week, in Shop for this week and in the meal-plan review.
+
 The owner named shopping and then cooking through the week as the hardest part of the app, and fresh
 food going off its first half. Behind the `freshFood` flag (on by default; off, To buy is one list and
 there is no note), on both platforms. Never a date and never a fact about the cook's own food: the
@@ -6560,8 +6567,8 @@ removes just its entries: the menu, or every Select), on both platforms.
 Ask an AI's **Plan my week** (#353) asked only for seven dinners of new recipes. With the
 `planMyWeekPlus` flag (on by default; off, the sheet, the prompt and the review are exactly as
 before) the cook chooses the meals, the first day, and where the recipes come from, on both
-platforms. These Week planning extras are meant to become Pro (#413): nothing is gated here, but
-the flag is the one thing a gate would wrap.
+platforms. **Free for everyone** (#413 gated it as a Pro extra; the owner took that back on
+2026-11-23: Pro is kept for future AI features, so there is no lock, no badge and no Pro screen here).
 
 - **The sheet** (chosen *Plan my week*, `PlanOptions`; iOS the same): **Meals**, the cook's meal
   types as multi-select chips (`meal_types`, their order, current names; **Dinner ticked** at
@@ -6632,13 +6639,14 @@ the flag is the one thing a gate would wrap.
   `MealPlanReviewMealsTest` and `MealPlanReviewTests`, `PlanMyWeekSheetTest` and
   `MealPlanReviewScreenTest`.
 - **Not here:** the pantry (#363) and food profile (#364) toggles (neither exists to read yet),
-  and any Pro gate (#413).
+  and any Pro gate (#413; the choices were Pro's from 2026-11-21 to 2026-11-23, now free).
 
 ## Pro: unlimited recipes free, a one-time unlock for the Week extras (#413, 2026-11-21)
 
 The owner's decision (2026-11-19, issue #413, with the 2026-11-20 comment): **unlimited recipes,
-free, forever; no ads, no account**; a **one-time "Pro" unlock, never a subscription**, holding only
-the Week planning extras. Behind the **`proUnlock`** flag (on by default in debug and release, both
+free, forever; no ads, no account**; a **one-time "Pro" unlock, never a subscription**, first holding
+the Week planning extras and, **since 2026-11-23, none of them: those are free, and Pro is kept for
+future AI features** (see "What is gated"). Behind the **`proUnlock`** flag (on by default in debug and release, both
 platforms); off, the app is exactly as before (the free tier of #107 and #345 when `freeTier` is on,
 every extra free).
 
@@ -6652,8 +6660,8 @@ takes its place. `proUnlock` off: `freeTier` and `oneCookbook` decide exactly as
 
 | proUnlock | freeTier | oneCookbook | Library | Week extras |
 |---|---|---|---|---|
-| on | any | on | unlimited | Pro (locked until bought) |
-| on | any | off | old clean-up of 50 unprotected | Pro |
+| on | any | on | unlimited | free (Pro adds nothing today) |
+| on | any | off | old clean-up of 50 unprotected | free |
 | off | off | on | unlimited | free |
 | off | on | on | 50, shown not saved (unlocked: unlimited) | free |
 | off | on | off | 20, swap the oldest (unlocked: unlimited) | free |
@@ -6687,9 +6695,9 @@ takes its place. `proUnlock` off: `freeTier` and `oneCookbook` decide exactly as
     `queryPurchasesAsync`, `AppStore.sync()`). Until the products exist a purchase answers "Couldn't
     reach the store".
 - **The Pro screen** (Android `ui/pro/ProScreen` with `ProViewModel`, iOS `UI/Pro`): Settings' Pro
-  page (`settings/pro`; iOS `Route.settingsSection(.pro)`) and, on the Week's stack, `week/pro`, so
-  Back returns to where the cook was. The badge, then "Pith Pro", "Extras for planning your week.
-  Everything else in Pith stays free.", the four extras each with a line, "One-time purchase, never a
+  page (`settings/pro`; iOS `Route.settingsSection(.pro)`), **listed only while `ProExtras.all` isn't
+  empty (it is empty: no row, no screen)**. The badge, then "Pith Pro", "Extras for planning your week.
+  Everything else in Pith stays free.", the extras each with a line (`ProState.available`), "One-time purchase, never a
   subscription.", **Unlock Pro** (the store's price after it, "Unlock Pro for €3.49", only once the
   store has given one; no figure otherwise), **Restore purchases**, the pending or failed line (#107's
   words), and "Free. No ads. No account. No subscription." Bought, the button gives way to "Pro is
@@ -6697,55 +6705,50 @@ takes its place. `proUnlock` off: `freeTier` and `oneCookbook` decide exactly as
 - **The badge** (`ProBadge` on both): "Pro" in the accent (tertiary / `accentText`) inside a
   thin accent outline at half strength, 11pt semibold Instrument Sans, no fill: quiet, no Material purple. It
   sits after a locked extra's own label; a locked extra with no button of its own gets one muted line
-  with the badge (`ProTeaserRow`). An iOS context menu can't draw an outline, so Skip's menu item says
-  "Pro" as its subtitle there.
+  with the badge (`ProTeaserRow`). An iOS context menu can't draw an outline, so a locked menu item
+  would say "Pro" as its subtitle. Nothing uses them today.
 
-**What is gated, and what a cook without Pro sees.** The rule for anything already used: **nothing
-saved is taken away or hidden, and nothing switched on is switched off.** Gating only stops starting
-something new.
+**What is gated.** **Nothing, today** (owner, 2026-11-23: "Leave these off Pro. Pro will be future AI
+features."). Every extra #413 first gated is free for everyone, on both platforms, with no badge, no
+locked line and no Pro-screen redirect: Skip (#398: today's Skip button and the long-press Skip), fresh
+food (#396: Buy later and the "Swap with ..." note, on the Week, in Shop for this week and in the
+meal-plan review), the evening and Tonight reminders (#397: anyone switches them on, and the evening
+one's default "on" applies to everyone), and Plan my week's choices (#392, #367: the meals, the start
+day and the cook's own recipes). **The machinery stays** for the first AI extra: `ProAccess`/`ProState`
+(the `proUnlock` flag, the store, the product id `unlimited_recipes`, Restore purchases, Developer
+settings' "Pro (unlocked)" override), `ProBadge`, `ProTextButton`, `ProTeaserRow`, the Pro screen and
+its strings. Nothing reads `ProState.locked` or `extras` to gate anything today.
 
-- **Fresh food (#396).** *Buy later:* locked, Shop for this week shows one To buy list (as with the
-  `freshFood` flag off) whose "Add to groceries" adds every line, so nothing goes unbought; when the
-  split would have put something later, one locked line "Buy fresh food later in the week · Pro" opens
-  the Pro screen. Lines already added to Groceries stay. *The "cook it earlier?" note:* still shown on
-  the Week and in the meal-plan review (it is the table's hint), but its "Swap with …" carries the
-  badge and opens the Pro screen; nothing moves. A swap made before stays (it was a plan change).
-- **Reminders (#397).** Settings > Week stays. A reminder the cook switched on themselves keeps
-  running without Pro, and can be retimed or turned off; once off, turning it on needs Pro (the switch
-  shows the badge and opens the Pro screen, writing nothing). The evening reminder's default "on"
-  (never stored) is a Pro default: without Pro and with the switch never touched, it shows off and
-  nothing is scheduled; with Pro it is on as before. "Switched on themselves" is the key being stored
-  (`evening_reminder` present; Tonight is off by default, so on is always the cook's): no new setting.
-  Android's alarm receiver and iOS's planner both apply it (`ProReminders.runs`), and a purchase,
-  refund or override re-plans at once.
-- **Skip (#398).** Locked, today's Skip button and the long-press Skip are still there with the badge
-  and open the Pro screen; Move and Remove stay free. Meals already skipped are ordinary plan rows and
-  stay where they are; an undo already showing works as before.
-- **Plan my week (#392, #367).** Locked, Ask an AI's Plan my week is the free week of dinners it was
-  before #392 (the flag-off prompt), and its choices (meals, start day, recipes from the cook's own,
-  new or a mix) are one locked line, "Choose the meals, the first day and your own recipes · Pro",
-  that closes the sheet and opens the Pro screen. The remembered meal choice is kept for when Pro
-  comes. **The meal-plan review stays free** (it is an import: an AI plan already imported, or pasted
-  from any chat, is reviewed, saved and planned with its days and meals as before); only its
-  fresh-food swap is Pro's.
-- **Not gated** (owner, 2026-11-20): adding a recipe to Week, Move, Remove, Shop for this week, What
-  I need, menus, every way in and every import, lists, search, cook mode, scaling and conversion,
-  printing, export and backups, widgets and the Live Activity, single-recipe Ask an AI prompts. The
-  prep plan (#366), hosting menu (#368), shopping help (#365), alternate icons and themes, and sync
-  are Pro when built; none exists yet.
+**One list says whether the Pro page exists: `ProExtras.all`** (Android `data/ProAccess.kt`, iOS
+`Data/ProAccess.swift`), **empty**. `ProState.available` carries it, and `ProState.showsPage` (`gated`
+and not empty) is the one thing that lists Settings' Pro row; with no extras there is **no Pro row, and no
+screen opens the Pro page** (the `week/pro` route and every `onOpenPro` are gone; `settings/pro` is
+reachable only from the row). Adding the first extra to the list brings the row, the page and its line
+back; the new extra then gates itself with `ProState.locked`/`extras` and shows `ProBadge` or
+`ProTeaserRow`, the way #413 did. The Pro screen's "Extras for planning your week." intro is the old
+copy: rewrite it with the first extra.
+
+**Not gated** (owner, 2026-11-20 and 2026-11-23): everything. The prep plan (#366), hosting menu (#368),
+shopping help (#365), alternate icons and themes and sync were to be Pro when built (2026-11-20); the
+2026-11-23 decision reserves Pro for future AI features, so those are the owner's call again.
 
 **Strings.** 19 new keys in six languages on both platforms (`pro_*`; drafts for a native speaker in
-`docs/translations.md`). "Pro" and "Pith Pro" are kept as names in every language.
+`docs/translations.md`). "Pro" and "Pith Pro" are kept as names in every language. 10 of them went
+with the gates (2026-11-23): the four extras' titles and lines (`pro_feature_*`) and the two locked lines
+(`pro_teaser_fresh`, `pro_teaser_plan`); the other nine stay for the Pro screen.
 
 **Tests.** Android: `LibraryLimitTest` (core), `ProUnlockLimitTest` (every way in over the real
-policy and SQLite, flag on and off), `ProAccessTest`, `MealReminderProTest`, `ProScreenTest`,
-`SettingsProTest`, `WeekProTest`, `WhatINeedProTest`, `PlanMyWeekProTest`, `MealPlanReviewProTest`;
-`SettingsUnlockTest` now pins `proUnlock` off. iOS: `ProUnlockTests` (every way in over the mirror the
-share extension reads), `ProTests` (Pro, the screen's ViewModel, Settings, Week, What I need, Ask an
-AI, the review), `MealReminderProTests`, `ProUITests`; the free-tier tests (`FreeTierViewModelTests`,
-`OneCookbookTests`, `OneCookbookViewModelTests`, `RecipesViewModelTests`) pin `proUnlock` off. No
-migration, no pure-logic change under the corpus (only `LibraryLimit.of`, which the corpus doesn't
-cover).
+policy and SQLite, flag on and off), `ProAccessTest` (the state, and that Pro adds nothing today),
+`ProScreenTest` (over `FakeProAccess` with a test extra), `SettingsProTest` (no Pro row with no extras,
+the row back with one, the reminders free); `SettingsUnlockTest` pins `proUnlock` off. iOS:
+`ProUnlockTests` (every way in over the mirror the share extension reads), `ProTests` (Pro, the screen's
+ViewModel, Settings' row hidden with no extras and shown with a `StubProAccess` extra), `ProUITests`
+(no Pro row; Skip with no badge); the free-tier tests (`FreeTierViewModelTests`, `OneCookbookTests`,
+`OneCookbookViewModelTests`, `RecipesViewModelTests`) pin `proUnlock` off. The free extras'
+(2026-11-23): Android `WeekFreeExtrasTest`, `WhatINeedFreeTest`, `PlanMyWeekFreeTest`,
+`MealPlanReviewFreeTest`, `MealReminderFreeTest`; iOS `FreeExtrasTests` and `MealReminderFreeTests`
+(each extra works with no Pro and shows no badge). No migration, no pure-logic change under the corpus
+(only `LibraryLimit.of`, which the corpus doesn't cover).
 
 ## Plan and Pantry settings from their tabs' menus (#412, 2026-11-21)
 
@@ -6755,8 +6758,7 @@ Settings. Behind **`tabSettingsLinks`** (on by default in debug and release, bot
 neither menu has the item. No new settings: the links open the very pages Settings' index opens.
 
 - **Plan:** the menu's last item, **"Plan settings"** ("Reminders about the meals you plan"), opens
-  Settings' Plan section (`SettingsSection.WEEK`: the evening and Tonight reminders of #397, with
-  Pro's lock, #413). The issue says "Week settings"; the tab has been Plan since #414, so the item says
+  Settings' Plan section (`SettingsSection.WEEK`: the evening and Tonight reminders of #397). The issue says "Week settings"; the tab has been Plan since #414, so the item says
   Plan, like the section's title. Settings' Plan section shows only with `eveningReminders`, so the
   link does too (`FlagValues.planSettingsLink` / `FeatureFlags.planSettingsLink`): never a link to a
   page the index hides. Shown in the month view as well (it isn't about the week shown).
@@ -6767,8 +6769,8 @@ neither menu has the item. No new settings: the links open the very pages Settin
 - **On the tab's own stack**, so the tab bar stays with that tab selected and Back returns to the
   tab. Android: `week/settings` and `pantry/settings` (`Routes.WEEK_SETTINGS`, `PANTRY_SETTINGS`), in
   the Week and Pantry graphs, since `settings/<section>` belongs to the Recipes graph and one NavHost
-  can't hold a route twice; both show the bar. A locked reminder's switch there opens `week/pro`,
-  on the same stack. iOS: `Route.settingsSection(.week)` on `weekPath`, and the Pantry tab got a stack
+  can't hold a route twice; both show the bar. (`week/pro` is gone: nothing opens the Pro screen, 2026-11-23.)
+  iOS: `Route.settingsSection(.week)` on `weekPath`, and the Pantry tab got a stack
   of its own (`Router.pantryPath`, cleared by choosing the open tab again, like the others).
 - **The Pantry opened from outside lands on the pantry itself**, not on its Settings page if that was
   left open: an expiry reminder's tap (its Use it up sheet, #305, is the pantry's) and items received

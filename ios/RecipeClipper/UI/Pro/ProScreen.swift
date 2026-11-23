@@ -1,18 +1,12 @@
 import SwiftUI
 
-/// The Pro screen (#413; Android's `ProScreen`, the same page): every locked Week extra opens it, and it
-/// is Settings' Pro page. What Pro adds, "one-time purchase, never a subscription", the unlock (with the
+/// The Pro screen (#413; Android's `ProScreen`, the same page): Settings' Pro page, listed only while
+/// Pro has an extra to add (none since 2026-11-23: the Week extras are free, and Pro is kept for future
+/// AI features). What Pro adds (`ProState.available`), "one-time purchase, never a subscription", the unlock (with the
 /// store's price once the store gives it, never a figure of ours), Restore purchases, and "Free. No ads.
 /// No account. No subscription." Unlocked, the button gives way to a thank-you line.
 struct ProScreen: View {
     let vm: ProViewModel
-
-    private static let features: [(String, String)] = [
-        (Strings.proFeatureFreshTitle, Strings.proFeatureFreshBody),
-        (Strings.proFeatureRemindersTitle, Strings.proFeatureRemindersBody),
-        (Strings.proFeatureSkipTitle, Strings.proFeatureSkipBody),
-        (Strings.proFeaturePlanTitle, Strings.proFeaturePlanBody)
-    ]
 
     var body: some View {
         let pro = vm.pro
@@ -27,10 +21,10 @@ struct ProScreen: View {
                     .foregroundStyle(Palette.muted)
                     .padding(.top, 6)
                 Hairline().padding(.top, 16)
-                ForEach(Self.features, id: \.0) { title, body in
+                ForEach(pro.available, id: \.title) { extra in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(title).textStyle(Typography.bodyLargeBold).foregroundStyle(Palette.onBackground)
-                        Text(body).textStyle(Typography.bodyMedium).foregroundStyle(Palette.muted)
+                        Text(extra.title).textStyle(Typography.bodyLargeBold).foregroundStyle(Palette.onBackground)
+                        Text(extra.body).textStyle(Typography.bodyMedium).foregroundStyle(Palette.muted)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 16)

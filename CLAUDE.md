@@ -37,8 +37,8 @@ place rather than appending an update.
 ## Status
 
 Built on both platforms: share → parse → show; the Recipes library (#102);
-unlimited recipes and the one-time Pro unlock for the Week extras (#413, the
-unlock of #107); one cookbook (#345: nothing removed automatically, a views strip on Recipes); lists, dragged into the cook's own order (#381); scaling and unit conversion;
+unlimited recipes, with the one-time Pro unlock (#413, the unlock of #107) kept for
+future AI features: every Week extra is free (owner, 2026-11-23); one cookbook (#345: nothing removed automatically, a views strip on Recipes); lists, dragged into the cook's own order (#381); scaling and unit conversion;
 Settings; cook mode with saved progress and background timer alerts; sharing
 out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
@@ -90,7 +90,7 @@ with `local/` and `remote/`'s fetching; `ui/` a package per screen; `di/`,
 `docs/decisions.md` ("Code map and routes").
 
 Routes: `home`, `recipes`, `settings` (an index; each section's page is
-`settings/<section>`, #286, `settings/pro` the Pro screen, also `week/pro`; + hidden `settings/developer`),
+`settings/<section>`, #286, `settings/pro` the Pro screen, listed only while Pro has an extra (none today); + hidden `settings/developer`),
 `lists`, `lists/{listId}`, `recipe/{recipeId}?cook={cook}`,
 `recipe/import?url={url}` (the share target: parse, then upsert with no list
 membership), `edit?recipeId={recipeId}`, `edit/photo?url=…` (#198), `edit/scan?pages=…` (#226), `edit/text?text=…` (#306), `edit/article?article=…`, `article/choose?url=…` (#435), `clip?url={url}&blocked=…&check=…`; with the tab
@@ -150,10 +150,10 @@ Decisions, not suggestions. Don't relitigate them in code.
   (#413, `proUnlock`, which overrides `freeTier`). No limit on any way in
   (`LibraryLimit` is never the free tier's). Pro is #107's purchase and
   entitlement (an old unlock is Pro), read only through `ProAccess`, and holds
-  only the Week extras: Buy later and the fresh-food swap, the evening and
-  Tonight reminders, Skip, Plan my week's choices. Locked, each stays visible
-  with a quiet Pro badge that opens the Pro screen; nothing already saved or
-  switched on is taken away. With `proUnlock` off the free tier of #107/#345
+  **nothing today** (owner, 2026-11-23): Buy later and the fresh-food swap, the
+  evening and Tonight reminders, Skip and Plan my week's choices are free, and
+  Pro is reserved for future AI features. No Pro row or screen until
+  `ProExtras.all` has an entry. With `proUnlock` off the free tier of #107/#345
   returns exactly (50 shown-not-saved, the "Not saved" bar, the undo rule).
 - **Lists are deliberate:** adding to one is an explicit second act.
   Favorites is a list like Lunch, Dinner, Desserts, Breakfast and Snacks, not

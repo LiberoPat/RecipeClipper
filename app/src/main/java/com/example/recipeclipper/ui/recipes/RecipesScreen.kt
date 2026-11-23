@@ -255,8 +255,7 @@ fun RecipesScreen(
             AskAiSheet(
                 onDismiss = home::onAskAiDismiss,
                 onOpenPasted = { if (it is PasteTarget.Link) onOpenUrl(it.url) else onOpenPasted(it) },
-                viewModel = askAiViewModel,
-                onOpenPro = libraryRoot?.onOpenPro ?: {}
+                viewModel = askAiViewModel
             )
         }
         if (saveSheetOpen && saveViewModel != null) {

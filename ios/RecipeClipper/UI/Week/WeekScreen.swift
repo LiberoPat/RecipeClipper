@@ -15,8 +15,6 @@ struct WeekScreen: View {
     var makeGroceriesVM: (() -> AddToGroceriesViewModel)? = nil
     /// The `shopForWeek` flag (#384): the menu's one "Shop for this week" in place of the two.
     var shopForWeek = false
-    /// The Pro screen (#413): without Pro, Skip and the fresh-food swap open it.
-    var onOpenPro: () -> Void = {}
     /// Settings' Plan section (#412), the menu's last item; nil leaves it out.
     var onOpenSettings: (() -> Void)? = nil
     @State private var groceriesVM: AddToGroceriesViewModel?
@@ -40,7 +38,7 @@ struct WeekScreen: View {
                         .readableColumn()
                 }
             } else {
-                DayList(vm: vm, onOpenRecipe: onOpenRecipe, onOpenPro: onOpenPro)
+                DayList(vm: vm, onOpenRecipe: onOpenRecipe)
             }
         }
         .screenBackground()
@@ -338,13 +336,11 @@ private struct DayStripRow: View {
 private struct DayList: View {
     let vm: WeekViewModel
     let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
-    let onOpenPro: () -> Void
     @State private var position: Int64?
 
-    init(vm: WeekViewModel, onOpenRecipe: @escaping (_ recipeId: Int64, _ servings: Int?) -> Void, onOpenPro: @escaping () -> Void) {
+    init(vm: WeekViewModel, onOpenRecipe: @escaping (_ recipeId: Int64, _ servings: Int?) -> Void) {
         self.vm = vm
         self.onOpenRecipe = onOpenRecipe
-        self.onOpenPro = onOpenPro
         _position = State(initialValue: vm.uiState.topDay)
     }
 
@@ -359,8 +355,7 @@ private struct DayList: View {
                             vm: vm, day: day, isToday: day == state.today, meals: state.mealsOn(day),
                             canSkip: state.canSkip,
                             nothingPlanned: state.isNothingPlanned(day), typeNames: typeNames,
-                            freshNudges: state.freshNudges, pantryGaps: state.pantryGaps, onOpenRecipe: onOpenRecipe,
-                            proLocked: vm.proLocked, onOpenPro: onOpenPro
+                            freshNudges: state.freshNudges, pantryGaps: state.pantryGaps, onOpenRecipe: onOpenRecipe
                         )
                     }
                 }
@@ -412,13 +407,6 @@ private struct DaySection: View {
     /// The quiet pantry note under a planned recipe (#456), by meal id.
     let pantryGaps: [Int64: PantryGap]
     let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
-    /// Without Pro (#413): Skip and the swap keep their place with the Pro badge, and open the Pro screen.
-    let proLocked: Bool
-    let onOpenPro: () -> Void
-
-    private func skip(_ meal: PlannedMeal) {
-        if proLocked { onOpenPro() } else { vm.onSkipStart(meal) }
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -441,14 +429,7 @@ private struct DaySection: View {
                         // Skip is in the long-press menu of any meal that isn't in the past, and
                         // visible on today's (#398).
                         if canSkip(meal) {
-                            // A menu item can't hold the badge's outline, so it says Pro in its subtitle.
-                            Button { skip(meal) } label: {
-                                if proLocked {
-                                    Label { Text(Strings.skip); Text(Strings.proBadge) } icon: { Image(systemName: "forward.end") }
-                                } else {
-                                    Label(Strings.skip, systemImage: "forward.end")
-                                }
-                            }
+                            Button { vm.onSkipStart(meal) } label: { Label(Strings.skip, systemImage: "forward.end") }
                             .accessibilityIdentifier("skipMenu-\(meal.id)")
                         }
                         Button(role: .destructive) { vm.onRemove(meal) } label: {
@@ -456,7 +437,8 @@ private struct DaySection: View {
                         }
                     }
                     if isToday && canSkip(meal) {
-                        ProTextButton(label: Strings.skipToday, locked: proLocked) { skip(meal) }
+                        Button { vm.onSkipStart(meal) } label: { Text(Strings.skipToday) }
+                            .buttonStyle(TextActionStyle())
                             .accessibilityIdentifier("skip-\(meal.id)")
                     }
                 }
@@ -470,9 +452,7 @@ private struct DaySection: View {
                 }
                 // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
                 if let nudge = freshNudges[meal.id] {
-                    FreshNudgeNote(nudge: nudge, locked: proLocked) {
-                        if proLocked { onOpenPro() } else { vm.onFreshSwap(meal.id) }
-                    }
+                    FreshNudgeNote(nudge: nudge) { vm.onFreshSwap(meal.id) }
                         .padding(.leading, 56)
                 }
             }

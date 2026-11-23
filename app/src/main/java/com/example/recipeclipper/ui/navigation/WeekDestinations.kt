@@ -11,7 +11,6 @@ import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.mealtypes.MealTypesScreen
 import com.example.recipeclipper.ui.askai.askAiViewModelIfOn
 import com.example.recipeclipper.ui.print.printViewModelIfOn
-import com.example.recipeclipper.ui.pro.ProScreen
 import com.example.recipeclipper.ui.recipe.RecipeScreen
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.settings.SettingsSection
@@ -31,7 +30,6 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
             onOpenMealTypes = { navController.navigate(Routes.MEAL_TYPES) },
             onOpenWhatINeed = { navController.navigate(Routes.whatINeed(it)) },
             groceriesViewModel = hiltViewModel(),
-            onOpenPro = { navController.navigate(Routes.WEEK_PRO) },
             onOpenSettings = if (LocalFlagValues.current.planSettingsLink) {
                 { navController.navigate(Routes.WEEK_SETTINGS) }
             } else {
@@ -41,18 +39,12 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
     }
 
     // Settings' Plan page (#412), from the menu's "Plan settings": the same page as Settings > Plan,
-    // here on the Plan's own stack, so Back returns to the week; a locked reminder opens Pro here too.
+    // here on the Plan's own stack, so Back returns to the week.
     composable(Routes.WEEK_SETTINGS) {
         SettingsSectionScreen(
             SettingsSection.WEEK,
-            onBack = { navController.popBackStack() },
-            onOpenPro = { navController.navigate(Routes.WEEK_PRO) }
+            onBack = { navController.popBackStack() }
         )
-    }
-
-    // The Pro screen (#413), on this stack: Skip, the fresh-food swap and Buy later open it until unlocked.
-    composable(Routes.WEEK_PRO) {
-        ProScreen(onBack = { navController.popBackStack() })
     }
 
     composable(
@@ -61,8 +53,7 @@ fun NavGraphBuilder.weekDestinations(navController: NavHostController) {
     ) {
         WhatINeedScreen(
             onBack = { navController.popBackStack() },
-            onOpenRecipe = { id, servings -> navController.navigate(Routes.weekRecipe(id, servings)) },
-            onOpenPro = { navController.navigate(Routes.WEEK_PRO) }
+            onOpenRecipe = { id, servings -> navController.navigate(Routes.weekRecipe(id, servings)) }
         )
     }
 

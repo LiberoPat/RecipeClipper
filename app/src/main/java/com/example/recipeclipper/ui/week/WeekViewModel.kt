@@ -7,7 +7,6 @@ import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
-import com.example.recipeclipper.data.ProAccess
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
@@ -187,12 +186,7 @@ data class WeekUiState(
      */
     val pantryGaps: Map<Long, PantryGap> = emptyMap(),
     /** What the pantry note's "Add to groceries" just added, until its undo snackbar is settled (#456). */
-    val addedToGroceries: AddedToGroceries? = null,
-    /**
-     * Without Pro (#413): Skip and the fresh-food swap are still shown, with the Pro badge, and open
-     * the Pro screen instead of acting. Meals skipped or swapped before stay where they are.
-     */
-    val proLocked: Boolean = false
+    val addedToGroceries: AddedToGroceries? = null
 ) {
     /** The first day of the block at the top. */
     val weekStart: Long get() = PlanDays.blockStart(topDay, today)
@@ -246,8 +240,6 @@ class WeekViewModel @Inject constructor(
     // Fresh food (#396): the planned recipes' ingredients and the flag. Without both, no notes.
     private val groceries: GroceryRepository? = null,
     private val flags: FeatureFlags? = null,
-    // Pro (#413): without it nothing is gated.
-    private val pro: ProAccess = ProAccess.Ungated,
     // The pantry note (#456): the pantry, and the model's "same ingredient" answers (#104), as What
     // I need reads them. Without the pantry, no notes.
     private val pantry: PantryRepository? = null,
@@ -283,14 +275,10 @@ class WeekViewModel @Inject constructor(
         _uiState = MutableStateFlow(
             WeekUiState(
                 today = today, firstDay = today - DAYS_BEFORE, lastDay = today + DAYS_AFTER, topDay = today,
-                skipEnabled = flags?.isOn(Flag.SKIP_TONIGHT) != false,
-                proLocked = pro.current.locked
+                skipEnabled = flags?.isOn(Flag.SKIP_TONIGHT) != false
             )
         )
         uiState = _uiState.asStateFlow()
-        viewModelScope.launch {
-            pro.states.collect { state -> _uiState.update { it.copy(proLocked = state.locked) } }
-        }
         freshFrom = MutableStateFlow(today)
 
         if (groceries != null && flags?.isOn(Flag.FRESH_FOOD) == true) {
@@ -390,7 +378,6 @@ class WeekViewModel @Inject constructor(
      * type. Only on the tap.
      */
     fun onFreshSwap(mealId: Long) {
-        if (_uiState.value.proLocked) return
         val nudge = _uiState.value.freshNudges[mealId] ?: return
         val meal = freshMeals.firstOrNull { it.id == nudge.key } ?: return
         val partner = freshMeals.firstOrNull { it.id == nudge.swapKey } ?: return
@@ -691,7 +678,7 @@ class WeekViewModel @Inject constructor(
 
     /** Opens the Skip sheet for [meal], if Skip is offered for it (flag on, not in the past). */
     fun onSkipStart(meal: PlannedMeal) {
-        if (!_uiState.value.canSkip(meal) || _uiState.value.proLocked) return
+        if (!_uiState.value.canSkip(meal)) return
         _uiState.update { it.copy(skipping = SkipState(meal)) }
     }
 

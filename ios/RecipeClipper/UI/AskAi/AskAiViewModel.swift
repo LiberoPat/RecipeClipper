@@ -33,9 +33,6 @@ struct AskAiUiState: Equatable {
     /// Plan my week with choices (#392, #367), only with the `planMyWeekPlus` flag (`plan` false: none of
     /// what follows is shown or used, and the plan is today's week of dinners).
     var plan = false
-    /// Pro (#413): the `planMyWeekPlus` choices are Pro's, so without it `plan` is false (the free week
-    /// of dinners, as before #392) and this is true: the sheet shows the choices as one locked line.
-    var planLocked = false
     /// The cook's meal types, in their order, and which are ticked (by `MealType.key`).
     var mealTypes: [MealType] = []
     var chosenMeals: Set<String> = []
@@ -102,7 +99,6 @@ final class AskAiViewModel {
     // Plan my week with choices (#392, #367): what was chosen last, and the flag.
     @ObservationIgnored private let choices: PlanChoices?
     @ObservationIgnored private let planPlus: () -> Bool
-    @ObservationIgnored private let pro: ProAccess
     @ObservationIgnored private var cancellables = Set<AnyCancellable>()
     @ObservationIgnored private var planInput = PlanInput()
     @ObservationIgnored private var mealTypes: [MealType] = []
@@ -134,10 +130,8 @@ final class AskAiViewModel {
     init(
         pantry: PantryRepository, lists: ListRepository, recipes: RecipeRepository, preferences: AppPreferences,
         clock: Clock = SystemClock(), pasted: PastedTextRouter? = nil,
-        mealPlan: MealPlanRepository? = nil, choices: PlanChoices? = nil, planPlus: @escaping () -> Bool = { false },
-        pro: ProAccess = UngatedProAccess()
+        mealPlan: MealPlanRepository? = nil, choices: PlanChoices? = nil, planPlus: @escaping () -> Bool = { false }
     ) {
-        self.pro = pro
         self.clock = clock
         self.pasted = pasted
         self.choices = choices
@@ -390,13 +384,11 @@ final class AskAiViewModel {
 
     /// The plan's choices resolved against the data: a choice that names a deleted type or list falls back.
     private func refreshPlan(_ today: Int64) {
-        // The choices are offered with the flag on and, under Pro (#413), with Pro.
-        guard planPlus(), pro.state.extras else {
+        // The choices are offered with the flag on.
+        guard planPlus() else {
             uiState.plan = false
-            uiState.planLocked = planPlus()
             return
         }
-        uiState.planLocked = false
         let plan = planInput
         let chosen = MealType.chosenKeys(mealTypes, plan.meals.map(Array.init) ?? remembered)
         let planLists = allLists.filter { $0.recipeCount > 0 }.map { PlanListChoice(id: $0.id, name: $0.name) }

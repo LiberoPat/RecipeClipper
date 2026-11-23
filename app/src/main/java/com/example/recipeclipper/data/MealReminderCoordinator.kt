@@ -50,9 +50,7 @@ class MealReminderCoordinator @Inject constructor(
     private val preferences: AppPreferences,
     private val flags: FeatureFlags,
     private val scheduler: MealReminderScheduler,
-    private val clock: Clock,
-    // Pro (#413): without it, as before, every reminder the settings ask for runs.
-    private val pro: ProAccess = ProAccess.Ungated
+    private val clock: Clock
 ) {
     private var zone: () -> TimeZone = { TimeZone.getDefault() }
 
@@ -64,13 +62,8 @@ class MealReminderCoordinator @Inject constructor(
     /** The reminders' settings as the alarms follow them: nothing else about the preferences matters. */
     private data class Wanted(val evening: Boolean, val eveningMinute: Int, val tonight: Boolean, val tonightMinute: Int, val flagOn: Boolean)
 
-    /**
-     * Without Pro (#413) only a reminder the cook switched on runs: the evening one's default isn't
-     * theirs, a Tonight one that is on always is ([ProReminders]).
-     */
-    private fun wanted(settings: AppSettings, flagOn: Boolean, pro: ProState) = Wanted(
-        ProReminders.runs(settings.eveningReminder, settings.eveningReminderChosen, pro), settings.eveningReminderMinute,
-        ProReminders.runs(settings.tonightReminder, chosen = true, pro), settings.tonightReminderMinute, flagOn
+    private fun wanted(settings: AppSettings, flagOn: Boolean) = Wanted(
+        settings.eveningReminder, settings.eveningReminderMinute, settings.tonightReminder, settings.tonightReminderMinute, flagOn
     )
 
     fun start(scope: CoroutineScope) {
@@ -78,7 +71,6 @@ class MealReminderCoordinator @Inject constructor(
             combine(
                 preferences.settings,
                 flags.values.map { it.isOn(Flag.EVENING_REMINDERS) }.distinctUntilChanged(),
-                pro.states,
                 ::wanted
             ).distinctUntilChanged().collect { scheduler.replaceAll(alarms(it, notBefore = emptyMap())) }
         }
@@ -98,7 +90,7 @@ class MealReminderCoordinator @Inject constructor(
         alarms(wantedNow(), notBefore = mapOf(kind to firedDay + 1)).firstOrNull { it.kind == kind }?.let(scheduler::arm)
     }
 
-    private fun wantedNow() = wanted(preferences.current, flags.isOn(Flag.EVENING_REMINDERS), pro.current)
+    private fun wantedNow() = wanted(preferences.current, flags.isOn(Flag.EVENING_REMINDERS))
 
     private fun alarms(wanted: Wanted, notBefore: Map<MealReminderKind, Long>): List<MealReminderAlarm> {
         if (!wanted.flagOn) return emptyList()

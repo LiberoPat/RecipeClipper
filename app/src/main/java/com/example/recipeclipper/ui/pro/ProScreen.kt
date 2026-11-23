@@ -35,17 +35,10 @@ import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
-/** What Pro adds (#413), in the order the Week shows them. */
-private val FEATURES = listOf(
-    R.string.pro_feature_fresh_title to R.string.pro_feature_fresh_body,
-    R.string.pro_feature_reminders_title to R.string.pro_feature_reminders_body,
-    R.string.pro_feature_skip_title to R.string.pro_feature_skip_body,
-    R.string.pro_feature_plan_title to R.string.pro_feature_plan_body
-)
-
 /**
- * The Pro screen (#413): every locked Week extra opens it, and it is Settings' Pro page. What Pro
- * adds, "one-time purchase, never a subscription", the unlock (with the store's price once the
+ * The Pro screen (#413): Settings' Pro page, listed only while Pro has an extra to add (none since
+ * 2026-11-23: the Week extras are free, and Pro is kept for future AI features). What Pro
+ * adds ([ProState.available]), "one-time purchase, never a subscription", the unlock (with the store's price once the
  * store gives it, never a figure of ours), Restore purchases, and "Free. No ads. No account. No
  * subscription." Unlocked, the button gives way to a thank-you line. iOS's `ProScreen` is the same page.
  */
@@ -79,7 +72,7 @@ fun ProScreen(onBack: () -> Unit, viewModel: ProViewModel = hiltViewModel()) {
                 )
                 Spacer(Modifier.height(16.dp))
                 Hairline()
-                FEATURES.forEach { (title, body) -> Feature(title, body) }
+                state.pro.available.forEach { Feature(it.title, it.body) }
                 Spacer(Modifier.height(20.dp))
                 Hairline()
                 Spacer(Modifier.height(20.dp))

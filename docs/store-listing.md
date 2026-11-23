@@ -52,7 +52,8 @@ Up to 4,000 characters on each store.
 > - **Yours, on your device.** No account and no server: nothing you save leaves your phone
 >   unless you share it. Back it up, export it, or send a recipe to a friend.
 
-When #413's Pro unlock ships, add after the bold line:
+While Pro adds nothing (owner, 2026-11-23: the planning extras, including fresh-food shopping, meal
+reminders, Skip tonight and AI week plans, are free; Pro is kept for future AI features), leave this
+paragraph out. When the first Pro extra ships, add after the bold line, naming that extra:
 
-> Planning extras (fresh-food shopping, meal reminders, Skip tonight, AI week plans) are a
-> one-time Pro unlock. Never a subscription. Everything else is free.
+> <The extra> is a one-time Pro unlock. Never a subscription. Everything else is free.

@@ -33,18 +33,13 @@ import java.util.Calendar
  * The Week section's rows (#397): the evening-before reminder and the optional Tonight reminder,
  * each a switch and, while it is on, its time; a line saying notifications are off when they are.
  * Turning one on is [onSwitch]'s: the screen asks for notification permission first (never on
- * launch, as for the expiry reminders, #52).
- *
- * Without Pro (#413, [SettingsUiState.remindersLocked]) a reminder that is off carries the Pro badge
- * and turning it on opens the Pro screen ([onOpenPro]); one the cook had on stays on, and can be
- * retimed or turned off as before.
+ * launch, as for the expiry reminders, #52). Free for everyone.
  */
 @Composable
 internal fun WeekReminderRows(
     state: SettingsUiState,
     onSwitch: (MealReminderKind, Boolean) -> Unit,
-    onTime: (MealReminderKind, Int) -> Unit,
-    onOpenPro: () -> Unit = {}
+    onTime: (MealReminderKind, Int) -> Unit
 ) {
     Column {
         ReminderRows(
@@ -54,9 +49,7 @@ internal fun WeekReminderRows(
             on = state.eveningReminder,
             minute = state.eveningReminderMinute,
             onSwitch = onSwitch,
-            onTime = onTime,
-            locked = state.remindersLocked,
-            onOpenPro = onOpenPro
+            onTime = onTime
         )
         ReminderRows(
             kind = MealReminderKind.TONIGHT,
@@ -65,9 +58,7 @@ internal fun WeekReminderRows(
             on = state.tonightReminder,
             minute = state.tonightReminderMinute,
             onSwitch = onSwitch,
-            onTime = onTime,
-            locked = state.remindersLocked,
-            onOpenPro = onOpenPro
+            onTime = onTime
         )
         if (state.weekRemindersBlocked) {
             Text(
@@ -91,19 +82,14 @@ private fun ReminderRows(
     on: Boolean,
     minute: Int,
     onSwitch: (MealReminderKind, Boolean) -> Unit,
-    onTime: (MealReminderKind, Int) -> Unit,
-    locked: Boolean,
-    onOpenPro: () -> Unit
+    onTime: (MealReminderKind, Int) -> Unit
 ) {
     var picking by rememberSaveable(kind) { mutableStateOf(false) }
-    // Locked and off: the badge, and switching it on opens the Pro screen. On stays the cook's.
-    val proBadge = locked && !on
     SwitchRow(
         title = title,
         description = description,
         checked = on,
-        onCheckedChange = { if (it && proBadge) onOpenPro() else onSwitch(kind, it) },
-        proBadge = proBadge,
+        onCheckedChange = { onSwitch(kind, it) },
         modifier = Modifier.testTag("reminderSwitch-${kind.name}")
     )
     if (on) {

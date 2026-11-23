@@ -7,8 +7,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.recipeclipper.data.DefaultProAccess
-import com.example.recipeclipper.data.UnlockState
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.LibraryLimit
@@ -28,12 +26,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The meal-plan review (#352) under Pro (#413): the review, its days and meals and Save are free
- * (it is an import); only the fresh-food note's swap (#396) is Pro's. Locked, the note stays with
- * the Pro badge on its swap, which opens the Pro screen and moves nothing. iOS: `MealPlanReviewProTests`.
+ * The meal-plan review (#352) is free, its fresh-food note's swap (#396) included (owner,
+ * 2026-11-23: nothing is Pro today): the swap trades the two days for everyone, with no badge.
+ * iOS: `FreeExtrasTests`.
  */
 @RunWith(AndroidJUnit4::class)
-class MealPlanReviewProTest {
+class MealPlanReviewFreeTest {
 
     @get:Rule
     val compose = createComposeRule()
@@ -42,7 +40,6 @@ class MealPlanReviewProTest {
     private val today = FakePlanCalendar.WEDNESDAY
     private val flags = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = true)
     private val entitlements = FakeEntitlements()
-    private var proOpened = 0
 
     private fun recipe(name: String, vararg lines: String) = Recipe(
         id = 0, name = name, image = null, ingredients = lines.toList(), instructions = listOf("Cook."),
@@ -60,32 +57,19 @@ class MealPlanReviewProTest {
         val vm = MealPlanReviewViewModel(
             SavedStateHandle(mapOf(MealPlanReviewViewModel.PLAN_ARG to key)),
             FakeRecipeRepository(), FakeMealPlanRepository(), FakePlanCalendar(), FakeLibraryPolicy(LibraryLimit.Unlimited),
-            entitlements, inbox, Dispatchers.Unconfined, flags, DefaultProAccess(flags, entitlements)
+            entitlements, inbox, Dispatchers.Unconfined, flags
         )
-        compose.setContent { MealPlanReviewScreen(onBack = {}, onFinished = {}, viewModel = vm, onOpenPro = { proOpened++ }) }
+        compose.setContent { MealPlanReviewScreen(onBack = {}, onFinished = {}, viewModel = vm) }
         return vm
     }
 
     @Test
-    fun lockedTheNoteStaysAndItsSwapOpensProMovingNothing() {
+    fun theNoteAndItsSwapWorkWithNoBadge() {
         val vm = show()
         compose.onNodeWithText("Salmon fillets: keeps about 1-2 days once bought. Cook it earlier?").assertIsDisplayed()
+        compose.onNodeWithTag("proBadge", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("freshSwap").performClick()
         compose.waitForIdle()
-        assertEquals(1, proOpened)
-        assertEquals(listOf(today, today + 5), vm.uiState.value.items.map { it.day })
-
-        vm.onSwap(1)
-        assertEquals(listOf(today, today + 5), vm.uiState.value.items.map { it.day })
-    }
-
-    @Test
-    fun withProTheSwapTradesTheDaysAsBefore() {
-        entitlements.state.value = UnlockState(unlocked = true)
-        val vm = show()
-        compose.onNodeWithTag("freshSwap").performClick()
-        compose.waitForIdle()
-        assertEquals(0, proOpened)
         assertEquals(listOf(today + 5, today), vm.uiState.value.items.map { it.day })
     }
 }

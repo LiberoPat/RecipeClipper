@@ -5,7 +5,9 @@ import XCTest
 /// that matches nothing. Android's `AskAiSheetTest` / `MealPlanReviewScreenTest`.
 final class PlanMyWeekUITests: RecipeUITestCase {
 
-    private let flags = ["askAi", "planMyWeekPlus", "shareText", "mealPlanImport"]
+    // `proUnlock` is the gating flag: on, Pro counts as locked unless bought, and the UI-test container has
+    // no store, so Pro is never bought. The choices are free all the same (owner, 2026-11-23).
+    private let flags = ["askAi", "planMyWeekPlus", "shareText", "mealPlanImport", "proUnlock"]
 
     private func openPlanSheet() {
         launch(.standard, flags: flags)

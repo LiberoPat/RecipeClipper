@@ -74,10 +74,10 @@ Two things need a native speaker, both drafts written by Claude:
 
 ## Pro, 2026-11-21 (#413)
 
-Nineteen `pro_*` strings on both platforms, drafts written by Claude, for a native speaker to check:
-the badge and the screen's title keep the names "Pro" and "Pith Pro" in every language; the four
-extras' titles ("Shop in two trips": *Compra en dos veces*, *Les courses en deux fois*, *Zweimal
-einkaufen*, *La spesa in due volte*, *Compras em duas vezes*; "Skip a meal": the Skip sheet's verb);
+Nineteen `pro_*` strings were drafted on both platforms by Claude, for a native speaker to check; ten
+went on 2026-11-23, when the Week extras became free (the four extras' titles and lines and the two
+locked lines), so nine remain: the badge and the screen's title keep the names "Pro" and "Pith Pro" in
+every language;
 "One-time purchase, never a subscription." (*Compra única, nunca una suscripción*, *Achat unique,
 jamais un abonnement*, *Einmaliger Kauf, nie ein Abo*, *Acquisto una tantum, mai un abbonamento*,
 *Compra única, nunca uma assinatura*); "Restore purchases" (each store's own wording should win:

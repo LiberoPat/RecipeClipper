@@ -27,7 +27,6 @@ final class WhatINeedViewModel {
     private(set) var uiState: WhatINeedUiState
 
     @ObservationIgnored private let groceries: GroceryRepository
-    @ObservationIgnored private let pro: ProAccess
     @ObservationIgnored private var subscription: AnyCancellable?
     /// Loading the week, then following the pantry. Tests await it.
     @ObservationIgnored private(set) var loading: Task<Void, Never>?
@@ -36,10 +35,8 @@ final class WhatINeedViewModel {
     /// `freshFood` (#396): today and the flag; without both, To buy stays one list.
     init(
         weekStart: Int64, groceries: GroceryRepository, pantry: PantryRepository, preferences: AppPreferences,
-        decisions: DecisionRepository? = nil, calendar: PlanCalendar? = nil, freshFood: Bool = false,
-        pro: ProAccess = UngatedProAccess()
+        decisions: DecisionRepository? = nil, calendar: PlanCalendar? = nil, freshFood: Bool = false
     ) {
-        self.pro = pro
         uiState = WhatINeedUiState(weekStart: weekStart)
         self.groceries = groceries
         loading = Task { [weak self] in
@@ -70,16 +67,8 @@ final class WhatINeedViewModel {
         }
     }
 
-    /// Without Pro (#413): `trips` is still worked out but not used, so To buy is one list and "Add to
-    /// groceries" adds all of it (nothing is left unbought); when the split would have put something
-    /// later, one locked line says so and opens the Pro screen. Read live.
-    var splitLocked: Bool { pro.state.locked }
-
-    /// The two trips as the screen shows them: nil while locked or with nothing to buy later.
-    var shownTrips: ShopTrips? { uiState.trips.flatMap { !splitLocked && !$0.later.isEmpty ? $0 : nil } }
-
-    /// Locked, and the split would have something to buy later: the one locked line.
-    var showsSplitTeaser: Bool { splitLocked && !(uiState.trips?.later.isEmpty ?? true) }
+    /// The two trips as the screen shows them: nil with nothing to buy later.
+    var shownTrips: ShopTrips? { uiState.trips.flatMap { !$0.later.isEmpty ? $0 : nil } }
 
     /// The Buy rows that "Add to groceries" adds: Buy now's with two trips shown, else all of them.
     var buyNow: [NeedRow] { shownTrips?.now ?? uiState.needs?.buy ?? [] }

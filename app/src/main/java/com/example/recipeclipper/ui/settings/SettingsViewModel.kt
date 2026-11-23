@@ -23,7 +23,6 @@ import com.example.recipeclipper.data.remote.MealieError
 import com.example.recipeclipper.data.remote.PaprikaError
 import com.example.recipeclipper.data.Entitlements
 import com.example.recipeclipper.data.ProAccess
-import com.example.recipeclipper.data.ProReminders
 import com.example.recipeclipper.data.ProState
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.ShortStepRepository
@@ -73,10 +72,7 @@ data class SettingsUiState(
     val showsTodayCardSetting: Boolean = false,
     /** "Show today's meal" (#448): the Today card at the top of Recipes or Home. */
     val showTodayCard: Boolean = true,
-    /**
-     * The evening-before reminder of tomorrow's meals, and its time (minutes since midnight). As it
-     * runs: without Pro (#413) its default "on" is not the cook's, so it shows off ([ProReminders]).
-     */
+    /** The evening-before reminder of tomorrow's meals, and its time (minutes since midnight). */
     val eveningReminder: Boolean = true,
     val eveningReminderMinute: Int = MealReminders.EVENING_MINUTE,
     /** The optional afternoon Tonight reminder, and its time. */
@@ -97,11 +93,9 @@ data class SettingsUiState(
     val chefSupport: ChefSupport? = null,
     /** The "Unlimited recipes" row (#107); null while the `freeTier` flag is off or `proUnlock` on. */
     val unlock: UnlockRow? = null,
-    /** The Pro row (#413): only with the `proUnlock` flag; [isPro] says "Unlocked" on it. */
+    /** The Pro row (#413): only with the `proUnlock` flag and at least one Pro extra; [isPro] says "Unlocked" on it. */
     val showsPro: Boolean = false,
     val isPro: Boolean = false,
-    /** Without Pro the Week reminders that are off carry the Pro badge and open the Pro screen (#413). */
-    val remindersLocked: Boolean = false,
     /** A purchase or restore that didn't simply unlock; shown until the next one starts. */
     val unlockNotice: PurchaseOutcome? = null,
     /** The automatic backup copy's rows (#150); null without one (tests that don't care). */
@@ -241,11 +235,11 @@ class SettingsViewModel @Inject constructor(
     private val paprika: PaprikaImportRepository? = null,
     // Import from Mealie (#391); without it the row isn't shown.
     private val mealie: MealieImportRepository? = null,
-    // Pro (#413); without it nothing is gated and there is no Pro row.
+    // Pro (#413); without it there is no Pro row.
     private val pro: ProAccess = ProAccess.Ungated
 ) : ViewModel() {
 
-    // Pro as last heard, for the reminders' rows; read before the first state is made.
+    // Pro as last heard, for the Pro row; read before the first state is made.
     private var proState: ProState = pro.current
 
     private val _uiState = MutableStateFlow(preferences.current.toUiState())
@@ -356,9 +350,9 @@ class SettingsViewModel @Inject constructor(
         showsWeekReminders = previous?.showsWeekReminders ?: (featureFlags?.isOn(Flag.EVENING_REMINDERS) ?: false),
         showsTodayCardSetting = previous?.showsTodayCardSetting ?: (featureFlags?.isOn(Flag.TODAY_CARD_CLOSE) ?: false),
         showTodayCard = showTodayCard,
-        eveningReminder = ProReminders.runs(eveningReminder, eveningReminderChosen, proState),
+        eveningReminder = eveningReminder,
         eveningReminderMinute = eveningReminderMinute,
-        tonightReminder = ProReminders.runs(tonightReminder, chosen = true, proState),
+        tonightReminder = tonightReminder,
         tonightReminderMinute = tonightReminderMinute,
         notificationsAllowed = previous?.notificationsAllowed ?: true,
         weekRemindersDenied = previous?.weekRemindersDenied ?: false,
@@ -368,9 +362,8 @@ class SettingsViewModel @Inject constructor(
         chefSupport = previous?.chefSupport,
         unlock = previous?.unlock,
         unlockNotice = previous?.unlockNotice,
-        showsPro = proState.gated,
+        showsPro = proState.showsPage,
         isPro = proState.isPro,
-        remindersLocked = proState.locked,
         autoBackup = previous?.autoBackup,
         showsPaprikaImport = previous?.showsPaprikaImport
             ?: (paprika != null && featureFlags?.isOn(Flag.PAPRIKA_IMPORT) == true),
@@ -462,12 +455,8 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * Notifications are allowed (the reminder goes on) or refused (it stays off, and the page says why).
-     * Without Pro (#413) a reminder that is off doesn't go on: its switch opens the Pro screen instead.
      */
     fun onWeekReminderPermission(kind: MealReminderKind, granted: Boolean) {
-        val shown = _uiState.value
-        val on = if (kind == MealReminderKind.EVENING) shown.eveningReminder else shown.tonightReminder
-        if (granted && shown.remindersLocked && !on) return
         when (kind) {
             MealReminderKind.EVENING -> preferences.eveningReminder = granted
             MealReminderKind.TONIGHT -> preferences.tonightReminder = granted

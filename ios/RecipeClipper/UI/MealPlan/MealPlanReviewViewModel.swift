@@ -85,7 +85,6 @@ final class MealPlanReviewViewModel {
     @ObservationIgnored private let plan: MealPlanRepository
     @ObservationIgnored private let limit: () -> LibraryLimit
     @ObservationIgnored private let entitlements: Entitlements
-    @ObservationIgnored private let pro: ProAccess
     /// Plan my week's choices (#392, #367) are on: nil/false reads the answer as before, dinners and new recipes.
     @ObservationIgnored private let meals: Bool
     /// What was read, by `ReviewItem.index`; the rows are these with the cook's choices.
@@ -99,17 +98,12 @@ final class MealPlanReviewViewModel {
     /// Recipe tips (#432): a recipe's HowToTip entries stay apart only with `recipeTips` on.
     @ObservationIgnored private let tipsOn: Bool
 
-    /// Without Pro (#413) a note's swap carries the Pro badge and opens the Pro screen. The review itself
-    /// stays free (it is an import). Read live.
-    var proLocked: Bool { pro.state.locked }
-
     init(
         text: String, recipes: RecipeRepository, plan: MealPlanRepository, calendar: PlanCalendar,
         limit: @escaping () -> LibraryLimit = { .unlimited }, entitlements: Entitlements = UnavailableEntitlements(),
-        freshFood: Bool = false, planPlus: Bool = false, pro: ProAccess = UngatedProAccess(),
+        freshFood: Bool = false, planPlus: Bool = false,
         tipsOn: Bool = false
     ) {
-        self.pro = pro
         self.tipsOn = tipsOn
         self.recipes = recipes
         self.plan = plan
@@ -235,7 +229,6 @@ final class MealPlanReviewViewModel {
     /// The cook tapped "Swap with ..." under a note (#396): this row and the one it names trade
     /// days. Only on the tap; nothing is saved before Save either.
     func onSwap(_ index: Int) {
-        guard !proLocked else { return }
         guard let nudge = uiState.nudges[index],
               let a = uiState.items.firstIndex(where: { $0.index == index }),
               let b = uiState.items.firstIndex(where: { $0.index == Int(nudge.swapKey) })

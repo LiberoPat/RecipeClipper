@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
-import com.example.recipeclipper.data.ProAccess
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.local.AppPreferences
@@ -42,19 +41,10 @@ data class WhatINeedUiState(
     val needs: WeekNeeds? = null,
     val added: Boolean = false,
     val trips: ShopTrips? = null,
-    val addedLater: Boolean = false,
-    /**
-     * Without Pro (#413): [trips] is still worked out but not used, so To buy is one list and "Add to
-     * groceries" adds all of it (nothing is left unbought); when the split would have put something
-     * later, one locked line says so and opens the Pro screen.
-     */
-    val splitLocked: Boolean = false
+    val addedLater: Boolean = false
 ) {
-    /** The two trips as the screen shows them: null while locked or with nothing to buy later. */
-    val shownTrips: ShopTrips? get() = trips?.takeIf { !splitLocked && it.later.isNotEmpty() }
-
-    /** Locked, and the split would have something to buy later: the one locked line. */
-    val showsSplitTeaser: Boolean get() = splitLocked && trips?.later?.isNotEmpty() == true
+    /** The two trips as the screen shows them: null with nothing to buy later. */
+    val shownTrips: ShopTrips? get() = trips?.takeIf { it.later.isNotEmpty() }
 
     /** The Buy rows that "Add to groceries" adds: Buy now's with two trips, else all of them. */
     val buyNow: List<NeedRow> get() = shownTrips?.now ?: needs?.buy.orEmpty()
@@ -76,20 +66,15 @@ class WhatINeedViewModel @Inject constructor(
     private val decisions: DecisionRepository? = null,
     // Fresh food (#396): today and the flag. Without both, To buy stays one list.
     private val calendar: PlanCalendar? = null,
-    private val flags: FeatureFlags? = null,
-    // Pro (#413): without it nothing is gated.
-    private val pro: ProAccess = ProAccess.Ungated
+    private val flags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val start: Long = checkNotNull(savedStateHandle.get<Long>(WEEK_START_ARG))
 
-    private val _uiState = MutableStateFlow(WhatINeedUiState(weekStart = start, splitLocked = pro.current.locked))
+    private val _uiState = MutableStateFlow(WhatINeedUiState(weekStart = start))
     val uiState: StateFlow<WhatINeedUiState> = _uiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            pro.states.collect { state -> _uiState.update { it.copy(splitLocked = state.locked) } }
-        }
         viewModelScope.launch {
             val settings = preferences.current
             val sources = GrocerySources.fromPlan(
