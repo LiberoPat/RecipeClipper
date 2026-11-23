@@ -35,7 +35,7 @@ struct RecipesScreen: View {
     /// The top redesigned (#449, design B): with the library as the first screen and one cookbook, a ⋮ menu
     /// (Select, Settings) after the +, the views shelf above search, the filters in a sheet behind search.
     var topB = false
-    /// Over design B (#454): no views shelf; a Lists pill left of search; the filter sheet with the views
+    /// Over design B (#454): no views shelf; a Lists pill in the title row; the filter sheet with the views
     /// folded in (Cooked, Not in a list, Came from). Off, design B as it was.
     var filtersSheet = false
 
@@ -90,7 +90,9 @@ struct RecipesScreen: View {
                     onAdd: { addSheetOpen = true },
                     onSelect: multiSelect && state.canSelect ? { vm.onStartSelecting() } : nil,
                     onOpenSettings: root.onOpenSettings,
-                    inset: sideInset
+                    inset: sideInset,
+                    listCount: folded && state.showsViewsStrip ? state.lists.count : nil,
+                    onOpenLists: onOpenLists
                 )
                 .transition(.opacity)
             }
@@ -197,7 +199,7 @@ struct RecipesScreen: View {
         .sheet(isPresented: $filterSheetOpen) {
             Group {
                 if folded {
-                    // #454: the views folded in, in two groups; each control acts at once.
+                    // #454: the views folded in, the switches, then the two choices; each control acts at once.
                     RecipeFiltersSheet(
                         choices: vm.uiState.choices, onChange: vm.onFilterChoicesChange, onClear: vm.onClearQuickFilters
                     )
@@ -379,7 +381,9 @@ struct RecipesScreen: View {
                 LibraryTitleRowB(
                     onAdd: { addSheetOpen = true },
                     onSelect: multiSelect && state.canSelect ? { vm.onStartSelecting() } : nil,
-                    onOpenSettings: root.onOpenSettings
+                    onOpenSettings: root.onOpenSettings,
+                    listCount: folded && state.showsViewsStrip ? state.lists.count : nil,
+                    onOpenLists: onOpenLists
                 )
                 // Gone once its foot passes the top of the scroll view; reported as it crosses, so a row the
                 // list recycles off screen keeps the last answer.
@@ -393,18 +397,13 @@ struct RecipesScreen: View {
                     )
                 } else {
                     if folded {
-                        // #454: Lists, then search with the sheet's button; the views are in the sheet, not a shelf.
+                        // #454: search the full width with the sheet's button (Lists is in the title row); the views are in the sheet.
                         VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 8) {
-                                if state.showsViewsStrip {
-                                    ListsPill(count: state.lists.count, action: onOpenLists)
-                                }
-                                SearchFieldB(
-                                    query: state.query, onQueryChange: vm.onQueryChange,
-                                    filtersOn: state.choices.pills.count,
-                                    onOpenFilters: quickFilters && state.showsFilter ? { filterSheetOpen = true } : nil
-                                )
-                            }
+                            SearchFieldB(
+                                query: state.query, onQueryChange: vm.onQueryChange,
+                                filtersOn: state.choices.pills.count,
+                                onOpenFilters: quickFilters && state.showsFilter ? { filterSheetOpen = true } : nil
+                            )
                             ChoicePills(pills: state.choices.pills, onRemove: vm.onRemoveFilter, onClear: vm.onClearQuickFilters)
                         }
                     } else {

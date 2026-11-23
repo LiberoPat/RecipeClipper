@@ -185,12 +185,8 @@ come from the matcher, not from the translation.
 
 ## Recipes' views in the filter sheet, 2026-11-22 (#454)
 
-Seven strings on both platforms, drafts written by Claude; the controls' names reuse the views' and the
-filters' own (Cooked, Not in a list, Typed by you, From a chat, Not cooked yet, Lists). The sheet's two
-group headings, shown in small capitals: `recipes_filter_group_recipe`, "The recipe" (*La receta*, *La
-recette*, *Das Rezept*, *La ricetta*, *A receita*) and `recipes_filter_group_where`, "Where it is, where it
-came from" (*Dónde está, de dónde viene*, *Où elle est, d'où elle vient*, *Wo es ist, woher es kommt*,
-*Dove si trova, da dove viene*, *Onde está, de onde veio*). The Cooked choice's first and last options,
+Five strings on both platforms (two group headings, `recipes_filter_group_recipe` and `recipes_filter_group_where`, were removed on 2026-11-23 when the sheet was regrouped by kind of control), drafts written by Claude; the controls' names reuse the views' and the
+filters' own (Cooked, Not in a list, Typed by you, From a chat, Not cooked yet, Lists). The Cooked choice's first and last options,
 `recipes_filter_cooked_any`, "Any" (*Todas*, *Toutes*, *Alle*, *Tutte*, *Todas*: "all of them", plural
 and feminine to agree with *recetas* / *recettes* / *ricette* / *receitas*), and `recipes_filter_not_yet`,
 "Not yet" (*Aún no*, *Pas encore*, *Noch nicht*, *Non ancora*, *Ainda não*). The Not in a list switch's

@@ -3575,7 +3575,7 @@ From the top:
   on the right as an accent pill with a play glyph. Continue cooking puts its step and countdown under the name. **The close button
   of #448 stays** at the top right, with its setting untouched (merged from `today-card-close`, PR #450).
   What the card shows is #402's and #448's rules, unchanged.
-- **The views shelf** (*superseded with `recipesFilters` on, #454: no shelf, Lists beside search, the views in
+- **The views shelf** (*superseded with `recipesFilters` on, #454: no shelf, Lists in the title row, the views in
   the filter sheet; see the next section*)**:** one band of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat),
   each an icon, the count in the display face at 20 and the name (11.5, two lines when it needs them), divided by
   hairlines; **Lists in the accent tone** (`AccentTone` / `Palette.accentTone`; introduced here as the
@@ -3619,12 +3619,12 @@ From the top:
   `RecipesTopBUITests` (its own shard weight). The suites written for #375 run with the flag off and
   still pass unchanged.
 
-## Recipes: the views folded into the filter sheet, Lists beside search (#454, 2026-11-22)
+## Recipes: the views folded into the filter sheet, Lists in the title row (#454, 2026-11-22)
 
 The owner (2026-11-22): "I find the row of list filters redundant to the filter in search. The only thing
 I like is that Lists is its own page." They chose the Recipes top of the visual revamp's direction A
 (`~/Downloads/RecipeClipper-designs/visual-revamp/visual-revamp.html`, `revamp-filters.png` for the sheet),
-with one change of their own: **the Lists button sits left of search**, not right of it as drawn. Behind
+with one change of their own: **the Lists button sits left of search**, not right of it as drawn (and, on 2026-11-23, moved into the title row, below). Behind
 **`recipesFilters`** (on by default in debug and release, both platforms), over design B: it applies only
 where #449 does (`recipesTopB`, the library as the Recipes tab's first screen, one cookbook). Off, the top is
 design B exactly. **Supersedes, with the flag on:** #449's views shelf ("The views shelf" above) and #449's
@@ -3632,21 +3632,33 @@ three-switch sheet, and so #345's "a strip of cards, Lists first, then the autom
 cooked yet" as its own filter on that screen. "Views are questions about stored data, never filing" still
 holds: they are now asked through the filters.
 
-- **No shelf.** The five-cell band is gone. **Lists** is a compact pill **left of search on the same row**:
-  the list icon, "Lists" and the number of lists, in the accent tone, search's height and corner (Android
-  `ListsPill`, tag `recipesListsPill`; iOS `ListsPill`, `recipes.listsPill`; TalkBack and VoiceOver read
-  "Lists, 6"). It opens the existing Lists screen; Back returns to Recipes. The pill takes the width its
-  words need and never clips (one line, no wrapping); search takes the rest, its placeholder ending in an
-  ellipsis when the row is tight (German at twice the text on Android: "Listen 7" whole, then "Titel u…"). It shows
-  when the shelf did (a recipe or a list to show), and not over an empty library, as before.
+- **No shelf.** The five-cell band is gone. **Lists** is a compact pill **in the title row** (the owner,
+  2026-11-23; first drawn left of search, which left search's placeholder cut on a phone): "Recipes", then the
+  pill, then the + and the ⋮, and **in the pinned bar** too, beside its + and ⋮, so Lists stays in reach scrolled.
+  The list icon, "Lists" and the number of lists, in the accent tone, a capsule (`Corners.Pill`) 36 dp tall with a
+  48 dp target (Android `ListsPill`, tags `recipesListsPill` and `recipesListsPillPinned`; iOS `ListsPill`,
+  `recipes.listsPill` and `recipes.listsPill.pinned`; TalkBack and VoiceOver read "Lists, 6"). It opens the
+  existing Lists screen; Back returns to Recipes. **It never pushes the + or the ⋮ off-screen or clips the title,
+  and is decided by what fits, not by language:** the title keeps its whole word; the pill shows its word and
+  count when title, pill and buttons fit side by side, else **only its icon and count** (`compact`, tag suffix
+  `-compact`; at 360 dp in English the title row already takes this form, while the pinned bar's smaller title
+  keeps the word), and if even that does not fit (very large text) it moves **under the title, right-aligned**.
+  Android `TitleRowLayout` (a `SubcomposeLayout`, so only the drawn variant exists for TalkBack; the full width is
+  worked out from the words with a text measurer), iOS `TitleRowFit` (`ViewThatFits` of the three). **Search is
+  back on its own row at the full width**, and its placeholder, "Search titles and ingredients", is set at 15 sp
+  (not the body 16) so it is whole on a 360 dp phone beside the icon and the filter button in English and German;
+  French ("Rechercher par titre ou ingrédient") and any language at large text still end in an ellipsis there. The
+  pill shows when the shelf did (a recipe or a list to show), and not over an empty library, as before.
 - **Search keeps its filter button** with the badge, which now counts the pills below.
-- **The filter sheet, in two groups** (small-capital headings, as the Add a recipe block's):
-  - **The recipe:** **30 min or less** (a switch, #378's rule); **Cooked: Any / Cooked / Not yet** (one
-    exclusive choice: Cooked is the Cooked view, Not yet is #378's "Not cooked yet", the two partitioning the
-    library); **Uses what's in my pantry** (a switch, #378's rule, rows still saying "You have 6 of 8").
-  - **Where it is, where it came from:** **Not in a list** (a switch, "Saved to none of your lists yet": the
-    view's `EXISTS`); **Came from: Anywhere / Typed by you / From a chat** (one choice: a recipe is one or the
-    other, `contentOrigin` MANUAL, never the tour's sample, or CHAT).
+- **The filter sheet, grouped by kind of control** (the owner's regrouping, 2026-11-23; it first had two headed
+  groups, "The recipe" and "Where it is, where it came from", whose two headings are gone from all six languages):
+  - **The switches together, each with its hint line:** **30 min or less** (#378's rule); **Uses what's in my
+    pantry** (#378's rule, rows still saying "You have 6 of 8"); **Not in a list** ("Saved to none of your lists
+    yet": the view's `EXISTS`). Hairlines between them.
+  - **Then, after a gap, the two exclusive choices together:** **Cooked: Any / Cooked / Not yet** (Cooked is the
+    Cooked view, Not yet is #378's "Not cooked yet", the two partitioning the library); **Came from: Anywhere /
+    Typed by you / From a chat** (a recipe is one or the other, `contentOrigin` MANUAL, never the tour's sample,
+    or CHAT). A hairline between them.
   - The two exclusive choices are **segmented**, as the mockup draws them and as the Pantry edit sheet's stock
     choice already is (#194) on both platforms; not radio rows, which are Settings' rule ("exclusive choices
     are radio rows") and would make the sheet twice as tall. The reading view's "no segmented pickers above
@@ -3658,7 +3670,7 @@ holds: they are now asked through the filters.
     `ViewThatFits`). The sheet scrolls.
   - Every control acts at once (the list behind follows), as before; **Clear** stays in the sheet's header,
     enabled while anything is on. No "Show N recipes" button.
-- **Pills** under search, in the sheet's order (30 min or less, Cooked or Not cooked yet, Uses what's in my
+- **Pills** under search, in their own fixed order (30 min or less, Cooked or Not cooked yet, Uses what's in my
   pantry, Not in a list, Typed by you or From a chat), each removed by a tap on it (a choice goes back to Any /
   Anywhere), then **Clear**, which clears everything. A pill's words are the view's or the filter's own name.
 - **Nothing is re-derived.** The pure model is `RecipeFilterChoices` (core `RecipeQuickFilters.kt`, iOS
@@ -3682,8 +3694,7 @@ holds: they are now asked through the filters.
   (`libraryFirst` off). No deep link, widget or notification opens them.
 - **Colours, type and radii come from the theme** (Market, #455, merged in): the accent tone (`LocalAccentTone` /
   `Palette.accentTone`), the scheme's containers, the typography's label and body styles, and the radius
-  tokens: the Lists pill takes search's `Corners.Field` / `Radius.field` (14), so the two read as one row; the
-  pills `Corners.Pill`; the segmented track `Field`, its chosen option `Small`.
+  tokens: the Lists pill is `Corners.Pill`, like the filter pills; the segmented track `Field`, its chosen option `Small`.
 - **The count line never breaks inside a word** (a fix made here, for every Recipes top: German at large text
   read "Reze / pte"): the count keeps one line, and when it and the sort (with the toggle) don't fit side by
   side, the controls move under it (Android a `FlowRow`, iOS `ViewThatFits`); the sort's label keeps one line
@@ -3698,7 +3709,7 @@ holds: they are now asked through the filters.
   iOS `RecipesFiltersDataTests` (one view is its screen; several are the intersection of their screens; the
   `%` search inside); `RecipesFiltersViewModelTest` / `RecipesFiltersViewModelTests` (each control, combining
   with the sort, the badge, a pill's ×, Clear, the one-choice rule, the pantry lines);
-  `RecipesFiltersScreenTest` (the pill left of search, Lists and Back through a real nav host, the two groups,
+  `RecipesFiltersScreenTest` (the pill in the title row and the pinned bar above a full-width search, the placeholder whole at 360 dp, the title row fitting in six languages and at large text, Lists and Back through a real nav host, the switches before the two choices,
   each control narrowing, pills and badge, both Clears, German at twice the text, the flag off) and
   `RecipesFiltersUITests` (its own shard weight). Design B's suites (`RecipesTopBScreenTest`,
   `RecipesTopBUITests`) run with this flag off and pass unchanged.

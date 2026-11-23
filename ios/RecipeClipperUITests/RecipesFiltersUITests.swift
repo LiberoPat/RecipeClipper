@@ -36,13 +36,18 @@ final class RecipesFiltersUITests: RecipeUITestCase {
         requireGone(app.descendants(matching: .any)["recipes.filterSwitch.THIRTY_OR_LESS"], "the sheet, closed")
     }
 
-    func testListsSitsLeftOfSearchOpensListsAndBackReturns() {
+    func testListsSitsInTheTitleRowAboveAFullWidthSearchOpensListsAndBackReturns() {
         launch(.standard, flags: on)
         assertAbsent(app.descendants(matching: .any)["recipes.viewsShelf"], "the shelf")
         let pill = require(listsPill, "the Lists pill")
         let field = require(search)
-        XCTAssertLessThan(pill.frame.maxX, field.frame.minX + 1, "Lists is left of search")
-        XCTAssertEqual(pill.frame.midY, field.frame.midY, accuracy: 12, "on the same row")
+        let add = require(app.buttons["library.add"], "the +")
+        let more = require(app.buttons["library.more"], "the menu")
+        XCTAssertLessThanOrEqual(pill.frame.maxX, add.frame.minX + 1, "Lists, then the +")
+        XCTAssertLessThanOrEqual(add.frame.maxX, more.frame.minX + 1, "the +, then the menu")
+        XCTAssertEqual(pill.frame.midY, add.frame.midY, accuracy: 12, "on the title row")
+        XCTAssertLessThanOrEqual(pill.frame.maxY, field.frame.minY + 1, "search is on its own row below")
+        XCTAssertGreaterThan(field.frame.width, app.frame.width * 0.55, "search has the full width, not what a pill leaves: \(field.frame)")
         XCTAssertTrue(pill.label.hasPrefix("Lists, "), pill.label)
 
         pill.tap()
@@ -52,11 +57,38 @@ final class RecipesFiltersUITests: RecipeUITestCase {
         require(row("Chicken Adobo"))
     }
 
+    func testDownTheListThePinnedBarKeepsTheListsPill() {
+        launch(.walkthrough, flags: on)
+        assertAbsent(app.descendants(matching: .any)["library.pinnedBar"], "no pinned bar at rest")
+        for _ in 0..<4 { app.swipeUp(velocity: .fast) }
+        require(app.descendants(matching: .any)["library.pinnedBar"], "the pinned bar")
+        let pill = require(app.buttons["recipes.listsPill.pinned"], "its Lists pill")
+        XCTAssertLessThanOrEqual(pill.frame.maxX, require(app.buttons["library.add.pinned"]).frame.minX + 1, "Lists, then the +")
+        XCTAssertTrue(pill.label.hasPrefix("Lists, "), pill.label)
+        pill.tap()
+        require(app.buttons["lists.newList"], "the Lists screen")
+        back()
+        require(app.descendants(matching: .any)["library.pinnedBar"], "the bar, still pinned")
+    }
+
+    func testTheSwitchesComeBeforeTheTwoChoices() {
+        launch(.standard, flags: on)
+        openFilters()
+        func top(_ id: String) -> CGFloat { require(app.descendants(matching: .any)[id], id).frame.minY }
+        let switches = ["THIRTY_OR_LESS", "USES_PANTRY", "NOT_IN_A_LIST"].map { top("recipes.filterSwitch.\($0)") }
+        let cooked = top("recipes.filterCooked")
+        let origin = top("recipes.filterOrigin")
+        XCTAssertEqual(switches, switches.sorted(), "the three switches in order")
+        XCTAssertLessThan(switches.max() ?? 0, cooked, "the switches come before Cooked")
+        XCTAssertLessThan(cooked, origin, "Cooked, then Came from")
+        assertAbsent(app.staticTexts["The recipe"], "no group heading")
+        assertAbsent(app.staticTexts["Where it is, where it came from"], "no group heading")
+    }
+
     func testNotInAListNarrowsTheListAndShowsAPill() {
         launch(.standard, flags: on)
         XCTAssertEqual(require(filter).value as? String ?? "", "")
         openFilters()
-        require(app.staticTexts["Where it is, where it came from"], "the second group")
         toggle("NOT_IN_A_LIST")
         closeSheet()
 
@@ -101,7 +133,7 @@ final class RecipesFiltersUITests: RecipeUITestCase {
     }
 
     /// German at a large accessibility size: the count keeps one line ("4 Rezepte", never "Reze / pte"), the
-    /// sort moving under it if the two don't fit side by side; and the Lists pill stays whole beside search.
+    /// sort moving under it if the two don't fit side by side; and the title row keeps the pill, the + and the menu on screen.
     func testInGermanAtALargeSizeTheCountNeverBreaksInsideAWord() {
         launch(.standard, flags: on, extraArguments: [
             "-AppleLanguages", "(de)", "-AppleLocale", "de_DE",
@@ -112,7 +144,9 @@ final class RecipesFiltersUITests: RecipeUITestCase {
         XCTAssertGreaterThan(count.frame.width, count.frame.height * 2, "one line, not \"Reze / pte\": \(count.frame)")
         let pill = require(listsPill)
         XCTAssertTrue(pill.label.hasPrefix("Listen, "), pill.label)
-        XCTAssertLessThanOrEqual(pill.frame.maxX, require(app.textFields.firstMatch).frame.minX + 1)
+        let more = require(app.buttons["library.more"], "the menu")
+        XCTAssertLessThanOrEqual(more.frame.maxX, app.frame.maxX + 1, "the menu is on screen")
+        XCTAssertLessThanOrEqual(pill.frame.maxX, require(app.buttons["library.add"]).frame.minX + 1, "Lists, then the +")
     }
 
     func testWithTheFlagOffDesignBStays() {

@@ -50,6 +50,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -82,22 +83,87 @@ import com.example.recipeclipper.ui.theme.LocalAccentTone
  * pills under it. The filters behave exactly as the chips did; only where they live changed.
  */
 
-/** "Recipes", the basil + and the ⋮ menu, last on the right: Select (null: nothing to select) and Settings. */
+/**
+ * "Recipes", the Lists pill ([listCount] null: none, with the views not folded into the filter sheet), the basil
+ * + and the ⋮ menu, last on the right: Select (null: nothing to select) and Settings.
+ */
 @Composable
 internal fun LibraryTitleRowB(
     onAdd: () -> Unit,
     onSelect: (() -> Unit)?,
     onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+    listCount: Int? = null,
+    onOpenLists: () -> Unit = {}
+) {
+    TitleRowLayout(
+        title = {
+            Text(
+                stringResource(R.string.recipes_title),
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.semantics { heading() }
+            )
+        },
+        listCount = listCount,
+        onOpenLists = onOpenLists,
+        listsTag = "recipesListsPill",
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LibraryAddButton(onAdd)
+                LibraryMoreMenu(onSelect, onOpenSettings)
+            }
+        },
+        modifier = modifier.fillMaxWidth().heightIn(min = 58.dp)
+    )
+}
+
+/**
+ * A title row: the [title] on the left, the [trailing] buttons on the right, and between them the Lists pill
+ * ([lists], drawn full or compact). The title keeps its whole word. The pill shows "Lists" and its count when
+ * the title, the pill and the buttons fit side by side; else only its icon and count; and if even that does not
+ * fit (a very large font on a narrow phone), it moves under the title, right-aligned, so nothing is pushed
+ * off-screen or clipped.
+ */
+@Composable
+private fun TitleRowLayout(
+    title: @Composable () -> Unit,
+    listCount: Int?,
+    onOpenLists: () -> Unit,
+    listsTag: String,
+    trailing: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth().heightIn(min = 58.dp)) {
-        Text(
-            stringResource(R.string.recipes_title),
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.weight(1f).semantics { heading() }
-        )
-        LibraryAddButton(onAdd)
-        LibraryMoreMenu(onSelect, onOpenSettings)
+    // The pill's full width, worked out from its words, so only the variant that is drawn is ever composed.
+    val fullPill = listsPillFullWidth(listCount)
+    SubcomposeLayout(modifier) { constraints ->
+        val maxWidth = constraints.maxWidth
+        val gap = 8.dp.roundToPx()
+        val loose = Constraints(maxWidth = maxWidth)
+        val trailingP = subcompose("trailing", trailing).first().measure(loose)
+        val room = maxWidth - trailingP.width
+        val titleM = subcompose("title", title).first()
+        val titleNeed = titleM.maxIntrinsicWidth(Constraints.Infinity)
+        var below = false
+        val pill = if (listCount != null) {
+            val compact = titleNeed + gap + fullPill.roundToPx() > room
+            val placeable = subcompose("lists") {
+                ListsPill(listCount, onOpenLists, compact = compact, tag = listsTag)
+            }.first().measure(loose)
+            below = compact && titleNeed + gap + placeable.width > room
+            placeable
+        } else null
+        val inline = if (pill != null && !below) pill.width + gap else 0
+        val titleP = titleM.measure(Constraints(maxWidth = (room - inline).coerceAtLeast(0)))
+        val rowHeight = maxOf(titleP.height, trailingP.height, if (pill != null && !below) pill.height else 0, constraints.minHeight)
+        val height = rowHeight + if (below && pill != null) pill.height else 0
+        layout(maxWidth, height) {
+            titleP.placeRelative(0, (rowHeight - titleP.height) / 2)
+            trailingP.placeRelative(maxWidth - trailingP.width, (rowHeight - trailingP.height) / 2)
+            if (pill != null) {
+                if (below) pill.placeRelative(maxWidth - pill.width, rowHeight)
+                else pill.placeRelative(maxWidth - trailingP.width - pill.width, (rowHeight - pill.height) / 2)
+            }
+        }
     }
 }
 
@@ -133,25 +199,38 @@ private fun LibraryMoreMenu(onSelect: (() -> Unit)?, onOpenSettings: () -> Unit,
 
 /**
  * The slim bar pinned at the top once the large title has scrolled away (#449, the owner's follow-up: Select
- * and Settings must stay in reach down the list): a small "Recipes", the + and the same ⋮ menu, on the ground
+ * and Settings must stay in reach down the list): a small "Recipes", the Lists pill (#454), the + and the same ⋮ menu, on the ground
  * with a hairline under it. It lies over the list rather than pushing it, so nothing jumps as it appears; the
  * status bar above it is the Scaffold's ground, so the bar reads as edge to edge.
  */
 @Composable
-internal fun PinnedTitleBar(onAdd: () -> Unit, onSelect: (() -> Unit)?, onOpenSettings: () -> Unit) {
+internal fun PinnedTitleBar(
+    onAdd: () -> Unit,
+    onSelect: (() -> Unit)?,
+    onOpenSettings: () -> Unit,
+    listCount: Int? = null,
+    onOpenLists: () -> Unit = {}
+) {
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).testTag("libraryPinnedBar")) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        TitleRowLayout(
+            title = {
+                Text(
+                    stringResource(R.string.recipes_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.semantics { heading() }
+                )
+            },
+            listCount = listCount,
+            onOpenLists = onOpenLists,
+            listsTag = "recipesListsPillPinned",
+            trailing = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LibraryAddButton(onAdd, anchor = false, tag = "libraryAddPinned")
+                    LibraryMoreMenu(onSelect, onOpenSettings, tag = "libraryMorePinned")
+                }
+            },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 20.dp, end = 12.dp)
-        ) {
-            Text(
-                stringResource(R.string.recipes_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f).semantics { heading() }
-            )
-            LibraryAddButton(onAdd, anchor = false, tag = "libraryAddPinned")
-            LibraryMoreMenu(onSelect, onOpenSettings, tag = "libraryMorePinned")
-        }
+        )
         Hairline()
     }
 }
@@ -265,20 +344,23 @@ internal fun SearchFieldB(
     onQueryChange: (String) -> Unit,
     filtersOn: Int,
     onOpenFilters: (() -> Unit)?,
-    /** It fills the width it is given: the row's, or (#454, beside the Lists pill, a weight) what the pill leaves. */
+    /** It fills the width it is given. */
     modifier: Modifier = Modifier
 ) {
+    val fieldText = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp)
     val colors = MaterialTheme.colorScheme
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text(stringResource(R.string.label_search_recipes), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        placeholder = { Text(stringResource(R.string.label_search_recipes), style = fieldText, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         singleLine = true,
+        // 15 sp, not the body 16: "Search titles and ingredients" is whole on a 360 dp phone beside the icon and the filter button.
+        textStyle = fieldText,
         shape = Corners.Field,
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.onSurfaceVariant) },
         trailingIcon = if (query.isNotEmpty() || onOpenFilters != null) {
             {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { onQueryChange("") }) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_clear_search))

@@ -6,20 +6,26 @@ import UIKit
 // filters (#378) in a sheet behind a button at the end of the search field, and those on as pills under
 // it. The filters behave exactly as the chips did; only where they live changed. Android's `RecipesTopB.kt`.
 
-/// "Recipes", the basil + and the ⋮ menu, last on the right: Select (nil: nothing to select) and Settings.
+/// "Recipes", the Lists pill (`listCount` nil: none, with the views not folded into the filter sheet), the basil
+/// + and the ⋮ menu, last on the right: Select (nil: nothing to select) and Settings.
 struct LibraryTitleRowB: View {
     let onAdd: () -> Void
     let onSelect: (() -> Void)?
     let onOpenSettings: () -> Void
+    var listCount: Int?
+    var onOpenLists: () -> Void = {}
     @ScaledMetric(relativeTo: .title) private var scaled: CGFloat = 20
     private var size: CGFloat { min(scaled, 30) }
 
     var body: some View {
-        HStack(spacing: 0) {
+        TitleRowFit(listCount: listCount, onOpenLists: onOpenLists, listsId: "recipes.listsPill") {
             ScreenTitle(Strings.recipesTitle)
                 .accessibilityAddTraits(.isHeader)
-            LibraryAddButton(onAdd: onAdd)
-            LibraryMoreMenu(onSelect: onSelect, onOpenSettings: onOpenSettings)
+        } trailing: {
+            HStack(spacing: 0) {
+                LibraryAddButton(onAdd: onAdd)
+                LibraryMoreMenu(onSelect: onSelect, onOpenSettings: onOpenSettings)
+            }
         }
         .offset(x: 6) // optical edge, past the button's own padding
     }
@@ -55,7 +61,7 @@ struct LibraryMoreMenu: View {
 }
 
 /// The slim bar pinned at the top once the large title has scrolled away (#449, the owner's follow-up: Select
-/// and Settings must stay in reach down the list): a small "Recipes", the + and the same ⋮ menu, on the ground
+/// and Settings must stay in reach down the list): a small "Recipes", the Lists pill (#454), the + and the same ⋮ menu, on the ground
 /// (behind the status bar too) with a hairline under it. It lies over the list, so nothing jumps as it appears.
 /// Android's `PinnedTitleBar`.
 struct PinnedTitleBar: View {
@@ -63,18 +69,22 @@ struct PinnedTitleBar: View {
     let onSelect: (() -> Void)?
     let onOpenSettings: () -> Void
     var inset: CGFloat = 16
+    var listCount: Int?
+    var onOpenLists: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
+            TitleRowFit(listCount: listCount, onOpenLists: onOpenLists, listsId: "recipes.listsPill.pinned") {
                 Text(Strings.recipesTitle)
                     .textStyle(Typography.titleLarge)
                     .foregroundStyle(Palette.onBackground)
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                LibraryAddButton(onAdd: onAdd, anchored: false, id: "library.add.pinned")
-                LibraryMoreMenu(onSelect: onSelect, onOpenSettings: onOpenSettings, id: "library.more.pinned")
+            } trailing: {
+                HStack(spacing: 0) {
+                    LibraryAddButton(onAdd: onAdd, anchored: false, id: "library.add.pinned")
+                    LibraryMoreMenu(onSelect: onSelect, onOpenSettings: onOpenSettings, id: "library.more.pinned")
+                }
             }
             .padding(.leading, inset)
             .padding(.trailing, max(inset - 10, 4))

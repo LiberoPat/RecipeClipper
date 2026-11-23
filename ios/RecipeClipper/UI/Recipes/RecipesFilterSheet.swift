@@ -1,15 +1,18 @@
 import SwiftUI
 
-// Recipes' views folded into the filter sheet (#454, `recipesFilters`, over design B): the Lists pill left of
-// search, the sheet's two groups (the recipe; where it is and where it came from) and the pills of the filters
+// Recipes' views folded into the filter sheet (#454, `recipesFilters`, over design B): the Lists pill in the
+// title row, the sheet (the switches, then the two choices) and the pills of the filters
 // on. What each filter selects is `RecipeFilterChoices`' (Data/Model), the view screens' and #378's own rules.
 // Android's `RecipesFilterSheet.kt`.
 
-/// Lists, left of search (#454): the icon, "Lists" and how many, in the accent tone. It opens the Lists screen,
-/// Back returns. It takes the width its words need and never clips; search takes the rest.
+/// Lists, in the title row and the pinned bar (#454, the owner's move, 2026-11-23): the icon, "Lists" and how many,
+/// in the accent tone. It opens the Lists screen, Back returns. `compact` drops the word and keeps the icon and the
+/// count, for a title row with no room for it (`TitleRowFit` decides); the spoken label is the same either way.
 struct ListsPill: View {
     let count: Int
     let action: () -> Void
+    var compact = false
+    var id = "recipes.listsPill"
 
     var body: some View {
         Button(action: action) {
@@ -17,27 +20,67 @@ struct ListsPill: View {
                 Image(systemName: "list.bullet")
                     .font(.system(size: 15, weight: .semibold))
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                Text(Strings.navLists)
-                    .textStyle(Typography.labelLarge)
+                if !compact {
+                    Text(Strings.navLists)
+                        .textStyle(Typography.labelLarge)
+                }
                 Text("\(count)")
                     .textStyle(Typography.labelLarge)
-                    .opacity(0.75)
+                    .opacity(compact ? 1 : 0.75)
             }
             .lineLimit(1)
             .fixedSize()
             .foregroundStyle(Palette.onAccentTone)
             .padding(.leading, 12)
             .padding(.trailing, 14)
-            .frame(minHeight: 52)
-            .background(Palette.accentTone, in: RoundedRectangle(cornerRadius: Radius.field))
-            .contentShape(RoundedRectangle(cornerRadius: Radius.field))
+            .frame(minHeight: 36)
+            .background(Palette.accentTone, in: Capsule())
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .fixedSize()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(Strings.navLists), \(count)")
         .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier("recipes.listsPill")
+        .accessibilityIdentifier(id)
+    }
+}
+
+/// A title row: the title on the left, the trailing buttons on the right and, between them, the Lists pill. The
+/// title keeps its whole word. The pill shows "Lists" and its count when the title, the pill and the buttons fit
+/// side by side; else only its icon and count; and if even that does not fit (a very large Dynamic Type size on a
+/// narrow phone), it moves under the title, right-aligned, so nothing is pushed off-screen or clipped.
+/// `ViewThatFits` takes the first of the three that fits. Android's `TitleRowLayout`.
+struct TitleRowFit<Title: View, Trailing: View>: View {
+    let listCount: Int?
+    let onOpenLists: () -> Void
+    let listsId: String
+    @ViewBuilder let title: () -> Title
+    @ViewBuilder let trailing: () -> Trailing
+
+    private func row(_ pill: ListsPill?) -> some View {
+        HStack(spacing: 0) {
+            title()
+            Spacer(minLength: 8)
+            if let pill { pill }
+            trailing()
+        }
+    }
+
+    var body: some View {
+        if let listCount {
+            ViewThatFits(in: .horizontal) {
+                row(ListsPill(count: listCount, action: onOpenLists, id: listsId))
+                row(ListsPill(count: listCount, action: onOpenLists, compact: true, id: listsId))
+                VStack(alignment: .trailing, spacing: 0) {
+                    row(nil)
+                    ListsPill(count: listCount, action: onOpenLists, compact: true, id: listsId)
+                }
+            }
+        } else {
+            row(nil)
+        }
     }
 }
 
@@ -107,9 +150,10 @@ struct ChoicePills: View {
     }
 }
 
-/// The filter sheet with the views folded in (#454): "The recipe" (30 min or less, Cooked: Any / Cooked / Not
-/// yet, Uses what's in my pantry) and "Where it is, where it came from" (Not in a list, Came from: Anywhere /
-/// Typed by you / From a chat), and Clear. Each control answers at once; the list behind follows.
+/// The filter sheet with the views folded in (#454), grouped by kind of control (the owner's regrouping,
+/// 2026-11-23): the switches first (30 min or less, Uses what's in my pantry, Not in a list), then the two
+/// segmented choices (Cooked: Any / Cooked / Not yet; Came from: Anywhere / Typed by you / From a chat), and
+/// Clear. Each control answers at once; the list behind follows.
 struct RecipeFiltersSheet: View {
     let choices: RecipeFilterChoices
     let onChange: (RecipeFilterChoices) -> Void
@@ -130,30 +174,29 @@ struct RecipeFiltersSheet: View {
                         .accessibilityIdentifier("recipes.filterSheet.clear")
                 }
                 .padding(.bottom, 4)
-                group(Strings.recipesFilterGroupRecipe)
                 SwitchRow(
                     title: Strings.recipesQuickThirtyOrLess, description: Strings.recipesQuickThirtyOrLessHint,
                     isOn: binding(\.thirtyOrLess)
                 )
                 .accessibilityIdentifier("recipes.filterSwitch.THIRTY_OR_LESS")
                 Hairline()
-                ChoiceRow(
-                    title: Strings.recipesViewCooked, options: CookedChoice.allCases, selected: choices.cooked,
-                    label: Self.label, id: "recipes.filterCooked",
-                    onSelect: { onChange(with(\.cooked, $0)) }
-                )
-                Hairline()
                 SwitchRow(
                     title: Strings.recipesQuickPantry, description: Strings.recipesQuickPantryHint,
                     isOn: binding(\.usesPantry)
                 )
                 .accessibilityIdentifier("recipes.filterSwitch.USES_PANTRY")
-                group(Strings.recipesFilterGroupWhere)
+                Hairline()
                 SwitchRow(
                     title: Strings.recipesFilterNotInList, description: Strings.recipesFilterNotInListHint,
                     isOn: binding(\.notInAList)
                 )
                 .accessibilityIdentifier("recipes.filterSwitch.NOT_IN_A_LIST")
+                Spacer().frame(height: 20)
+                ChoiceRow(
+                    title: Strings.recipesViewCooked, options: CookedChoice.allCases, selected: choices.cooked,
+                    label: Self.label, id: "recipes.filterCooked",
+                    onSelect: { onChange(with(\.cooked, $0)) }
+                )
                 Hairline()
                 ChoiceRow(
                     title: Strings.recipesFilterCameFrom, options: OriginChoice.allCases, selected: choices.origin,
@@ -167,12 +210,6 @@ struct RecipeFiltersSheet: View {
         }
         .background(Palette.background)
         .accessibilityIdentifier("recipes.filterSheet")
-    }
-
-    private func group(_ title: String) -> some View {
-        SmallCapsLabel(title)
-            .padding(.top, 18)
-            .padding(.bottom, 2)
     }
 
     private func with<T>(_ key: WritableKeyPath<RecipeFilterChoices, T>, _ value: T) -> RecipeFilterChoices {
