@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -119,6 +120,24 @@ class AppShellTest {
     /** The bar item, not the placeholder title with the same word. */
     private fun tab(label: String) = compose.onNode(hasText(label) and isSelectable())
     private fun bar() = compose.onNodeWithTag("tabBar")
+
+    /** German at twice the text on a phone: every tab's name keeps one line, whole ("Rezept / e" before #454's fix). */
+    @Test
+    @org.robolectric.annotation.Config(qualifiers = "de-w360dp-h800dp", fontScale = 2f)
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun inGermanAtTwiceTheTextEveryTabNameKeepsOneLineWhole() {
+        show(libraryFirst = true)
+        for ((tab, name) in listOf("RECIPES" to "Rezepte", "WEEK" to "Plan", "GROCERIES" to "Einkauf", "PANTRY" to "Vorrat")) {
+            val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            compose.onNodeWithTag("tabLabel-$tab", useUnmergedTree = true)
+                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            val label = layouts.single()
+            assertEquals(name, label.layoutInput.text.text)
+            assertEquals("$name on one line", 1, label.lineCount)
+            assertTrue("$name whole, not ellipsized", !label.isLineEllipsized(0))
+            assertTrue("$name inside its slot: ${label.getLineRight(0)} vs ${label.size}", label.getLineRight(0) <= label.size.width + 1f)
+        }
+    }
 
     @Test
     fun theBarShowsFourTabsInOrderWithRecipesOpen() {

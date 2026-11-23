@@ -14,6 +14,11 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -224,13 +229,32 @@ private fun TabBar(selected: Tab?, onSelect: (Tab) -> Unit) {
                         selected = tab == selected,
                         onClick = { onSelect(tab) },
                         icon = { Icon(painterResource(tab.icon), contentDescription = null) },
-                        label = { Text(stringResource(tab.label), style = MaterialTheme.typography.labelMedium) },
+                        label = { TabLabel(stringResource(tab.label), Modifier.testTag("tabLabel-${tab.name}")) },
                         colors = colors
                     )
                 }
             }
         }
     }
+}
+
+/**
+ * A tab's name on one line, never broken inside a word ("Rezept / e" in German at twice the text, #454): it
+ * keeps the label style while it fits and shrinks, down to 9 sp, when it doesn't; past that it ends in an ellipsis.
+ */
+@Composable
+internal fun TabLabel(text: String, modifier: Modifier = Modifier) {
+    val style = MaterialTheme.typography.labelMedium
+    val color = LocalContentColor.current
+    BasicText(
+        text,
+        style = style.copy(color = color),
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
+        autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = style.fontSize, stepSize = 0.5.sp),
+        modifier = modifier
+    )
 }
 
 /**

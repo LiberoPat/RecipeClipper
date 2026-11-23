@@ -3670,6 +3670,10 @@ holds: they are now asked through the filters.
   side, the controls move under it (Android a `FlowRow`, iOS `ViewThatFits`); the sort's label keeps one line
   too. Tests: `RecipesFiltersScreenTest`'s German case (one line, not cut) and
   `RecipesFiltersUITests.testInGermanAtALargeSizeTheCountNeverBreaksInsideAWord`.
+- **A tab's name keeps one line too** (the same fix, Android's bar: Market's labels read "Rezept / e" in German at
+  twice the text): `TabLabel` keeps the label style while it fits, shrinks step by step down to 9 sp when it
+  doesn't, and only then ends in an ellipsis. `AppShellTest.inGermanAtTwiceTheTextEveryTabNameKeepsOneLineWhole`.
+  iOS's system tab bar already keeps its labels on one line (at accessibility sizes it shows the large-content viewer).
 - **Tests.** `:core` `RecipeFilterChoicesTest` and iOS `RecipeFilterChoicesTests` (each control, combined,
   Any / none, a pill's ×); real SQLite: Android `RecipeQuickFiltersDaoTest.theSheetsViewsTogetherSelect…` and
   iOS `RecipesFiltersDataTests` (one view is its screen; several are the intersection of their screens; the
