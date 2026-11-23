@@ -974,6 +974,8 @@ enum Strings {
     static var setDate: String { String(localized: "action_set_date") }
     static var clearDate: String { String(localized: "action_clear_date") }
     static func pantryDeleted(_ name: String) -> String { String(localized: "snackbar_pantry_deleted \(name)") }
+    static var pantryAddToList: String { String(localized: "pantry_add_to_list") }
+    static func pantryAddedToList(_ name: String) -> String { String(localized: "snackbar_pantry_added_to_list \(name)") }
     static var whatINeedTitle: String { String(localized: "what_i_need_title") }
     static var whatINeedBuy: String { String(localized: "what_i_need_buy") }
     static var whatINeedHave: String { String(localized: "what_i_need_have") }

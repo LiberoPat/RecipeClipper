@@ -23,6 +23,15 @@ struct PantryEditSheet: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .accessibilityIdentifier("pantryEditStock")
+                // Ask with a switch (#465): low or out, whether its name goes on the grocery
+                // list. Applied at once, as the stock control is.
+                if vm.uiState.editing?.showsListSwitch == true {
+                    Toggle(isOn: Binding(get: { vm.uiState.editing?.addToList ?? false }, set: vm.onEditAddToList)) {
+                        Text(Strings.pantryAddToList).textStyle(Typography.bodyLarge).foregroundStyle(Palette.onBackground)
+                    }
+                    .tint(Palette.primary)
+                    .accessibilityIdentifier("pantryEditAddToList")
+                }
                 OutlinedField(
                     label: Strings.pantryLabelName,
                     text: Binding(get: { vm.uiState.editing?.name ?? "" }, set: vm.onEditName)

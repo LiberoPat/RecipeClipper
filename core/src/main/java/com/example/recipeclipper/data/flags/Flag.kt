@@ -102,7 +102,9 @@ enum class Flag(val key: String) {
     /** A quiet pantry note on the Plan (#456): under a planned recipe, the ingredients the pantry hasn't got, by name only. */
     PLAN_PANTRY_NOTE("planPantryNote"),
     /** Recipes' views folded into the filter sheet (#454): a Lists pill left of search, Cooked and Came from as choices, Not in a list as a switch; needs [RECIPES_TOP_B]. */
-    RECIPES_FILTERS("recipesFilters");
+    RECIPES_FILTERS("recipesFilters"),
+    /** Ask with a switch (#465): the pantry edit sheet's "Add to grocery list" switch under Running low and Run out; the shortcuts' add gets an Undo snackbar. */
+    PANTRY_LIST_SWITCH("pantryListSwitch");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

@@ -32,9 +32,12 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.FlagRegistry
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.PantryItem
 import com.example.recipeclipper.data.model.PantryStock
+import com.example.recipeclipper.fake.FakeFeatureFlagStore
 import com.example.recipeclipper.fake.FakeGroceryRepository
 import com.example.recipeclipper.fake.FakePantryRepository
 import com.example.recipeclipper.fake.FakePlanCalendar
@@ -55,12 +58,17 @@ class PantryScreenTest {
     private val groceries = FakeGroceryRepository()
     private val calendar = FakePlanCalendar()
 
-    private fun show(vararg items: PantryItem): FakePantryRepository {
+    private fun show(vararg items: PantryItem): FakePantryRepository = show(null, *items)
+
+    /** With [flags], the flags' defaults (all on), so `pantryListSwitch` (#465). */
+    private fun show(flags: FeatureFlags?, vararg items: PantryItem): FakePantryRepository {
         val pantry = FakePantryRepository(items.toList())
-        val viewModel = PantryViewModel(pantry, groceries, calendar)
+        val viewModel = PantryViewModel(pantry, groceries, calendar, flags)
         compose.setContent { PantryScreen(viewModel = viewModel) }
         return pantry
     }
+
+    private val defaultFlags get() = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = true)
 
     private fun item(
         id: Long,
@@ -234,6 +242,41 @@ class PantryScreenTest {
         compose.onNodeWithTag("pantryEditStock-IN_STOCK").performClick()
         compose.waitUntil(5_000) { pantry.items.value.single().stock == PantryStock.IN_STOCK }
         compose.runOnIdle { assertEquals(listOf("garlic"), groceries.items.value.map { it.text }) }
+    }
+
+    // #465: the sheet asks with a switch. Hidden in stock; on once Running low is chosen, which
+    // adds the line; off takes that line back off at once, the stock staying low.
+    @Test
+    fun theEditSheetAsksWithASwitch() {
+        val pantry = show(defaultFlags, item(1, "garlic", aisle = Aisle.PRODUCE))
+        compose.onNodeWithText("garlic").performClick()
+        compose.onNodeWithTag("pantryEditAddToList").assertDoesNotExist()
+
+        compose.onNodeWithTag("pantryEditStock-RUNNING_LOW").performClick()
+        compose.waitUntil(5_000) { groceries.items.value.isNotEmpty() }
+        compose.onNodeWithTag("pantryEditAddToList").assertIsDisplayed().assertIsOn()
+        compose.onNodeWithText("Add to grocery list").assertIsDisplayed()
+
+        compose.onNodeWithTag("pantryEditAddToList").performClick()
+        compose.waitUntil(5_000) { groceries.items.value.isEmpty() }
+        compose.onNodeWithTag("pantryEditAddToList").assertIsOff()
+        compose.runOnIdle { assertEquals(PantryStock.RUNNING_LOW, pantry.items.value.single().stock) }
+
+        compose.onNodeWithTag("pantryEditStock-IN_STOCK").performClick()
+        compose.onNodeWithTag("pantryEditAddToList").assertDoesNotExist()
+    }
+
+    // #465: a swipe still puts it on the list, now with an Undo that takes the line back off.
+    @Test
+    fun aSwipeSaysItAddedToGroceriesWithUndo() {
+        val pantry = show(defaultFlags, item(1, "milk", aisle = Aisle.DAIRY))
+        compose.onNodeWithTag("pantry-1").performTouchInput { swipeLeft() }
+        compose.waitUntil(5_000) { groceries.items.value.isNotEmpty() }
+        compose.onNodeWithText("Added milk to groceries").assertIsDisplayed()
+        compose.onNodeWithText("Undo").performClick()
+        compose.waitUntil(5_000) { groceries.items.value.isEmpty() }
+        compose.runOnIdle { assertTrue(!pantry.items.value.single().inStock) }
+        compose.onNodeWithTag("onList-1").assertDoesNotExist()
     }
 
     // With no row button (owner, 2026-09-29), the row's actions offer both other states: In stock →
