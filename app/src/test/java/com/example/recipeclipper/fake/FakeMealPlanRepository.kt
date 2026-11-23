@@ -25,6 +25,9 @@ class FakeMealPlanRepository : MealPlanRepository {
     /** recipeId → title, for meals added through [addRecipe]. */
     val titles = mutableMapOf<Long, String>()
 
+    /** recipeId → its English ingredient lines, joined into meals added through [addRecipe] (#456). */
+    val lines = mutableMapOf<Long, List<String>>()
+
     private var nextId = 1000L
 
     override fun observeMealTypes(): Flow<List<MealType>> = types
@@ -50,7 +53,8 @@ class FakeMealPlanRepository : MealPlanRepository {
         if (failAdds) return false
         meals.value = meals.value + PlannedMeal(
             id = nextId++, day = day, mealTypeId = mealTypeId, recipeId = recipeId,
-            title = titles[recipeId] ?: "Recipe $recipeId", imageUrl = null, servings = servings, note = null
+            title = titles[recipeId] ?: "Recipe $recipeId", imageUrl = null, servings = servings, note = null,
+            language = if (recipeId in lines) "en" else null, ingredients = lines[recipeId].orEmpty()
         )
         return true
     }

@@ -87,6 +87,7 @@ import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.FreshNudge
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.PantryGap
 import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.TooltipScreen
@@ -157,6 +158,14 @@ fun WeekScreen(
     val skipped = state.skipped
     val skippedMessage = skipped?.let { skipMessage(it) }
     UndoSnackbarEffect(skipped, skippedMessage, undoLabel, snackbarHostState, viewModel::onUndoSkip, viewModel::onSkipSnackbarDismissed)
+
+    // The pantry note's "Add to groceries" (#456): one Undo, for exactly the lines it added.
+    val addedToGroceries = state.addedToGroceries
+    val addedMessage = addedToGroceries?.let { pluralStringResource(R.plurals.plan_pantry_added, it.count, it.count) }
+    UndoSnackbarEffect(
+        addedToGroceries, addedMessage, undoLabel, snackbarHostState,
+        viewModel::onUndoAddToGroceries, viewModel::onAddedSnackbarDismissed
+    )
 
     // What a menu action did (#52), once.
     val resources = LocalResources.current
@@ -650,8 +659,65 @@ private fun DayList(
                 onSkip = if (state.proLocked) ({ _ -> onOpenPro() }) else viewModel::onSkipStart,
                 freshNudges = state.freshNudges,
                 onFreshSwap = if (state.proLocked) ({ _ -> onOpenPro() }) else viewModel::onFreshSwap,
-                proLocked = state.proLocked
+                proLocked = state.proLocked,
+                pantryGaps = state.pantryGaps,
+                onAddMissing = viewModel::onAddMissingToGroceries
             )
+        }
+    }
+}
+
+/**
+ * The pantry note under a planned recipe (#456): "Not in your pantry: tahini, sumac", with "and 3
+ * more" past three names. A tap opens it in place, every missing name and one "Add to groceries";
+ * a tap again closes it. Once all of it is on the grocery list it says so, and does nothing.
+ * Whether it is open is the view's alone: it may close on leaving the tab.
+ */
+@Composable
+private fun PantryGapNote(mealId: Long, gap: PantryGap, onAdd: () -> Unit) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    if (gap.allOnList) {
+        Text(
+            stringResource(R.string.plan_pantry_on_list),
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+            modifier = Modifier.padding(vertical = 2.dp).testTag("pantryGap-$mealId")
+        )
+        return
+    }
+    var open by rememberSaveable(mealId) { mutableStateOf(false) }
+    val text = if (open || !gap.capped) {
+        stringResource(R.string.plan_pantry_missing, gap.missing.joinToString(", "))
+    } else {
+        pluralStringResource(R.plurals.plan_pantry_missing_more, gap.more, gap.names.joinToString(", "), gap.more)
+    }
+    Column {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+            maxLines = if (open) Int.MAX_VALUE else 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                // Its own tap target, so the row's tap still opens the recipe.
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(if (open) R.string.plan_pantry_show_less else R.string.plan_pantry_show_all)
+                ) { open = !open }
+                .padding(vertical = 2.dp)
+                .testTag("pantryGap-$mealId")
+        )
+        if (open) {
+            TextButton(
+                onClick = {
+                    open = false
+                    onAdd()
+                },
+                contentPadding = PaddingValues(horizontal = 0.dp),
+                modifier = Modifier.testTag("pantryGapAdd-$mealId")
+            ) {
+                Text(stringResource(R.string.action_add_to_groceries), style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
@@ -672,7 +738,9 @@ private fun DaySection(
     onSkip: (PlannedMeal) -> Unit,
     freshNudges: Map<Long, FreshNudge>,
     onFreshSwap: (Long) -> Unit,
-    proLocked: Boolean = false
+    proLocked: Boolean = false,
+    pantryGaps: Map<Long, PantryGap> = emptyMap(),
+    onAddMissing: (Long) -> Unit = {}
 ) {
     Column(Modifier.fillMaxWidth()) {
         DayHeader(day = day, isToday = isToday)
@@ -688,7 +756,9 @@ private fun DaySection(
                     // visible on today's (#398).
                     onSkip = if (canSkip(meal)) ({ onSkip(meal) }) else null,
                     skipVisible = isToday,
-                    skipLocked = proLocked
+                    skipLocked = proLocked,
+                    pantryGap = pantryGaps[meal.id],
+                    onAddMissing = { onAddMissing(meal.id) }
                 )
                 // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
                 freshNudges[meal.id]?.let { nudge ->
@@ -746,7 +816,9 @@ private fun MealRow(
     onSkip: (() -> Unit)? = null,
     skipVisible: Boolean = false,
     // Without Pro (#413): Skip keeps its place with the Pro badge, and its tap opens the Pro screen.
-    skipLocked: Boolean = false
+    skipLocked: Boolean = false,
+    pantryGap: PantryGap? = null,
+    onAddMissing: () -> Unit = {}
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Box {
@@ -784,6 +856,8 @@ private fun MealRow(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    // The pantry note (#456): information, not an alarm. Muted, small, no icon.
+                    pantryGap?.let { gap -> PantryGapNote(meal.id, gap, onAddMissing) }
                 } else {
                     Text(
                         meal.note.orEmpty(),

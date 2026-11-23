@@ -7422,6 +7422,59 @@ still parsed, stored and exported, so turning it on shows them without a re-shar
   without, the viewer paging, cook mode, a failed photo, no step photos and the flag off unchanged), with
   the iOS data, migration and view tests.
 
+## The Plan's quiet pantry note (#456, 2026-11-22)
+
+The owner: "If we add a recipe to the planner, can we have a simple quiet warning that maybe we don't
+have all the ingredients in the pantry for it. I want a nonchalant warning, because some people can
+still make do with the recipe." Flag `planPantryNote`, on by default in debug and release, both
+platforms. Off, the Plan is as before.
+
+- **Where.** Under each planned recipe on the Plan tab, today and later, one muted body-small line
+  under the title: **"Not in your pantry: tahini, sumac"**. Up to three names; past that two and
+  "and 3 more" (so "more" is never 1). No icon, colour, badge or dialog. **Nothing in the add flow**
+  (the owner's call: the "+ Add" sheet and Add to plan still close on adding, with no confirmation),
+  not on Home's Today card, not for a note, not for a meal in the past (the past can't be shopped for).
+  "You have 6 of 8" (#378) was the other wording; the names were chosen as more useful at a glance.
+- **What counts** (`PlanPantryNote`, `:core`, Swift port, corpus rows `Gap`): the recipe's nameable
+  lines as #378 and Use it up read them (`UseItUp.names`: headings and blanks aside, a line with no
+  name never counted), each missing when `PantryMatch` finds no item in stock or staple of that name in
+  the recipe's language. Presence only, never "enough": an out-of-stock item is missing, a staple is
+  had, "rice flour" is never "flour", quantities are never compared. The model's "same ingredient"
+  answers (#104) count, as What I need's do, so the two screens agree. One name per ingredient
+  (`IngredientName.key`). Names are the matcher's, lowercase, in the recipe's language.
+- **Only when it means something**: no note when everything is had, when the recipe's language has
+  no tables, or when the pantry has nothing in that language (a cook who doesn't keep a pantry would
+  otherwise see one on every meal).
+- **Opened in place** (the owner, the same day: "when the note says +2, will it show what those
+  are?", then "what's a seamless way to get the user to add that to groceries?"). Every note is its own
+  tap target (the meal's tap still opens the recipe), labelled "Show what's missing" / "Show less" for
+  TalkBack and VoiceOver. A tap opens it: every missing name, and one quiet text button, **Add to
+  groceries**; a tap again closes it. Open or closed is the view's alone (it may close on leaving the
+  tab).
+- **Add to groceries** adds exactly the recipe's lines naming what is still missing
+  (`PlanPantryNote.linesToAdd`), rendered as What I need renders them (`GrocerySources.fromPlan`: the
+  planned servings, the cook's units), through the same `GroceryRepository.add`, each line tagged with
+  its recipe and planned day, so the list combines and groups them as it does What I need's. Then an
+  Undo snackbar, "Added 2 to groceries", whose Undo deletes exactly the items that add wrote (their
+  ids, read off the list before and after). One undo at a time with Remove and Skip: a new one settles
+  the last.
+- **The note follows the grocery list.** A missing name an unticked grocery line already names
+  (`IngredientName.matches`, same language) is counted, not named; when all of them are on the list the
+  note says **"On your grocery list"**, muted and not tappable. A ticked line doesn't count: bought is
+  the pantry's to say, so a tick names it again until "Done shopping" restocks the pantry, and then
+  the note goes. Everything is collected live (the meals held, today, the pantry, the answers, the
+  list), never read once.
+- **Not built**: a per-meal menu item (the row's menu stays Move, Skip, Remove), a note for the add
+  sheets, any count of quantities.
+
+**Tests.** `:core` `PlanPantryNoteTest` and the corpus's `Gap` rows (Swift generated from the Kotlin);
+Android `WeekPantryNoteTest` (the ViewModel: the note, the pantry and plan followed, empty pantry, past
+and flag off, the model's answers, add at planned servings and its undo, the grocery list followed, one
+undo at a time) and `WeekPantryNoteScreenTest` (Compose: the note and its absence, opening it without
+opening the recipe, adding, the snackbar, "On your grocery list", Undo, the capped note opened and
+closed, the flag off); iOS `PlanPantryNoteTests`, `WeekPantryNoteTests` and `WeekPantryNoteUITests`
+(seeded with `-uiTestPantry`).
+
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 
 `CLAUDE.md` had grown back to about 750 lines, and it is loaded into every session,

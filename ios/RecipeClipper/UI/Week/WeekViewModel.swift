@@ -42,6 +42,13 @@ struct SkipNotice: Equatable {
     let pastEnd: Bool
 }
 
+/// Lines the pantry note just put on the grocery list (#456), for the undo snackbar: `serial`
+/// tells two adds apart.
+struct AddedToGroceries: Equatable {
+    let serial: Int
+    let count: Int
+}
+
 /// A meal just removed: its id keeps two removals of the same title apart.
 struct RemovedMeal: Equatable {
     let id: Int64
@@ -144,6 +151,11 @@ struct WeekUiState: Equatable {
     var menus = MenusUiState()
     /// Fresh food (#396): the quiet note under a planned meal, by `PlannedMeal.id`; empty with the flag off.
     var freshNudges: [Int64: FreshNudge] = [:]
+    /// The quiet pantry note (#456) under a planned recipe from today on, by `PlannedMeal.id`: the
+    /// ingredients the pantry hasn't got, by name (`PlanPantryNote`). Empty with the flag off.
+    var pantryGaps: [Int64: PantryGap] = [:]
+    /// What the pantry note's "Add to groceries" just added, until its undo snackbar is settled (#456).
+    var addedToGroceries: AddedToGroceries?
 
     /// The first day of the block at the top.
     var weekStart: Int64 { PlanDays.blockStart(topDay, today: today) }
@@ -226,6 +238,20 @@ final class WeekViewModel {
     /// The meals the notes were worked out from, for a swap's meal types.
     @ObservationIgnored private var freshMeals: [PlannedMeal] = []
 
+    /// The pantry note (#456): the pantry, the model's "same ingredient" answers (#104) and the
+    /// grocery list as they last arrived, and the cook's units for its "Add to groceries". Without
+    /// the pantry, or with the flag off, no notes.
+    @ObservationIgnored private let pantry: PantryRepository?
+    @ObservationIgnored private let decisionRepository: DecisionRepository?
+    @ObservationIgnored private let preferences: AppPreferences?
+    @ObservationIgnored private var pantryItems: [PantryItem] = []
+    @ObservationIgnored private var decided: Decisions = .none
+    @ObservationIgnored private var groceryItems: [GroceryItem] = []
+    @ObservationIgnored private var noteSubscriptions: [AnyCancellable] = []
+    /// The grocery items the note's last "Add to groceries" wrote, for its undo.
+    @ObservationIgnored private var addedItems: [Int64]?
+    @ObservationIgnored private var addSerial = 0
+
     /// Without Pro (#413): Skip and the fresh-food swap are still shown, with the Pro badge, and open
     /// the Pro screen instead of acting. Meals skipped or swapped before stay where they are. Read live.
     var proLocked: Bool { pro.state.locked }
@@ -234,8 +260,13 @@ final class WeekViewModel {
         plan: MealPlanRepository, recipes: RecipeRepository, calendar: PlanCalendar,
         skipOn: () -> Bool = { true }, sleep: @escaping Sleep = Sleeps.real,
         groceries: GroceryRepository? = nil, freshFood: Bool = false,
-        pro: ProAccess = UngatedProAccess()
+        pro: ProAccess = UngatedProAccess(),
+        pantry: PantryRepository? = nil, decisions: DecisionRepository? = nil,
+        preferences: AppPreferences? = nil, pantryNote: Bool = false
     ) {
+        self.pantry = pantryNote ? pantry : nil
+        self.decisionRepository = decisions
+        self.preferences = preferences
         self.pro = pro
         self.plan = plan
         self.recipes = recipes
@@ -256,6 +287,98 @@ final class WeekViewModel {
             .sink { [weak self] menus in self?.uiState.menus.menus = menus }
         load(from: today - Self.windowBefore)
         watchFresh(from: today)
+        watchPantryNote()
+    }
+
+    // MARK: The pantry note (#456)
+
+    /// Follows the pantry, the answers and the grocery list live; the meals held and today come
+    /// from `uiState`, and each change of any of them works the notes out again.
+    private func watchPantryNote() {
+        guard let pantry else { return }
+        noteSubscriptions = [
+            pantry.observeItems().receive(on: DispatchQueue.main).sink { [weak self] items in
+                self?.pantryItems = items
+                self?.refreshPantryGaps()
+            }
+        ]
+        if let decisionRepository {
+            noteSubscriptions.append(decisionRepository.observe().receive(on: DispatchQueue.main).sink { [weak self] d in
+                self?.decided = d
+                self?.refreshPantryGaps()
+            })
+        }
+        if let groceries {
+            noteSubscriptions.append(groceries.observeItems().receive(on: DispatchQueue.main).sink { [weak self] items in
+                self?.groceryItems = items
+                self?.refreshPantryGaps()
+            })
+        }
+    }
+
+    private func refreshPantryGaps() {
+        guard pantry != nil else { return }
+        let gaps = PlanPantryNote.gaps(
+            uiState.meals.values.flatMap { $0 }, pantry: pantryItems, today: uiState.today,
+            decisions: decided, groceries: groceryItems
+        )
+        if gaps != uiState.pantryGaps { uiState.pantryGaps = gaps }
+    }
+
+    /// The note under `mealId` opened, and its "Add to groceries" tapped: the recipe's lines naming
+    /// what is still missing, rendered at the planned servings in the cook's units, onto the list
+    /// through the path What I need's To buy takes (`GrocerySources.fromPlan`, then
+    /// `GroceryRepository.add`). One undo, for exactly those lines.
+    func onAddMissingToGroceries(_ mealId: Int64) {
+        guard let groceries, let gap = uiState.pantryGaps[mealId], !gap.allOnList,
+              let meal = uiState.meals.values.flatMap({ $0 }).first(where: { $0.id == mealId })
+        else { return }
+        let settings = preferences?.current
+        Task {
+            let planned = await groceries.plannedIngredients(start: meal.day, end: meal.day).filter { $0.entryId == mealId }
+            let answers = await decisionRepository?.current() ?? .none
+            let sources = GrocerySources.fromPlan(
+                planned, system: settings?.unitSystem ?? .asWritten, convertLiquids: settings?.convertLiquids ?? false,
+                decisions: answers
+            )
+            let lines = sources.flatMap { source in
+                PlanPantryNote.linesToAdd(gap, language: source.language, rendered: source.lines).map {
+                    NewGroceryLine(text: $0, language: source.language, recipeId: source.recipeId, plannedDay: source.day)
+                }
+            }
+            guard !lines.isEmpty else { return }
+            let before = Set(await Self.currentItems(groceries).map(\.id))
+            await groceries.add(lines)
+            let ids = await Self.currentItems(groceries).map(\.id).filter { !before.contains($0) }
+            guard !ids.isEmpty else { return }
+            // One undo at a time: an earlier removal or skip stands.
+            removedMeal = nil
+            skippedMeals = nil
+            addedItems = ids
+            addSerial += 1
+            uiState.addedToGroceries = AddedToGroceries(serial: addSerial, count: ids.count)
+            uiState.removed = nil
+            uiState.skipped = nil
+        }
+    }
+
+    /// Undo: exactly the lines just added come off the list, and the note comes back.
+    func onUndoAddToGroceries() {
+        guard let ids = addedItems else { return }
+        addedItems = nil
+        uiState.addedToGroceries = nil
+        Task { _ = await groceries?.delete(ids) }
+    }
+
+    /// The snackbar timed out or was dismissed: the lines stay.
+    func onAddedSnackbarDismissed() {
+        addedItems = nil
+        uiState.addedToGroceries = nil
+    }
+
+    private static func currentItems(_ groceries: GroceryRepository) async -> [GroceryItem] {
+        for await items in groceries.observeItems().values { return items }
+        return []
     }
 
     // MARK: Fresh food (#396)
@@ -337,6 +460,7 @@ final class WeekViewModel {
         let today = calendar.today()
         if today != uiState.today { watchFresh(from: today) }
         uiState.today = today
+        refreshPantryGaps()
         jumpTo(uiState.today, animate: true)
     }
 
@@ -347,6 +471,7 @@ final class WeekViewModel {
         guard today != uiState.today else { return }
         uiState.today = today
         watchFresh(from: today)
+        refreshPantryGaps()
         jumpTo(today, animate: false)
     }
 
@@ -396,6 +521,7 @@ final class WeekViewModel {
                 self.uiState.meals = Dictionary(grouping: meals, by: \.day)
                 self.uiState.loadedFrom = from
                 self.uiState.loadedTo = to
+                self.refreshPantryGaps()
             }
     }
 
@@ -548,8 +674,10 @@ final class WeekViewModel {
             guard let deleted = await plan.delete(entryId: meal.id) else { return }
             removedMeal = deleted
             skippedMeals = nil // the earlier skip stands: one undo at a time
+            addedItems = nil // and so does an earlier "Add to groceries" (#456)
             uiState.removed = RemovedMeal(id: meal.id, label: meal.title ?? meal.note ?? "")
             uiState.skipped = nil
+            uiState.addedToGroceries = nil
         }
     }
 
@@ -597,6 +725,8 @@ final class WeekViewModel {
                 pastEnd: !done.result.pastEnd.isEmpty
             )
             uiState.removed = nil
+            addedItems = nil // an earlier "Add to groceries" stands (#456)
+            uiState.addedToGroceries = nil
         }
     }
 

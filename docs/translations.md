@@ -165,6 +165,24 @@ activo*, *filtre actif*, *Filter aktiv*, *filtro attivo*, *filtro ativo*, with t
 plurals use). To check: whether German's "Gesamtzeit, oder …" wants its comma, and "on" as *activo* /
 *actif* / *aktiv* / *attivo* / *ativo* for a filter that is switched on.
 
+## The Plan's pantry note, 2026-11-22 (#456)
+
+Drafts written by Claude, on both platforms; "Add to groceries" and Undo reuse what each language
+already says. The note, `plan_pantry_missing`, "Not in your pantry: %s" (*No hay en tu despensa*, *Pas
+dans votre garde-manger :*, *Nicht in deinem Vorrat*, *Non nella tua dispensa*, *Não está na sua
+despensa*), and its capped form with "and 3 more" (Android one plural, `plan_pantry_missing_more`; iOS the
+same sentence with the plural `plan_pantry_more` inside it: *y 3 más*, *et 3 autres*, *und 3 weitere*, *e
+altri 3*, *e mais 3*); `plan_pantry_on_list`, "On your grocery list" (*En tu lista de la compra*, *Sur votre
+liste de courses*, *Auf deiner Einkaufsliste*, *Nella tua lista della spesa*, *Na sua lista de compras*);
+the note's action for TalkBack and VoiceOver, `plan_pantry_show_all` / `plan_pantry_show_less`, "Show
+what's missing" / "Show less"; and the undo snackbar's plural `plan_pantry_added`, "Added 2 to groceries"
+(*2 añadidos a la compra*, *2 ajoutés aux courses*, *2 zum Einkauf hinzugefügt*, *2 aggiunti alla spesa*,
+*2 adicionados às compras*, with the `many` forms the other plurals use). The note is written so that
+nothing agrees with the names (a colon, then the list), since they are the recipe's own words, in its
+language, lowercase as the matcher reads them. To check: whether "No hay en tu despensa" and "Não está na
+sua despensa" read as calm in front of a list, and German's lowercase nouns in the list ("eier"), which
+come from the matcher, not from the translation.
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,

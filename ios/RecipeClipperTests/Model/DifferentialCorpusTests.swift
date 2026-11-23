@@ -97,6 +97,8 @@ import XCTest
 // recipe's lines, then RecipeQuickFilters.coverage: how many nameable lines the pantry has, how
 // many there are and whether that is half or more (nil, nil, false: the language has no tables).
 // Write only `Cover(["flour"], ["2 cups flour", "1 cup milk"]),` (optionally `, lang: "de"`).
+// Pantry-note rows (#456): the same pantry and lines, then PlanPantryNote.gap: every name the pantry lacks for the
+// Plan's quiet note, and how many it leaves to "and N more" ([], 0: no note). Write only `Gap(["flour"], ["1 tbsp tahini"]),`.
 // Ahead-of-time rows (#397): a recipe's steps, then AheadSteps.find: the index of the step to
 // start ahead of time and its quoted sentence (nil, nil: none). Write only `Ahead(["Marinate overnight."], nil, nil),`
 // or `Ahead(["Über Nacht marinieren."], lang: "de", nil, nil),`.
@@ -405,6 +407,13 @@ final class DifferentialCorpusTests: XCTestCase {
         init(_ pantry: [String], _ lines: [String], lang: String = "en", _ have: Int?, _ total: Int?, _ matches: Bool) {
             self.pantry = pantry; self.lines = lines; self.language = lang
             self.have = have; self.total = total; self.matches = matches
+        }
+    }
+
+    private struct Gap {
+        let pantry: [String]; let lines: [String]; let language: String; let missing: [String]; let more: Int
+        init(_ pantry: [String], _ lines: [String], lang: String = "en", _ missing: [String] = [], _ more: Int = 0) {
+            self.pantry = pantry; self.lines = lines; self.language = lang; self.missing = missing; self.more = more
         }
     }
 
@@ -2384,6 +2393,25 @@ final class DifferentialCorpusTests: XCTestCase {
         Cover(["butter"], ["1 cup butter"], lang: "xx", nil, nil, false),
     ]
 
+    private static let gaps: [Gap] = [
+        Gap(["flour", "eggs"], ["2 cups flour", "3 large eggs"], [], 0),
+        Gap([], ["2 tbsp tahini"], [], 0),
+        Gap(["flour"], ["2 cups flour", "2 tbsp tahini", "1 tsp sumac"], ["tahini", "sumac"], 0),
+        Gap(["flour"], ["2 tbsp tahini", "1 tsp sumac", "1 lemon"], ["tahini", "sumac", "lemon"], 0),
+        Gap(["flour"], ["2 tbsp tahini", "1 tsp sumac", "1 lemon", "2 cloves garlic", "1 cup chickpeas"], ["tahini", "sumac", "lemon", "garlic", "chickpeas"], 3),
+        Gap(["flour"], ["For the dough:", "", "2 cups flour", "salt and pepper to taste"], [], 0),
+        Gap(["flour"], ["2 cups rice flour"], ["rice flour"], 0),
+        Gap(["rice flour"], ["2 cups flour"], ["flour"], 0),
+        Gap(["flour"], ["2 cups all-purpose flour"], [], 0),
+        Gap(["butter"], ["1 can butter beans"], ["butter beans"], 0),
+        Gap(["*salt", "-butter"], ["1 tsp salt", "2 tbsp butter"], ["butter"], 0),
+        Gap(["flour"], ["1 onion, diced", "2 onions, sliced"], ["onion"], 0),
+        Gap(["dashi", "tofu"], ["4 cups dashi", "3 tbsp white miso paste", "1 block tofu, cubed", "2 green onions, sliced"], ["white miso paste", "block tofu", "green onions"], 0),
+        Gap(["Mehl"], ["200 g Mehl", "2 Eier"], lang: "de", ["eier"], 0),
+        Gap(["lait"], ["250 ml de lait", "2 œufs"], lang: "fr", ["œufs"], 0),
+        Gap(["butter"], ["1 cup butter", "1 cup sugar"], lang: "xx", [], 0),
+    ]
+
     private static let aheads: [Ahead] = [
         Ahead(["Mix the marinade.", "Marinate the chicken at least 8 hours or overnight. Then grill it for 10 minutes."], 1, "Marinate the chicken at least 8 hours or overnight."),
         Ahead(["Marinate for 4 hours in the fridge, turning once."], 0, "Marinate for 4 hours in the fridge, turning once."),
@@ -3256,6 +3284,22 @@ final class DifferentialCorpusTests: XCTestCase {
             XCTAssertEqual(coverage?.have, row.have, label)
             XCTAssertEqual(coverage?.total, row.total, label)
             XCTAssertEqual(coverage?.matches ?? false, row.matches, label)
+        }
+    }
+
+    func testPlanPantryNoteMatchesKotlin() {
+        for row in Self.gaps {
+            let pantry = row.pantry.enumerated().map { i, name in
+                PantryItem(
+                    id: Int64(i + 1), name: String(name.drop { $0 == "*" || $0 == "-" }), quantity: nil,
+                    language: row.language, aisle: .other, inStock: !name.hasPrefix("-"),
+                    alwaysHave: name.hasPrefix("*"), purchasedDay: nil, expiresDay: nil
+                )
+            }
+            let gap = PlanPantryNote.gap(title: "r", language: row.language, lines: row.lines, pantry: pantry)
+            let label = "\(row.pantry) / \(row.lines)"
+            XCTAssertEqual(gap?.missing ?? [], row.missing, label)
+            XCTAssertEqual(gap?.more ?? 0, row.more, label)
         }
     }
 

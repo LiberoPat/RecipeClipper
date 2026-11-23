@@ -383,7 +383,9 @@ final class AppContainer {
         WeekViewModel(
             plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar,
             skipOn: { [featureFlags] in featureFlags.isOn(.skipTonight) },
-            groceries: groceryRepository, freshFood: featureFlags.isOn(.freshFood), pro: proAccess
+            groceries: groceryRepository, freshFood: featureFlags.isOn(.freshFood), pro: proAccess,
+            pantry: pantryRepository, decisions: decisionRepository, preferences: preferences,
+            pantryNote: featureFlags.isOn(.planPantryNote)
         )
     }
 
