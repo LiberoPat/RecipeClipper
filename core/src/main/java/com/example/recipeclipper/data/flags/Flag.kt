@@ -100,7 +100,9 @@ enum class Flag(val key: String) {
     /** Say why a line starts unticked (#457): the Add to groceries sheet marks a line the pantry has "In your pantry". */
     GROCERY_PANTRY_LABEL("groceryPantryLabel"),
     /** A quiet pantry note on the Plan (#456): under a planned recipe, the ingredients the pantry hasn't got, by name only. */
-    PLAN_PANTRY_NOTE("planPantryNote");
+    PLAN_PANTRY_NOTE("planPantryNote"),
+    /** Recipes' views folded into the filter sheet (#454): a Lists pill left of search, Cooked and Came from as choices, Not in a list as a switch; needs [RECIPES_TOP_B]. */
+    RECIPES_FILTERS("recipesFilters");
 
     companion object {
         fun forKey(key: String): Flag? = entries.firstOrNull { it.key == key }

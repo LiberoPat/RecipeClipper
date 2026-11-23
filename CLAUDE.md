@@ -222,6 +222,11 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   than clip); the three filters live in a sheet behind a badged button at the end of search, those
   on shown under it as removable pills with Clear; then the count, the sort, the toggle;
   selecting has Select all. Off, the strip and chips above.
+- **Recipes' views in the filter sheet** (#454, `recipesFilters`, over design B): no shelf; a Lists
+  pill left of search opens Lists. The sheet's two groups: 30 min or less, Cooked (Any / Cooked /
+  Not yet), Uses what's in my pantry; Not in a list, Came from (Anywhere / Typed by you / From a
+  chat), the choices segmented. They select what the view screens did (the same SQL), combine
+  with search and sort, show as pills; not remembered. Off, design B's shelf.
 - **A recipe with no photo, or whose photo fails, gets a designed image** (#403, `noPhotoImage`):
   its first ingredient names, upright in Bricolage, on one of Market's five tints chosen by its uid (the title's
   first letter at 64 dp and below), never a stock image. One component per platform; the

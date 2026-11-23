@@ -35,9 +35,14 @@ struct RecipesScreen: View {
     /// The top redesigned (#449, design B): with the library as the first screen and one cookbook, a ⋮ menu
     /// (Select, Settings) after the +, the views shelf above search, the filters in a sheet behind search.
     var topB = false
+    /// Over design B (#454): no views shelf; a Lists pill left of search; the filter sheet with the views
+    /// folded in (Cooked, Not in a list, Came from). Off, design B as it was.
+    var filtersSheet = false
 
     /// Design B applies to the library as the first screen only, with one cookbook's views.
     private var styleB: Bool { topB && libraryRoot != nil && oneCookbook }
+    /// The views folded into the filter sheet (#454), only over design B.
+    private var folded: Bool { styleB && filtersSheet }
 
     @State private var scanSource: ScanSource?
     /// The library as the first screen (#375): the + 's sheet, what to do once it has gone, the
@@ -190,11 +195,20 @@ struct RecipesScreen: View {
         }
         // Design B's filters (#449): the three as switches, and Clear; they act at once, as the chips did.
         .sheet(isPresented: $filterSheetOpen) {
-            RecipeFilterSheet(
-                offered: vm.uiState.quickFilters, on: vm.uiState.quick,
-                onToggle: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters
-            )
-            .presentationDetents([.medium, .large])
+            Group {
+                if folded {
+                    // #454: the views folded in, in two groups; each control acts at once.
+                    RecipeFiltersSheet(
+                        choices: vm.uiState.choices, onChange: vm.onFilterChoicesChange, onClear: vm.onClearQuickFilters
+                    )
+                } else {
+                    RecipeFilterSheet(
+                        offered: vm.uiState.quickFilters, on: vm.uiState.quick,
+                        onToggle: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters
+                    )
+                }
+            }
+            .presentationDetents(folded ? [.large] : [.medium, .large])
             .presentationDragIndicator(.visible)
         }
         // The same picker as Settings' Import.
@@ -271,7 +285,7 @@ struct RecipesScreen: View {
     /// The recipes: the tidy rows, or (#380) a photo grid, under the same header.
     @ViewBuilder
     private func container(_ state: RecipesUiState) -> some View {
-        let pantryChip = state.quick.contains(.usesPantry)
+        let pantryChip = state.pantryOn
         if gridEnabled && state.layout == .grid {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -378,16 +392,33 @@ struct RecipesScreen: View {
                         onRestore: root.vm.canRestore ? { restoring = true } : nil
                     )
                 } else {
-                    if state.showsViewsStrip {
-                        ViewsShelf(counts: state.counts, listCount: state.lists.count, onOpenView: onOpenView, onOpenLists: onOpenLists)
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        SearchFieldB(
-                            query: state.query, onQueryChange: vm.onQueryChange,
-                            filtersOn: state.activeQuickFilters.count,
-                            onOpenFilters: quickFilters && state.showsFilter ? { filterSheetOpen = true } : nil
-                        )
-                        ActiveFilterPills(active: state.activeQuickFilters, onRemove: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters)
+                    if folded {
+                        // #454: Lists, then search with the sheet's button; the views are in the sheet, not a shelf.
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                if state.showsViewsStrip {
+                                    ListsPill(count: state.lists.count, action: onOpenLists)
+                                }
+                                SearchFieldB(
+                                    query: state.query, onQueryChange: vm.onQueryChange,
+                                    filtersOn: state.choices.pills.count,
+                                    onOpenFilters: quickFilters && state.showsFilter ? { filterSheetOpen = true } : nil
+                                )
+                            }
+                            ChoicePills(pills: state.choices.pills, onRemove: vm.onRemoveFilter, onClear: vm.onClearQuickFilters)
+                        }
+                    } else {
+                        if state.showsViewsStrip {
+                            ViewsShelf(counts: state.counts, listCount: state.lists.count, onOpenView: onOpenView, onOpenLists: onOpenLists)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            SearchFieldB(
+                                query: state.query, onQueryChange: vm.onQueryChange,
+                                filtersOn: state.activeQuickFilters.count,
+                                onOpenFilters: quickFilters && state.showsFilter ? { filterSheetOpen = true } : nil
+                            )
+                            ActiveFilterPills(active: state.activeQuickFilters, onRemove: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters)
+                        }
                     }
                 }
             }
@@ -522,7 +553,7 @@ struct RecipesScreen: View {
     /// What an empty list says: the search's, else the filter's (while there is a library to
     /// filter), else the empty library's.
     private func emptyMessage(_ state: RecipesUiState) -> String {
-        if !state.quick.isEmpty { return Strings.recipesNoResultsFilters }
+        if state.filtersOn { return Strings.recipesNoResultsFilters }
         if !state.query.trimmingCharacters(in: .whitespaces).isEmpty { return Strings.recipesNoResults(state.query) }
         guard state.showsFilter || state.view != nil else { return Strings.recipesEmpty }
         return switch state.filter {
@@ -539,19 +570,43 @@ struct RecipesScreen: View {
     /// free tier "12 of 20 recipes", #107), and the order they're in on the right, which opens
     /// the sort menu. The sort was the only item of a ⋯ menu in the toolbar before.
     private func sortLine(_ state: RecipesUiState, toggleLast: Bool = false) -> some View {
-        HStack(spacing: 8) {
-            Group {
-                // Inside a view the count is the view's own, not the free library's.
-                if let count = vm.count, state.view == nil {
-                    Text(Strings.recipesCount(count.saved, of: count.max))
-                        .accessibilityIdentifier("recipes.count")
-                } else {
-                    Text(Strings.recipesListed(state.listed ?? 0))
-                }
+        // The count never breaks inside a word (#454: German at large sizes read "Reze / pte"): the count and
+        // the controls share one line when both fit whole, else the controls move under the count.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                countText(state).fixedSize()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                sortControls(state, toggleLast: toggleLast).fixedSize()
             }
-            .textStyle(Typography.bodySmall)
-            .foregroundStyle(Palette.muted)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 0) {
+                countText(state)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                sortControls(state, toggleLast: toggleLast)
+            }
+        }
+    }
+
+    /// "20 recipes", or on the free tier "12 of 20 recipes", on one line.
+    private func countText(_ state: RecipesUiState) -> some View {
+        Group {
+            // Inside a view the count is the view's own, not the free library's.
+            if let count = vm.count, state.view == nil {
+                Text(Strings.recipesCount(count.saved, of: count.max))
+                    .accessibilityIdentifier("recipes.count")
+            } else {
+                Text(Strings.recipesListed(state.listed ?? 0))
+                    .accessibilityIdentifier("recipes.listed")
+            }
+        }
+        .textStyle(Typography.bodySmall)
+        .foregroundStyle(Palette.muted)
+        .lineLimit(1)
+    }
+
+    /// The sort's menu and the rows / grid toggle (before it, or with design B after it).
+    @ViewBuilder
+    private func sortControls(_ state: RecipesUiState, toggleLast: Bool) -> some View {
+        HStack(spacing: 8) {
             if gridEnabled && !toggleLast { layoutToggle(state.layout) }
             // An exclusive choice, so radio glyphs rather than a bare checkmark.
             Menu {
@@ -570,6 +625,7 @@ struct RecipesScreen: View {
                     Text(sortName(state.sort))
                         .textStyle(Typography.labelMedium)
                         .foregroundStyle(Palette.onBackground)
+                        .lineLimit(1)
                 }
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())

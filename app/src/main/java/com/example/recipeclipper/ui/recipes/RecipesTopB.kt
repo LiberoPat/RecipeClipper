@@ -260,7 +260,14 @@ private fun ShelfCell(icon: Painter, count: Int?, name: String, lead: Boolean, o
  * accent tone and a badge counting the filters on, once one is.
  */
 @Composable
-internal fun SearchFieldB(query: String, onQueryChange: (String) -> Unit, filtersOn: Int, onOpenFilters: (() -> Unit)?) {
+internal fun SearchFieldB(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    filtersOn: Int,
+    onOpenFilters: (() -> Unit)?,
+    /** It fills the width it is given: the row's, or (#454, beside the Lists pill, a weight) what the pill leaves. */
+    modifier: Modifier = Modifier
+) {
     val colors = MaterialTheme.colorScheme
     OutlinedTextField(
         value = query,
@@ -288,7 +295,7 @@ internal fun SearchFieldB(query: String, onQueryChange: (String) -> Unit, filter
             unfocusedContainerColor = colors.surfaceContainer,
             focusedContainerColor = colors.surfaceContainer
         ),
-        modifier = Modifier.fillMaxWidth().testTag("recipesSearch")
+        modifier = modifier.fillMaxWidth().testTag("recipesSearch")
     )
 }
 

@@ -481,15 +481,19 @@ class DefaultRecipeRepository @Inject constructor(
         if (files.isNotEmpty()) photos.delete(files)
     }
 
-    override fun observeHistory(query: String, filter: RecipeFilter): Flow<List<RecipeSummary>> {
-        val listed = when (filter) {
-            RecipeFilter.IN_A_LIST -> RecipeDao.LISTED_YES
-            RecipeFilter.NOT_IN_A_LIST -> RecipeDao.LISTED_NO
+    override fun observeHistory(query: String, filter: RecipeFilter): Flow<List<RecipeSummary>> =
+        observeHistory(query, setOf(filter))
+
+    /** One query for every view asked (#454): the views' own tests are the DAO's arguments, AND-ed in its SQL. */
+    override fun observeHistory(query: String, views: Set<RecipeFilter>): Flow<List<RecipeSummary>> {
+        val listed = when {
+            RecipeFilter.IN_A_LIST in views -> RecipeDao.LISTED_YES
+            RecipeFilter.NOT_IN_A_LIST in views -> RecipeDao.LISTED_NO
             else -> RecipeDao.LISTED_ANY
         }
-        val cooked = if (filter == RecipeFilter.COOKED) 1 else 0
-        val typed = if (filter == RecipeFilter.TYPED) 1 else 0
-        val chat = if (filter == RecipeFilter.CHAT) 1 else 0
+        val cooked = if (RecipeFilter.COOKED in views) 1 else 0
+        val typed = if (RecipeFilter.TYPED in views) 1 else 0
+        val chat = if (RecipeFilter.CHAT in views) 1 else 0
         return recipeDao.observeHistory(query, listed, cooked, typed, chat).map { rows -> rows.map { it.toDomain() } }
             .orEmptyOnError(log, "observeHistory")
     }

@@ -293,6 +293,11 @@ protocol RecipeRepository: AnyObject {
     /// filter); `.all` is `observeHistory(query:)`. The search still applies inside the filter.
     func observeHistory(query: String, filter: RecipeFilter) -> AnyPublisher<[RecipeSummary], Never>
 
+    /// `observeHistory` kept to the recipes every one of `views` holds (#454: the filter sheet's Not in a
+    /// list, Cooked and Came from, combined): each view's own test, AND-ed. The database answers it in its one
+    /// query; the default intersects the single-view answers (test doubles), in the first one's order.
+    func observeHistory(query: String, views: Set<RecipeFilter>) -> AnyPublisher<[RecipeSummary], Never>
+
     /// How many recipes there are, and how many are in a list: the Recipes filter's counts (#345).
     func observeRecipeCounts() -> AnyPublisher<RecipeCounts, Never>
 
@@ -372,6 +377,19 @@ extension RecipeRepository {
 
     func observeCount() -> AnyPublisher<Int, Never> {
         observeHistory(query: "").map(\.count).removeDuplicates().eraseToAnyPublisher()
+    }
+
+    func observeHistory(query: String, views: Set<RecipeFilter>) -> AnyPublisher<[RecipeSummary], Never> {
+        let asked = RecipeFilter.allCases.filter { $0 != .all && views.contains($0) }
+        guard let first = asked.first else { return observeHistory(query: query, filter: .all) }
+        guard asked.count > 1 else { return observeHistory(query: query, filter: first) }
+        let answers = asked.dropFirst().reduce(observeHistory(query: query, filter: first).map { [$0] }.eraseToAnyPublisher()) {
+            all, view in all.combineLatest(observeHistory(query: query, filter: view)).map { $0 + [$1] }.eraseToAnyPublisher()
+        }
+        return answers.map { lists in
+            let kept = lists.dropFirst().map { Set($0.map(\.id)) }
+            return lists[0].filter { row in kept.allSatisfy { $0.contains(row.id) } }
+        }.eraseToAnyPublisher()
     }
 
     /// Test doubles that only know `observeHistory(query:)`: the filter is applied to its answer

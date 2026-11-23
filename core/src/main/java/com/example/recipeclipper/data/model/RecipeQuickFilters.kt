@@ -88,3 +88,86 @@ object RecipeQuickFilters {
         }
     }
 }
+
+/** "Cooked" in the filter sheet (#454): one choice, folding the Cooked view and "Not cooked yet". */
+enum class CookedChoice { ANY, COOKED, NOT_YET }
+
+/** "Came from" in the filter sheet (#454): a recipe is typed by you or from a chat, never both, so one choice. */
+enum class OriginChoice { ANYWHERE, TYPED, CHAT }
+
+/** One filter on, as a pill under search (#454), in the sheet's order; a tap on it turns that filter off. */
+enum class RecipeFilterPill { THIRTY_OR_LESS, COOKED, NOT_COOKED, USES_PANTRY, NOT_IN_A_LIST, TYPED, CHAT }
+
+/**
+ * The filter sheet's five controls (#454, `recipesFilters`), with the views folded in: two switches and a
+ * choice about the recipe (30 min or less, Cooked: Any / Cooked / Not yet, Uses what's in my pantry), a
+ * switch and a choice about where it is and where it came from (Not in a list, Came from: Anywhere /
+ * Typed by you / From a chat). They combine (AND) with each other, the search and the sort; questions
+ * about what is stored, never filing; not remembered.
+ *
+ * Nothing is re-derived. [views] are the view screens' own filters (#345), asked of the one SQL query
+ * that answers those screens (the same `EXISTS` and `contentOrigin` tests, AND-ed); [quick] are #378's
+ * rules, applied over its answer. Cooked is the Cooked view; Not yet is "Not cooked yet", that view's
+ * complement (`RecipeQuickFiltersDaoTest`).
+ */
+data class RecipeFilterChoices(
+    val thirtyOrLess: Boolean = false,
+    val cooked: CookedChoice = CookedChoice.ANY,
+    val usesPantry: Boolean = false,
+    val notInAList: Boolean = false,
+    val origin: OriginChoice = OriginChoice.ANYWHERE
+) {
+    /** The view screens' filters these ask for, answered by the database beside the search. */
+    val views: Set<RecipeFilter>
+        get() = buildSet {
+            if (notInAList) add(RecipeFilter.NOT_IN_A_LIST)
+            if (cooked == CookedChoice.COOKED) add(RecipeFilter.COOKED)
+            when (origin) {
+                OriginChoice.TYPED -> add(RecipeFilter.TYPED)
+                OriginChoice.CHAT -> add(RecipeFilter.CHAT)
+                OriginChoice.ANYWHERE -> Unit
+            }
+        }
+
+    /** #378's filters these ask for, applied to the database's answer ([RecipeQuickFilters.apply]). */
+    val quick: Set<RecipeQuickFilter>
+        get() = buildSet {
+            if (thirtyOrLess) add(RecipeQuickFilter.THIRTY_OR_LESS)
+            if (cooked == CookedChoice.NOT_YET) add(RecipeQuickFilter.NOT_COOKED)
+            if (usesPantry) add(RecipeQuickFilter.USES_PANTRY)
+        }
+
+    /** The filters on, in the sheet's order: the pills under search; their number is the badge's. */
+    val pills: List<RecipeFilterPill>
+        get() = buildList {
+            if (thirtyOrLess) add(RecipeFilterPill.THIRTY_OR_LESS)
+            when (cooked) {
+                CookedChoice.COOKED -> add(RecipeFilterPill.COOKED)
+                CookedChoice.NOT_YET -> add(RecipeFilterPill.NOT_COOKED)
+                CookedChoice.ANY -> Unit
+            }
+            if (usesPantry) add(RecipeFilterPill.USES_PANTRY)
+            if (notInAList) add(RecipeFilterPill.NOT_IN_A_LIST)
+            when (origin) {
+                OriginChoice.TYPED -> add(RecipeFilterPill.TYPED)
+                OriginChoice.CHAT -> add(RecipeFilterPill.CHAT)
+                OriginChoice.ANYWHERE -> Unit
+            }
+        }
+
+    val isEmpty: Boolean get() = this == NONE
+
+    /** These with [pill]'s filter off: a switch off, a choice back to Any / Anywhere. */
+    fun without(pill: RecipeFilterPill): RecipeFilterChoices = when (pill) {
+        RecipeFilterPill.THIRTY_OR_LESS -> copy(thirtyOrLess = false)
+        RecipeFilterPill.COOKED, RecipeFilterPill.NOT_COOKED -> copy(cooked = CookedChoice.ANY)
+        RecipeFilterPill.USES_PANTRY -> copy(usesPantry = false)
+        RecipeFilterPill.NOT_IN_A_LIST -> copy(notInAList = false)
+        RecipeFilterPill.TYPED, RecipeFilterPill.CHAT -> copy(origin = OriginChoice.ANYWHERE)
+    }
+
+    companion object {
+        /** Nothing chosen: every recipe. */
+        val NONE = RecipeFilterChoices()
+    }
+}

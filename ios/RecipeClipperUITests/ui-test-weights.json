@@ -20,6 +20,7 @@
   "RecipeErrorUITests": 42,
   "RecipeReportSiteUITests": 52,
   "RecipeSourceCreditUITests": 67,
+  "RecipesFiltersUITests": 110,
   "RecipesTopBUITests": 140,
   "RecipesUITests": 475,
   "SaveToListUITests": 407,
