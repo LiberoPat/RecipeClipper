@@ -63,8 +63,9 @@ final class WeekUITests: RecipeUITestCase {
         XCTAssertLessThan(top(miso), top(todayAdd))
         XCTAssertLessThan(top(todayAdd), top(banana))
 
-        // Only today's meal shows Skip, free for everyone (owner, 2026-11-23: no Pro badge, even with
-        // `proUnlock` on); it opens the three choices.
+        // Only today's meal shows Skip, free for everyone (owner, 2026-11-23): with the gating flag
+        // `proUnlock` on and no Pro bought (the UI-test container has no store), still no badge.
+        // It opens the three choices.
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'skip-'")).count, 1)
         let skip = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'skip-'")).firstMatch
         XCTAssertFalse(skip.label.contains("Pro"), "no badge on Skip: \(skip.label)")
