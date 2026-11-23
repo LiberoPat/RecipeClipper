@@ -3646,8 +3646,10 @@ holds: they are now asked through the filters.
   Android `TitleRowLayout` (a `SubcomposeLayout`, so only the drawn variant exists for TalkBack; the full width is
   worked out from the words with a text measurer), iOS `TitleRowFit` (`ViewThatFits` of the three). **Search is
   back on its own row at the full width**, and its placeholder, "Search titles and ingredients", is set at 15 sp
-  (not the body 16) so it is whole on a 360 dp phone beside the icon and the filter button in English and German;
-  French ("Rechercher par titre ou ingrédient") and any language at large text still end in an ellipsis there. The
+  (not the body 16) so it is whole on a 360 dp phone beside the icon and the filter button, in all six languages:
+  English keeps its full wording; French ("Titres et ingrédients") and German ("Titel und Zutaten", whole at 1.5 times
+  the text too) were shortened for it (owner, 2026-11-23: the magnifier already says search); the other languages at
+  large text still end in an ellipsis. `RecipesFiltersScreenTest` checks all six at 360 dp. The
   pill shows when the shelf did (a recipe or a list to show), and not over an empty library, as before.
 - **Search keeps its filter button** with the badge, which now counts the pills below.
 - **The filter sheet, grouped by kind of control** (the owner's regrouping, 2026-11-23; it first had two headed

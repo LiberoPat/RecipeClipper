@@ -15282,7 +15282,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Titel und Zutaten durchsuchen"
+            "value" : "Titel und Zutaten"
           }
         },
         "en" : {
@@ -15300,7 +15300,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher par titre ou ingrédient"
+            "value" : "Titres et ingrédients"
           }
         },
         "it" : {
