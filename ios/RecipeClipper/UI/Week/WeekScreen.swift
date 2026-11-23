@@ -123,7 +123,8 @@ struct WeekScreen: View {
         // The tooltips (#190); none over this screen's sheets, dialogs and snackbar. Outside
         // the toolbar, whose menu is an anchor too.
         .tooltipHost(.week, blocked: state.adding != nil || state.moving != nil || state.skipping != nil
-            || groceriesSheet != nil || state.removed != nil || state.skipped != nil || calendarURL != nil || state.menus.saving || state.menus.picking
+            || groceriesSheet != nil || state.removed != nil || state.skipped != nil || state.addedToGroceries != nil
+            || calendarURL != nil || state.menus.saving || state.menus.picking
             || state.menus.renaming != nil || state.menus.deleting != nil)
         .overlay(alignment: .bottom) {
             if let removed = state.removed {
@@ -140,9 +141,20 @@ struct WeekScreen: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let added = state.addedToGroceries {
+                // The pantry note's "Add to groceries" (#456): one Undo, for exactly those lines.
+                Snackbar(message: Strings.planPantryAdded(added.count), actionLabel: Strings.undo, action: vm.onUndoAddToGroceries)
+                    .frame(maxWidth: ReadableWidth.column)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.easeOut(duration: 0.2), value: state.removed == nil && state.skipped == nil)
+        .animation(.easeOut(duration: 0.2), value: state.removed == nil && state.skipped == nil && state.addedToGroceries == nil)
+        .task(id: state.addedToGroceries) {
+            guard let added = state.addedToGroceries else { return }
+            await SnackbarTimeout.run(pending: ["\(added.serial)"], onTimeout: vm.onAddedSnackbarDismissed)
+        }
         .task(id: state.removed) {
             guard let removed = state.removed else { return }
             await SnackbarTimeout.run(pending: [removed.label], onTimeout: vm.onSnackbarDismissed)
@@ -347,7 +359,7 @@ private struct DayList: View {
                             vm: vm, day: day, isToday: day == state.today, meals: state.mealsOn(day),
                             canSkip: state.canSkip,
                             nothingPlanned: state.isNothingPlanned(day), typeNames: typeNames,
-                            freshNudges: state.freshNudges, onOpenRecipe: onOpenRecipe,
+                            freshNudges: state.freshNudges, pantryGaps: state.pantryGaps, onOpenRecipe: onOpenRecipe,
                             proLocked: vm.proLocked, onOpenPro: onOpenPro
                         )
                     }
@@ -397,6 +409,8 @@ private struct DaySection: View {
     let nothingPlanned: Bool
     let typeNames: [Int64: String]
     let freshNudges: [Int64: FreshNudge]
+    /// The quiet pantry note under a planned recipe (#456), by meal id.
+    let pantryGaps: [Int64: PantryGap]
     let onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void
     /// Without Pro (#413): Skip and the swap keep their place with the Pro badge, and open the Pro screen.
     let proLocked: Bool
@@ -445,6 +459,14 @@ private struct DaySection: View {
                         ProTextButton(label: Strings.skipToday, locked: proLocked) { skip(meal) }
                             .accessibilityIdentifier("skip-\(meal.id)")
                     }
+                }
+                // The pantry note (#456): information, not an alarm. Under the title, its own tap
+                // target, so a tap on the meal still opens the recipe.
+                if let gap = pantryGaps[meal.id] {
+                    PantryGapNote(mealId: meal.id, gap: gap) { vm.onAddMissingToGroceries(meal.id) }
+                        .padding(.leading, 56)
+                        .padding(.top, -6)
+                        .padding(.bottom, 6)
                 }
                 // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
                 if let nudge = freshNudges[meal.id] {
@@ -522,6 +544,56 @@ private struct MonthGrid: View {
                 }
             }
             .padding(.top, 12)
+        }
+    }
+}
+
+/// The pantry note under a planned recipe (#456): "Not in your pantry: tahini, sumac", with "and 3
+/// more" past three names. A tap opens it in place, every missing name and one "Add to groceries";
+/// a tap again closes it. Once all of it is on the grocery list it says so, and does nothing.
+/// Whether it is open is the view's alone: it may close on leaving the tab.
+private struct PantryGapNote: View {
+    let mealId: Int64
+    let gap: PantryGap
+    let onAdd: () -> Void
+    @State private var open = false
+
+    private var text: String {
+        open || !gap.capped
+            ? Strings.planPantryMissing(gap.missing.joined(separator: ", "))
+            : Strings.planPantryMissingMore(gap.names.joined(separator: ", "), gap.more)
+    }
+
+    var body: some View {
+        if gap.allOnList {
+            Text(Strings.planPantryOnList)
+                .textStyle(Typography.bodySmall)
+                .foregroundStyle(Palette.muted)
+                .accessibilityIdentifier("pantryGap-\(mealId)")
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                Button { open.toggle() } label: {
+                    Text(text)
+                        .textStyle(Typography.bodySmall)
+                        .foregroundStyle(Palette.muted)
+                        .lineLimit(open ? nil : 2)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(open ? Strings.planPantryShowLess : Strings.planPantryShowAll)
+                .accessibilityIdentifier("pantryGap-\(mealId)")
+                if open {
+                    Button(Strings.addToGroceries) {
+                        open = false
+                        onAdd()
+                    }
+                    .buttonStyle(TextActionStyle())
+                    .padding(.leading, -12)
+                    .accessibilityIdentifier("pantryGapAdd-\(mealId)")
+                }
+            }
         }
     }
 }

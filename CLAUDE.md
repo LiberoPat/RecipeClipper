@@ -42,7 +42,7 @@ unlock of #107); one cookbook (#345: nothing removed automatically, a views stri
 Settings; cook mode with saved progress and background timer alerts; sharing
 out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
-backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147), with "Use it up" (#305), Skip tonight (#398) and fresh food (#396) on Week; Chef
+backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147), with "Use it up" (#305), Skip tonight (#398), fresh food (#396) and a quiet pantry note (#456) on Week; Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment

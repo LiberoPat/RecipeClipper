@@ -1006,6 +1006,17 @@ enum Strings {
     static func freshKeeps(_ days: String) -> String { String(localized: "fresh_keeps \(days)") }
     static func freshNudge(_ name: String, _ days: String) -> String { String(localized: "fresh_nudge \(name) \(days)") }
     static func freshNudgeSwap(_ day: String) -> String { String(localized: "fresh_nudge_swap \(day)") }
+    // The Plan's quiet pantry note (#456). `names` are joined by ", ".
+    static func planPantryMissing(_ names: String) -> String { String(localized: "plan_pantry_missing \(names)") }
+    /// "Not in your pantry: tahini, sumac and 3 more" (Android's one plural, here a plural "3 more" inside).
+    static func planPantryMissingMore(_ names: String, _ more: Int) -> String {
+        let count = String(localized: "plan_pantry_more \(more)")
+        return String(localized: "plan_pantry_missing_more \(names) \(count)")
+    }
+    static var planPantryOnList: String { String(localized: "plan_pantry_on_list") }
+    static var planPantryShowAll: String { String(localized: "plan_pantry_show_all") }
+    static var planPantryShowLess: String { String(localized: "plan_pantry_show_less") }
+    static func planPantryAdded(_ n: Int) -> String { String(localized: "plan_pantry_added \(n)") }
     static var addToPantry: String { String(localized: "action_add_to_pantry") }
 
     // "I made this" (#116)

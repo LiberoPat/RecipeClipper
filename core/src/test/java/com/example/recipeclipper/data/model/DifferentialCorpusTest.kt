@@ -67,6 +67,8 @@ import java.io.File
  * pantry items by name ("*salt" a staple, "-butter" out of stock) against one recipe's lines
  * (optionally `, lang: "de"`), as how many nameable lines the pantry has, how many there are, and
  * whether that is half or more (nil, nil, false: the language has no tables); write only those two lists.
+ * `Gap([pantry], [lines])` rows (#456) pin [PlanPantryNote.gap], the Plan's quiet pantry note: the
+ * same pantry and lines, as every missing name and how many the note leaves to "and N more" ([], 0: no note); write only those two lists.
  *
  * `Tonight([types], [meals])` rows (#309) pin the Tonight widget ([WidgetContent.tonight]): meal
  * types written "id sortOrder name" and planned meals written "dayOffset typeId t|n text" (a
@@ -242,6 +244,10 @@ class DifferentialCorpusTest {
     private val coverRow = Regex(
         """^(\s*)Cover\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
     )
+    // A pantry-note row (#456): the pantry's names, one planned recipe's lines, optionally their language.
+    private val gapRow = Regex(
+        """^(\s*)Gap\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*](?:, lang: "([a-z]+)")?"""
+    )
     // A Tonight widget row (#309): the meal types, then the planned meals.
     private val tonightRow =
         Regex("""^(\s*)Tonight\(\[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*], \[((?:\s*"(?:[^"\\]|\\.)*",?)*)\s*]""")
@@ -403,6 +409,7 @@ class DifferentialCorpusTest {
         minutesRow.find(line)?.let { m -> return minutesRow(m) }
         quickRow.find(line)?.let { m -> return quickRow(m) }
         coverRow.find(line)?.let { m -> return coverRow(m) }
+        gapRow.find(line)?.let { m -> return gapRow(m) }
         tonightRow.find(line)?.let { m -> return tonightRow(m) }
         skipRow.find(line)?.let { m -> return skipRow(m) }
         toBuyRow.find(line)?.let { m -> return toBuyRow(m) }
@@ -779,6 +786,24 @@ class DifferentialCorpusTest {
         val coverage = RecipeQuickFilters.coverage(SavedRecipe(1, "r", language, lines), pantry)
         val result = coverage?.let { "${it.have}, ${it.total}, ${it.matches}" } ?: "nil, nil, false"
         return m.groupValues[1] + "Cover(${list(names)}, ${list(lines)}$lang, $result),"
+    }
+
+    /**
+     * `Gap([pantry], [lines], lang:, [missing], more)` (#456): [PlanPantryNote.gap] of one planned
+     * recipe's lines by those pantry items (written as in `Cover`): every missing name, and how many more.
+     */
+    private fun gapRow(m: MatchResult): String {
+        val (names, lines) = literals(m.groupValues[2]) to literals(m.groupValues[3])
+        val language = m.groupValues[4].ifEmpty { "en" }
+        val lang = if (m.groupValues[4].isEmpty()) "" else ", lang: ${q(language)}"
+        val pantry = names.mapIndexed { i, n ->
+            PantryItem(
+                i + 1L, n.trimStart('*', '-'), null, language, Aisle.OTHER, inStock = !n.startsWith("-"),
+                alwaysHave = n.startsWith("*"), purchasedDay = null, expiresDay = null
+            )
+        }
+        val gap = PlanPantryNote.gap("r", language, lines, pantry)
+        return m.groupValues[1] + "Gap(${list(names)}, ${list(lines)}$lang, ${list(gap?.missing.orEmpty())}, ${gap?.more ?: 0}),"
     }
 
     private fun literals(group: String) = literal.findAll(group).map { unescape(it.groupValues[1]) }.toList()

@@ -717,6 +717,19 @@
     <string name="fresh_keeps">Keeps about %1$s days once bought</string>
     <string name="fresh_nudge">%1$s: keeps about %2$s days once bought. Cook it earlier?</string>
     <string name="fresh_nudge_swap">Swap with %1$s</string>
+    <!-- The Plan's quiet pantry note (#456): the ingredients the pantry hasn't got, by name; %1$s is the names joined by ", " -->
+    <string name="plan_pantry_missing">Not in your pantry: %1$s</string>
+    <plurals name="plan_pantry_missing_more">
+        <item quantity="one">Not in your pantry: %1$s and %2$d more</item>
+        <item quantity="other">Not in your pantry: %1$s and %2$d more</item>
+    </plurals>
+    <string name="plan_pantry_on_list">On your grocery list</string>
+    <string name="plan_pantry_show_all">Show what\'s missing</string>
+    <string name="plan_pantry_show_less">Show less</string>
+    <plurals name="plan_pantry_added">
+        <item quantity="one">Added %1$d to groceries</item>
+        <item quantity="other">Added %1$d to groceries</item>
+    </plurals>
     <!-- What I need (#302): the pantry's amount beside the week's, never compared -->
     <string name="what_i_need_pantry_amount">You have %1$s</string>
     <string name="what_i_need_pantry_and_week">You have %1$s · this week\'s recipes use %2$s</string>
