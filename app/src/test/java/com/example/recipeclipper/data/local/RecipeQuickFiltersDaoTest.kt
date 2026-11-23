@@ -4,7 +4,15 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.data.Clock
+import com.example.recipeclipper.data.DefaultRecipeRepository
+import com.example.recipeclipper.data.ErrorLog
+import com.example.recipeclipper.data.local.dao.ListDao
 import com.example.recipeclipper.data.local.dao.RecipeDao
+import com.example.recipeclipper.data.local.entity.RecipeListCrossRef
+import com.example.recipeclipper.data.model.ParseResult
+import com.example.recipeclipper.data.model.RecipeFilter
+import com.example.recipeclipper.data.remote.RecipeSource
 import com.example.recipeclipper.data.local.entity.CookedPhotoEntity
 import com.example.recipeclipper.data.local.entity.RecipeEntity
 import com.example.recipeclipper.data.model.LibraryLimit
@@ -103,6 +111,56 @@ class RecipeQuickFiltersDaoTest {
 
         val found = RecipeQuickFilters.apply(all("100%"), setOf(RecipeQuickFilter.THIRTY_OR_LESS))
         assertEquals(listOf("100% Whole Wheat"), found.map { it.title })
+    }
+
+    /**
+     * The filter sheet's views (#454) through the real repository and SQL: one view selects what its own screen
+     * does, and several together select exactly the recipes every one of those screens holds, the search
+     * (`instr`, a literal `%`) still applying.
+     */
+    @Test
+    fun theSheetsViewsTogetherSelectWhatEveryViewsScreenHolds() = runBlocking {
+        val repository = DefaultRecipeRepository(
+            source = object : RecipeSource { override suspend fun fetch(url: String): ParseResult = error("nothing is fetched") },
+            recipeDao = recipes,
+            clock = Clock { 1L },
+            log = object : ErrorLog { override fun error(message: String, cause: Throwable) = Unit }
+        )
+        fun origin(entity: RecipeEntity, origin: String) = entity.copy(contentOrigin = origin)
+        val typedLoose = recipes.upsert(origin(recipe("manual:a", title = "100% Typed loose"), "MANUAL"), LibraryLimit.Unlimited)
+        val typedListed = recipes.upsert(origin(recipe("manual:b", title = "Typed listed"), "MANUAL"), LibraryLimit.Unlimited)
+        val chatLoose = recipes.upsert(origin(recipe("https://chat/c", title = "Chat loose"), "CHAT"), LibraryLimit.Unlimited)
+        val parsedCooked = recipes.upsert(recipe("https://a.com/d", title = "Parsed cooked"), LibraryLimit.Unlimited)
+        val sample = recipes.upsert(origin(recipe("manual:sample", title = "Sample"), "MANUAL"), LibraryLimit.Unlimited)
+        val favorites = db.listDao().observeLists(ListDao.NO_RECIPE).first().single { it.isFavorites }.id
+        db.listDao().addToList(RecipeListCrossRef(typedListed, favorites, 1))
+        for (id in listOf(typedLoose, parsedCooked)) {
+            db.cookedPhotoDao().insert(CookedPhotoEntity(recipeId = id, fileName = null, day = 20_000, note = null, createdAt = 1, updatedAt = 1))
+        }
+
+        suspend fun ids(views: Set<RecipeFilter>, query: String = "") = repository.observeHistory(query, views).first().map { it.id }.toSet()
+        suspend fun view(filter: RecipeFilter) = repository.observeHistory("", filter).first().map { it.id }.toSet()
+
+        for (filter in RecipeFilter.views) assertEquals(filter.name, view(filter), ids(setOf(filter)))
+        assertEquals(setOf(typedLoose, chatLoose, parsedCooked, sample), view(RecipeFilter.NOT_IN_A_LIST))
+        assertEquals(setOf(typedLoose, typedListed), view(RecipeFilter.TYPED))
+
+        val combos = listOf(
+            setOf(RecipeFilter.NOT_IN_A_LIST, RecipeFilter.TYPED),
+            setOf(RecipeFilter.NOT_IN_A_LIST, RecipeFilter.COOKED),
+            setOf(RecipeFilter.COOKED, RecipeFilter.TYPED),
+            setOf(RecipeFilter.NOT_IN_A_LIST, RecipeFilter.CHAT),
+            setOf(RecipeFilter.NOT_IN_A_LIST, RecipeFilter.COOKED, RecipeFilter.TYPED)
+        )
+        for (combo in combos) {
+            assertEquals(combo.toString(), combo.map { view(it) }.reduce { a, b -> a intersect b }, ids(combo))
+        }
+        assertEquals(setOf(typedLoose), ids(setOf(RecipeFilter.NOT_IN_A_LIST, RecipeFilter.COOKED, RecipeFilter.TYPED)))
+        assertEquals(emptySet<Long>(), ids(setOf(RecipeFilter.CHAT, RecipeFilter.COOKED)))
+        // The search still applies inside, as a literal substring.
+        assertEquals(setOf(typedLoose), ids(setOf(RecipeFilter.NOT_IN_A_LIST, RecipeFilter.TYPED), query = "100%"))
+        // Nothing asked: every recipe.
+        assertEquals(setOf(typedLoose, typedListed, chatLoose, parsedCooked, sample), ids(emptySet()))
     }
 
     @Test

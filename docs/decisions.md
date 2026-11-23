@@ -3418,7 +3418,9 @@ off restores the old behaviour: the clean-up of 50, the free tier's swap at 20, 
 
 The owner asked for both on 2026-11-19 ("Do 1-8" of the common UX flows list). Two flags, on by
 default in debug and release, on both platforms: `recipeFilters` (#378) and `recipesGrid` (#380).
-Off, Recipes is exactly the screen of "One cookbook" above.
+Off, Recipes is exactly the screen of "One cookbook" above. (With `recipesFilters` on, #454, the library's
+sheet folds Not cooked yet into a Cooked: Any / Cooked / Not yet choice beside the views; the rules below are
+unchanged and reused.)
 
 **Quick filter chips (#378).** Under the search field, three plain text pills (the old filter
 pills' look, ink-filled when on): **30 min or less**, **Not cooked yet**, **Uses what's in my
@@ -3551,7 +3553,8 @@ From the top:
   pill with a play glyph. Continue cooking puts its step and countdown under the name. **The close button
   of #448 stays** at the top right, with its setting untouched (merged from `today-card-close`, PR #450).
   What the card shows is #402's and #448's rules, unchanged.
-- **The views shelf:** one band of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat),
+- **The views shelf** (*superseded with `recipesFilters` on, #454: no shelf, Lists beside search, the views in
+  the filter sheet; see the next section*)**:** one band of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat),
   each an icon, the count in Fraunces 20 and the name (11.5, two lines when it needs them), divided by
   hairlines; **Lists in the paprika tone** (`PaprikaTone` / `Palette.paprikaTone`: `#F6E3DA` with
   `#8E3219` on it, `#45261C` with `#F4B7A3` on ink, the mockup's values; a new token pair, used only by
@@ -3593,6 +3596,83 @@ From the top:
   card's close, German at twice the text, the flag off); iOS `RecipesTopBViewModelTests` and
   `RecipesTopBUITests` (its own shard weight). The suites written for #375 run with the flag off and
   still pass unchanged.
+
+## Recipes: the views folded into the filter sheet, Lists beside search (#454, 2026-11-22)
+
+The owner (2026-11-22): "I find the row of list filters redundant to the filter in search. The only thing
+I like is that Lists is its own page." They chose the Recipes top of the visual revamp's direction A
+(`~/Downloads/RecipeClipper-designs/visual-revamp/visual-revamp.html`, `revamp-filters.png` for the sheet),
+with one change of their own: **the Lists button sits left of search**, not right of it as drawn. Behind
+**`recipesFilters`** (on by default in debug and release, both platforms), over design B: it applies only
+where #449 does (`recipesTopB`, the library as the Recipes tab's first screen, one cookbook). Off, the top is
+design B exactly. **Supersedes, with the flag on:** #449's views shelf ("The views shelf" above) and #449's
+three-switch sheet, and so #345's "a strip of cards, Lists first, then the automatic views" and #378's "Not
+cooked yet" as its own filter on that screen. "Views are questions about stored data, never filing" still
+holds: they are now asked through the filters.
+
+- **No shelf.** The five-cell band is gone. **Lists** is a compact pill **left of search on the same row**:
+  the list icon, "Lists" and the number of lists, in the paprika tone, search's height and corner (Android
+  `ListsPill`, tag `recipesListsPill`; iOS `ListsPill`, `recipes.listsPill`; TalkBack and VoiceOver read
+  "Lists, 6"). It opens the existing Lists screen; Back returns to Recipes. The pill takes the width its
+  words need and never clips (one line, no wrapping); search takes the rest, its placeholder ending in an
+  ellipsis when the row is tight (German at twice the text: "Listen 7" whole, "Titel und Zu…"). It shows
+  when the shelf did (a recipe or a list to show), and not over an empty library, as before.
+- **Search keeps its filter button** with the badge, which now counts the pills below.
+- **The filter sheet, in two groups** (small-capital headings, as the Add a recipe block's):
+  - **The recipe:** **30 min or less** (a switch, #378's rule); **Cooked: Any / Cooked / Not yet** (one
+    exclusive choice: Cooked is the Cooked view, Not yet is #378's "Not cooked yet", the two partitioning the
+    library); **Uses what's in my pantry** (a switch, #378's rule, rows still saying "You have 6 of 8").
+  - **Where it is, where it came from:** **Not in a list** (a switch, "Saved to none of your lists yet": the
+    view's `EXISTS`); **Came from: Anywhere / Typed by you / From a chat** (one choice: a recipe is one or the
+    other, `contentOrigin` MANUAL, never the tour's sample, or CHAT).
+  - The two exclusive choices are **segmented**, as the mockup draws them and as the Pantry edit sheet's stock
+    choice already is (#194) on both platforms; not radio rows, which are Settings' rule ("exclusive choices
+    are radio rows") and would make the sheet twice as tall. The reading view's "no segmented pickers above
+    the ingredients" is untouched. Drawn as the mockup's track (the surface-container-high ground, the chosen
+    option a raised pill on the ground colour), one custom component per platform (Android `ChoiceSegments`,
+    radio buttons for TalkBack; iOS `ChoiceSegments`, buttons with the selected trait). **When an option's
+    words don't fit their share on one line** (German, a large font, Dynamic Type) the options **stack**, each
+    the full width, so nothing is cut (Android: each option's one-line width against an equal share; iOS:
+    `ViewThatFits`). The sheet scrolls.
+  - Every control acts at once (the list behind follows), as before; **Clear** stays in the sheet's header,
+    enabled while anything is on. No "Show N recipes" button.
+- **Pills** under search, in the sheet's order (30 min or less, Cooked or Not cooked yet, Uses what's in my
+  pantry, Not in a list, Typed by you or From a chat), each removed by a tap on it (a choice goes back to Any /
+  Anywhere), then **Clear**, which clears everything. A pill's words are the view's or the filter's own name.
+- **Nothing is re-derived.** The pure model is `RecipeFilterChoices` (core `RecipeQuickFilters.kt`, iOS
+  `Data/Model/RecipeQuickFilters.swift`, line for line), beside #378's filters: `views` are the view screens'
+  own filters (`RecipeFilter.NOT_IN_A_LIST`, `COOKED`, `TYPED`, `CHAT`), `quick` are #378's
+  (`THIRTY_OR_LESS`, `NOT_COOKED`, `USES_PANTRY`), `pills` the order, `without(pill)` a pill's ×. The views are
+  answered by **the very SQL the view screens use**: `RecipeRepository.observeHistory(query, views)` maps the
+  set onto the existing `observeHistory(query, listed, cooked, typed, chat)` DAO arguments, which that query
+  already ANDs (each view's screen is the one-element set). **No DAO or schema change**, `instr(lower(…))` and
+  no `LIKE` as before, the search applying inside. Test doubles get a default that intersects the single-view
+  answers. #378's rules then narrow that answer in the ViewModel, as the chips did, and the sort orders it.
+- **ViewModel** (both platforms): `RecipesUiState.choices`, `filtersOn` (any chip or choice: the empty line
+  "No recipes match these filters." and the count line), `pantryOn` (the "You have" lines);
+  `onFilterChoicesChange`, `onRemoveFilter(pill)`; `onClearQuickFilters` now clears the choices too. The pantry's
+  lines are read only while its filter is on, from either control. The sheet's open state is the screen's.
+- **Not remembered**, as #378's filters: Recipes opens with none on; they live in the ViewModel, so they
+  survive rotation. No new keys.
+- **The view screens and routes stay** (Android `recipes/view/{view}`, iOS `Route.recipesView`): nothing on
+  Recipes links to them with the flag on. They are still opened by design B's shelf (`recipesFilters` off),
+  by the strip of cards on the old top (`recipesTopB` off) and on the Recipes page pushed over Home
+  (`libraryFirst` off). No deep link, widget or notification opens them.
+- **Colours, type and radii come from the theme**: the paprika tone (`LocalPaprikaTone` /
+  `Palette.paprikaTone`, being renamed by the re-theme), the scheme's containers, the typography's label and
+  body styles; the one shared radius is search's (`SearchRowRadius` / `SearchRow.radius`, 14), so the pill and
+  the field match.
+- **Tests.** `:core` `RecipeFilterChoicesTest` and iOS `RecipeFilterChoicesTests` (each control, combined,
+  Any / none, a pill's ×); real SQLite: Android `RecipeQuickFiltersDaoTest.theSheetsViewsTogetherSelect…` and
+  iOS `RecipesFiltersDataTests` (one view is its screen; several are the intersection of their screens; the
+  `%` search inside); `RecipesFiltersViewModelTest` / `RecipesFiltersViewModelTests` (each control, combining
+  with the sort, the badge, a pill's ×, Clear, the one-choice rule, the pantry lines);
+  `RecipesFiltersScreenTest` (the pill left of search, Lists and Back through a real nav host, the two groups,
+  each control narrowing, pills and badge, both Clears, German at twice the text, the flag off) and
+  `RecipesFiltersUITests` (its own shard weight). Design B's suites (`RecipesTopBScreenTest`,
+  `RecipesTopBUITests`) run with this flag off and pass unchanged.
+- Not done: a differential-corpus row for `RecipeFilterChoices` (a mapping of five fields, pinned instead by
+  the twin unit tests above).
 
 ## A recipe picked from the page's text (#103)
 

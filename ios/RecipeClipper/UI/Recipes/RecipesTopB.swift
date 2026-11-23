@@ -240,7 +240,7 @@ struct SearchFieldB: View {
         .padding(.leading, 14)
         .padding(.trailing, onOpenFilters == nil ? 14 : 4)
         .frame(minHeight: 52)
-        .background(RoundedRectangle(cornerRadius: 14).strokeBorder(Palette.muted, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: SearchRow.radius).strokeBorder(Palette.muted, lineWidth: 1))
     }
 }
 

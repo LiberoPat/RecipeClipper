@@ -89,3 +89,96 @@ enum RecipeQuickFilters {
         }
     }
 }
+
+/// "Cooked" in the filter sheet (#454): one choice, folding the Cooked view and "Not cooked yet".
+enum CookedChoice: String, CaseIterable, Identifiable {
+    case any = "ANY", cooked = "COOKED", notYet = "NOT_YET"
+    var id: String { rawValue }
+}
+
+/// "Came from" in the filter sheet (#454): a recipe is typed by you or from a chat, never both, so one choice.
+enum OriginChoice: String, CaseIterable, Identifiable {
+    case anywhere = "ANYWHERE", typed = "TYPED", chat = "CHAT"
+    var id: String { rawValue }
+}
+
+/// One filter on, as a pill under search (#454), in the sheet's order; a tap on it turns that filter off.
+enum RecipeFilterPill: String, CaseIterable, Identifiable {
+    case thirtyOrLess = "THIRTY_OR_LESS", cooked = "COOKED", notCooked = "NOT_COOKED", usesPantry = "USES_PANTRY"
+    case notInAList = "NOT_IN_A_LIST", typed = "TYPED", chat = "CHAT"
+    var id: String { rawValue }
+}
+
+/// The filter sheet's five controls (#454, `recipesFilters`), with the views folded in: two switches and a
+/// choice about the recipe (30 min or less, Cooked: Any / Cooked / Not yet, Uses what's in my pantry), a switch
+/// and a choice about where it is and where it came from (Not in a list, Came from: Anywhere / Typed by you /
+/// From a chat). They combine (AND) with each other, the search and the sort; questions about what is stored,
+/// never filing; not remembered. Android's `RecipeFilterChoices`.
+///
+/// Nothing is re-derived: `views` are the view screens' own filters (#345), asked of the one SQL query that
+/// answers those screens; `quick` are #378's rules, applied over its answer. Not yet is "Not cooked yet".
+struct RecipeFilterChoices: Equatable {
+    var thirtyOrLess = false
+    var cooked: CookedChoice = .any
+    var usesPantry = false
+    var notInAList = false
+    var origin: OriginChoice = .anywhere
+
+    static let none = RecipeFilterChoices()
+
+    /// The view screens' filters these ask for, answered by the database beside the search.
+    var views: Set<RecipeFilter> {
+        var views: Set<RecipeFilter> = []
+        if notInAList { views.insert(.notInAList) }
+        if cooked == .cooked { views.insert(.cooked) }
+        switch origin {
+        case .typed: views.insert(.typed)
+        case .chat: views.insert(.chat)
+        case .anywhere: break
+        }
+        return views
+    }
+
+    /// #378's filters these ask for, applied to the database's answer (`RecipeQuickFilters.apply`).
+    var quick: Set<RecipeQuickFilter> {
+        var quick: Set<RecipeQuickFilter> = []
+        if thirtyOrLess { quick.insert(.thirtyOrLess) }
+        if cooked == .notYet { quick.insert(.notCooked) }
+        if usesPantry { quick.insert(.usesPantry) }
+        return quick
+    }
+
+    /// The filters on, in the sheet's order: the pills under search; their number is the badge's.
+    var pills: [RecipeFilterPill] {
+        var pills: [RecipeFilterPill] = []
+        if thirtyOrLess { pills.append(.thirtyOrLess) }
+        switch cooked {
+        case .cooked: pills.append(.cooked)
+        case .notYet: pills.append(.notCooked)
+        case .any: break
+        }
+        if usesPantry { pills.append(.usesPantry) }
+        if notInAList { pills.append(.notInAList) }
+        switch origin {
+        case .typed: pills.append(.typed)
+        case .chat: pills.append(.chat)
+        case .anywhere: break
+        }
+        return pills
+    }
+
+    var isEmpty: Bool { self == .none }
+
+    /// These with `pill`'s filter off: a switch off, a choice back to Any / Anywhere.
+    func without(_ pill: RecipeFilterPill) -> RecipeFilterChoices {
+        var next = self
+        switch pill {
+        case .thirtyOrLess: next.thirtyOrLess = false
+        case .cooked, .notCooked: next.cooked = .any
+        case .usesPantry: next.usesPantry = false
+        case .notInAList: next.notInAList = false
+        case .typed, .chat: next.origin = .anywhere
+        }
+        return next
+    }
+}

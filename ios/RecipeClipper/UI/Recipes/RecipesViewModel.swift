@@ -36,6 +36,18 @@ struct RecipesUiState: Equatable {
     var quick: Set<RecipeQuickFilter> = []
     var coverage: [Int64: PantryCoverage] = [:]
     var layout: RecipesLayout = .rows
+    /// The filter sheet's controls with the views folded in (#454, `recipesFilters`): its views narrow the
+    /// query beside the search, its quick filters join `quick`'s; not remembered either.
+    var choices: RecipeFilterChoices = .none
+
+    /// Any filter on, the chips' (#378) or the sheet's (#454): the empty line says so, and the count line stays.
+    var filtersOn: Bool { !quick.isEmpty || !choices.isEmpty }
+
+    /// "Uses what's in my pantry" is on, as a chip or in the sheet: the rows say "You have 6 of 8".
+    var pantryOn: Bool { quick.contains(.usesPantry) || choices.usesPantry }
+
+    /// Every #378 rule on: the chips' and the sheet's.
+    var quickOn: Set<RecipeQuickFilter> { quick.union(choices.quick) }
 
     /// The chips offered: Not cooked yet is no question inside the Cooked view, which holds only
     /// cooked recipes.
@@ -90,6 +102,7 @@ final class RecipesViewModel {
     @ObservationIgnored private var debounceTask: Task<Void, Never>?
     @ObservationIgnored private var appliedQuery: String?
     @ObservationIgnored private var appliedFilter: RecipeFilter?
+    @ObservationIgnored private var appliedViews: Set<RecipeFilter> = []
     @ObservationIgnored private var countsSubscription: AnyCancellable?
     @ObservationIgnored private var historySubscription: AnyCancellable?
     @ObservationIgnored private var countSubscription: AnyCancellable?
@@ -190,7 +203,7 @@ final class RecipesViewModel {
 
     /// The line under search, with the count and the sort (#286): shown once there is a row to
     /// order, or on the free tier, whose count shows even for an empty library.
-    var showsSortLine: Bool { count != nil || !(uiState.recipes?.isEmpty ?? true) || !uiState.quick.isEmpty }
+    var showsSortLine: Bool { count != nil || !(uiState.recipes?.isEmpty ?? true) || uiState.filtersOn }
 
     /// The cap on recipes in no list (the old history's 50) while it applies, nil when nothing
     /// clears on its own (the free tier and an unlocked library have their own rules).
@@ -218,7 +231,8 @@ final class RecipesViewModel {
         debounceTask = Task { [weak self, sleep] in
             do { try await sleep(Self.debounce) } catch { return }
             guard !Task.isCancelled, let self,
-                  query != self.appliedQuery || self.uiState.filter != self.appliedFilter else { return }
+                  query != self.appliedQuery || self.uiState.filter != self.appliedFilter
+                    || self.uiState.choices.views != self.appliedViews else { return }
             self.subscribe(query: query)
         }
     }
@@ -226,9 +240,15 @@ final class RecipesViewModel {
     /// The latest query and filter's results; the old subscription is cancelled.
     private func subscribe(query: String) {
         let filter = uiState.filter
+        let views = uiState.choices.views
         appliedQuery = query
         appliedFilter = filter
-        historySubscription = repository.observeHistory(query: query, filter: filter)
+        appliedViews = views
+        // The sheet's views (#454) are the view screens' own tests, asked in the same query, beside the screen's.
+        let answer = views.isEmpty
+            ? repository.observeHistory(query: query, filter: filter)
+            : repository.observeHistory(query: query, views: views.union([filter]))
+        historySubscription = answer
             .receive(on: DispatchQueue.main)
             .sink { [weak self] recipes in
                 guard let self else { return }
@@ -260,7 +280,7 @@ final class RecipesViewModel {
     /// The search's matches, narrowed by the chips, then in the sort's order. Nothing is shown while
     /// the pantry chip's answer is still on its way, rather than a wrong "no recipes" for a moment.
     private func refreshShown() {
-        let chips = uiState.quick
+        let chips = uiState.quickOn
         uiState.coverage = chips.contains(.usesPantry) ? (coverage ?? [:]) : [:]
         guard let found else { return }
         if chips.contains(.usesPantry) && coverage == nil {
@@ -277,19 +297,41 @@ final class RecipesViewModel {
 
     /// A chip (#378): on, or off again. Each answers at once; the chips combine.
     func onQuickFilterToggle(_ filter: RecipeQuickFilter) {
+        let pantryWas = uiState.pantryOn
         if uiState.quick.contains(filter) { uiState.quick.remove(filter) } else { uiState.quick.insert(filter) }
-        if filter == .usesPantry {
-            if uiState.quick.contains(.usesPantry) { startCoverage() } else { stopCoverage() }
-        }
+        syncCoverage(pantryWas: pantryWas)
         refreshShown()
     }
 
-    /// Clear (#449): every chip off at once, from the filter sheet or beside the pills.
+    /// Clear (#449): every chip off at once, from the filter sheet or beside the pills; the sheet's too (#454).
     func onClearQuickFilters() {
-        guard !uiState.quick.isEmpty else { return }
+        guard uiState.filtersOn else { return }
         uiState.quick = []
+        onFilterChoicesChange(.none)
         stopCoverage()
         refreshShown()
+    }
+
+    /// A control in the filter sheet (#454): a switch, or a choice of Cooked or Came from. Answers at once: a
+    /// change of view asks the database again, with the query already applied.
+    func onFilterChoicesChange(_ choices: RecipeFilterChoices) {
+        guard choices != uiState.choices else { return }
+        let pantryWas = uiState.pantryOn
+        uiState.choices = choices
+        syncCoverage(pantryWas: pantryWas)
+        if choices.views != appliedViews, let appliedQuery { subscribe(query: appliedQuery) }
+        refreshShown()
+    }
+
+    /// A pill's × (#454): that filter off, a choice back to Any.
+    func onRemoveFilter(_ pill: RecipeFilterPill) {
+        onFilterChoicesChange(uiState.choices.without(pill))
+    }
+
+    /// The pantry's lines are matched only while its filter is on, whichever control turned it on.
+    private func syncCoverage(pantryWas: Bool) {
+        guard uiState.pantryOn != pantryWas else { return }
+        if uiState.pantryOn { startCoverage() } else { stopCoverage() }
     }
 
     /// The rows / grid toggle (#380): stored at once and applied at once.
@@ -327,7 +369,7 @@ final class RecipesViewModel {
             let result = await Task.detached(priority: .userInitiated) {
                 RecipeQuickFilters.coverages(inputs.lines, pantry: inputs.items)
             }.value
-            guard !Task.isCancelled, let self, self.uiState.quick.contains(.usesPantry) else { return }
+            guard !Task.isCancelled, let self, self.uiState.pantryOn else { return }
             self.coverage = result
             self.refreshShown()
         }

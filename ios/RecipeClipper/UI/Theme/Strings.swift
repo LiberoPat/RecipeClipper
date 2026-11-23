@@ -540,6 +540,14 @@ enum Strings {
     static var recipesQuickThirtyOrLessHint: String { String(localized: "recipes_quick_30_or_less_hint") }
     static var recipesQuickNotCookedHint: String { String(localized: "recipes_quick_not_cooked_hint") }
     static var recipesQuickPantryHint: String { String(localized: "recipes_quick_pantry_hint") }
+    // Recipes' views folded into the filter sheet (#454): its two groups and its two choices.
+    static var recipesFilterGroupRecipe: String { String(localized: "recipes_filter_group_recipe") }
+    static var recipesFilterGroupWhere: String { String(localized: "recipes_filter_group_where") }
+    static var recipesFilterCookedAny: String { String(localized: "recipes_filter_cooked_any") }
+    static var recipesFilterNotYet: String { String(localized: "recipes_filter_not_yet") }
+    static var recipesFilterNotInListHint: String { String(localized: "recipes_filter_not_in_list_hint") }
+    static var recipesFilterCameFrom: String { String(localized: "recipes_filter_came_from") }
+    static var recipesFilterAnywhere: String { String(localized: "recipes_filter_anywhere") }
     static func removeFilter(_ name: String) -> String { String(localized: "cd_remove_filter \(name)") }
     static func recipesFiltersOn(_ n: Int) -> String { String(localized: "recipes_filters_on \(n)") }
     static func recipesPantryHave(_ have: Int, of total: Int) -> String {

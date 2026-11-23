@@ -15,6 +15,8 @@ import com.example.recipeclipper.data.model.PantryCoverage
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeQuickFilter
 import com.example.recipeclipper.data.model.RecipeQuickFilters
+import com.example.recipeclipper.data.model.RecipeFilterChoices
+import com.example.recipeclipper.data.model.RecipeFilterPill
 import com.example.recipeclipper.data.model.RecipesLayout
 import com.example.recipeclipper.di.DefaultDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
@@ -68,6 +70,8 @@ import javax.inject.Inject
  * pantry), combined with each other, the search and the sort; not remembered. [coverage] is, with the
  * pantry chip on, how many of each recipe's nameable ingredients the pantry has ("You have 6 of 8"),
  * by recipe id. [layout] is the stored choice of rows or a photo grid (#380).
+ * [choices] are the filter sheet's controls with the views folded in (#454, `recipesFilters`): its views
+ * narrow the query beside the search, its quick filters join [quick]'s; not remembered either.
  * [selecting] and [selectedIds] are selecting several recipes (#377): the ticked ids that are among
  * the rows listed, so what an action acts on is always in sight. [confirmingDelete] are the recipes
  * a Delete is asking about, empty when no confirmation is open (#376, #377).
@@ -95,8 +99,15 @@ data class RecipesUiState(
     val layout: RecipesLayout = RecipesLayout.ROWS,
     val selecting: Boolean = false,
     val selectedIds: Set<Long> = emptySet(),
-    val confirmingDelete: List<RecipeSummary> = emptyList()
+    val confirmingDelete: List<RecipeSummary> = emptyList(),
+    val choices: RecipeFilterChoices = RecipeFilterChoices.NONE
 ) {
+    /** Any filter on, the chips' (#378) or the sheet's (#454): the empty line says so, and the count line stays. */
+    val filtersOn: Boolean get() = quick.isNotEmpty() || !choices.isEmpty
+
+    /** "Uses what's in my pantry" is on, as a chip or in the sheet: the rows say "You have 6 of 8". */
+    val pantryOn: Boolean get() = RecipeQuickFilter.USES_PANTRY in quick || choices.usesPantry
+
     /** The filter shows once there is a recipe to filter, and stays when a filter matches none. */
     val showsFilter: Boolean get() = (counts?.all ?: 0) > 0
 
@@ -140,7 +151,7 @@ data class RecipesUiState(
      * The line under search, with the count and the sort (#286): shown once there is a row to
      * order, or on the free tier, whose count shows even for an empty library.
      */
-    val showsSortLine: Boolean get() = count != null || !recipes.isNullOrEmpty() || quick.isNotEmpty()
+    val showsSortLine: Boolean get() = count != null || !recipes.isNullOrEmpty() || filtersOn
 }
 
 /** [recipes] saved of the free tier's [max]; a library from before the limit can be over it. */
@@ -194,19 +205,27 @@ class RecipesViewModel @Inject constructor(
     private val linkNoRecipe = MutableStateFlow(false)
     // In the ViewModel, not `remember`, so it survives rotation; not stored, so Recipes opens on All.
     private val filter = MutableStateFlow(view ?: RecipeFilter.ALL)
+    // The filter sheet's controls (#454): in the ViewModel so they survive rotation; not stored, as the chips.
+    private val choices = MutableStateFlow(RecipeFilterChoices.NONE)
+    // Every #378 rule on: the chips' and the sheet's.
+    private val quickOn = combine(quick, choices) { chips, chosen -> chips + chosen.quick }.distinctUntilChanged()
 
     // The debounce is the typing's alone: a tap on a filter answers at once.
     private val recipes: StateFlow<List<RecipeSummary>?> = combine(
         query.debounce(250).distinctUntilChanged(),
-        filter
-    ) { q, f -> q to f }
-        .flatMapLatest { (q, f) -> repository.observeHistory(q, f) }
+        filter,
+        choices.map { it.views }.distinctUntilChanged()
+    ) { q, f, views -> Triple(q, f, views) }
+        // The sheet's views (#454) are the view screens' own tests, asked in the same query, beside the screen's.
+        .flatMapLatest { (q, f, views) ->
+            if (views.isEmpty()) repository.observeHistory(q, f) else repository.observeHistory(q, views + f)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // How many of each recipe's ingredients the pantry has, only while its chip is on (the lines of
     // every recipe are read only then); null while that is being worked out. Matched once per change
     // of the pantry or a recipe's lines: a tick or a cook step rewrites a recipe without changing one.
-    private val coverage: Flow<Map<Long, PantryCoverage>?> = quick
+    private val coverage: Flow<Map<Long, PantryCoverage>?> = quickOn
         .map { RecipeQuickFilter.USES_PANTRY in it }
         .distinctUntilChanged()
         .flatMapLatest { on -> if (on) pantryCoverage() else flowOf(emptyMap()) }
@@ -226,7 +245,7 @@ class RecipesViewModel @Inject constructor(
 
     // The search's matches, narrowed by the chips, then in the sort's order. Nothing is shown while
     // the pantry chip's answer is still on its way, rather than a wrong "no recipes" for a moment.
-    private val shown: Flow<List<RecipeSummary>?> = combine(recipes, quick, coverage, sort) { found, chips, cover, order ->
+    private val shown: Flow<List<RecipeSummary>?> = combine(recipes, quickOn, coverage, sort) { found, chips, cover, order ->
         when {
             found == null -> null
             RecipeQuickFilter.USES_PANTRY in chips && cover == null -> null
@@ -262,7 +281,8 @@ class RecipesViewModel @Inject constructor(
                         selectedIds = RecipeSelection.effective(chosen, state.recipes)
                     )
                 }
-                .combine(confirmingDelete) { state, asking -> state.copy(confirmingDelete = asking) },
+                .combine(confirmingDelete) { state, asking -> state.copy(confirmingDelete = asking) }
+                .combine(choices) { state, chosen -> state.copy(choices = chosen) },
             count,
             filter,
             counts,
@@ -293,9 +313,20 @@ class RecipesViewModel @Inject constructor(
         quick.update { if (filter in it) it - filter else it + filter }
     }
 
-    /** Clear (#449): every chip off at once, from the filter sheet or beside the pills. */
+    /** Clear (#449): every chip off at once, from the filter sheet or beside the pills; the sheet's too (#454). */
     fun onClearQuickFilters() {
         quick.value = emptySet()
+        choices.value = RecipeFilterChoices.NONE
+    }
+
+    /** A control in the filter sheet (#454): a switch, or a choice of Cooked or Came from. Answers at once. */
+    fun onFilterChoicesChange(value: RecipeFilterChoices) {
+        choices.value = value
+    }
+
+    /** A pill's × (#454): that filter off, a choice back to Any. */
+    fun onRemoveFilter(pill: RecipeFilterPill) {
+        choices.update { it.without(pill) }
     }
 
     /** The rows / grid toggle (#380): stored, so it survives leaving the screen. */

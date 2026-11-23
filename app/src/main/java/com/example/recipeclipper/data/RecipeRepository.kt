@@ -18,6 +18,7 @@ import com.example.recipeclipper.data.model.RecipeSummary
 import com.example.recipeclipper.data.model.SavedRecipe
 import com.example.recipeclipper.data.model.StepAlarm
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 
 /** While the free tier (#107) is off, history keeps this many unprotected recipes. */
 const val HISTORY_LIMIT = LibraryLimit.HISTORY_RECIPES
@@ -209,6 +210,20 @@ interface RecipeRepository {
 
     /** Titles and ingredients matching [query]; everything when [query] is blank. */
     fun observeHistory(query: String, filter: RecipeFilter = RecipeFilter.ALL): Flow<List<RecipeSummary>>
+
+    /**
+     * [observeHistory] kept to the recipes every one of [views] holds (#454: the filter sheet's Not in a
+     * list, Cooked and Came from, combined): each view's own test, AND-ed. The database answers it in its
+     * one query; this default intersects the single-view answers (test doubles), in the first one's order.
+     */
+    fun observeHistory(query: String, views: Set<RecipeFilter>): Flow<List<RecipeSummary>> {
+        val asked = views - RecipeFilter.ALL
+        if (asked.size <= 1) return observeHistory(query, asked.firstOrNull() ?: RecipeFilter.ALL)
+        return combine(asked.map { observeHistory(query, it) }) { answers ->
+            val kept = answers.drop(1).map { rows -> rows.mapTo(HashSet()) { it.id } }
+            answers.first().filter { row -> kept.all { row.id in it } }
+        }
+    }
 
     /** Every recipe's ingredient lines as stored, as they change (#378: "Uses what's in my pantry"). */
     fun observeRecipeLines(): Flow<List<SavedRecipe>>

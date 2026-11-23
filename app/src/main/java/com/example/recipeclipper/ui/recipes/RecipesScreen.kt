@@ -90,6 +90,7 @@ import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.PantryCoverage
 import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeQuickFilter
+import com.example.recipeclipper.data.model.RecipeFilterPill
 import com.example.recipeclipper.data.model.RecipesLayout
 import com.example.recipeclipper.data.model.RecipeSort
 import com.example.recipeclipper.data.model.RecipeSummary
@@ -157,6 +158,11 @@ fun RecipesScreen(
      * (Select, Settings) after the +, the views shelf above search, the filters in a sheet behind search.
      */
     topB: Boolean = LocalFlagValues.current.isOn(Flag.RECIPES_TOP_B),
+    /**
+     * Over design B (#454): no views shelf; a Lists pill left of search; the filter sheet with the views folded
+     * in (Cooked, Not in a list, Came from). Off, design B as it was.
+     */
+    filtersSheet: Boolean = LocalFlagValues.current.isOn(Flag.RECIPES_FILTERS),
     // A parameter so a test can watch the one snackbar a burst shares (#268).
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
@@ -179,6 +185,8 @@ fun RecipesScreen(
     var planSheetOpen by rememberSaveable { mutableStateOf(false) }
     // Design B (#449): the library's own top, and its filter sheet.
     val styleB = topB && libraryRoot != null && oneCookbook
+    // The views folded into the filter sheet (#454), only over design B.
+    val folded = styleB && filtersSheet
     var filterSheetOpen by rememberSaveable { mutableStateOf(false) }
     // Where the list is (#449): once the large title has scrolled away, a slim bar with the + and the ⋮ stays
     // pinned. The states are the lists' own (saved across rotation), hoisted here to be read.
@@ -262,7 +270,14 @@ fun RecipesScreen(
         if (saveSheetOpen && saveViewModel != null) {
             SaveToListBottomSheet(saveViewModel, onDismiss = { saveSheetOpen = false })
         }
-        if (filterSheetOpen && styleB) {
+        if (filterSheetOpen && folded) {
+            RecipeFiltersSheet(
+                choices = state.choices,
+                onChange = viewModel::onFilterChoicesChange,
+                onClear = viewModel::onClearQuickFilters,
+                onDismiss = { filterSheetOpen = false }
+            )
+        } else if (filterSheetOpen && styleB) {
             RecipeFilterSheet(
                 offered = state.quickFilters,
                 on = state.quick,
@@ -347,6 +362,8 @@ fun RecipesScreen(
                                 onOpenFilters = if (quickFilters) ({ filterSheetOpen = true }) else null,
                                 onQuickToggle = viewModel::onQuickFilterToggle,
                                 onClearQuick = viewModel::onClearQuickFilters,
+                                folded = folded,
+                                onRemovePill = viewModel::onRemoveFilter,
                                 onSort = viewModel::onSortChange,
                                 onLayout = viewModel::onLayoutChange.takeIf { gridEnabled },
                                 onSelect = if (multiSelect) ({ viewModel.onStartSelecting() }) else null,
@@ -422,7 +439,7 @@ fun RecipesScreen(
                     val onRowClick: (RecipeSummary) -> Unit = { recipe ->
                         if (state.selecting) viewModel.onToggleSelected(recipe.id) else onOpenRecipe(recipe.id)
                     }
-                    val pantryChip = RecipeQuickFilter.USES_PANTRY in state.quick
+                    val pantryChip = state.pantryOn
                     val showsGrid = gridEnabled && state.layout == RecipesLayout.GRID
                     val pinned = styleB && libraryRoot != null && !state.selecting && (if (showsGrid) gridTitleGone else listTitleGone)
                     Box(Modifier.fillMaxSize()) {
@@ -632,6 +649,9 @@ private fun RecipesHeaderB(
     onOpenFilters: (() -> Unit)?,
     onQuickToggle: (RecipeQuickFilter) -> Unit,
     onClearQuick: () -> Unit,
+    /** The views folded into the filter sheet (#454): Lists beside search, no shelf, the sheet's pills. */
+    folded: Boolean = false,
+    onRemovePill: (RecipeFilterPill) -> Unit = {},
     onSort: (RecipeSort) -> Unit,
     onLayout: ((RecipesLayout) -> Unit)?,
     onSelect: (() -> Unit)?,
@@ -668,17 +688,32 @@ private fun RecipesHeaderB(
             return@Column
         }
         Spacer(Modifier.height(12.dp))
-        if (state.showsViewsStrip) {
-            ViewsShelf(state.counts, state.lists.size, onOpenView, onOpenLists)
-            Spacer(Modifier.height(12.dp))
+        if (folded) {
+            // #454: Lists, then search with the sheet's button; the views are in the sheet, not a shelf.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (state.showsViewsStrip) ListsPill(state.lists.size, onOpenLists)
+                SearchFieldB(
+                    query = state.query,
+                    onQueryChange = onQueryChange,
+                    filtersOn = state.choices.pills.size,
+                    onOpenFilters = onOpenFilters.takeIf { state.showsFilter },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            ChoicePills(state.choices.pills, onRemovePill, onClearQuick)
+        } else {
+            if (state.showsViewsStrip) {
+                ViewsShelf(state.counts, state.lists.size, onOpenView, onOpenLists)
+                Spacer(Modifier.height(12.dp))
+            }
+            SearchFieldB(
+                query = state.query,
+                onQueryChange = onQueryChange,
+                filtersOn = state.activeQuickFilters.size,
+                onOpenFilters = onOpenFilters.takeIf { state.showsFilter }
+            )
+            ActiveFilterPills(state.activeQuickFilters, onQuickToggle, onClearQuick)
         }
-        SearchFieldB(
-            query = state.query,
-            onQueryChange = onQueryChange,
-            filtersOn = state.activeQuickFilters.size,
-            onOpenFilters = onOpenFilters.takeIf { state.showsFilter }
-        )
-        ActiveFilterPills(state.activeQuickFilters, onQuickToggle, onClearQuick)
         if (state.showsSortLine) {
             SortLine(state, onSort, onLayout, toggleLast = true)
         } else {
@@ -708,7 +743,7 @@ private class RootHeader(
 private fun EmptyMessage(state: RecipesUiState) {
     Text(
         when {
-            state.quick.isNotEmpty() -> stringResource(R.string.recipes_no_results_filters)
+            state.filtersOn -> stringResource(R.string.recipes_no_results_filters)
             state.query.isNotBlank() -> stringResource(R.string.recipes_no_results, state.query)
             state.filter == RecipeFilter.COOKED -> stringResource(R.string.recipes_empty_cooked)
             state.filter == RecipeFilter.TYPED -> stringResource(R.string.recipes_empty_typed)

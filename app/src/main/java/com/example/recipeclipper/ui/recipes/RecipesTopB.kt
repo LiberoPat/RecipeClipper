@@ -260,14 +260,21 @@ private fun ShelfCell(icon: Painter, count: Int?, name: String, lead: Boolean, o
  * paprika tone and a badge counting the filters on, once one is.
  */
 @Composable
-internal fun SearchFieldB(query: String, onQueryChange: (String) -> Unit, filtersOn: Int, onOpenFilters: (() -> Unit)?) {
+internal fun SearchFieldB(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    filtersOn: Int,
+    onOpenFilters: (() -> Unit)?,
+    /** It fills the width it is given: the row's, or (#454, beside the Lists pill, a weight) what the pill leaves. */
+    modifier: Modifier = Modifier
+) {
     val colors = MaterialTheme.colorScheme
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
         placeholder = { Text(stringResource(R.string.label_search_recipes), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         singleLine = true,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(SearchRowRadius),
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.onSurfaceVariant) },
         trailingIcon = if (query.isNotEmpty() || onOpenFilters != null) {
             {
@@ -282,7 +289,7 @@ internal fun SearchFieldB(query: String, onQueryChange: (String) -> Unit, filter
             }
         } else null,
         colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = colors.onSurfaceVariant),
-        modifier = Modifier.fillMaxWidth().testTag("recipesSearch")
+        modifier = modifier.fillMaxWidth().testTag("recipesSearch")
     )
 }
 

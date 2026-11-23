@@ -90,6 +90,8 @@ enum Flag: String, CaseIterable {
     case todayCardClose
     /// The top of Recipes, design B (#449): a ⋮ menu with Select and Settings, a views shelf above search, the filters in a sheet behind search with pills for those on.
     case recipesTopB
+    /// Recipes' views folded into the filter sheet (#454): a Lists pill left of search, Cooked and Came from as choices, Not in a list as a switch; needs `recipesTopB`.
+    case recipesFilters
 }
 
 /// One flag as `shared/flags.json` declares it.

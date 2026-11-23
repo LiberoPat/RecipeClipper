@@ -596,14 +596,16 @@ final class DefaultRecipeRepository: RecipeRepository {
     }
 
     func observeHistory(query: String, filter: RecipeFilter) -> AnyPublisher<[RecipeSummary], Never> {
-        let listed = switch filter {
-        case .inAList: RecipeDao.listedYes
-        case .notInAList: RecipeDao.listedNo
-        default: RecipeDao.listedAny
-        }
-        let cooked = filter == .cooked ? 1 : 0
-        let typed = filter == .typed ? 1 : 0
-        let chat = filter == .chat ? 1 : 0
+        observeHistory(query: query, views: [filter])
+    }
+
+    /// One query for every view asked (#454): the views' own tests are the DAO's arguments, AND-ed in its SQL.
+    func observeHistory(query: String, views: Set<RecipeFilter>) -> AnyPublisher<[RecipeSummary], Never> {
+        let listed = views.contains(.inAList) ? RecipeDao.listedYes
+            : views.contains(.notInAList) ? RecipeDao.listedNo : RecipeDao.listedAny
+        let cooked = views.contains(.cooked) ? 1 : 0
+        let typed = views.contains(.typed) ? 1 : 0
+        let chat = views.contains(.chat) ? 1 : 0
         return db.observe { conn in
             try RecipeDao(db: conn).history(query: query, listed: listed, cooked: cooked, typed: typed, chat: chat).map { $0.toDomain() }
         }

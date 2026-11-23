@@ -35,9 +35,14 @@ struct RecipesScreen: View {
     /// The top redesigned (#449, design B): with the library as the first screen and one cookbook, a ⋮ menu
     /// (Select, Settings) after the +, the views shelf above search, the filters in a sheet behind search.
     var topB = false
+    /// Over design B (#454): no views shelf; a Lists pill left of search; the filter sheet with the views
+    /// folded in (Cooked, Not in a list, Came from). Off, design B as it was.
+    var filtersSheet = false
 
     /// Design B applies to the library as the first screen only, with one cookbook's views.
     private var styleB: Bool { topB && libraryRoot != nil && oneCookbook }
+    /// The views folded into the filter sheet (#454), only over design B.
+    private var folded: Bool { styleB && filtersSheet }
 
     @State private var scanSource: ScanSource?
     /// The library as the first screen (#375): the + 's sheet, what to do once it has gone, the
@@ -194,11 +199,20 @@ struct RecipesScreen: View {
         }
         // Design B's filters (#449): the three as switches, and Clear; they act at once, as the chips did.
         .sheet(isPresented: $filterSheetOpen) {
-            RecipeFilterSheet(
-                offered: vm.uiState.quickFilters, on: vm.uiState.quick,
-                onToggle: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters
-            )
-            .presentationDetents([.medium, .large])
+            Group {
+                if folded {
+                    // #454: the views folded in, in two groups; each control acts at once.
+                    RecipeFiltersSheet(
+                        choices: vm.uiState.choices, onChange: vm.onFilterChoicesChange, onClear: vm.onClearQuickFilters
+                    )
+                } else {
+                    RecipeFilterSheet(
+                        offered: vm.uiState.quickFilters, on: vm.uiState.quick,
+                        onToggle: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters
+                    )
+                }
+            }
+            .presentationDetents(folded ? [.large] : [.medium, .large])
             .presentationDragIndicator(.visible)
         }
         // The same picker as Settings' Import.
@@ -275,7 +289,7 @@ struct RecipesScreen: View {
     /// The recipes: the tidy rows, or (#380) a photo grid, under the same header.
     @ViewBuilder
     private func container(_ state: RecipesUiState) -> some View {
-        let pantryChip = state.quick.contains(.usesPantry)
+        let pantryChip = state.pantryOn
         if gridEnabled && state.layout == .grid {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -382,16 +396,33 @@ struct RecipesScreen: View {
                         onRestore: root.vm.canRestore ? { restoring = true } : nil
                     )
                 } else {
-                    if state.showsViewsStrip {
-                        ViewsShelf(counts: state.counts, listCount: state.lists.count, onOpenView: onOpenView, onOpenLists: onOpenLists)
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        SearchFieldB(
-                            query: state.query, onQueryChange: vm.onQueryChange,
-                            filtersOn: state.activeQuickFilters.count,
-                            onOpenFilters: quickFilters && state.showsFilter ? { filterSheetOpen = true } : nil
-                        )
-                        ActiveFilterPills(active: state.activeQuickFilters, onRemove: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters)
+                    if folded {
+                        // #454: Lists, then search with the sheet's button; the views are in the sheet, not a shelf.
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                if state.showsViewsStrip {
+                                    ListsPill(count: state.lists.count, action: onOpenLists)
+                                }
+                                SearchFieldB(
+                                    query: state.query, onQueryChange: vm.onQueryChange,
+                                    filtersOn: state.choices.pills.count,
+                                    onOpenFilters: quickFilters && state.showsFilter ? { filterSheetOpen = true } : nil
+                                )
+                            }
+                            ChoicePills(pills: state.choices.pills, onRemove: vm.onRemoveFilter, onClear: vm.onClearQuickFilters)
+                        }
+                    } else {
+                        if state.showsViewsStrip {
+                            ViewsShelf(counts: state.counts, listCount: state.lists.count, onOpenView: onOpenView, onOpenLists: onOpenLists)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            SearchFieldB(
+                                query: state.query, onQueryChange: vm.onQueryChange,
+                                filtersOn: state.activeQuickFilters.count,
+                                onOpenFilters: quickFilters && state.showsFilter ? { filterSheetOpen = true } : nil
+                            )
+                            ActiveFilterPills(active: state.activeQuickFilters, onRemove: vm.onQuickFilterToggle, onClear: vm.onClearQuickFilters)
+                        }
                     }
                 }
             }
@@ -526,7 +557,7 @@ struct RecipesScreen: View {
     /// What an empty list says: the search's, else the filter's (while there is a library to
     /// filter), else the empty library's.
     private func emptyMessage(_ state: RecipesUiState) -> String {
-        if !state.quick.isEmpty { return Strings.recipesNoResultsFilters }
+        if state.filtersOn { return Strings.recipesNoResultsFilters }
         if !state.query.trimmingCharacters(in: .whitespaces).isEmpty { return Strings.recipesNoResults(state.query) }
         guard state.showsFilter || state.view != nil else { return Strings.recipesEmpty }
         return switch state.filter {

@@ -245,6 +245,12 @@
       "description": "The top of Recipes redesigned (#449, design B; with libraryFirst): the title row is Recipes, the + and a ⋮ menu holding Select and Settings (no gear, no Select button); the views are one segmented shelf of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat) above search, each an icon, its count and its name; the three quick filters move into a sheet behind a filter button at the end of the search field, badged with how many are on, and those on show under search as removable pills with Clear; selecting gains Select all. Off, the top is as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 449
+    },
+    {
+      "key": "recipesFilters",
+      "description": "Recipes' views folded into the filter sheet (#454; with recipesTopB and libraryFirst): the five-cell views shelf is gone; a compact Lists pill with its count sits left of search and opens the Lists screen; the filter sheet holds two groups, The recipe (30 min or less, Cooked: Any / Cooked / Not yet, Uses what's in my pantry) and Where it is, where it came from (Not in a list, Came from: Anywhere / Typed by you / From a chat). Each applies at once, combines with the search and the sort, shows as a removable pill and counts in the badge; Not in a list, Cooked, Typed by you and From a chat select what their view screens did. Not remembered. Off, design B as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 454
     }
   ]
 }

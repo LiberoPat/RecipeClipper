@@ -165,6 +165,26 @@ activo*, *filtre actif*, *Filter aktiv*, *filtro attivo*, *filtro ativo*, with t
 plurals use). To check: whether German's "Gesamtzeit, oder …" wants its comma, and "on" as *activo* /
 *actif* / *aktiv* / *attivo* / *ativo* for a filter that is switched on.
 
+## Recipes' views in the filter sheet, 2026-11-22 (#454)
+
+Seven strings on both platforms, drafts written by Claude; the controls' names reuse the views' and the
+filters' own (Cooked, Not in a list, Typed by you, From a chat, Not cooked yet, Lists). The sheet's two
+group headings, shown in small capitals: `recipes_filter_group_recipe`, "The recipe" (*La receta*, *La
+recette*, *Das Rezept*, *La ricetta*, *A receita*) and `recipes_filter_group_where`, "Where it is, where it
+came from" (*Dónde está, de dónde viene*, *Où elle est, d'où elle vient*, *Wo es ist, woher es kommt*,
+*Dove si trova, da dove viene*, *Onde está, de onde veio*). The Cooked choice's first and last options,
+`recipes_filter_cooked_any`, "Any" (*Todas*, *Toutes*, *Alle*, *Tutte*, *Todas*: "all of them", plural
+and feminine to agree with *recetas* / *recettes* / *ricette* / *receitas*), and `recipes_filter_not_yet`,
+"Not yet" (*Aún no*, *Pas encore*, *Noch nicht*, *Non ancora*, *Ainda não*). The Not in a list switch's
+line, `recipes_filter_not_in_list_hint`, "Saved to none of your lists yet" (*Aún no está en ninguna de tus
+listas*, *Pas encore dans l'une de vos listes*, *Noch in keiner deiner Listen*, *Non ancora in nessuna delle
+tue liste*, *Ainda não está em nenhuma das suas listas*). The second choice's title,
+`recipes_filter_came_from`, "Came from" (*Origen*, *Provenance*, *Herkunft*, *Provenienza*, *Origem*: a
+noun, as a segmented choice's heading reads best short), and its first option, `recipes_filter_anywhere`,
+"Anywhere" (*Todas*, *Toutes*, *Alle*, *Tutte*, *Todas*, the same word as Any: "every recipe, wherever it
+came from"). To check: whether "Any" and "Anywhere" may share a word, and *Provenance* / *Herkunft* for
+where a recipe came from (typed, or a chat).
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,
