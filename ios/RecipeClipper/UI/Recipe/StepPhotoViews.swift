@@ -76,9 +76,9 @@ struct StepPhotoThumbnail: View {
                         }
                     if case .stack(_, _, let more) = thumb {
                         Text(verbatim: "+\(more)")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(Font(AppFont.instrumentSans(10, weight: 700)))
                             .monospacedDigit()
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(Palette.onPrimary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 1)
                             .background(Capsule().fill(Palette.primary))
@@ -133,7 +133,7 @@ private struct StepPhotoBadge: View {
 
     var body: some View {
         Text(verbatim: "\(number)")
-            .font(.system(size: 10.5, weight: .bold))
+            .font(Font(AppFont.instrumentSans(10.5, weight: 700)))
             .monospacedDigit()
             .foregroundStyle(Color(uiColor: Tokens.ground))
             .padding(.horizontal, 5)

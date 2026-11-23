@@ -54,8 +54,8 @@ struct RecipesViewsStrip: View {
             .frame(width: width, alignment: .leading)
             // The same height whether a name takes one line or two, so the strip reads as a row.
             .frame(minHeight: 112 * scale, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Palette.hairline.opacity(0.5)))
-            .contentShape(RoundedRectangle(cornerRadius: 14))
+            .background(RoundedRectangle(cornerRadius: Radius.card).fill(Palette.surfaceContainer))
+            .contentShape(RoundedRectangle(cornerRadius: Radius.card))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)

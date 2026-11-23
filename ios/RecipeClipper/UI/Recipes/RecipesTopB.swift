@@ -6,7 +6,7 @@ import UIKit
 // filters (#378) in a sheet behind a button at the end of the search field, and those on as pills under
 // it. The filters behave exactly as the chips did; only where they live changed. Android's `RecipesTopB.kt`.
 
-/// "Recipes", the paprika + and the ⋮ menu, last on the right: Select (nil: nothing to select) and Settings.
+/// "Recipes", the basil + and the ⋮ menu, last on the right: Select (nil: nothing to select) and Settings.
 struct LibraryTitleRowB: View {
     let onAdd: () -> Void
     let onSelect: (() -> Void)?
@@ -87,8 +87,8 @@ struct PinnedTitleBar: View {
     }
 }
 
-/// The views as one segmented shelf: Lists (in the paprika tone), then Not in a list, Cooked, Typed by you and
-/// From a chat, each its icon, its count in Fraunces and its name. Each opens its own screen, as the strip's
+/// The views as one segmented shelf: Lists (in the accent tone), then Not in a list, Cooked, Typed by you and
+/// From a chat, each its icon, its count in Bricolage and its name. Each opens its own screen, as the strip's
 /// cards did. The five share the width (Lists a little more); when a name's longest word would not fit
 /// (German, or Dynamic Type), every cell takes the width it needs and the shelf scrolls sideways, so
 /// nothing is ever clipped.
@@ -140,7 +140,7 @@ struct ViewsShelf: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             .background(Palette.surfaceContainer)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.card))
         }
         .scrollDisabled(fits)
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
@@ -206,7 +206,7 @@ struct ViewsShelf: View {
     }
 }
 
-/// Search, with the filter button at its end (`onOpenFilters`; nil with the chips' flag off): the paprika
+/// Search, with the filter button at its end (`onOpenFilters`; nil with the chips' flag off): the basil
 /// tone and a badge counting the filters on, once one is.
 struct SearchFieldB: View {
     let query: String
@@ -240,7 +240,7 @@ struct SearchFieldB: View {
         .padding(.leading, 14)
         .padding(.trailing, onOpenFilters == nil ? 14 : 4)
         .frame(minHeight: 52)
-        .background(RoundedRectangle(cornerRadius: 14).strokeBorder(Palette.muted, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Radius.field).fill(Palette.surfaceContainer))
     }
 }
 
@@ -255,11 +255,11 @@ private struct FilterButton: View {
                 .foregroundStyle(on > 0 ? Palette.onAccentTone : Palette.onBackground)
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .frame(width: 44, height: 44)
-                .background(on > 0 ? Palette.accentTone : Color.clear, in: RoundedRectangle(cornerRadius: 12))
+                .background(on > 0 ? Palette.accentTone : Color.clear, in: RoundedRectangle(cornerRadius: Radius.field - 3))
                 .overlay(alignment: .topTrailing) {
                     if on > 0 {
                         Text("\(on)")
-                            .font(.system(size: 10.5, weight: .bold))
+                            .font(Font(AppFont.instrumentSans(10.5, weight: 700)))
                             .foregroundStyle(Palette.onPrimary)
                             .dynamicTypeSize(...DynamicTypeSize.large)
                             .padding(.horizontal, 4)
@@ -381,7 +381,7 @@ struct RecipeFilterSheet: View {
     }
 }
 
-/// Selecting, as design B draws it (#449): the count in Fraunces, Select all and Done, then Add to list and
+/// Selecting, as design B draws it (#449): the count in Bricolage, Select all and Done, then Add to list and
 /// Delete, pinned above the rows. Android's `SelectionBar` with Select all.
 struct RecipesSelectionHeaderB: View {
     let count: Int

@@ -1,15 +1,15 @@
 import SwiftUI
 
 /// The Text view (#213), line by line since #286 (Android's ClipTextView): the post's lines as
-/// rows, each with a checkbox. A ticked line is washed in paprika; the ticked lines are the
+/// rows, each with a checkbox. A ticked line is washed in basil; the ticked lines are the
 /// selection, so the dock counts them and a field takes them (armed, through the confirm; or a
-/// field's button straight away). A line an add took keeps a paprika bar, and the add's first
+/// field's button straight away). A line an add took keeps a basil bar, and the add's first
 /// line its tag, which takes the add back, as on the page. The rows and ticks are the
 /// ViewModel's.
 struct ClipTextView: View {
     let vm: ClipViewModel
 
-    /// The ticked lines' wash: the app's paprika wash (as a step's ingredient link, #254).
+    /// The ticked lines' wash: the app's basil wash (as a step's ingredient link, #254).
     private static let washOpacity = 0.14
 
     var body: some View {
@@ -56,8 +56,8 @@ struct ClipTextView: View {
     }
 
     /// A line: the whole row ticks its checkbox (a selected-or-not button to VoiceOver and the
-    /// tests, as every tick in the app); ticked, it is washed in paprika. A line an add took has
-    /// a paprika bar, and its add's first line the tag.
+    /// tests, as every tick in the app); ticked, it is washed in basil. A line an add took has
+    /// a basil bar, and its add's first line the tag.
     private func lineRow(_ index: Int, _ text: String, title: Bool, ticked: Bool, mark: ClipTextMark?) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
@@ -93,7 +93,7 @@ struct ClipTextView: View {
     }
 }
 
-/// An add's tag on a line, as the page draws it: paprika, white, small; a roomier tap target.
+/// An add's tag on a line, as the page draws it: basil, white, small; a roomier tap target.
 private struct ClipTagStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -102,7 +102,7 @@ private struct ClipTagStyle: ButtonStyle {
             .foregroundStyle(Palette.onPrimary)
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Palette.primary))
+            .background(Capsule().fill(Palette.primary))
             .padding(.vertical, 8)
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.6 : 1)

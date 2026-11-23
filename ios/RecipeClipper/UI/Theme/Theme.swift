@@ -284,12 +284,14 @@ enum Typography {
     static let labelSmall = TextStyle(family: .instrumentSans, baseSize: 12, weight: 600, baseLineHeight: 16, tracking: 0.8, relativeTo: .caption1)
     /// The current cook step: bodyLarge at ~21pt, per the UI decisions.
     static let cookStep = TextStyle(family: .instrumentSans, baseSize: 21, weight: 400, baseLineHeight: 29, relativeTo: .title3)
+    /// A step's number beside its text (reading view and cook mode): Bricolage ExtraBold, in the accent.
+    static let stepNumber = TextStyle(family: .bricolage, baseSize: 18, weight: 800, baseLineHeight: 24, relativeTo: .headline, tabularDigits: true)
     /// A running countdown: Bricolage ExtraBold at about headlineMedium's size, tabular digits.
     static let timerClock = TextStyle(family: .bricolage, baseSize: 30, weight: 800, baseLineHeight: 36, relativeTo: .title1, tabularDigits: true)
 
     static let all: [TextStyle] = [
         headlineMedium, headlineSmall, titleLarge, titleMedium, titleSmall, bodyLarge, bodyLargeBold,
-        bodyMedium, bodySmall, labelLarge, labelMedium, labelSmall, cookStep, timerClock
+        bodyMedium, bodySmall, labelLarge, labelMedium, labelSmall, cookStep, stepNumber, timerClock
     ]
 }
 

@@ -113,7 +113,7 @@ struct ReadingView: View {
                         HStack(alignment: .top, spacing: 0) {
                         layout {
                             Text("\(index + 1)")
-                                .textStyle(Typography.titleMedium)
+                                .textStyle(Typography.stepNumber)
                                 .foregroundStyle(Palette.accentText)
                                 .frame(width: stacked ? nil : numberColumn, alignment: .leading)
                             let parts = content.shownStepParts(index, asWritten: state.asWrittenSteps)
@@ -256,14 +256,14 @@ private struct RecipePhoto: View {
             .frame(maxWidth: .infinity)
             .frame(height: url == nil ? 150 : 200)
             .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.hero))
             .accessibilityHidden(url == nil)
             .accessibilityLabel(name)
     }
 }
 
 /// Credits the site under the title: its domain in muted text, then "Open original" as a quiet
-/// paprika link to the page in the browser. Reading view only; cook mode has no room for it.
+/// basil link to the page in the browser. Reading view only; cook mode has no room for it.
 /// Opening the page is a platform effect, so it happens here through `openURL`, not in the
 /// ViewModel.
 private struct SourceCredit: View {
@@ -345,7 +345,8 @@ private struct Times: View {
             if i > 0 { out += AttributedString(nbsp + "· ") }
             out += AttributedString(glued(entry.label) + nbsp)
             var value = AttributedString(glued(entry.value))
-            value.inlinePresentationIntent = .stronglyEmphasized
+            // The numbers in the display face (Market, #455), Bold at the line's size.
+            value.font = Font(AppFont.bricolage(Typography.bodyMedium.baseSize + 2, weight: 700))
             value.foregroundColor = Palette.onBackground
             out += value
         }

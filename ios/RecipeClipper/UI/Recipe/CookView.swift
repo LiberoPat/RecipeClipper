@@ -239,7 +239,7 @@ private struct IngredientsBar: View {
     }
 
     /// The bar's ingredient `indices`: a heading as a subheading, any other line a row to tick,
-    /// `washed` in paprika for "In this step" (#286). Identified by line index, which is unique
+    /// `washed` in basil for "In this step" (#286). Identified by line index, which is unique
     /// across both groups, so each line keeps its own row as the groups change.
     private func lines(_ indices: [Int], washed: Bool, jump: IngredientJump?) -> some View {
         ForEach(indices, id: \.self) { index in
@@ -352,7 +352,7 @@ private struct CookStep: View {
                     .padding(.top, 20)
             }
             .padding(20)
-            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.primary, lineWidth: 2))
+            .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Palette.primary, lineWidth: 2))
         } else {
             let done = status == .done
             Button { vm.onStepSelected(index) } label: {
@@ -366,7 +366,7 @@ private struct CookStep: View {
                     HStack(alignment: .top, spacing: 0) {
                     layout {
                         Text("\(index + 1)")
-                            .textStyle(Typography.titleMedium)
+                            .textStyle(Typography.stepNumber)
                             .foregroundStyle(done ? Palette.muted : Palette.accentText)
                             .frame(width: stacked ? nil : numberColumn, alignment: .leading)
                         // A done step is dimmed as a whole; its amounts keep only their weight.
@@ -422,6 +422,7 @@ private struct CurrentTimer: View {
         if let timer {
             // The clock and its buttons share a row while they fit; at the larger sizes the
             // buttons go under the clock (and under each other) rather than squeezing it.
+            // Market (#455): the running timer sits in a box of the accent tone.
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 0) {
                     clock(timer).fixedSize()
@@ -437,6 +438,9 @@ private struct CurrentTimer: View {
                     VStack(alignment: .leading, spacing: 0) { buttons(timer) }.padding(.leading, -12)
                 }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Palette.accentTone, in: RoundedRectangle(cornerRadius: Radius.field))
         } else if let timerSeconds {
             Button(Strings.timerStart(StepTimers.label(timerSeconds, words: timerWords))) { vm.onTimerStart(step) }
                 .buttonStyle(OutlinedActionStyle())

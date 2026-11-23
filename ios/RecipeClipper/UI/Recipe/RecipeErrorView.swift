@@ -98,7 +98,7 @@ struct PostPreview: View {
                             Color.clear
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.hero))
                     .accessibilityLabel(title)
                     .padding(.bottom, 16)
             }

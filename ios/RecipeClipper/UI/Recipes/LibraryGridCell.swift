@@ -78,7 +78,7 @@ struct LibraryGridCell: View {
     /// The photo, square, or the recipe's designed image when it has none or the photo fails
     /// (#403; the blank tile with `noPhotoImage` off).
     private var photo: some View {
-        let shape = RoundedRectangle(cornerRadius: 10)
+        let shape = RoundedRectangle(cornerRadius: Radius.photo)
         return Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay { RecipeImage(url: recipe.imageUrl, recipe: recipe.noPhoto) }

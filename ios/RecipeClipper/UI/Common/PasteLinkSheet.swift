@@ -28,7 +28,7 @@ struct PasteLinkSheet: View {
                         .focused($focused)
                         .padding(14)
                         .background(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: Radius.field)
                                 .strokeBorder(
                                     noRecipe ? Palette.error : (focused ? Palette.primary : Palette.outline),
                                     lineWidth: focused || noRecipe ? 2 : 1

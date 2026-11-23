@@ -298,7 +298,7 @@ private struct ClipToolbar: View {
                         Palette.surfaceContainer
                     }
                     .frame(width: 36, height: 36)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.small))
                     .accessibilityHidden(true)
                 }
                 Text([added.map(Strings.clipAdded), Strings.clipNext(next, empty: state.draft.isEmpty)]
@@ -353,11 +353,11 @@ private struct ClipFieldButtonStyle: ButtonStyle {
             .padding(.horizontal, 4)
             .frame(minHeight: 40)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                Capsule()
                     .fill(selected ? Palette.primary : Color.clear)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
+                Capsule()
                     .strokeBorder(selected ? Palette.primary : Palette.outline, lineWidth: 1)
             )
             .contentShape(Rectangle())
@@ -433,7 +433,7 @@ private struct ClipReviewPane: View {
             .textStyle(Typography.bodyLarge)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.outline, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Radius.field).strokeBorder(Palette.outline, lineWidth: 1))
     }
 
     @ViewBuilder

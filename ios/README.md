@@ -33,7 +33,7 @@ the share extension's two excludes: it reads the App Group database), the tables
 `UI/Theme/Theme.swift`, `UI/Theme/WidgetStrings.swift` (the widgets' words, compiled into both
 targets so each key is read once: `Strings` delegates the keys it shares), the fonts and the
 catalog; its text uses `WidgetFont` and `WidgetStrings`, never `AppFont`'s UIFonts (WidgetKit
-can't encode a variable-axis UIFont, and the extension crashes). What a widget reads and how its
+can't encode a UIFont carrying descriptor attributes, and the extension crashes). What a widget reads and how its
 list is cut to fit (`Data/Local/WidgetData.swift`, `Shared/FittedRows.swift`) sit in those
 shared folders, not the extension's own, so the unit tests reach them (#329).
 `RecipeClipperTests` bundles `../shared/fixtures` (the export files the Android tests read
@@ -83,7 +83,7 @@ first-run tour (#151, #190) is marked done in both, so no tooltip gets in a test
 | `ACTION_SEND` share target | `RecipeClipperShare` extension, which imports and saves itself (`ShareImport/`) |
 | Navigation Compose routes | `NavigationStack` + `Route` enum (`UI/Navigation`) |
 | `strings.xml` + `values-xx/` | `Resources/Localizable.xcstrings` (keys are the Android names), read through `UI/Theme/Strings.swift` |
-| `Theme.kt` | `UI/Theme/Theme.swift` (same tokens; Fraunces/Karla bundled) |
+| `Theme.kt` | `UI/Theme/Theme.swift` (same tokens and corners; Bricolage Grotesque and Instrument Sans bundled as static weights, #455) |
 
 ViewModels import only Foundation, Combine and Observation — no SwiftUI, no UIKit — so they
 are unit-tested against the hand-written fakes in `RecipeClipperTests/Fakes`, as on Android.
