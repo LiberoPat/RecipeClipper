@@ -28,11 +28,14 @@ data class SourceLine(val source: String, val index: Int)
 /**
  * The "Add to groceries" sheet (#50): one recipe's lines (from its menu) or every planned
  * recipe's (from the Week), each with a checkbox, ticked to start unless the pantry has it (#51). [sources] is null while
- * the week's are loading. [added] is set once the ticked lines are written; the sheet closes on it.
+ * the week's are loading. [inPantry] holds the lines that started unticked because the pantry has
+ * them (#51), so the sheet can say why; a tick later never changes it (it is a fact about the pantry,
+ * not about the tick). [added] is set once the ticked lines are written; the sheet closes on it.
  */
 data class AddToGroceriesUiState(
     val sources: List<GrocerySource>? = null,
     val unticked: Set<SourceLine> = emptySet(),
+    val inPantry: Set<SourceLine> = emptySet(),
     val added: Boolean = false
 ) {
     val tickedCount: Int
@@ -84,7 +87,7 @@ class AddToGroceriesViewModel @Inject constructor(
             }
             if (questions.isNotEmpty()) viewModelScope.launch { repo.decide(questions) }
         }
-        _uiState.update { state -> if (state.sources === sources) state.copy(unticked = state.unticked + covered) else state }
+        _uiState.update { state -> if (state.sources === sources) state.copy(unticked = state.unticked + covered, inPantry = state.inPantry + covered) else state }
     }
 
     /** Every recipe planned from [start] for seven days, at its planned servings, in the user's units. */

@@ -245,6 +245,18 @@
       "description": "The top of Recipes redesigned (#449, design B; with libraryFirst): the title row is Recipes, the + and a ⋮ menu holding Select and Settings (no gear, no Select button); the views are one segmented shelf of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat) above search, each an icon, its count and its name; the three quick filters move into a sheet behind a filter button at the end of the search field, badged with how many are on, and those on show under search as removable pills with Clear; selecting gains Select all. Off, the top is as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 449
+    },
+    {
+      "key": "groceryPantryLabel",
+      "description": "Say why a line starts unticked (#457): in the Add to groceries sheet, a line that starts unticked because the pantry has it (#51) is marked with a muted \"In your pantry\" under its text, and the mark stays if the cook ticks it. Which lines start ticked, the button and what is added are unchanged. Off, the sheet is as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 457
+    },
+    {
+      "key": "planPantryNote",
+      "description": "A quiet pantry note on the Plan (#456): under each planned recipe from today on, one muted line naming the ingredients the pantry hasn't got, by name only (PantryMatch, as #378's \"Uses what's in my pantry\"; presence only, never \"enough\"): \"Not in your pantry: tahini, sumac\", up to three names, past that two and \"and N more\". None for a note, a past meal, when every nameable line is had, or when the pantry has nothing in the recipe's language. A tap opens it in place (every name, and Add to groceries: the missing lines at the planned servings, through What I need's path, with one Undo); with all of them on the grocery list it says \"On your grocery list\". Nothing in the add-to-plan flow. Off, the Plan is as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 456
     }
   ]
 }

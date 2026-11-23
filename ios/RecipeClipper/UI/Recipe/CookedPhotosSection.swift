@@ -38,7 +38,7 @@ struct CookedPhotosSection: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     CookedPicture(photo: photo, maxPixels: 300, fill: true)
                                         .frame(width: 96, height: 96)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .clipShape(RoundedRectangle(cornerRadius: Radius.photo))
                                     Text(PlanDayFormat.shortDate(photo.day))
                                         .textStyle(Typography.labelMedium)
                                         .foregroundStyle(Palette.muted)
@@ -56,7 +56,7 @@ struct CookedPhotosSection: View {
                         addMenu {
                             Image(systemName: "plus")
                                 .frame(width: 96, height: 96)
-                                .background(RoundedRectangle(cornerRadius: 10).fill(Palette.surfaceContainer))
+                                .background(RoundedRectangle(cornerRadius: Radius.photo).fill(Palette.surfaceContainer))
                         }
                         .accessibilityLabel(Strings.addPhoto)
                         .tooltipAnchor(.recipeMadeThis)

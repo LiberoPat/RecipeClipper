@@ -104,7 +104,7 @@ private struct SettingsIndexRow: View {
                         Spacer(minLength: 12)
                         if let value { valueText(value).multilineTextAlignment(.trailing) }
                     }
-                    Text("›").textStyle(Typography.titleLarge).foregroundStyle(Palette.muted)
+                    Image(systemName: "chevron.right").font(.body.weight(.semibold)).foregroundStyle(Palette.muted)
                         .accessibilityHidden(true)
                 }
                 .padding(.vertical, 14)

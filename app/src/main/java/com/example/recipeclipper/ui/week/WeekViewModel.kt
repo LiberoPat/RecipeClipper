@@ -2,8 +2,10 @@ package com.example.recipeclipper.ui.week
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipeclipper.data.DecisionRepository
 import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.MealPlanRepository
+import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.flags.FeatureFlags
@@ -11,7 +13,14 @@ import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.FreshMeal
 import com.example.recipeclipper.data.model.FreshNudge
 import com.example.recipeclipper.data.model.FreshPlan
+import com.example.recipeclipper.data.local.AppPreferences
+import com.example.recipeclipper.data.model.Decisions
+import com.example.recipeclipper.data.model.GrocerySources
 import com.example.recipeclipper.data.model.LanguageWords
+import com.example.recipeclipper.data.model.NewGroceryLine
+import com.example.recipeclipper.data.model.UnitSystem
+import com.example.recipeclipper.data.model.PantryGap
+import com.example.recipeclipper.data.model.PlanPantryNote
 import com.example.recipeclipper.data.model.Perishables
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
@@ -26,9 +35,11 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -74,6 +85,9 @@ data class SkipNotice(
     val pastEnd: Boolean
 )
 
+/** Lines the pantry note just put on the grocery list (#456), for the undo snackbar: [serial] tells two adds apart. */
+data class AddedToGroceries(val serial: Int, val count: Int)
+
 /** A meal just removed: its id keeps two removals of the same title apart. */
 data class RemovedMeal(val id: Long, val label: String)
 
@@ -108,7 +122,7 @@ data class MenusUiState(
 )
 
 /**
- * One button of the day strip (#286): [isToday] fills it in paprika, [hasMeals] puts a dot under
+ * One button of the day strip (#286): [isToday] fills it in basil, [hasMeals] puts a dot under
  * it.
  */
 data class StripDay(val day: Long, val isToday: Boolean, val hasMeals: Boolean)
@@ -165,7 +179,14 @@ data class WeekUiState(
     /** Saved weekly menus and their dialogs (#52). */
     val menus: MenusUiState = MenusUiState(),
     /** Fresh food (#396): the quiet note under a planned meal, by [PlannedMeal.id]; empty with the flag off. */
-    val freshNudges: Map<Long, FreshNudge> = emptyMap()
+    val freshNudges: Map<Long, FreshNudge> = emptyMap(),
+    /**
+     * The quiet pantry note (#456) under a planned recipe from today on, by [PlannedMeal.id]: the
+     * ingredients the pantry hasn't got, by name ([PlanPantryNote]). Empty with the flag off.
+     */
+    val pantryGaps: Map<Long, PantryGap> = emptyMap(),
+    /** What the pantry note's "Add to groceries" just added, until its undo snackbar is settled (#456). */
+    val addedToGroceries: AddedToGroceries? = null
 ) {
     /** The first day of the block at the top. */
     val weekStart: Long get() = PlanDays.blockStart(topDay, today)
@@ -218,7 +239,13 @@ class WeekViewModel @Inject constructor(
     private val calendar: PlanCalendar,
     // Fresh food (#396): the planned recipes' ingredients and the flag. Without both, no notes.
     private val groceries: GroceryRepository? = null,
-    private val flags: FeatureFlags? = null
+    private val flags: FeatureFlags? = null,
+    // The pantry note (#456): the pantry, and the model's "same ingredient" answers (#104), as What
+    // I need reads them. Without the pantry, no notes.
+    private val pantry: PantryRepository? = null,
+    private val decisions: DecisionRepository? = null,
+    // The note's "Add to groceries" (#456) renders the lines in the cook's units, as What I need does.
+    private val preferences: AppPreferences? = null
 ) : ViewModel() {
 
     private val _uiState: MutableStateFlow<WeekUiState>
@@ -231,6 +258,10 @@ class WeekViewModel @Inject constructor(
     private var skippedMeals: MealPlanRepository.SkippedMeals? = null
     private var skipSerial = 0
     private var scrollRequests = 0
+
+    /** The grocery items the pantry note's last "Add to groceries" wrote, for its undo (#456). */
+    private var addedItems: List<Long>? = null
+    private var addSerial = 0
 
     /** The day the fresh-food notes count from (#396): today, which moves on a new day. */
     private val freshFrom: MutableStateFlow<Long>
@@ -289,6 +320,20 @@ class WeekViewModel @Inject constructor(
                 }
             }
         }
+        if (pantry != null && flags?.isOn(Flag.PLAN_PANTRY_NOTE) == true) {
+            viewModelScope.launch {
+                // The meals held and today come from the state this ViewModel keeps, the pantry and
+                // the answers live: worked out again whenever any of them changes.
+                combine(
+                    _uiState.map { it.meals to it.today }.distinctUntilChanged(),
+                    pantry.observeItems(),
+                    decisions?.observe() ?: flowOf(Decisions.NONE),
+                    groceries?.observeItems() ?: flowOf(emptyList())
+                ) { (meals, today), items, decided, list ->
+                    PlanPantryNote.gaps(meals.values.flatten(), items, today, decided, list)
+                }.distinctUntilChanged().collect { gaps -> _uiState.update { it.copy(pantryGaps = gaps) } }
+            }
+        }
         viewModelScope.launch {
             plan.observeMenus().collect { menus -> _uiState.update { it.copy(menus = it.menus.copy(menus = menus)) } }
         }
@@ -340,6 +385,56 @@ class WeekViewModel @Inject constructor(
             plan.move(meal.id, nudge.swapDay, meal.mealTypeId)
             plan.move(partner.id, nudge.day, partner.mealTypeId)
         }
+    }
+
+    // --- The pantry note's "Add to groceries" (#456)
+
+    /**
+     * The note under [mealId] opened, and its "Add to groceries" tapped: the recipe's lines naming
+     * what is still missing, rendered at the planned servings in the cook's units, onto the list
+     * through the path What I need's To buy takes ([GrocerySources.fromPlan], then
+     * [GroceryRepository.add]), so combining behaves the same. One undo, for exactly those lines.
+     */
+    fun onAddMissingToGroceries(mealId: Long) {
+        val groceries = groceries ?: return
+        val gap = _uiState.value.pantryGaps[mealId]?.takeIf { !it.allOnList } ?: return
+        val meal = _uiState.value.meals.values.flatten().firstOrNull { it.id == mealId } ?: return
+        viewModelScope.launch {
+            val settings = preferences?.current
+            val sources = GrocerySources.fromPlan(
+                groceries.plannedIngredients(meal.day, meal.day).filter { it.entryId == mealId },
+                settings?.unitSystem ?: UnitSystem.AS_WRITTEN, settings?.convertLiquids ?: false,
+                decisions?.current() ?: Decisions.NONE
+            )
+            val lines = sources.flatMap { source ->
+                PlanPantryNote.linesToAdd(gap, source.language, source.lines)
+                    .map { NewGroceryLine(it, source.language, source.recipeId, source.day) }
+            }
+            if (lines.isEmpty()) return@launch
+            val before = groceries.observeItems().first().mapTo(HashSet()) { it.id }
+            groceries.add(lines)
+            val ids = groceries.observeItems().first().map { it.id }.filterNot { it in before }
+            if (ids.isEmpty()) return@launch
+            // One undo at a time: an earlier removal or skip stands.
+            removedMeal = null
+            skippedMeals = null
+            addedItems = ids
+            _uiState.update { it.copy(addedToGroceries = AddedToGroceries(++addSerial, ids.size), removed = null, skipped = null) }
+        }
+    }
+
+    /** Undo: exactly the lines just added come off the list, and the note comes back. */
+    fun onUndoAddToGroceries() {
+        val ids = addedItems ?: return
+        addedItems = null
+        _uiState.update { it.copy(addedToGroceries = null) }
+        viewModelScope.launch { groceries?.delete(ids) }
+    }
+
+    /** The snackbar timed out or was dismissed: the lines stay. */
+    fun onAddedSnackbarDismissed() {
+        addedItems = null
+        _uiState.update { it.copy(addedToGroceries = null) }
     }
 
     // --- Scrolling and weeks (#232)
@@ -559,7 +654,10 @@ class WeekViewModel @Inject constructor(
             val deleted = plan.delete(meal.id) ?: return@launch
             removedMeal = deleted
             skippedMeals = null // the earlier skip stands: one undo at a time
-            _uiState.update { it.copy(removed = RemovedMeal(meal.id, meal.title ?: meal.note.orEmpty()), skipped = null) }
+            addedItems = null // and so does an earlier "Add to groceries" (#456)
+            _uiState.update {
+                it.copy(removed = RemovedMeal(meal.id, meal.title ?: meal.note.orEmpty()), skipped = null, addedToGroceries = null)
+            }
         }
     }
 
@@ -605,7 +703,8 @@ class WeekViewModel @Inject constructor(
                 toDay = done.result.moved.firstOrNull { it.mealId == meal.id }?.toDay.takeIf { choice == PlanShift.Choice.NEXT_FREE_DAY },
                 pastEnd = done.result.pastEnd.isNotEmpty()
             )
-            _uiState.update { it.copy(skipped = notice, removed = null) }
+            addedItems = null // an earlier "Add to groceries" stands (#456)
+            _uiState.update { it.copy(skipped = notice, removed = null, addedToGroceries = null) }
         }
     }
 

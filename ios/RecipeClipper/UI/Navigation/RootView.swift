@@ -18,6 +18,7 @@ struct RootView: View {
             .environment(\.libraryFirst, libraryFirst)
             // A designed image for a recipe with no photo (#403), read by every image slot.
             .environment(\.noPhotoImage, container.featureFlags.isOn(.noPhotoImage))
+            .environment(\.groceryPantryLabel, container.featureFlags.isOn(.groceryPantryLabel))
             // Step photos (#433): the recipe screen's thumbnails and viewer.
             .environment(\.stepPhotos, container.featureFlags.isOn(.stepPhotos))
             // A file sent from another Pith (#149) opens its sheet over whatever is on

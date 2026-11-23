@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.Recipe
+import com.example.recipeclipper.ui.theme.Bricolage
 
 /**
  * The reading view's top row: Back, then the bookmark (filled once the recipe is in a list),
@@ -107,7 +108,7 @@ internal fun sourceCreditText(domain: String?, clipped: Boolean): String? = when
 
 /**
  * Credits the site under the title: its domain in muted text, then "Open original" as a quiet
- * paprika link to the page in the browser. Reading view only; cook mode has no room for it.
+ * basil link to the page in the browser. Reading view only; cook mode has no room for it.
  */
 @Composable
 internal fun SourceCredit(domain: String, clipped: Boolean, onOpen: () -> Unit) {
@@ -156,7 +157,8 @@ internal fun Times(prep: String?, cook: String?, total: String?) {
     )
     if (entries.isEmpty()) return
     val muted = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)
-    val value = SpanStyle(fontWeight = FontWeight.Bold)
+    // The numbers in the display face (#455), as the design's times row sets them.
+    val value = SpanStyle(fontFamily = Bricolage, fontWeight = FontWeight.Bold)
     val line = buildAnnotatedString {
         entries.forEachIndexed { i, (label, time) ->
             if (i > 0) withStyle(muted) { append("$NBSP· ") }

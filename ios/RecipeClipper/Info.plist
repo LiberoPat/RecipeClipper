@@ -77,9 +77,13 @@
 	</dict>
 	<key>UIAppFonts</key>
 	<array>
-		<string>fraunces.ttf</string>
-		<string>fraunces-italic.ttf</string>
-		<string>karla.ttf</string>
+		<string>bricolage-semibold.ttf</string>
+		<string>bricolage-bold.ttf</string>
+		<string>bricolage-extrabold.ttf</string>
+		<string>instrument-regular.ttf</string>
+		<string>instrument-medium.ttf</string>
+		<string>instrument-semibold.ttf</string>
+		<string>instrument-bold.ttf</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

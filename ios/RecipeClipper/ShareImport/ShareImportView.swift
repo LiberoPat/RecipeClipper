@@ -53,8 +53,8 @@ struct ShareImportView: View {
         }
         .padding(20)
         .frame(maxWidth: 520, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 20).fill(Palette.background))
-        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Palette.hairline, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Radius.card).fill(Palette.background))
+        .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Palette.hairline, lineWidth: 1))
         .shadow(color: .black.opacity(0.15), radius: 16, y: 4)
         .tint(Palette.accentText)
     }

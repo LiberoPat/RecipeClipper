@@ -43,7 +43,7 @@ enum PlanDayFormat {
 }
 
 /// The strip of days in a plan sheet: today and the next 13 (#232), a short weekday over its date. The
-/// chosen day is ringed in paprika; today's date is paprika text.
+/// chosen day is ringed in basil; today's date is basil text.
 struct DayStrip: View {
     let days: [Int64]
     let today: Int64
@@ -68,7 +68,7 @@ struct DayStrip: View {
                         .padding(.vertical, 8)
                         .padding(.horizontal, 6)
                         .background(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: Radius.field)
                                 .strokeBorder(isSelected ? Palette.accentText : Palette.hairline, lineWidth: isSelected ? 2 : 1)
                         )
                         .contentShape(Rectangle())
@@ -83,7 +83,7 @@ struct DayStrip: View {
     }
 }
 
-/// The meal types as a row of outlined choices, the chosen one ringed in paprika.
+/// The meal types as a row of outlined choices, the chosen one ringed in basil.
 struct MealTypeChoices: View {
     let types: [MealType]
     let selected: Int64?

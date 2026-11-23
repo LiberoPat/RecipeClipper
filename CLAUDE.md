@@ -42,7 +42,7 @@ future AI features: every Week extra is free (owner, 2026-11-23); one cookbook (
 Settings; cook mode with saved progress and background timer alerts; sharing
 out as text or a file (#149); printing a recipe or a list as a cookbook PDF (#318); offline handling; notes; editing and typing in
 recipes (#29); "Clip it yourself" (#37); export/import and an automatic
-backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147), with "Use it up" (#305), Skip tonight (#398) and fresh food (#396) on Week; Chef
+backup copy (#150); Week, Groceries and Pantry (#49–#52, #146, #147), with "Use it up" (#305), Skip tonight (#398), fresh food (#396) and a quiet pantry note (#456) on Week; Chef
 mode (#100), recipes picked from page text (#103) and typed decisions (#104)
 by the on-device model; "I made this" photos and "Mark as cooked" (#116, #173); the first-run tour
 (#151, #190: a sample recipe and tooltips); Reddit posts, from the body or a comment
@@ -194,10 +194,13 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   (readable, muted). A boolean on the recipe screen, not a destination; it
   holds `FLAG_KEEP_SCREEN_ON`; ingredients collapse to a tap-to-expand bar.
   Tapping a step makes it current; only "Done — next step" advances.
-- **Theme:** Fraunces (display) over Karla (body); ground `#FBF9F6`, ink
-  `#1C1917`, muted `#6B6259`, hairline `#E7E1D9`, paprika `#BF4A2B`. Dark mode
-  is the system's call (no in-app toggle) and uses the on-ink tokens
-  (`MutedOnInk`, `HairlineOnInk`, `PaprikaTextOnInk`). No Material purple.
+- **Theme: Market** (#455, owner's pick): Bricolage Grotesque (display) over
+  Instrument Sans (body), static weights; ground `#FFFFFF`, surface `#F2F6F2`,
+  ink `#14201A`, muted `#56645B`, hairline `#E1E7E2`, basil `Accent` `#2C7A4A`
+  (`AccentText` `#25683E`), `AccentTone` `#E1F0E5`/`#1C5232`; corners 18 cards,
+  14 photos and fields, pill buttons (`Corners` / `Radius`). Dark mode is the
+  system's call (no in-app toggle) and uses the on-ink tokens (ground `#0E1310`,
+  `MutedOnInk`, `HairlineOnInk`, `AccentOnInk`, `AccentTextOnInk`). No Material purple.
   Cook mode follows the system theme unless "Dark while cooking" (off by
   default) is on. Don't restore an always-dark cook mode without asking.
 - **Settings:** exclusive choices are radio rows, independent toggles are
@@ -215,12 +218,12 @@ feature's full layout, are in `docs/decisions.md` under its issue.
   (`recipes_layout`, #380).
 - **Recipes' top, design B** (#449, `recipesTopB`, the library as the first screen only): the title
   row is Recipes, the +, then a ⋮ menu (Select, Settings; no gear, no Select button); the views
-  are one segmented shelf above search (Lists in the paprika tone; it scrolls sideways rather
+  are one segmented shelf above search (Lists in the accent tone; it scrolls sideways rather
   than clip); the three filters live in a sheet behind a badged button at the end of search, those
   on shown under it as removable pills with Clear; then the count, the sort, the toggle;
   selecting has Select all. Off, the strip and chips above.
 - **A recipe with no photo, or whose photo fails, gets a designed image** (#403, `noPhotoImage`):
-  its first ingredient names in italic on one of five warm tints chosen by its uid (the title's
+  its first ingredient names, upright in Bricolage, on one of Market's five tints chosen by its uid (the title's
   first letter at 64 dp and below), never a stock image. One component per platform; the
   Lists cover of an empty list keeps the outlined bookmark tile.
 - **Library first** (#375, `libraryFirst`, needs `oneCookbook`): the Recipes tab opens the library

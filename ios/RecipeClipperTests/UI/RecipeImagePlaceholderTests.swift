@@ -68,12 +68,14 @@ final class RecipeImagePlaceholderTests: XCTestCase {
         }
     }
 
-    /// The label's italic is the bundled Fraunces Italic (registered through `UIAppFonts`), not a
-    /// slanted upright.
-    func testTheBundledFrauncesItalicIsRegistered() throws {
-        let font = try XCTUnwrap(UIFont(name: "Fraunces-Italic", size: 20))
-        XCTAssertEqual(font.fontName, "Fraunces-Italic")
-        XCTAssertEqual(font.familyName, "Fraunces")
+    /// The image is set in the bundled Bricolage (#455): its static weights register, so the
+    /// monogram and the label never fall back to the system font.
+    func testTheBundledBricolageIsRegistered() throws {
+        for weight in [600.0, 700] {
+            let name = AppFont.fontName(display: true, weight: weight)
+            XCTAssertEqual(try XCTUnwrap(UIFont(name: name, size: 20)).fontName, name)
+        }
+        XCTAssertEqual(AppFont.bricolage(20, weight: 600).fontName, "BricolageGrotesque-24ptSemiBold")
     }
 
     /// A photo that cannot be loaded, or whose bytes are no image, reports its failure: that is what

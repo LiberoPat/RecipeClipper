@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,8 +32,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.recipeclipper.R
+import com.example.recipeclipper.data.flags.Flag
+import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.plan.dayTitle
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * "Add to groceries" (#50, Paprika's basket): every line to buy, grouped by recipe (with its
@@ -48,6 +50,7 @@ fun AddToGroceriesSheet(viewModel: AddToGroceriesViewModel, onDismiss: () -> Uni
     LaunchedEffect(state.added) {
         if (state.added) onDismiss()
     }
+    val showPantryLabel = LocalFlagValues.current.isOn(Flag.GROCERY_PANTRY_LABEL)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         val sources = state.sources
@@ -104,7 +107,18 @@ fun AddToGroceriesSheet(viewModel: AddToGroceriesViewModel, onDismiss: () -> Uni
                             ) {
                                 Checkbox(checked = ticked, onCheckedChange = null)
                                 Spacer(Modifier.width(12.dp))
-                                Text(line, style = MaterialTheme.typography.bodyLarge)
+                                Column {
+                                    Text(line, style = MaterialTheme.typography.bodyLarge)
+                                    // Why the line started unticked (#457): the pantry has it. A fact about the
+                                    // pantry, so it stays when the cook ticks the line anyway.
+                                    if (showPantryLabel && id in state.inPantry) {
+                                        Text(
+                                            stringResource(R.string.what_i_need_have),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -113,7 +127,7 @@ fun AddToGroceriesSheet(viewModel: AddToGroceriesViewModel, onDismiss: () -> Uni
                         Button(
                             onClick = viewModel::onAdd,
                             enabled = state.tickedCount > 0 && !state.added,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = Corners.Pill,
                             modifier = Modifier.fillMaxWidth().testTag("addToGroceriesButton")
                         ) {
                             Text(stringResource(R.string.action_add_to_groceries))

@@ -44,7 +44,7 @@ struct LibraryTopActions: View {
     }
 }
 
-/// The paprika + (#375): the Add a recipe sheet. The tour's tooltip points at it.
+/// The basil + (#375): the Add a recipe sheet. The tour's tooltip points at it.
 struct LibraryAddButton: View {
     let onAdd: () -> Void
     /// The pinned bar's + (#449) is the same button without the tour's anchor, which belongs to the title row's.
@@ -139,7 +139,7 @@ extension LibraryCard {
         var line = AttributedString(Strings.homeTodayOther(next.mealType, next.title))
         if styleB, let range = line.range(of: next.title, options: .backwards) {
             line[range].foregroundColor = Palette.onBackground
-            line[range].font = Font(AppFont.karla(Typography.bodySmall.baseSize, weight: 600))
+            line[range].font = Font(AppFont.instrumentSans(Typography.bodySmall.baseSize, weight: 600))
         }
         return line
     }
@@ -156,7 +156,7 @@ private struct CompactCard<Line: View>: View {
     let onOpen: (() -> Void)?
     /// The close button at the top right (#448); nil has none.
     var onClose: (() -> Void)?
-    /// Design B (#449): outlined on the ground, a paprika eyebrow, the line beside a pill button.
+    /// Design B (#449), in Market's dress (#455): a soft filled panel, a basil eyebrow, the line beside a pill button.
     var styleB = false
     /// B only: the line goes under the name (the step and the countdown), not beside the button.
     var lineUnderTitle = false
@@ -164,11 +164,11 @@ private struct CompactCard<Line: View>: View {
     @Environment(\.noPhotoImage) private var noPhotoImage
 
     static var eyebrowStyle: TextStyle {
-        TextStyle(family: .karla, baseSize: 11.5, weight: 700, baseLineHeight: 15, tracking: 0.8, relativeTo: .caption1)
+        TextStyle(family: .instrumentSans, baseSize: 11.5, weight: 700, baseLineHeight: 15, tracking: 0.8, relativeTo: .caption1)
     }
 
     static var titleStyleB: TextStyle {
-        TextStyle(family: .fraunces, baseSize: 18, weight: 600, baseLineHeight: 22, relativeTo: .headline)
+        TextStyle(family: .bricolage, baseSize: 19, weight: 700, baseLineHeight: 23, tracking: -0.3, relativeTo: .headline)
     }
 
     var body: some View {
@@ -228,9 +228,8 @@ private struct CompactCard<Line: View>: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.background)
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.hairline, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .background(Palette.surfaceContainer)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.card))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("library.card")
     }
@@ -287,7 +286,7 @@ private struct CompactCard<Line: View>: View {
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.surfaceContainer)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.card))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("library.card")
     }
@@ -297,16 +296,16 @@ private struct CompactCard<Line: View>: View {
         if noPhotoImage, let noPhoto {
             RecipeImage(url: imageUrl, recipe: noPhoto)
                 .frame(width: 64, height: 64)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.photo))
                 .accessibilityHidden(true)
         } else if let image = imageUrl, let url = URL(string: image) {
             Color.clear
                 .frame(width: 64, height: 64)
                 .overlay { CachedAsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Palette.hairline } }
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.photo))
                 .accessibilityHidden(true)
         } else {
-            RoundedRectangle(cornerRadius: 10).fill(Palette.accentText.opacity(0.12))
+            RoundedRectangle(cornerRadius: Radius.photo).fill(Palette.accentText.opacity(0.12))
                 .frame(width: 64, height: 64)
                 .accessibilityHidden(true)
         }
@@ -341,7 +340,7 @@ private struct ResumeLine: View {
                 .foregroundStyle(Palette.accentText)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
-                .background(Palette.accentText.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                .background(Palette.accentText.opacity(0.12), in: Capsule())
         }
         Text(Strings.cookPosition(resume.step, of: resume.stepCount))
             .textStyle(Typography.bodySmall)
@@ -411,14 +410,14 @@ struct AddRecipeSheet: View {
                 .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(Palette.accentText)
                 .frame(width: 40, height: 40)
-                .background(Palette.accentText.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                .background(Palette.accentText.opacity(0.12), in: RoundedRectangle(cornerRadius: Radius.photo))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).textStyle(Typography.titleSmall).foregroundStyle(Palette.onBackground)
                 Text(hint).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Text("›").textStyle(Typography.titleLarge).foregroundStyle(Palette.muted).accessibilityHidden(true)
+            Image(systemName: "chevron.right").font(.body.weight(.semibold)).foregroundStyle(Palette.muted).accessibilityHidden(true)
         }
         .frame(minHeight: 56)
         .padding(.vertical, 4)
@@ -506,8 +505,8 @@ struct EmptyLibraryView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Palette.surfaceContainer, in: RoundedRectangle(cornerRadius: 14))
-        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .background(Palette.surfaceContainer, in: RoundedRectangle(cornerRadius: Radius.card))
+        .contentShape(RoundedRectangle(cornerRadius: Radius.card))
         .accessibilityElement(children: .combine)
     }
 }

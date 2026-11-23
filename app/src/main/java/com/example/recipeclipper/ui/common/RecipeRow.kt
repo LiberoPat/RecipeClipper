@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.NoPhotoSource
 import com.example.recipeclipper.data.model.RecipeSummary
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * A recipe in a list: thumbnail, title, and when it was last viewed. A long press opens the row's
@@ -91,6 +91,6 @@ internal fun RecipeThumbnail(imageUrl: String?, recipe: NoPhotoSource, size: Dp 
         model = imageUrl,
         recipe = recipe,
         contentDescription = null,
-        modifier = Modifier.size(size).clip(RoundedCornerShape(10.dp))
+        modifier = Modifier.size(size).clip(Corners.Photo)
     )
 }

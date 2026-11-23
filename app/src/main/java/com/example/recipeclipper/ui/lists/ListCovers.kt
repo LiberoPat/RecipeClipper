@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
@@ -47,8 +46,9 @@ import com.example.recipeclipper.ui.common.RecipeImage
 import com.example.recipeclipper.ui.common.RecipeImagePlaceholder
 import com.example.recipeclipper.ui.common.noPhotoImageOn
 import com.example.recipeclipper.ui.savetolist.countLabel
+import com.example.recipeclipper.ui.theme.Corners
 
-private val CoverShape = RoundedCornerShape(12.dp)
+private val CoverShape = Corners.Photo
 private val MosaicGap = 2.dp
 
 /**

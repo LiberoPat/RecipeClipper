@@ -1,5 +1,6 @@
 package com.example.recipeclipper.ui.week
 
+import androidx.compose.ui.res.painterResource
 import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -27,7 +28,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -87,6 +87,7 @@ import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.FreshNudge
 import com.example.recipeclipper.data.model.MealPlanIcs
 import com.example.recipeclipper.data.model.MealType
+import com.example.recipeclipper.data.model.PantryGap
 import com.example.recipeclipper.data.model.PlanShift
 import com.example.recipeclipper.data.model.PlannedMeal
 import com.example.recipeclipper.data.model.TooltipScreen
@@ -108,6 +109,7 @@ import com.example.recipeclipper.ui.plan.weekRange
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.sharefile.shareFileUri
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TooltipHost
 import java.io.File
@@ -153,6 +155,14 @@ fun WeekScreen(
     val skipped = state.skipped
     val skippedMessage = skipped?.let { skipMessage(it) }
     UndoSnackbarEffect(skipped, skippedMessage, undoLabel, snackbarHostState, viewModel::onUndoSkip, viewModel::onSkipSnackbarDismissed)
+
+    // The pantry note's "Add to groceries" (#456): one Undo, for exactly the lines it added.
+    val addedToGroceries = state.addedToGroceries
+    val addedMessage = addedToGroceries?.let { pluralStringResource(R.plurals.plan_pantry_added, it.count, it.count) }
+    UndoSnackbarEffect(
+        addedToGroceries, addedMessage, undoLabel, snackbarHostState,
+        viewModel::onUndoAddToGroceries, viewModel::onAddedSnackbarDismissed
+    )
 
     // What a menu action did (#52), once.
     val resources = LocalResources.current
@@ -332,7 +342,7 @@ private fun PeriodNavigation(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         IconButton(onClick = onPrevious, modifier = Modifier.semantics { contentDescription = previousDescription }) {
-            Text("‹", style = MaterialTheme.typography.headlineSmall)
+            Icon(painterResource(R.drawable.ic_chevron_left), contentDescription = null)
         }
         // One line: the range names both weekdays since #232, so it shrinks a little beside
         // "Today" rather than squeeze the button or wrap.
@@ -346,7 +356,7 @@ private fun PeriodNavigation(
                 modifier = Modifier.weight(1f, fill = false).testTag(labelTag)
             )
             IconButton(onClick = onNext, modifier = Modifier.semantics { contentDescription = nextDescription }) {
-                Text("›", style = MaterialTheme.typography.headlineSmall)
+                Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null)
             }
         }
         if (backLabel != null) {
@@ -357,7 +367,7 @@ private fun PeriodNavigation(
 
 /**
  * The day strip (#286): the seven days the header names, each a short weekday over its date with
- * a paprika dot under a day that has meals; today is filled in paprika. A tap brings that day to
+ * a basil dot under a day that has meals; today is filled in basil. A tap brings that day to
  * the top of the list. Screen readers hear the full date, and "meals planned" as the month says it.
  */
 @Composable
@@ -375,7 +385,7 @@ private fun DayStripRow(days: List<StripDay>, onSelect: (Long) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(Corners.Field)
                         .background(if (cell.isToday) colors.primary else Color.Transparent)
                         .clickable(role = Role.Button) { onSelect(cell.day) }
                         .testTag("stripDay-${cell.day}")
@@ -410,8 +420,8 @@ private fun DayStripRow(days: List<StripDay>, onSelect: (Long) -> Unit) {
 }
 
 /**
- * The month view (#52): the locale's weekdays over whole weeks. A day with meals has a paprika
- * dot; today's date is paprika text; the days before and after the month are muted. Tapping any
+ * The month view (#52): the locale's weekdays over whole weeks. A day with meals has a basil
+ * dot; today's date is basil text; the days before and after the month are muted. Tapping any
  * day opens its week.
  */
 @Composable
@@ -439,7 +449,7 @@ private fun MonthGrid(month: MonthUiState, today: Long, onSelect: (Long) -> Unit
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(Corners.Small)
                             .clickable(role = Role.Button) { onSelect(cell.day) }
                             .testTag("monthDay-${cell.day}")
                             .clearAndSetSemantics { contentDescription = description }
@@ -643,8 +653,65 @@ private fun DayList(
                 canSkip = state::canSkip,
                 onSkip = viewModel::onSkipStart,
                 freshNudges = state.freshNudges,
-                onFreshSwap = viewModel::onFreshSwap
+                onFreshSwap = viewModel::onFreshSwap,
+                pantryGaps = state.pantryGaps,
+                onAddMissing = viewModel::onAddMissingToGroceries
             )
+        }
+    }
+}
+
+/**
+ * The pantry note under a planned recipe (#456): "Not in your pantry: tahini, sumac", with "and 3
+ * more" past three names. A tap opens it in place, every missing name and one "Add to groceries";
+ * a tap again closes it. Once all of it is on the grocery list it says so, and does nothing.
+ * Whether it is open is the view's alone: it may close on leaving the tab.
+ */
+@Composable
+private fun PantryGapNote(mealId: Long, gap: PantryGap, onAdd: () -> Unit) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    if (gap.allOnList) {
+        Text(
+            stringResource(R.string.plan_pantry_on_list),
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+            modifier = Modifier.padding(vertical = 2.dp).testTag("pantryGap-$mealId")
+        )
+        return
+    }
+    var open by rememberSaveable(mealId) { mutableStateOf(false) }
+    val text = if (open || !gap.capped) {
+        stringResource(R.string.plan_pantry_missing, gap.missing.joinToString(", "))
+    } else {
+        pluralStringResource(R.plurals.plan_pantry_missing_more, gap.more, gap.names.joinToString(", "), gap.more)
+    }
+    Column {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+            maxLines = if (open) Int.MAX_VALUE else 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                // Its own tap target, so the row's tap still opens the recipe.
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(if (open) R.string.plan_pantry_show_less else R.string.plan_pantry_show_all)
+                ) { open = !open }
+                .padding(vertical = 2.dp)
+                .testTag("pantryGap-$mealId")
+        )
+        if (open) {
+            TextButton(
+                onClick = {
+                    open = false
+                    onAdd()
+                },
+                contentPadding = PaddingValues(horizontal = 0.dp),
+                modifier = Modifier.testTag("pantryGapAdd-$mealId")
+            ) {
+                Text(stringResource(R.string.action_add_to_groceries), style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
@@ -664,7 +731,9 @@ private fun DaySection(
     canSkip: (PlannedMeal) -> Boolean,
     onSkip: (PlannedMeal) -> Unit,
     freshNudges: Map<Long, FreshNudge>,
-    onFreshSwap: (Long) -> Unit
+    onFreshSwap: (Long) -> Unit,
+    pantryGaps: Map<Long, PantryGap> = emptyMap(),
+    onAddMissing: (Long) -> Unit = {}
 ) {
     Column(Modifier.fillMaxWidth()) {
         DayHeader(day = day, isToday = isToday)
@@ -679,7 +748,9 @@ private fun DaySection(
                     // Skip is in the long-press menu of any meal that isn't in the past, and
                     // visible on today's (#398).
                     onSkip = if (canSkip(meal)) ({ onSkip(meal) }) else null,
-                    skipVisible = isToday
+                    skipVisible = isToday,
+                    pantryGap = pantryGaps[meal.id],
+                    onAddMissing = { onAddMissing(meal.id) }
                 )
                 // Fresh food (#396): a quiet note, with one swap, under a perishable meal planned late.
                 freshNudges[meal.id]?.let { nudge ->
@@ -733,7 +804,9 @@ private fun MealRow(
     onMove: () -> Unit,
     onRemove: () -> Unit,
     onSkip: (() -> Unit)? = null,
-    skipVisible: Boolean = false
+    skipVisible: Boolean = false,
+    pantryGap: PantryGap? = null,
+    onAddMissing: () -> Unit = {}
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Box {
@@ -754,7 +827,7 @@ private fun MealRow(
                     model = meal.imageUrl,
                     recipe = NoPhotoSource(meal.recipeUid ?: "recipe-${meal.recipeId}", meal.title.orEmpty(), meal.language),
                     contentDescription = null,
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp))
+                    modifier = Modifier.size(44.dp).clip(Corners.Photo)
                 )
                 Spacer(Modifier.width(12.dp))
             }
@@ -771,6 +844,8 @@ private fun MealRow(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    // The pantry note (#456): information, not an alarm. Muted, small, no icon.
+                    pantryGap?.let { gap -> PantryGapNote(meal.id, gap, onAddMissing) }
                 } else {
                     Text(
                         meal.note.orEmpty(),
@@ -851,7 +926,7 @@ private fun AddToDaySheet(
                     onValueChange = onQueryChange,
                     label = { Text(stringResource(R.string.label_search_or_note)) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = Corners.Field,
                     modifier = Modifier.fillMaxWidth().testTag("addSearch")
                 )
                 if (adding.query.isNotBlank()) {

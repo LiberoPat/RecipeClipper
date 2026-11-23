@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
@@ -29,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeCounts
 import com.example.recipeclipper.data.model.RecipeFilter
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * The Recipes filter (#345, V1 "Say what it is"): All, In a list and Not in a list as plain text
@@ -70,7 +70,7 @@ internal fun filterLabel(filter: RecipeFilter): Int = when (filter) {
 
 @Composable
 private fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(50)
+    val shape = Corners.Pill
     // The 48dp touch target is the outer box; the pill itself is the smaller shape inside it.
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -107,7 +107,7 @@ internal fun CullNote(keep: Int, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(Corners.Card)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 12.dp, vertical = 10.dp)
             .testTag("recipesCullNote")

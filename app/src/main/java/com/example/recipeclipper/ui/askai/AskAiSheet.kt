@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +45,7 @@ import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.data.model.Recipe
 import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.recipe.SectionHeading
+import com.example.recipeclipper.ui.theme.Corners
 
 /** The route's [AskAiViewModel], or null with the `askAi` flag off (#87): what every route that shows a recipe passes. */
 @Composable
@@ -99,7 +99,7 @@ fun AskAiSheet(
                 },
                 minLines = 2,
                 maxLines = 4,
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Field,
                 modifier = Modifier.fillMaxWidth().testTag("askAiField")
             )
             Spacer(Modifier.height(8.dp))
@@ -138,7 +138,7 @@ fun AskAiSheet(
                 onClick = {
                     viewModel.onPasteAnswer(readClipboard(context)) { target -> dismiss(); onOpenPasted(target) }
                 },
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Pill,
                 modifier = Modifier.fillMaxWidth().testTag("askAiPaste")
             ) {
                 Text(stringResource(R.string.ask_ai_paste))
@@ -194,7 +194,7 @@ fun ChangeRecipeSheet(recipe: Recipe, onDismiss: () -> Unit, viewModel: AskAiVie
                 placeholder = { Text(stringResource(R.string.change_recipe_placeholder)) },
                 minLines = 2,
                 maxLines = 4,
-                shape = RoundedCornerShape(12.dp),
+                shape = Corners.Field,
                 modifier = Modifier.fillMaxWidth().testTag("changeRecipeField")
             )
             Spacer(Modifier.height(16.dp))
@@ -255,7 +255,7 @@ private fun PromptButtons(enabled: Boolean, copied: Boolean, onCopy: () -> Unit,
         Button(
             onClick = onCopy,
             enabled = enabled,
-            shape = RoundedCornerShape(12.dp),
+            shape = Corners.Pill,
             modifier = Modifier.weight(1f).testTag("askAiCopy")
         ) {
             Text(stringResource(if (copied) R.string.ask_ai_copied else R.string.ask_ai_copy))
@@ -263,7 +263,7 @@ private fun PromptButtons(enabled: Boolean, copied: Boolean, onCopy: () -> Unit,
         OutlinedButton(
             onClick = onShare,
             enabled = enabled,
-            shape = RoundedCornerShape(12.dp),
+            shape = Corners.Pill,
             modifier = Modifier.weight(1f).testTag("askAiShare")
         ) {
             Text(stringResource(R.string.ask_ai_share))

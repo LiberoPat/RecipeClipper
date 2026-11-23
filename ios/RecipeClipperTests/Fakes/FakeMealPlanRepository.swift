@@ -22,6 +22,8 @@ final class FakeMealPlanRepository: MealPlanRepository {
     let meals = CurrentValueSubject<[PlannedMeal], Never>([])
     /// recipeId → title, for meals added through `addRecipe`.
     var titles: [Int64: String] = [:]
+    /// recipeId → its English ingredient lines, joined into meals added through `addRecipe` (#456).
+    var lines: [Int64: [String]] = [:]
 
     private var nextId: Int64 = 1000
     let menus = CurrentValueSubject<[WeekMenu], Never>([])
@@ -59,7 +61,8 @@ final class FakeMealPlanRepository: MealPlanRepository {
         nextId += 1
         meals.value.append(PlannedMeal(
             id: nextId, day: day, mealTypeId: mealTypeId, recipeId: recipeId,
-            title: titles[recipeId] ?? "Recipe \(recipeId)", imageUrl: nil, servings: servings, note: nil
+            title: titles[recipeId] ?? "Recipe \(recipeId)", imageUrl: nil, servings: servings, note: nil,
+            language: lines[recipeId] == nil ? nil : "en", ingredients: lines[recipeId] ?? []
         ))
         return true
     }
