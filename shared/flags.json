@@ -245,6 +245,12 @@
       "description": "The top of Recipes redesigned (#449, design B; with libraryFirst): the title row is Recipes, the + and a ⋮ menu holding Select and Settings (no gear, no Select button); the views are one segmented shelf of five cells (Lists, Not in a list, Cooked, Typed by you, From a chat) above search, each an icon, its count and its name; the three quick filters move into a sheet behind a filter button at the end of the search field, badged with how many are on, and those on show under search as removable pills with Clear; selecting gains Select all. Off, the top is as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 449
+    },
+    {
+      "key": "groceryPantryLabel",
+      "description": "Say why a line starts unticked (#457): in the Add to groceries sheet, a line that starts unticked because the pantry has it (#51) is marked with a muted \"In your pantry\" under its text, and the mark stays if the cook ticks it. Which lines start ticked, the button and what is added are unchanged. Off, the sheet is as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 457
     }
   ]
 }
