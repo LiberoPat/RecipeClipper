@@ -9,8 +9,6 @@ struct AskAiSheet: View {
     let vm: AskAiViewModel
     /// "Paste the answer" (#372): where the pasted text leads, for the screen to open.
     var onOpenPasted: (PasteTarget) -> Void = { _ in }
-    /// The Pro screen (#413): the locked choices of Plan my week open it, the host closing the sheet first.
-    var onOpenPro: () -> Void = {}
 
     var body: some View {
         let state = vm.uiState
@@ -38,10 +36,6 @@ struct AskAiSheet: View {
                 .padding(.top, 8)
                 // The plan's own choices (#392, #367), under the flag, once it is the chosen prompt.
                 if state.plan && state.kind == .planMyWeek { PlanOptions(vm: vm, state: state) }
-                // Without Pro (#413) the plan is the free week of dinners; its choices are one locked line.
-                if state.planLocked && state.kind == .planMyWeek {
-                    ProTeaserRow(text: Strings.proTeaserPlan, action: onOpenPro).padding(.top, 4)
-                }
                 PromptButtons(
                     enabled: state.canSend, copied: state.copied,
                     prompt: { vm.prompt(words: Strings.askAiWords) }, onCopied: vm.onCopied

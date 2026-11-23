@@ -61,9 +61,7 @@ fun SettingsSectionScreen(
     section: SettingsSection,
     onBack: () -> Unit,
     onShowTips: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel(),
-    // The Pro screen (#413): a locked Week reminder's switch opens it.
-    onOpenPro: () -> Unit = {}
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -118,7 +116,6 @@ fun SettingsSectionScreen(
         onImportRecipeKeeper = { recipeKeeperPicker.launch(RECIPE_KEEPER_MIME_TYPES) },
         onImportMealie = { mealiePicker.launch(MEALIE_MIME_TYPES) },
         onChooseFolder = { folderPicker.launch(null) },
-        onOpenPro = onOpenPro,
         onWeekReminderChange = { kind, on ->
             // Asking is a platform effect, so it lives here: only when the cook turns one on, never
             // on launch (#397, as #52).
@@ -187,7 +184,6 @@ private class SectionActions(
     val onImportRecipeKeeper: () -> Unit,
     val onImportMealie: () -> Unit,
     val onChooseFolder: () -> Unit,
-    val onOpenPro: () -> Unit,
     val onWeekReminderChange: (MealReminderKind, Boolean) -> Unit,
     val onExpiryRemindersChange: (Boolean) -> Unit
 )
@@ -256,7 +252,7 @@ private fun LazyListScope.sectionRows(
                 )
             }
             if (state.showsWeekReminders) {
-                WeekReminderRows(state, actions.onWeekReminderChange, viewModel::onWeekReminderTime, actions.onOpenPro)
+                WeekReminderRows(state, actions.onWeekReminderChange, viewModel::onWeekReminderTime)
             }
         }
         SettingsSection.PANTRY -> item(key = "pantry") {

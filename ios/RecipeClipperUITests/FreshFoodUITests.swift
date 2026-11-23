@@ -33,7 +33,7 @@ final class FreshFoodUITests: RecipeUITestCase {
     }
 
     func testPerishablesFiveDaysOutAreBuyLaterAndTheSwapBringsThemBackToNow() {
-        launch(.standard, flags: ["shopForWeek", "freshFood"])
+        launch(.standard, flags: ["shopForWeek", "freshFood", "proUnlock"])
         require(tabBar.buttons["Plan"], "the Plan tab").tap()
         require(app.staticTexts["weekRange"], "the Week")
         plan("Spaghetti Carbonara", on: today)

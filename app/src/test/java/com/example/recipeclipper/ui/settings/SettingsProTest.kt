@@ -11,7 +11,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.R
 import com.example.recipeclipper.data.DefaultProAccess
+import com.example.recipeclipper.data.ProExtra
 import com.example.recipeclipper.data.UnlockState
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.Flag
@@ -23,7 +25,7 @@ import com.example.recipeclipper.fake.FakeBackupFiles
 import com.example.recipeclipper.fake.FakeBackupRepository
 import com.example.recipeclipper.fake.FakeEntitlements
 import com.example.recipeclipper.fake.FakeFeatureFlagStore
-import org.junit.Assert.assertEquals
+import com.example.recipeclipper.fake.FakeProAccess
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -32,9 +34,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Settings under Pro (#413): the Pro row in place of the free tier's, and the Week reminders,
- * locked but never taken away. A real [SettingsViewModel] over a locked store, with `proUnlock`
- * on (its default). The flag-off app is `SettingsUnlockTest`'s and `SettingsWeekRemindersTest`'s.
+ * Settings and Pro (#413). Pro adds nothing today (owner, 2026-11-23: the Week extras are free, Pro
+ * is kept for future AI features), so there is no Pro row; the first extra brings it back. And the
+ * Week reminders are free for everyone. A real [SettingsViewModel] with `proUnlock` on (its default).
+ * The flag-off app is `SettingsUnlockTest`'s and `SettingsWeekRemindersTest`'s. iOS: `ProTests`.
  */
 @RunWith(AndroidJUnit4::class)
 class SettingsProTest {
@@ -44,23 +47,38 @@ class SettingsProTest {
 
     private val flags = FeatureFlags(FakeFeatureFlagStore(), FlagRegistry.definitions, isDebug = true)
     private val entitlements = FakeEntitlements()
-    private var proOpened = 0
+    private val testExtra = ProExtra(R.string.action_move, R.string.action_remove_from_plan)
 
     private fun vm(preferences: FakeAppPreferences = FakeAppPreferences()) = SettingsViewModel(
         preferences, FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo(), flags,
         entitlements = entitlements, pro = DefaultProAccess(flags, entitlements)
     )
 
+    private fun vmWithAnExtra() = SettingsViewModel(
+        FakeAppPreferences(), FakeBackupRepository(), FakeBackupFiles(), FakeAppInfo(), flags,
+        entitlements = entitlements, pro = FakeProAccess(flags, entitlements, listOf(testExtra))
+    )
+
     private fun showWeek(vm: SettingsViewModel) = compose.setContent {
-        SettingsSectionScreen(SettingsSection.WEEK, onBack = {}, viewModel = vm, onOpenPro = { proOpened++ })
+        SettingsSectionScreen(SettingsSection.WEEK, onBack = {}, viewModel = vm)
     }
 
     @Test
-    fun theProRowTakesTheFreeTiersPlaceEvenWithFreeTierOn() {
+    fun withNoProExtrasThereIsNoProRowEvenWithTheFlagOn() {
         flags.set(Flag.FREE_TIER, true)
         val vm = vm()
         compose.waitForIdle()
+        assertTrue(flags.isOn(Flag.PRO_UNLOCK))
+        assertFalse(SettingsSection.PRO in vm.uiState.value.sections)
+        assertFalse(vm.uiState.value.showsPro)
+    }
+
+    @Test
+    fun theProRowComesBackWhenProAddsSomething() {
+        val vm = vmWithAnExtra()
+        compose.waitForIdle()
         val state = vm.uiState.value
+        assertTrue(state.showsPro)
         assertTrue(SettingsSection.PRO in state.sections)
         assertFalse(SettingsSection.UNLIMITED in state.sections)
         assertNull(state.unlock)
@@ -70,87 +88,51 @@ class SettingsProTest {
     @Test
     fun theProRowSaysUnlockedForAnOld107Unlock() {
         entitlements.state.value = UnlockState(unlocked = true)
-        val vm = vm()
+        val vm = vmWithAnExtra()
         compose.setContent { SettingsScreen(onBack = {}, onOpenSection = {}, onOpenDeveloperSettings = {}, viewModel = vm) }
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Pith Pro"))
         compose.onNode(hasText("Pith Pro") and hasText("Unlocked") and hasClickAction()).assertIsDisplayed()
     }
 
     @Test
-    fun withTheFlagOffThereIsNoProRow() {
+    fun withTheFlagOffThereIsNoProRowEvenWithAnExtra() {
         flags.set(Flag.PRO_UNLOCK, false)
-        val vm = vm()
+        val vm = vmWithAnExtra()
         compose.waitForIdle()
         assertFalse(SettingsSection.PRO in vm.uiState.value.sections)
-        assertFalse(vm.uiState.value.remindersLocked)
     }
 
     @Test
-    fun lockedTheDefaultEveningReminderShowsOffWithTheBadgeAndOpensPro() {
+    fun theRemindersAreFreeTheDefaultEveningOneIsOnAndNothingCarriesABadge() {
         val preferences = FakeAppPreferences() // evening on by default, never set by the cook
         val vm = vm(preferences)
         showWeek(vm)
-        assertTrue(vm.uiState.value.remindersLocked)
-        assertFalse(vm.uiState.value.eveningReminder)
-
-        compose.onNodeWithTag("reminderSwitch-EVENING").assertIsOff()
-        compose.onNodeWithTag("reminderSwitch-EVENING").performClick()
-        assertEquals(1, proOpened)
-        // Nothing was written: the cook's setting is as it was.
-        assertFalse(preferences.eveningReminderChosen)
-        compose.onNodeWithTag("reminderSwitch-TONIGHT").performClick()
-        assertEquals(2, proOpened)
-        assertFalse(preferences.tonightReminder)
-    }
-
-    @Test
-    fun lockedAReminderTheCookTurnedOnStaysOnAndCanBeTurnedOff() {
-        val preferences = FakeAppPreferences(tonightReminder = true, eveningReminderChosen = true)
-        val vm = vm(preferences)
-        showWeek(vm)
+        assertTrue(vm.uiState.value.eveningReminder)
         compose.onNodeWithTag("reminderSwitch-EVENING").assertIsOn()
-        compose.onNodeWithTag("reminderSwitch-TONIGHT").assertIsOn()
-        compose.onNodeWithTag("reminderTime-TONIGHT").assertIsDisplayed()
-
-        compose.onNodeWithTag("reminderSwitch-TONIGHT").performClick()
-        compose.waitForIdle()
-        assertFalse(preferences.tonightReminder)
-        assertEquals(0, proOpened)
-        // Off now, and locked: on again needs Pro.
-        compose.onNodeWithTag("reminderSwitch-TONIGHT").performClick()
-        assertEquals(1, proOpened)
+        compose.onNodeWithTag("reminderSwitch-TONIGHT").assertIsOff()
+        compose.onNodeWithTag("proBadge", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
-    fun lockedTheViewModelWontTurnAReminderOn() {
-        val preferences = FakeAppPreferences(eveningReminder = false, eveningReminderChosen = true)
-        val vm = vm(preferences)
-        vm.onWeekReminderPermission(MealReminderKind.EVENING, true)
-        assertFalse(preferences.eveningReminder)
-        assertFalse(vm.uiState.value.eveningReminder)
-    }
-
-    @Test
-    fun withProTheDefaultIsOnAndTheSwitchesWorkAsBefore() {
-        entitlements.state.value = UnlockState(unlocked = true)
+    fun anyoneCanTurnAReminderOnAndOffWithNoProScreen() {
         val preferences = FakeAppPreferences()
         val vm = vm(preferences)
         showWeek(vm)
-        assertFalse(vm.uiState.value.remindersLocked)
-        compose.onNodeWithTag("reminderSwitch-EVENING").assertIsOn()
-        vm.onWeekReminderPermission(MealReminderKind.TONIGHT, true)
+        compose.onNodeWithTag("reminderSwitch-TONIGHT").performClick()
         compose.waitForIdle()
         assertTrue(preferences.tonightReminder)
-        assertEquals(0, proOpened)
+        compose.onNodeWithTag("reminderSwitch-TONIGHT").assertIsOn()
+        compose.onNodeWithTag("reminderSwitch-TONIGHT").performClick()
+        compose.waitForIdle()
+        assertFalse(preferences.tonightReminder)
     }
 
     @Test
-    fun buyingProWhileThePageIsOpenUnlocksTheReminders() {
-        val vm = vm()
-        showWeek(vm)
-        compose.onNodeWithTag("reminderSwitch-EVENING").assertIsOff()
-        entitlements.state.value = UnlockState(unlocked = true)
-        compose.waitForIdle()
-        compose.onNodeWithTag("reminderSwitch-EVENING").assertIsOn()
+    fun theViewModelTurnsAReminderOnWithoutPro() {
+        val preferences = FakeAppPreferences(eveningReminder = false)
+        val vm = vm(preferences)
+        vm.onWeekReminderPermission(MealReminderKind.EVENING, true)
+        assertTrue(preferences.eveningReminder)
+        assertTrue(vm.uiState.value.eveningReminder)
     }
 }

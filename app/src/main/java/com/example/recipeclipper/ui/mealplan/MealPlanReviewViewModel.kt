@@ -7,7 +7,6 @@ import com.example.recipeclipper.data.Entitlements
 import com.example.recipeclipper.data.LibraryPolicy
 import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.PlanCalendar
-import com.example.recipeclipper.data.ProAccess
 import com.example.recipeclipper.data.PurchaseOutcome
 import com.example.recipeclipper.data.RecipeRepository
 import com.example.recipeclipper.data.flags.FeatureFlags
@@ -97,9 +96,7 @@ data class MealPlanReviewUiState(
     /** A purchase from the review's Unlock that is pending or failed; shown until the next change. */
     val unlockNotice: PurchaseOutcome? = null,
     /** Fresh food (#396): the quiet notes, by [ReviewItem.index]; none with the flag off. */
-    val nudges: Map<Int, FreshNudge> = emptyMap(),
-    /** Without Pro (#413) a note's swap carries the Pro badge and opens the Pro screen. The review itself stays free. */
-    val proLocked: Boolean = false
+    val nudges: Map<Int, FreshNudge> = emptyMap()
 ) {
     val tickedCount: Int get() = items.count { it.ticked }
 
@@ -135,9 +132,7 @@ class MealPlanReviewViewModel @Inject constructor(
     private val sharedTexts: SharedTextInbox = SharedTextInbox(),
     @DefaultDispatcher private val reading: CoroutineDispatcher = Dispatchers.Default,
     // Plan my week's choices (#392, #367): null reads the answer as before, dinners and new recipes.
-    private val flags: FeatureFlags? = null,
-    // Pro (#413): without it nothing is gated.
-    private val pro: ProAccess = ProAccess.Ungated
+    private val flags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val entry: SharedTextInbox.PlanEntry? = savedStateHandle.get<String>(PLAN_ARG)
@@ -148,7 +143,7 @@ class MealPlanReviewViewModel @Inject constructor(
 
     private val today = calendar.today()
     private val _uiState = MutableStateFlow(
-        MealPlanReviewUiState(days = (0 until PlanDays.SHEET_DAYS).map { today + it }, proLocked = pro.current.locked)
+        MealPlanReviewUiState(days = (0 until PlanDays.SHEET_DAYS).map { today + it })
     )
     val uiState: StateFlow<MealPlanReviewUiState> = _uiState.asStateFlow()
 
@@ -191,9 +186,6 @@ class MealPlanReviewViewModel @Inject constructor(
                     )
                 )
             }
-        }
-        viewModelScope.launch {
-            pro.states.collect { state -> _uiState.update { it.copy(proLocked = state.locked) } }
         }
         viewModelScope.launch {
             combine(policy.limits, recipes.observeCount()) { limit, count -> roomOf(limit, count) }
@@ -253,7 +245,6 @@ class MealPlanReviewViewModel @Inject constructor(
      * Only on the tap; nothing is saved before Save either.
      */
     fun onSwap(index: Int) {
-        if (_uiState.value.proLocked) return
         val nudge = _uiState.value.nudges[index] ?: return
         val partner = nudge.swapKey.toInt()
         change { items ->

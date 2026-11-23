@@ -188,7 +188,7 @@ final class AppContainer {
     func startMealReminders(_ scheduler: MealReminderScheduler) {
         let coordinator = MealReminderCoordinator(
             mealPlan: mealPlanRepository, recipes: recipeRepository, preferences: preferences,
-            flags: featureFlags, scheduler: scheduler, clock: clock, pro: proAccess
+            flags: featureFlags, scheduler: scheduler, clock: clock
         )
         coordinator.start()
         mealReminders = coordinator
@@ -383,11 +383,11 @@ final class AppContainer {
         WeekViewModel(
             plan: mealPlanRepository, recipes: recipeRepository, calendar: planCalendar,
             skipOn: { [featureFlags] in featureFlags.isOn(.skipTonight) },
-            groceries: groceryRepository, freshFood: featureFlags.isOn(.freshFood), pro: proAccess
+            groceries: groceryRepository, freshFood: featureFlags.isOn(.freshFood)
         )
     }
 
-    /// The Pro screen (#413): every locked Week extra, and Settings' Pro row, open it.
+    /// The Pro screen (#413): Settings' Pro row opens it, while Pro adds something.
     func makeProViewModel() -> ProViewModel {
         ProViewModel(pro: proAccess)
     }
@@ -439,10 +439,10 @@ final class AppContainer {
         let preferences = preferences, clock = clock
         let pasted = pastedTextRouter
         let mealPlan = mealPlanRepository, choices = planChoices
-        return { [featureFlags, proAccess] in
+        return { [featureFlags] in
             AskAiViewModel(
                 pantry: pantry, lists: lists, recipes: recipes, preferences: preferences, clock: clock, pasted: pasted,
-                mealPlan: mealPlan, choices: choices, planPlus: { featureFlags.isOn(.planMyWeekPlus) }, pro: proAccess
+                mealPlan: mealPlan, choices: choices, planPlus: { featureFlags.isOn(.planMyWeekPlus) }
             )
         }
     }
@@ -490,8 +490,7 @@ final class AppContainer {
     func makeWhatINeedViewModel(weekStart: Int64) -> WhatINeedViewModel {
         WhatINeedViewModel(
             weekStart: weekStart, groceries: groceryRepository, pantry: pantryRepository, preferences: preferences,
-            decisions: decisionRepository, calendar: planCalendar, freshFood: featureFlags.isOn(.freshFood),
-            pro: proAccess
+            decisions: decisionRepository, calendar: planCalendar, freshFood: featureFlags.isOn(.freshFood)
         )
     }
 
@@ -562,7 +561,7 @@ final class AppContainer {
         MealPlanReviewViewModel(
             text: text, recipes: recipeRepository, plan: mealPlanRepository, calendar: planCalendar,
             limit: { [libraryPolicy] in libraryPolicy.limit }, entitlements: entitlements,
-            freshFood: featureFlags.isOn(.freshFood), planPlus: featureFlags.isOn(.planMyWeekPlus), pro: proAccess,
+            freshFood: featureFlags.isOn(.freshFood), planPlus: featureFlags.isOn(.planMyWeekPlus),
             tipsOn: featureFlags.isOn(.recipeTips)
         )
     }

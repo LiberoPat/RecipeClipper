@@ -14,8 +14,6 @@ struct WhatINeedScreen: View {
     var shopForWeek = false
     var recipeTags = false
     var onOpenRecipe: (_ recipeId: Int64, _ servings: Int?) -> Void = { _, _ in }
-    /// The Pro screen (#413): without Pro, the locked Buy later line opens it.
-    var onOpenPro: () -> Void = {}
 
     var body: some View {
         let state = vm.uiState
@@ -42,10 +40,6 @@ struct WhatINeedScreen: View {
                                 muted(trips != nil ? Strings.whatINeedNothingToBuyNow : Strings.whatINeedNothingToBuy)
                             } else {
                                 addButton(added: state.added, label: Strings.addToGroceries, id: "addBuyToGroceries", action: vm.onAddBuyToGroceries)
-                            }
-                            // Without Pro (#413): one list, all bought now, and the second trip as one locked line.
-                            if vm.showsSplitTeaser {
-                                ProTeaserRow(text: Strings.proTeaserFresh, action: onOpenPro)
                             }
                         }
                         .padding(.top, 18)

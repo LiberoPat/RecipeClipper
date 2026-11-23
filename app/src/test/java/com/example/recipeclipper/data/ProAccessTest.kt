@@ -78,17 +78,20 @@ class ProAccessTest {
         assertEquals(1, entitlements.restores)
     }
 
-    @Test fun `without Pro only a reminder the cook switched on runs`() {
-        val locked = ProState(gated = true)
-        val pro = ProState(gated = true, isPro = true)
-        // The evening reminder's default (on, never stored) is a Pro default.
-        assertFalse(ProReminders.runs(on = true, chosen = false, pro = locked))
-        assertTrue(ProReminders.runs(on = true, chosen = false, pro = pro))
-        // One the cook turned on keeps running: nothing already set up is taken away.
-        assertTrue(ProReminders.runs(on = true, chosen = true, pro = locked))
-        assertFalse(ProReminders.runs(on = false, chosen = true, pro = pro))
-        // Ungated (the flag off), as before.
-        assertTrue(ProReminders.runs(on = true, chosen = false, pro = ProState()))
+    @Test fun `Pro adds nothing today, so there is no Pro page`() = runTest {
+        assertTrue(ProExtras.all.isEmpty())
+        val pro = DefaultProAccess(flags, FakeEntitlements())
+        assertTrue(pro.current.gated)
+        assertTrue(pro.current.available.isEmpty())
+        assertFalse(pro.current.showsPage)
+        assertFalse(pro.states.first().showsPage)
+    }
+
+    @Test fun `the Pro page exists once the flag is on and there is an extra`() {
+        val extra = ProExtra(title = 1, body = 2)
+        assertTrue(ProState(gated = true, available = listOf(extra)).showsPage)
+        assertFalse(ProState(gated = false, available = listOf(extra)).showsPage)
+        assertFalse(ProState(gated = true, available = emptyList()).showsPage)
     }
 
     @Test fun `Ungated opens every extra`() {

@@ -60,9 +60,7 @@ fun MealPlanReviewScreen(
     onBack: () -> Unit,
     onFinished: (planned: Boolean) -> Unit,
     onOpenWeek: () -> Unit = { onFinished(true) },
-    viewModel: MealPlanReviewViewModel = hiltViewModel(),
-    /** The Pro screen (#413): without Pro, a fresh-food note's swap opens it. */
-    onOpenPro: () -> Unit = {}
+    viewModel: MealPlanReviewViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -146,9 +144,7 @@ fun MealPlanReviewScreen(
                         state.items.forEach { item ->
                             ReviewRow(
                                 item, state.days, state.meals, state.mealTypes, viewModel::onTick, viewModel::onDay,
-                                viewModel::onMeal, state.nudges[item.index],
-                                if (state.proLocked) ({ _ -> onOpenPro() }) else viewModel::onSwap,
-                                swapLocked = state.proLocked
+                                viewModel::onMeal, state.nudges[item.index], viewModel::onSwap
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
@@ -192,8 +188,7 @@ private fun ReviewRow(
     onDay: (Int, Long?) -> Unit,
     onMeal: (Int, Long) -> Unit,
     nudge: FreshNudge?,
-    onSwap: (Int) -> Unit,
-    swapLocked: Boolean = false
+    onSwap: (Int) -> Unit
 ) {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("mealplan_row_${item.index}")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -256,9 +251,7 @@ private fun ReviewRow(
             )
         }
         if (nudge != null) {
-            FreshNudgeNote(
-                nudge, { onSwap(item.index) }, Modifier.padding(start = 40.dp).testTag("mealplan_fresh_${item.index}"), locked = swapLocked
-            )
+            FreshNudgeNote(nudge, { onSwap(item.index) }, Modifier.padding(start = 40.dp).testTag("mealplan_fresh_${item.index}"))
         }
     }
 }

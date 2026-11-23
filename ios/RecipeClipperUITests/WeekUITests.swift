@@ -46,7 +46,7 @@ final class WeekUITests: RecipeUITestCase {
     /// moves it and every later meal on by a day, one Undo gives them back. The meals' places are
     /// read off the screen: each sits between its day's "+ Add" and the one before.
     func testSkipTonightPushesTheWeekBackADayAndUndoGivesItBack() {
-        launch(.weekPlan, flags: ["skipTonight"])
+        launch(.weekPlan, flags: ["skipTonight", "proUnlock"])
         require(tabBar.buttons["Plan"], "the Plan tab").tap()
         require(app.staticTexts["weekRange"], "the Week")
 
@@ -63,9 +63,12 @@ final class WeekUITests: RecipeUITestCase {
         XCTAssertLessThan(top(miso), top(todayAdd))
         XCTAssertLessThan(top(todayAdd), top(banana))
 
-        // Only today's meal shows Skip; it opens the three choices.
+        // Only today's meal shows Skip, free for everyone (owner, 2026-11-23: no Pro badge, even with
+        // `proUnlock` on); it opens the three choices.
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'skip-'")).count, 1)
-        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'skip-'")).firstMatch.tap()
+        let skip = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'skip-'")).firstMatch
+        XCTAssertFalse(skip.label.contains("Pro"), "no badge on Skip: \(skip.label)")
+        skip.tap()
         require(app.staticTexts["Skip Miso Soup"], "the Skip sheet")
         require(app.buttons["skipNextFreeDay"], "Move to the next free day")
         require(app.buttons["skipRemove"], "Remove from the plan")

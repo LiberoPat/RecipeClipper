@@ -1080,22 +1080,12 @@
     <string name="pro_badge">Pro</string>
     <string name="pro_title">Pith Pro</string>
     <string name="pro_intro">Extras for planning your week. Everything else in Pith stays free.</string>
-    <string name="pro_feature_fresh_title">Shop in two trips</string>
-    <string name="pro_feature_fresh_body">Buy fresh food later in the week, and see when a meal is planned later than its food keeps, with a one-tap swap.</string>
-    <string name="pro_feature_reminders_title">Evening reminders</string>
-    <string name="pro_feature_reminders_body">The evening before: tomorrow\'s meals and any step to start ahead. And an optional one on the day.</string>
-    <string name="pro_feature_skip_title">Skip a meal</string>
-    <string name="pro_feature_skip_body">Push the rest of the week back a day, or move a meal to the next free day, with one undo.</string>
-    <string name="pro_feature_plan_title">Plan my week, your way</string>
-    <string name="pro_feature_plan_body">Ask an AI for the meals and days you choose, from your own recipes, new ones or a mix.</string>
     <string name="pro_one_time">One-time purchase, never a subscription.</string>
     <string name="pro_unlock">Unlock Pro</string>
     <string name="pro_unlock_price">Unlock Pro for %1$s</string>
     <string name="pro_restore">Restore purchases</string>
     <string name="pro_unlocked">Pro is unlocked. Thank you!</string>
     <string name="pro_free_line">Free. No ads. No account. No subscription.</string>
-    <string name="pro_teaser_fresh">Buy fresh food later in the week</string>
-    <string name="pro_teaser_plan">Choose the meals, the first day and your own recipes</string>
     <!-- Step photos (#433) -->
     <string name="step_photo_open">Photo %1$d of step %2$d</string>
     <plurals name="step_photos_open">

@@ -26,7 +26,7 @@ data class ProUiState(
 )
 
 /**
- * The one explainer every locked Week extra opens (#413), and Settings' Pro page: what Pro adds,
+ * Settings' Pro page (#413), which opens only while Pro has an extra: what Pro adds,
  * the unlock (the one-time purchase of #107, now Pro) and Restore purchases. The price is the
  * store's, shown only once the store has given it.
  */

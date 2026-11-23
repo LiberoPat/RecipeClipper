@@ -3,8 +3,6 @@ package com.example.recipeclipper.ui.askai
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.Clock
-import com.example.recipeclipper.data.ProAccess
-import com.example.recipeclipper.data.ProState
 import com.example.recipeclipper.data.ListRepository
 import com.example.recipeclipper.data.MealPlanRepository
 import com.example.recipeclipper.data.PantryRepository
@@ -90,12 +88,7 @@ data class AskAiUiState(
     val useFavourites: Boolean = true,
     val skipCooked: Boolean = true,
     /** Many meals to write out: chat apps may cut the answer off. */
-    val longAnswer: Boolean = false,
-    /**
-     * Pro (#413): the `planMyWeekPlus` choices are Pro's, so without it [plan] is false (the free week
-     * of dinners, as before #392) and this is true: the sheet shows the choices as one locked line.
-     */
-    val planLocked: Boolean = false
+    val longAnswer: Boolean = false
 ) {
     /** The week's meals: every chosen meal on each of [AskAiPrompt.PLAN_DAYS] days. */
     val planSlots: Int get() = AskAiPrompt.PLAN_DAYS * chosenMeals.size
@@ -149,9 +142,7 @@ class AskAiViewModel @Inject constructor(
     // Plan my week with choices (#392, #367): the cook's meal types, what was chosen last, the flag.
     mealPlan: MealPlanRepository? = null,
     private val choices: PlanChoices? = null,
-    private val flags: FeatureFlags? = null,
-    // Pro (#413): without it nothing is gated.
-    pro: ProAccess = ProAccess.Ungated
+    private val flags: FeatureFlags? = null
 ) : ViewModel() {
 
     private class Data(
@@ -221,10 +212,7 @@ class AskAiViewModel @Inject constructor(
         Data(base.pantry, base.favourites, base.cooked, base.settings, types, every, allLists, inList)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, Data())
 
-    /** Pro as last heard (#413), kept by this ViewModel itself so [prompt] reads it with nothing collecting. */
-    private val proState: StateFlow<ProState> = pro.states.stateIn(viewModelScope, SharingStarted.Eagerly, pro.current)
-
-    val uiState: StateFlow<AskAiUiState> = combine(input, planInput, data, proState) { input, plan, data, _ ->
+    val uiState: StateFlow<AskAiUiState> = combine(input, planInput, data) { input, plan, data ->
         view(input, plan, data)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AskAiUiState())
 
@@ -238,7 +226,7 @@ class AskAiViewModel @Inject constructor(
             favouriteCount = data.favourites.size,
             cookedCount = data.cooked.size
         )
-        if (!plusOn()) return base.copy(planLocked = flags?.isOn(Flag.PLAN_MY_WEEK_PLUS) == true)
+        if (!plusOn()) return base
         val chosen = MealType.chosenKeys(data.mealTypes, plan.meals ?: remembered)
         val planLists = data.lists.filter { it.recipeCount > 0 }.map { PlanListChoice(it.id, it.name) }
         val listId = plan.listId?.takeIf { id -> planLists.any { it.id == id } }
@@ -263,8 +251,8 @@ class AskAiViewModel @Inject constructor(
         )
     }
 
-    /** The plan's choices are offered: the flag is on and, under Pro (#413), the cook has it. */
-    private fun plusOn(): Boolean = flags?.isOn(Flag.PLAN_MY_WEEK_PLUS) == true && proState.value.extras
+    /** The plan's choices are offered: the flag is on. */
+    private fun plusOn(): Boolean = flags?.isOn(Flag.PLAN_MY_WEEK_PLUS) == true
 
     fun onRequestChange(text: String) = input.update { it.copy(request = text, copied = false, pasteProblem = null) }
 
