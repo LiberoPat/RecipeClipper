@@ -7648,6 +7648,10 @@ platforms. Off, the Plan is as before.
   the pantry's to say, so a tick names it again until "Done shopping" restocks the pantry, and then
   the note goes. Everything is collected live (the meals held, today, the pantry, the answers, the
   list), never read once.
+- **The photo stays put** (2026-11-23): opening the note grows the row downward only. Android's row
+  centred the thumbnail (and servings, Skip) on the text column, so they slid down as it grew; while
+  the note is open they now stay centred on the closed row's height (`CollapsedCentred`; `WeekPantryNoteScreenTest`).
+  iOS never shifted (its note sits under the row's `HStack`), so it is unchanged.
 - **Not built**: a per-meal menu item (the row's menu stays Move, Skip, Remove), a note for the add
   sheets, any count of quantities.
 
