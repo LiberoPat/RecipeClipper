@@ -97,6 +97,8 @@ enum class Flag(val key: String) {
     TODAY_CARD_CLOSE("todayCardClose"),
     /** The top of Recipes, design B (#449): a ⋮ menu with Select and Settings, a views shelf above search, the filters in a sheet behind search with pills for those on. */
     RECIPES_TOP_B("recipesTopB"),
+    /** Say why a line starts unticked (#457): the Add to groceries sheet marks a line the pantry has "In your pantry". */
+    GROCERY_PANTRY_LABEL("groceryPantryLabel"),
     /** Recipes' views folded into the filter sheet (#454): a Lists pill left of search, Cooked and Came from as choices, Not in a list as a switch; needs [RECIPES_TOP_B]. */
     RECIPES_FILTERS("recipesFilters");
 

@@ -1867,6 +1867,20 @@ The third tab of #46, still behind the #47 flag.
   button. It's a deliberate act, like "Add to plan", since the point is to
   untick what's in the cupboard first. "Checking off offers Add to pantry"
   waits for the pantry (#51).
+  - **Why a line starts unticked** (#457, `groceryPantryLabel`; the owner saw unticked lines and
+    guessed "already on my list"). The only reason a line starts unticked is the pantry (#51), so
+    each such line carries a muted "In your pantry" (`what_i_need_have`, the same words as What I
+    need's section, bodySmall in the muted colour) under its text. The ViewModel says which:
+    `AddToGroceriesUiState.inPantry`, set with the first unticks and never changed by a tick, so the
+    label stays when the cook ticks the line anyway (it is about the pantry, not the tick). Which
+    lines start ticked, the button and what is added are unchanged. The same sheet serves the
+    recipe menu and, with `shopForWeek` off, the Week's "Add this week's ingredients": both show
+    it. Shop for this week (Buy now / Buy later) is a different screen with its own In your pantry
+    section and does not use this sheet. Nothing detects "already on the grocery list" (the sheet
+    adds lines, and combining happens on the list), and none is shown. iOS reads the flag through an
+    environment value set at the root, as `noPhotoImage`. Tests: `GroceriesPantryTest`,
+    `AddToGroceriesPantryLabelTest`; iOS `GroceriesViewModelTests`,
+    `AddToGroceriesPantryLabelUITests`.
 - **In the export file** (#26) with the pantry and the plan: see the Pantry
   section's Export note.
 - **The screen in short** (CLAUDE.md's summary until September 2026, with

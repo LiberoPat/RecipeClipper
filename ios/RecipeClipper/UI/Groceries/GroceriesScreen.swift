@@ -499,12 +499,27 @@ private struct MoveToAisleSheet: View {
     }
 }
 
+/// Whether the `groceryPantryLabel` flag (#457) is on, set once at the root so the Add to groceries
+/// sheet, shown from the recipe and the Week, reads it without the flags being passed down. Off (the
+/// default, and what a screen test sees unless it sets it), the sheet is as it was.
+private struct GroceryPantryLabelKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var groceryPantryLabel: Bool {
+        get { self[GroceryPantryLabelKey.self] }
+        set { self[GroceryPantryLabelKey.self] = newValue }
+    }
+}
+
 /// "Add to groceries" (#50, Paprika's basket): every line to buy, grouped by recipe (with its
 /// day, from the Week), each ticked to start. Untick what's already in the cupboard, then one
 /// button adds the rest. Closes once they're added.
 struct AddToGroceriesSheet: View {
     let vm: AddToGroceriesViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.groceryPantryLabel) private var groceryPantryLabel
 
     var body: some View {
         let state = vm.uiState
@@ -537,8 +552,15 @@ struct AddToGroceriesSheet: View {
                                 Button { vm.onToggle(id) } label: {
                                     HStack(spacing: 12) {
                                         CheckboxGlyph(checked: ticked)
-                                        Text(line).textStyle(Typography.bodyLarge).foregroundStyle(Palette.onBackground)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        VStack(alignment: .leading, spacing: 0) {
+                                            Text(line).textStyle(Typography.bodyLarge).foregroundStyle(Palette.onBackground)
+                                            // Why the line started unticked (#457): the pantry has it. A fact
+                                            // about the pantry, so it stays when the cook ticks the line anyway.
+                                            if groceryPantryLabel && state.inPantry.contains(id) {
+                                                Text(Strings.whatINeedHave).textStyle(Typography.bodySmall).foregroundStyle(Palette.muted)
+                                            }
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                     }
                                     .padding(.vertical, 4)
                                     .contentShape(Rectangle())
