@@ -23,7 +23,7 @@
 (function () {
   if (window.RC) return;
 
-  var PAPRIKA = '#BF4A2B';
+  var ACCENT = '#2C7A4A'; // the theme's basil (Accent, #455)
 
   // The apps hear this page's main frame only (#235), never an ad's or another site's iframe.
   // Android: RCBridge, a message listener that reports the frame; on a WebView too old for one,
@@ -43,34 +43,34 @@
 
   var style = document.createElement('style');
   style.textContent =
-    '.rc-marked{box-shadow:inset 3px 0 0 ' + PAPRIKA + ' !important;' +
-    'background-color:rgba(191,74,43,.08) !important}' +
-    '.rc-photo{outline:3px solid ' + PAPRIKA + ' !important;outline-offset:-3px}' +
+    '.rc-marked{box-shadow:inset 3px 0 0 ' + ACCENT + ' !important;' +
+    'background-color:rgba(44,122,74,.08) !important}' +
+    '.rc-photo{outline:3px solid ' + ACCENT + ' !important;outline-offset:-3px}' +
     '#rc-layer{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:2147483647}' +
     '.rc-tag{position:absolute;transform:translateX(-100%);font:600 12px/1 -apple-system,system-ui,sans-serif;' +
-    'color:#fff;background:' + PAPRIKA + ';border-radius:10px;padding:5px 9px;white-space:nowrap;' +
+    'color:#fff;background:' + ACCENT + ';border-radius:10px;padding:5px 9px;white-space:nowrap;' +
     '-webkit-user-select:none;user-select:none;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}' +
     // Field first (#237): the blocks a tap selected, and the page's own drag handles for them.
-    '.rc-pending{background-color:rgba(191,74,43,.14) !important;outline:2px solid rgba(191,74,43,.6) !important;' +
+    '.rc-pending{background-color:rgba(44,122,74,.14) !important;outline:2px solid rgba(44,122,74,.6) !important;' +
     'outline-offset:2px;border-radius:2px}' +
     '#rc-handles{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:2147483647}' +
     '.rc-handle{position:absolute;width:44px;height:44px;margin-left:-22px;touch-action:none;' +
     '-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}' +
-    '.rc-handle::after{content:"";position:absolute;left:11px;width:22px;height:22px;background:' + PAPRIKA + ';' +
+    '.rc-handle::after{content:"";position:absolute;left:11px;width:22px;height:22px;background:' + ACCENT + ';' +
     'box-shadow:0 1px 3px rgba(0,0,0,.3)}' +
     '.rc-handle-start::after{bottom:4px;border-radius:50% 50% 0 50%}' +
     '.rc-handle-end::after{top:4px;border-radius:0 50% 50% 50%}' +
-    'html.rc-armed{-webkit-tap-highlight-color:rgba(191,74,43,.18)}' +
+    'html.rc-armed{-webkit-tap-highlight-color:rgba(44,122,74,.18)}' +
     // Guided steps (#251): while a field is armed, a light dotted outline on what a tap takes,
     // so it is plain what to tap. Name: a paragraph, list item or heading. Ingredients or Steps:
     // a list comes whole, so the list is outlined rather than its items. Photo: the images.
     'html[data-rc-outline="TEXT"] :is(p,h1,h2,h3,h4,h5,h6,blockquote,dd,dt,pre),' +
     'html[data-rc-outline="TEXT"][data-rc-armed="NAME"] li,' +
     'html[data-rc-outline="TEXT"]:not([data-rc-armed="NAME"]) :is(ul,ol)' +
-    '{outline:1.5px dotted rgba(191,74,43,.55);outline-offset:2px}' +
+    '{outline:1.5px dotted rgba(44,122,74,.55);outline-offset:2px}' +
     'html[data-rc-outline="TEXT"]:not([data-rc-armed="NAME"]) :is(ul,ol) :is(ul,ol),' +
     'html[data-rc-outline="TEXT"]:not([data-rc-armed="NAME"]) li > p:only-child{outline:none}' +
-    'html[data-rc-outline="IMAGES"] img{outline:2px dotted rgba(191,74,43,.8) !important;outline-offset:-2px;cursor:pointer}';
+    'html[data-rc-outline="IMAGES"] img{outline:2px dotted rgba(44,122,74,.8) !important;outline-offset:-2px;cursor:pointer}';
   (document.head || document.documentElement).appendChild(style);
 
   // --- Selection ---

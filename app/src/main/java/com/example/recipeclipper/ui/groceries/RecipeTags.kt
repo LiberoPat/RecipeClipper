@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,10 +34,11 @@ import com.example.recipeclipper.data.model.GroceryRecipeTags
 import com.example.recipeclipper.data.model.RecipeTag
 import com.example.recipeclipper.ui.plan.fullWeekday
 import com.example.recipeclipper.ui.plan.shortWeekday
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * The recipes a grocery line is for (#422), as small tags on their own line under its amount and
- * note, so the two never blur: each a rounded paprika wash with a book glyph, "Mushroom omelette
+ * note, so the two never blur: each a rounded basil wash with a book glyph, "Mushroom omelette
  * · Thu" when it is planned, wrapping. Up to three show; more, the first two and a quiet "+N"
  * ([GroceryRecipeTags.shown]). A tap opens the recipe ([onOpen]); [testPrefix] tags them for tests
  * ("<prefix>-<recipe id>-<day>"). Used by Groceries and Shop for this week, so they match.
@@ -64,7 +64,7 @@ internal fun RecipeTagRow(
 
 /**
  * One tag: a button that reads "For Mushroom omelette, Thursday". The wash is the accent slot
- * (paprika on the ground, the lighter on-ink paprika in dark), as the Home timer's tag. The touch
+ * (basil on the ground, the lighter on-ink basil in dark), as the Home timer's tag. The touch
  * area is a little taller than the pill, so a thumb finds it without taking much of the row's own tap.
  */
 @Composable
@@ -84,7 +84,7 @@ private fun RecipeTagChip(tag: RecipeTag, onClick: () -> Unit, testTag: String) 
                 text = AnnotatedString(visible)
             }
             .padding(vertical = 3.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(Corners.Pill)
             .background(accent.copy(alpha = WASH_ALPHA))
             .padding(horizontal = 8.dp, vertical = 3.dp)
             .testTag(testTag)
@@ -116,5 +116,5 @@ private fun MoreTag(more: Int, testPrefix: String) {
     )
 }
 
-/** The paprika wash behind a tag: the same as the Home timer's. */
+/** The basil wash behind a tag: the same as the Home timer's. */
 private const val WASH_ALPHA = 0.12f

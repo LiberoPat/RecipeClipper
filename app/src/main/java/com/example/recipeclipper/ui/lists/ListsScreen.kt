@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
@@ -42,6 +41,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.recipe.BackButton
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -165,7 +165,7 @@ private fun NewListField(
             onValueChange = onNameChange,
             label = { Text(stringResource(R.string.label_list_name)) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = Corners.Field,
             modifier = Modifier.fillMaxWidth()
         )
         Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {

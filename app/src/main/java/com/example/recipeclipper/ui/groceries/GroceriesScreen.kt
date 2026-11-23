@@ -31,7 +31,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -103,6 +102,7 @@ import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.SectionHeading
 import com.example.recipeclipper.ui.sharefile.SendFileEffect
 import com.example.recipeclipper.ui.sharefile.SendFileViewModel
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 import com.example.recipeclipper.ui.tour.TooltipHost
 import com.example.recipeclipper.ui.tour.tooltipAnchor
@@ -215,7 +215,7 @@ fun GroceriesScreen(
                             onValueChange = viewModel::onDraftChange,
                             label = { Text(stringResource(R.string.groceries_add_hint)) },
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = Corners.Field,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                             keyboardActions = KeyboardActions(onDone = { viewModel.onAddTyped() }),
                             trailingIcon = {
@@ -387,7 +387,7 @@ private fun DoneShoppingBar(ticked: Int, onClick: () -> Unit) {
         Hairline()
         Button(
             onClick = onClick,
-            shape = RoundedCornerShape(12.dp),
+            shape = Corners.Pill,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 10.dp)
@@ -581,7 +581,7 @@ private fun CheckLine(
 }
 
 /**
- * A row's tick (#286): a ring on the right, under the thumb, that fills paprika with a check.
+ * A row's tick (#286): a ring on the right, under the thumb, that fills basil with a check.
  * Drawn only: the row around it is the checkbox, for tests and TalkBack.
  */
 @Composable
@@ -686,7 +686,7 @@ private fun PutAwaySheetView(
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onConfirm,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = Corners.Pill,
                     modifier = Modifier.fillMaxWidth().testTag("putAwayButton")
                 ) {
                     Text(stringResource(R.string.action_put_away))

@@ -39,6 +39,7 @@ import com.example.recipeclipper.ui.edit.PasteTarget
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.recipe.RecipeViewModel
 import com.example.recipeclipper.ui.settings.SettingsSection
+import com.example.recipeclipper.ui.theme.LocalAccentTone
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -193,8 +194,9 @@ fun AppShell(
 }
 
 /**
- * The bar in the app's own tokens: ground with a hairline above it, paprika for the open tab,
- * muted for the rest, and the warm surface container as the indicator. No Material purple.
+ * The bar in the app's own tokens (#455): ground with a hairline above it, the accent tone as the
+ * open tab's pill with its icon and label in the tone's deep basil, muted for the rest. No Material
+ * purple.
  * Themed here rather than around the whole shell, so it is never composed while the recipe
  * screen (which may force dark for cook mode) owns the system bar colours.
  */
@@ -209,10 +211,11 @@ private fun TabBar(selected: Tab?, onSelect: (Tab) -> Unit) {
                 tonalElevation = 0.dp,
                 modifier = Modifier.testTag("tabBar")
             ) {
+                val tone = LocalAccentTone.current
                 val colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.tertiary,
-                    selectedTextColor = MaterialTheme.colorScheme.tertiary,
-                    indicatorColor = MaterialTheme.colorScheme.surfaceContainer,
+                    selectedIconColor = tone.onFill,
+                    selectedTextColor = tone.onFill,
+                    indicatorColor = tone.fill,
                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )

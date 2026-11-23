@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +32,7 @@ import com.example.recipeclipper.data.model.CutOffMessage
 import com.example.recipeclipper.data.model.ParseError
 import com.example.recipeclipper.ui.recipe.BackButton
 import com.example.recipeclipper.ui.recipe.toMessage
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -84,7 +84,7 @@ internal fun CutOffCopy(copied: Boolean, onCopy: () -> Unit) {
             modifier = Modifier.testTag("cutoff_copied")
         )
     } else {
-        Button(onClick = onCopy, shape = RoundedCornerShape(12.dp), modifier = Modifier.testTag("cutoff_copy")) {
+        Button(onClick = onCopy, shape = Corners.Pill, modifier = Modifier.testTag("cutoff_copy")) {
             Text(stringResource(R.string.cutoff_copy_action))
         }
     }

@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +47,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.UseUpChange
 import com.example.recipeclipper.data.model.UseUpChoice
 import com.example.recipeclipper.data.model.UseUpRow
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * Using up the pantry at the end of cooking (#147): the sheet [viewModel] opens, and the Undo
@@ -113,7 +113,7 @@ private fun UseUpSheetView(
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onConfirm,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = Corners.Pill,
                     modifier = Modifier.fillMaxWidth().testTag("useUpButton")
                 ) {
                     Text(stringResource(R.string.action_use_up))

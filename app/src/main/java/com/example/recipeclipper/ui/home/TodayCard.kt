@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
@@ -36,6 +35,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.ui.common.NoPhotoStyle
 import com.example.recipeclipper.ui.common.RecipeImage
 import com.example.recipeclipper.ui.common.noPhotoImageOn
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * Today's meal (#402), in the Continue cooking card's place while nothing is being cooked: the
@@ -57,7 +57,7 @@ internal fun TodayCard(
     Box(Modifier.padding(top = 16.dp).fillMaxWidth()) {
         Column(
             Modifier.fillMaxWidth().testTag("todayCard")
-                .clip(RoundedCornerShape(20.dp)).background(colors.surfaceContainer)
+                .clip(Corners.Card).background(colors.surfaceContainer)
         ) {
             Column(
                 Modifier.fillMaxWidth().then(
@@ -82,7 +82,7 @@ internal fun TodayCard(
                         modifier = Modifier.fillMaxWidth().height(136.dp)
                     )
                 } else {
-                    Box(Modifier.fillMaxWidth().height(56.dp).background(colors.tertiary.copy(alpha = 0.12f)))
+                    Box(Modifier.fillMaxWidth().height(56.dp).background(colors.secondaryContainer))
                 }
                 Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
                     Text(
@@ -106,7 +106,7 @@ internal fun TodayCard(
                 if (lead.recipeId != null) {
                     Button(
                         onClick = { onStartCooking(lead) },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = Corners.Pill,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                     ) {
                         Text(stringResource(R.string.action_start_cooking))
@@ -139,7 +139,7 @@ internal fun TodayCard(
 internal fun TodayCloseButton(onClose: () -> Unit, modifier: Modifier = Modifier) {
     IconButton(onClick = onClose, modifier = modifier.size(40.dp).testTag("todayClose")) {
         Box(
-            Modifier.size(28.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f)),
+            Modifier.size(28.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(

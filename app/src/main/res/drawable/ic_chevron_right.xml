@@ -1,0 +1,16 @@
+<!-- A forward chevron (#455, Market's 1.8 stroke): Settings rows and the Plan's next period, in place
+     of a "›" glyph, which the display face draws heavy. Mirrored in right-to-left layouts. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:autoMirrored="true"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M9,6L15,12L9,18" />
+</vector>

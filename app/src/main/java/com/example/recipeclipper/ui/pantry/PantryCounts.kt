@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +22,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.data.model.PantrySection
 import com.example.recipeclipper.data.model.PantryStock
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * The three counts under the title (#286): In stock, Running low and Run out, each a box whose
@@ -44,7 +44,7 @@ internal fun PantryCounts(counts: List<PantryCount>, enabled: Boolean, onJump: (
                     .fillMaxHeight()
                     // Off (a zero, or while selecting): drawn at half strength, as on iOS.
                     .alpha(if (target != null) 1f else 0.5f)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(Corners.Card)
                     .background(MaterialTheme.colorScheme.surfaceContainer)
                     .clickable(enabled = target != null, role = Role.Button) { target?.let(onJump) }
                     .padding(horizontal = 12.dp, vertical = 10.dp)

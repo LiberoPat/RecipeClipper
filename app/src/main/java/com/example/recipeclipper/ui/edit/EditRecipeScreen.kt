@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -43,6 +42,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeDraft
 import com.example.recipeclipper.data.remote.LineFlag
 import com.example.recipeclipper.ui.recipe.BackButton
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.RecipeClipperTheme
 
 /**
@@ -79,7 +79,7 @@ fun EditRecipeScreen(
                     Button(
                         onClick = viewModel::onSave,
                         enabled = !state.loading && !state.saving && !state.missing && !state.reading,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = Corners.Pill
                     ) { Text(stringResource(R.string.action_save)) }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -206,7 +206,7 @@ private fun PhotoReview(
                     }
                 )
             )
-            OutlinedButton(onClick = onReadAgain, shape = RoundedCornerShape(12.dp)) {
+            OutlinedButton(onClick = onReadAgain, shape = Corners.Pill) {
                 Text(stringResource(R.string.action_try_again))
             }
             Spacer(Modifier.height(16.dp))
@@ -258,7 +258,7 @@ private fun Field(
             keyboardType = keyboardType,
             imeAction = if (multiLine) ImeAction.Default else ImeAction.Next
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = Corners.Field,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)

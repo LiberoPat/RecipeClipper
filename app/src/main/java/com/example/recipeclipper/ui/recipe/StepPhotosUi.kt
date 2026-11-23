@@ -20,7 +20,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -39,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -64,6 +62,7 @@ import com.example.recipeclipper.data.model.StepPhoto
 import com.example.recipeclipper.ui.common.LocalFlagValues
 import com.example.recipeclipper.ui.theme.AccentTextOnInk
 import com.example.recipeclipper.ui.theme.Bricolage
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.Ground
 import com.example.recipeclipper.ui.theme.Ink
 import com.example.recipeclipper.ui.theme.InkGround
@@ -109,7 +108,7 @@ internal fun StepPhotoThumbnail(
         pluralStringResource(R.plurals.step_photos_open, photos.size, photos.size, step)
     }
     val action = stringResource(R.string.step_photo_open_action)
-    val corner = RoundedCornerShape(9.dp)
+    val corner = Corners.Photo
     Box(
         modifier
             .padding(start = gap)
@@ -155,11 +154,11 @@ internal fun StepPhotoThumbnail(
             Text(
                 "+${photos.size - 1}",
                 style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 10.sp, lineHeight = 13.sp),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .offset(4.dp, (-8).dp)
-                    .clip(RoundedCornerShape(9.dp))
+                    .clip(Corners.Pill)
                     .background(MaterialTheme.colorScheme.primary)
                     .padding(horizontal = 6.dp, vertical = 1.dp)
             )
@@ -184,7 +183,7 @@ internal fun StepPhotoMini(photos: List<StepPhoto>, modifier: Modifier = Modifie
         modifier = modifier
             .padding(start = gap)
             .size(StepThumbnailSmall)
-            .clip(RoundedCornerShape(7.dp))
+            .clip(Corners.Small)
             .background(MaterialTheme.colorScheme.outlineVariant)
             .testTag("stepPhoto.mini.${front.step}")
             .clearAndSetSemantics {}
@@ -197,7 +196,7 @@ private fun NumberBadge(number: Int, modifier: Modifier = Modifier) {
     Box(
         modifier
             .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp)
-            .clip(RoundedCornerShape(9.dp))
+            .clip(Corners.Pill)
             .background(Ink.copy(alpha = 0.78f))
             .padding(horizontal = 5.dp),
         contentAlignment = Alignment.Center

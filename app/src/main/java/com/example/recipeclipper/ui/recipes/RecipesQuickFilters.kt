@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -24,6 +23,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.RecipeQuickFilter
+import com.example.recipeclipper.ui.theme.Corners
 
 /**
  * The quick filters under search (#378): plain text pills like the old filter pills, each its own
@@ -70,7 +70,7 @@ internal fun quickFilterLabel(filter: RecipeQuickFilter): Int = when (filter) {
 
 @Composable
 private fun QuickChip(label: String, on: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(50)
+    val shape = Corners.Pill
     // The 48dp touch target is the outer box; the pill itself is the smaller shape inside it.
     Row(
         verticalAlignment = Alignment.CenterVertically,

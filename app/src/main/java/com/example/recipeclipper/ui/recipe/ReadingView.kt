@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,6 +37,7 @@ import com.example.recipeclipper.R
 import com.example.recipeclipper.data.model.ContentOrigin
 import com.example.recipeclipper.data.model.StepTimers
 import com.example.recipeclipper.data.model.Tooltip
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.tour.tooltipAnchor
 
 /**
@@ -96,7 +96,7 @@ internal fun ReadingView(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(if (recipe.displayImage != null) 200.dp else 150.dp)
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(Corners.Hero)
                     )
                     Spacer(Modifier.height(16.dp))
                 }
@@ -184,7 +184,7 @@ internal fun ReadingView(
                 Row(Modifier.fillMaxWidth().then(toggle).padding(vertical = 8.dp)) {
                     Text(
                         "${index + 1}",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = StepNumberStyle,
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.width(32.dp)
                     )
@@ -254,7 +254,7 @@ internal fun ReadingView(
                     Hairline()
                     Button(
                         onClick = actions.onCookStart,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = Corners.Pill,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 12.dp)

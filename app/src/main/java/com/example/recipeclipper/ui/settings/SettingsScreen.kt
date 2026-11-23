@@ -141,11 +141,11 @@ private fun IndexRow(section: SettingsSection, value: String?, alert: Boolean, o
                     modifier = Modifier.padding(start = 12.dp).widthIn(max = valueMax)
                 )
             }
-            Text(
-                "›",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 10.dp).clearAndSetSemantics {}
+            Icon(
+                painterResource(R.drawable.ic_chevron_right),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp).size(20.dp).clearAndSetSemantics {}
             )
         }
     }

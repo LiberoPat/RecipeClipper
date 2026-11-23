@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
@@ -73,6 +72,7 @@ import com.example.recipeclipper.data.model.RecipeFilter
 import com.example.recipeclipper.data.model.RecipeQuickFilter
 import com.example.recipeclipper.ui.recipe.Hairline
 import com.example.recipeclipper.ui.settings.SwitchRow
+import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.LocalAccentTone
 
 /*
@@ -82,7 +82,7 @@ import com.example.recipeclipper.ui.theme.LocalAccentTone
  * pills under it. The filters behave exactly as the chips did; only where they live changed.
  */
 
-/** "Recipes", the paprika + and the ⋮ menu, last on the right: Select (null: nothing to select) and Settings. */
+/** "Recipes", the basil + and the ⋮ menu, last on the right: Select (null: nothing to select) and Settings. */
 @Composable
 internal fun LibraryTitleRowB(
     onAdd: () -> Unit,
@@ -157,8 +157,8 @@ internal fun PinnedTitleBar(onAdd: () -> Unit, onSelect: (() -> Unit)?, onOpenSe
 }
 
 /**
- * The views as one segmented shelf: Lists (in the paprika tone), then Not in a list, Cooked, Typed by you
- * and From a chat, each its icon, its count in Fraunces and its name. Each opens its own screen, as the
+ * The views as one segmented shelf: Lists (in the accent tone), then Not in a list, Cooked, Typed by you
+ * and From a chat, each its icon, its count in Bricolage and its name. Each opens its own screen, as the
  * strip's cards did. The five share the width (Lists a little more); when a name's longest word would
  * not fit (German, or a large font), every cell takes the width it needs and the shelf scrolls sideways,
  * so nothing is ever clipped.
@@ -175,7 +175,7 @@ internal fun ViewsShelf(
         val available = constraints.maxWidth
         Box(
             Modifier.horizontalScroll(rememberScrollState())
-                .clip(RoundedCornerShape(18.dp))
+                .clip(Corners.Card)
                 .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
             ShelfLayout(available) {
@@ -257,7 +257,7 @@ private fun ShelfCell(icon: Painter, count: Int?, name: String, lead: Boolean, o
 
 /**
  * Search, with the filter button at its end ([onOpenFilters]; null with the chips' flag off): the
- * paprika tone and a badge counting the filters on, once one is.
+ * accent tone and a badge counting the filters on, once one is.
  */
 @Composable
 internal fun SearchFieldB(query: String, onQueryChange: (String) -> Unit, filtersOn: Int, onOpenFilters: (() -> Unit)?) {
@@ -267,7 +267,7 @@ internal fun SearchFieldB(query: String, onQueryChange: (String) -> Unit, filter
         onValueChange = onQueryChange,
         placeholder = { Text(stringResource(R.string.label_search_recipes), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         singleLine = true,
-        shape = RoundedCornerShape(14.dp),
+        shape = Corners.Field,
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = colors.onSurfaceVariant) },
         trailingIcon = if (query.isNotEmpty() || onOpenFilters != null) {
             {
@@ -281,7 +281,13 @@ internal fun SearchFieldB(query: String, onQueryChange: (String) -> Unit, filter
                 }
             }
         } else null,
-        colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = colors.onSurfaceVariant),
+        // Market (#455): a filled herb-wash field with no border at rest; focus still draws the ring.
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = Color.Transparent,
+            focusedBorderColor = colors.primary,
+            unfocusedContainerColor = colors.surfaceContainer,
+            focusedContainerColor = colors.surfaceContainer
+        ),
         modifier = Modifier.fillMaxWidth().testTag("recipesSearch")
     )
 }
@@ -294,7 +300,7 @@ private fun FilterButton(on: Int, onClick: () -> Unit) {
     val state = if (on > 0) pluralStringResource(R.plurals.recipes_filters_on, on, on) else null
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+        modifier = Modifier.size(44.dp).clip(Corners.Field)
             .background(if (on > 0) tone.fill else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics {
@@ -345,7 +351,7 @@ internal fun ActiveFilterPills(active: List<RecipeQuickFilter>, onRemove: (Recip
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.minimumInteractiveComponentSize()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(Corners.Pill)
                     .background(tone.fill)
                     .clickable(role = Role.Button) { onRemove(filter) }
                     .semantics(mergeDescendants = true) { contentDescription = removeLabel }
