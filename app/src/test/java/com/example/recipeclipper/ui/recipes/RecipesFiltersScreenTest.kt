@@ -31,6 +31,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.recipeclipper.R
 import com.example.recipeclipper.data.Clock
 import com.example.recipeclipper.data.flags.FeatureFlags
 import com.example.recipeclipper.data.flags.FlagRegistry
@@ -194,19 +195,42 @@ class RecipesFiltersScreenTest {
         compose.onNodeWithText("stub:lists").assertIsDisplayed()
     }
 
-    /** A 360 dp phone at the default text size shows the whole placeholder, with no ellipsis. */
-    @Test
-    @Config(qualifiers = "w360dp-h1600dp")
-    @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    fun theSearchPlaceholderIsWholeOnA360dpPhone() {
+    /** A 360 dp phone at the default text size shows the whole placeholder, with no ellipsis, in every language. */
+    private fun assertThePlaceholderIsWhole() {
         show()
+        val text = compose.activity.getString(R.string.label_search_recipes)
         val layouts = mutableListOf<TextLayoutResult>()
-        compose.onNode(hasText("Search titles and ingredients") and hasAnyAncestor(hasTestTag("recipesSearch")), useUnmergedTree = true)
+        compose.onNode(hasText(text) and hasAnyAncestor(hasTestTag("recipesSearch")), useUnmergedTree = true)
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
         val layout = layouts.single()
-        assertTrue("not cut: ${layout.size}, line right ${layout.getLineRight(0)}, needs ${layout.multiParagraph.maxIntrinsicWidth}, ellipsized ${layout.isLineEllipsized(0)}", !layout.isLineEllipsized(0) && layout.getLineRight(0) <= layout.size.width + 1f)
+        assertTrue(
+            "\"$text\" not cut: ${layout.size}, line right ${layout.getLineRight(0)}, needs ${layout.multiParagraph.maxIntrinsicWidth}, ellipsized ${layout.isLineEllipsized(0)}",
+            !layout.isLineEllipsized(0) && layout.getLineRight(0) <= layout.size.width + 1f
+        )
         assertEquals("one line", 1, layout.lineCount)
     }
+
+    @Test @Config(qualifiers = "w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theSearchPlaceholderIsWholeOnA360dpPhone() = assertThePlaceholderIsWhole()
+
+    @Test @Config(qualifiers = "es-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theSearchPlaceholderIsWholeOnA360dpPhoneInSpanish() = assertThePlaceholderIsWhole()
+
+    @Test @Config(qualifiers = "fr-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theSearchPlaceholderIsWholeOnA360dpPhoneInFrench() = assertThePlaceholderIsWhole()
+
+    @Test @Config(qualifiers = "de-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theSearchPlaceholderIsWholeOnA360dpPhoneInGerman() = assertThePlaceholderIsWhole()
+
+    /** German is the one language kept whole at 1.5 times the text too ("Titel und Zutaten"). */
+    @Test @Config(qualifiers = "de-w360dp-h1600dp", fontScale = 1.5f) @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theSearchPlaceholderIsWholeInGermanAtOneAndAHalfTimesTheText() = assertThePlaceholderIsWhole()
+
+    @Test @Config(qualifiers = "it-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theSearchPlaceholderIsWholeOnA360dpPhoneInItalian() = assertThePlaceholderIsWhole()
+
+    @Test @Config(qualifiers = "pt-rBR-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theSearchPlaceholderIsWholeOnA360dpPhoneInPortuguese() = assertThePlaceholderIsWhole()
 
     /** The title row in each language at 360 dp: the title whole, the + and the menu on screen, the pill whole. */
     private fun assertTheTitleRowFits(title: String) {

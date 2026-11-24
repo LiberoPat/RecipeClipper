@@ -199,6 +199,12 @@ noun, as a segmented choice's heading reads best short), and its first option, `
 came from"). To check: whether "Any" and "Anywhere" may share a word, and *Provenance* / *Herkunft* for
 where a recipe came from (typed, or a chat).
 
+Search placeholder, 2026-11-23: `label_search_recipes` shortened so it is whole on a 360 dp phone beside the filter
+button, the magnifier already saying "search": French "Rechercher par titre ou ingrédient" is now "Titres et
+ingrédients"; German "Titel und Zutaten durchsuchen" is now "Titel und Zutaten" (also whole at 1.5 times the text).
+English, Spanish, Italian and Portuguese were already whole and are unchanged. To check: that the bare noun phrases
+read naturally as a search hint in French and German.
+
 ## Ask with a switch, 2026-11-23 (#465)
 
 Two strings on both platforms, drafts written by Claude, in the words the Pantry and the grocery
