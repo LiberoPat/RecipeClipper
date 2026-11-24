@@ -478,7 +478,11 @@ final class AppContainer {
     }
 
     func makePantryViewModel() -> PantryViewModel {
-        PantryViewModel(pantry: pantryRepository, groceries: groceryRepository, calendar: planCalendar)
+        let flags = featureFlags
+        return PantryViewModel(
+            pantry: pantryRepository, groceries: groceryRepository, calendar: planCalendar,
+            listSwitch: { flags.isOn(.pantryListSwitch) }
+        )
     }
 
     func makeUseItUpViewModel() -> UseItUpViewModel {

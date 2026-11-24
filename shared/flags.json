@@ -263,6 +263,12 @@
       "description": "Recipes' views folded into the filter sheet (#454; with recipesTopB and libraryFirst): the five-cell views shelf is gone; a compact Lists pill with its count sits in the title row (and the pinned bar) and opens the Lists screen; the filter sheet holds the three switches together (30 min or less, Uses what's in my pantry, Not in a list), then the two choices (Cooked: Any / Cooked / Not yet; Came from: Anywhere / Typed by you / From a chat). Each applies at once, combines with the search and the sort, shows as a removable pill and counts in the badge; Not in a list, Cooked, Typed by you and From a chat select what their view screens did. Not remembered. Off, design B as before.",
       "defaults": { "debug": true, "release": true },
       "issue": 454
+    },
+    {
+      "key": "pantryListSwitch",
+      "description": "Ask with a switch (#465): in a pantry item's edit sheet, under the stock control, while Running low or Run out is chosen, an \"Add to grocery list\" switch, on when the cook moves the item there (or when it is on the list already); off takes the line this sheet put there back off, at once, as the stock control applies. The shortcuts (swipes, the row's menu) still add, with an \"Added {name} to groceries\" Undo snackbar when a line was really added; Update the pantry and the selection's Mark run out keep their one Undo. Off, the sheet has no switch and every way adds silently, as before.",
+      "defaults": { "debug": true, "release": true },
+      "issue": 465
     }
   ]
 }

@@ -687,6 +687,8 @@
     </plurals>
     <string name="pantry_always_have">Always have</string>
     <string name="pantry_always_have_detail">Staples are never under “To buy”.</string>
+    <!-- The edit sheet's switch under Running low / Run out (#465) -->
+    <string name="pantry_add_to_list">Add to grocery list</string>
     <string name="pantry_expired">Expired</string>
     <string name="pantry_use_by">Use by %1$s</string>
     <string name="pantry_bought">Bought %1$s</string>
@@ -698,6 +700,8 @@
     <string name="action_set_date">Set date</string>
     <string name="action_clear_date">Clear date</string>
     <string name="snackbar_pantry_deleted">Deleted %1$s</string>
+    <!-- A swipe or the row's menu ran it low or out and put its name on the grocery list (#465), with Undo -->
+    <string name="snackbar_pantry_added_to_list">Added %1$s to groceries</string>
     <!-- The Pantry menu's "Clear run-out items" (#194) -->
     <string name="action_clear_run_out">Clear run-out items</string>
     <string name="snackbar_run_out_cleared">Run-out items cleared</string>

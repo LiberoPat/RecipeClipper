@@ -669,6 +669,8 @@
     </plurals>
     <string name="pantry_always_have">Sempre in casa</string>
     <string name="pantry_always_have_detail">I prodotti di base non finiscono mai in «Da comprare».</string>
+    <!-- The edit sheet's switch under Running low / Run out (#465) -->
+    <string name="pantry_add_to_list">Aggiungi alla lista della spesa</string>
     <string name="pantry_expired">Scaduto</string>
     <string name="pantry_use_by">Da consumare entro il %1$s</string>
     <string name="pantry_bought">Comprato il %1$s</string>
@@ -680,6 +682,8 @@
     <string name="action_set_date">Scegli data</string>
     <string name="action_clear_date">Rimuovi data</string>
     <string name="snackbar_pantry_deleted">Eliminato: %1$s</string>
+    <!-- A swipe or the row's menu ran it low or out and put its name on the grocery list (#465), with Undo -->
+    <string name="snackbar_pantry_added_to_list">Aggiunto alla spesa: %1$s</string>
     <string name="action_clear_run_out">Rimuovi gli articoli finiti</string>
     <string name="snackbar_run_out_cleared">Articoli finiti rimossi</string>
     <plurals name="clear_run_out_title">

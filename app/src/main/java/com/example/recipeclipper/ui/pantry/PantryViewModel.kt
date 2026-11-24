@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.recipeclipper.data.GroceryRepository
 import com.example.recipeclipper.data.PantryRepository
 import com.example.recipeclipper.data.PlanCalendar
+import com.example.recipeclipper.data.flags.FeatureFlags
+import com.example.recipeclipper.data.flags.Flag
 import com.example.recipeclipper.data.model.Aisle
 import com.example.recipeclipper.data.model.GroceryItem
 import com.example.recipeclipper.data.model.LanguageWords
@@ -23,13 +25,18 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /**
  * The edit sheet's fields, for item [id]. Written only on Save, except [stock]: the sheet's
- * stock control applies at once, as the row's menu and swipes do (#194).
+ * stock control applies at once, as the row's menu and swipes do (#194). [addToList] is the
+ * "Add to grocery list" switch (#465, `pantryListSwitch`, so [listSwitch]), applied at once too,
+ * and shown only while the item is running low or out ([showsListSwitch]).
  */
 data class PantryEditing(
     val id: Long,
@@ -38,8 +45,12 @@ data class PantryEditing(
     val alwaysHave: Boolean,
     val expiresDay: Long?,
     val purchasedDay: Long?,
-    val stock: PantryStock
-)
+    val stock: PantryStock,
+    val listSwitch: Boolean = false,
+    val addToList: Boolean = false
+) {
+    val showsListSwitch: Boolean get() = listSwitch && stock != PantryStock.IN_STOCK
+}
 
 /** The snackbar, only ever for undo (#146). [id] tells two messages about the same item apart. */
 sealed class PantryMessage {
@@ -59,6 +70,9 @@ sealed class PantryMessage {
 
     /** The selection's Mark run out ran [count] items out (#258): offers Undo. */
     data class MarkedRunOut(override val id: Long, val count: Int) : PantryMessage()
+
+    /** A shortcut ran [name] low or out and put its line on the grocery list (#465): offers Undo. */
+    data class AddedToList(override val id: Long, val name: String) : PantryMessage()
 }
 
 /**
@@ -114,7 +128,8 @@ data class PantryUiState(
 /**
  * The Pantry tab (#51): add by typing, search, sort by aisle or expiry, and mark each item in
  * stock, running low or run out (#194). Running low or out puts the item on the grocery list,
- * silently (#146). An item on the grocery list, its own line or any line naming it, shows the basket Groceries
+ * silently (#146), or with `pantryListSwitch` (#465) as the edit sheet's switch says, and from a
+ * shortcut with an Undo. An item on the grocery list, its own line or any line naming it, shows the basket Groceries
  * tag, and tapping that takes those lines off. A delete, "Clear run-out items" (#194, which leaves the
  * grocery list alone) and the tag's removal can each be undone, one at a time.
  */
@@ -122,7 +137,9 @@ data class PantryUiState(
 class PantryViewModel @Inject constructor(
     private val pantry: PantryRepository,
     private val groceries: GroceryRepository,
-    private val calendar: PlanCalendar
+    private val calendar: PlanCalendar,
+    // Ask with a switch (#465). Without the flags, as before: no switch, no "Added" snackbar.
+    private val flags: FeatureFlags? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PantryUiState(today = calendar.today()))
@@ -132,6 +149,17 @@ class PantryViewModel @Inject constructor(
     private var groceryItems: List<GroceryItem> = emptyList()
     private var undo: Undo? = null
     private var messages = 0L
+
+    // Stock and grocery writes, one at a time in the order made (#465): the switch turned off
+    // just after the stock control must find the line the control added.
+    private val writes = Mutex()
+
+    // The open sheet's grocery writes (#465): the line ids its own choices added, and what its
+    // switch, turned off, took off the list (put back if it is turned on again).
+    private var sheetAdded: Set<Long> = emptySet()
+    private var sheetRemoved: GroceryRepository.DeletedItems? = null
+
+    private val listSwitch: Boolean get() = flags?.isOn(Flag.PANTRY_LIST_SWITCH) == true
 
     init {
         viewModelScope.launch {
@@ -170,10 +198,11 @@ class PantryViewModel @Inject constructor(
         )
     }
 
-    /** What the snackbar's Undo puts back: pantry items, or grocery lines. */
+    /** What the snackbar's Undo puts back: pantry items or grocery lines; or the lines a shortcut [Added], taken off. */
     private sealed class Undo {
         data class Pantry(val snapshot: PantryRepository.Snapshot) : Undo()
         data class Groceries(val lines: GroceryRepository.DeletedItems) : Undo()
+        data class Added(val ids: List<Long>) : Undo()
     }
 
     /** The unticked grocery lines that are [item] itself ([PantryList.ownLines]): what running out checks for. */
@@ -215,19 +244,42 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * A row's swipe or menu, or the sheet's control (#194). Running low and run out put the item on the grocery
-     * list, silently, unless it's there already (#146); back in stock means just bought, today.
+     * A row's swipe or menu (#194). Running low and run out put the item on the grocery list
+     * unless it's there already (#146): silently, or with `pantryListSwitch` (#465) with an
+     * "Added to groceries" Undo when a line really was added. Back in stock means just bought, today.
      */
     fun onSetStock(item: PantryItem, stock: PantryStock) {
         if (stock == item.stock) return
+        val announce = listSwitch
         viewModelScope.launch {
-            if (stock == PantryStock.IN_STOCK) {
-                pantry.restock(listOf(item.id), calendar.today())
-            } else {
-                pantry.setStock(listOf(item.id), stock)
-                if (linesFor(item).isEmpty()) groceries.add(listOf(NewGroceryLine(item.name, item.language)))
+            val added = writes.withLock { applyStock(item, stock, addToList = true) }
+            if (announce && added.isNotEmpty()) {
+                undo = Undo.Added(added)
+                _uiState.update { it.copy(message = PantryMessage.AddedToList(++messages, item.name)) }
             }
         }
+    }
+
+    /**
+     * Writes [stock]; running low or out, with [addToList], puts the item's own line on the
+     * grocery list unless it's there. Returns the ids of the lines added. Holds [writes].
+     */
+    private suspend fun applyStock(item: PantryItem, stock: PantryStock, addToList: Boolean): List<Long> {
+        if (stock == PantryStock.IN_STOCK) {
+            pantry.restock(listOf(item.id), calendar.today())
+            return emptyList()
+        }
+        pantry.setStock(listOf(item.id), stock)
+        return if (addToList) addOwnLine(item) else emptyList()
+    }
+
+    /** Adds [item]'s own line unless it's on the list already; the ids added. Holds [writes]. */
+    private suspend fun addOwnLine(item: PantryItem): List<Long> {
+        val before = groceries.observeItems().first()
+        if (PantryList.ownLines(item, before).isNotEmpty()) return emptyList()
+        groceries.add(listOf(NewGroceryLine(item.name, item.language)))
+        val existing = before.mapTo(HashSet()) { it.id }
+        return groceries.observeItems().first().map { it.id }.filterNot { it in existing }
     }
 
     /**
@@ -246,18 +298,105 @@ class PantryViewModel @Inject constructor(
 
     // --- The edit sheet
 
-    fun onEdit(item: PantryItem) = _uiState.update {
-        it.copy(
-            editing = PantryEditing(item.id, item.name, item.quantity.orEmpty(), item.alwaysHave, item.expiresDay, item.purchasedDay, item.stock)
-        )
+    /** Opens the sheet. Its switch (#465) starts on when the item, low or out, is on the grocery list. */
+    fun onEdit(item: PantryItem) {
+        resetSheet()
+        _uiState.update {
+            it.copy(
+                editing = PantryEditing(
+                    item.id, item.name, item.quantity.orEmpty(), item.alwaysHave, item.expiresDay, item.purchasedDay, item.stock,
+                    listSwitch = listSwitch,
+                    addToList = item.stock != PantryStock.IN_STOCK && item.id in it.onList
+                )
+            )
+        }
     }
 
-    /** The sheet's stock control: applied at once, through the same path as the row's menu and swipes. */
+    /**
+     * The sheet's stock control: applied at once, through the same path as the row's menu and
+     * swipes, but never with the shortcuts' snackbar. With the switch (#465), a move from In
+     * stock turns it on; between Running low and Run out it stays as it is, and the list with it.
+     */
     fun onEditStock(stock: PantryStock) {
         val editing = _uiState.value.editing ?: return
         val item = items.firstOrNull { it.id == editing.id } ?: return
-        _uiState.update { it.copy(editing = it.editing?.copy(stock = stock)) }
-        onSetStock(item, stock)
+        if (stock == editing.stock) return
+        val on = when {
+            !editing.listSwitch -> true
+            stock == PantryStock.IN_STOCK -> editing.addToList
+            editing.stock == PantryStock.IN_STOCK -> true
+            else -> editing.addToList
+        }
+        _uiState.update { it.copy(editing = it.editing?.copy(stock = stock, addToList = on && editing.listSwitch)) }
+        viewModelScope.launch {
+            writes.withLock {
+                // Turned back on by the move: what the switch took off comes back first.
+                val back = on && stock != PantryStock.IN_STOCK && restoreRemoved()
+                sheetAdded = sheetAdded + applyStock(item, stock, addToList = on && !back)
+            }
+        }
+    }
+
+    /**
+     * The sheet's "Add to grocery list" switch (#465), applied at once. Off takes every line that
+     * puts the item on the list off it (the lines the basket tag would); on puts back what off
+     * took, or adds the item's own line.
+     */
+    fun onEditAddToList(on: Boolean) {
+        val editing = _uiState.value.editing ?: return
+        if (!editing.showsListSwitch || editing.addToList == on) return
+        val item = items.firstOrNull { it.id == editing.id } ?: return
+        _uiState.update { it.copy(editing = it.editing?.copy(addToList = on)) }
+        viewModelScope.launch {
+            writes.withLock {
+                if (on) {
+                    if (!restoreRemoved()) sheetAdded = sheetAdded + addOwnLine(item)
+                } else {
+                    val ids = PantryList.onListLines(item, groceries.observeItems().first()).map { it.id }
+                    val gone = if (ids.isEmpty()) null else groceries.delete(ids)
+                    if (gone != null) {
+                        sheetRemoved = sheetRemoved?.let { GroceryRepository.DeletedItems(it.entities + gone.entities) } ?: gone
+                    }
+                }
+            }
+        }
+    }
+
+    /** Forgets the sheet's writes, behind any still queued. */
+    private fun resetSheet() {
+        viewModelScope.launch {
+            writes.withLock {
+                sheetAdded = emptySet()
+                sheetRemoved = null
+            }
+        }
+    }
+
+    /** Puts back what the sheet's switch took off, if anything; whether it did. Holds [writes]. */
+    private suspend fun restoreRemoved(): Boolean {
+        val removed = sheetRemoved ?: return false
+        sheetRemoved = null
+        groceries.restore(removed)
+        return true
+    }
+
+    /**
+     * The sheet closes (#465). If its switch took off lines it hadn't added itself (a recipe's,
+     * or the item's own from before), the Undo snackbar offers them back, as the basket tag's does.
+     * Waits for the sheet's queued writes, so it sees what they did.
+     */
+    private fun closeSheet() {
+        viewModelScope.launch {
+            val removed = writes.withLock {
+                val removed = sheetRemoved
+                val added = sheetAdded
+                sheetRemoved = null
+                sheetAdded = emptySet()
+                removed?.takeUnless { gone -> gone.entities.all { it.id in added } }
+            } ?: return@launch
+            undo = Undo.Groceries(removed)
+            _uiState.update { it.copy(message = PantryMessage.TakenOffList(++messages, removed.entities.size)) }
+        }
     }
 
     fun onEditName(name: String) = _uiState.update { it.copy(editing = it.editing?.copy(name = name)) }
@@ -272,17 +411,23 @@ class PantryViewModel @Inject constructor(
         val editing = _uiState.value.editing ?: return
         if (editing.name.isBlank()) return
         _uiState.update { it.copy(editing = null) }
+        closeSheet()
         viewModelScope.launch {
             pantry.edit(editing.id, PantryEdit(editing.name, editing.quantity, editing.alwaysHave, editing.expiresDay))
         }
     }
 
-    fun onEditDismissed() = _uiState.update { it.copy(editing = null) }
+    fun onEditDismissed() {
+        _uiState.update { it.copy(editing = null) }
+        closeSheet()
+    }
 
     /** Deletes the item being edited. One undo at a time: a second delete settles the first. */
     fun onEditDelete() {
         val editing = _uiState.value.editing ?: return
         _uiState.update { it.copy(editing = null) }
+        // The delete's own Undo is the one offered: lines the switch took off stay off.
+        resetSheet()
         viewModelScope.launch {
             val gone = pantry.delete(editing.id) ?: return@launch
             undo = Undo.Pantry(gone)
@@ -406,7 +551,7 @@ class PantryViewModel @Inject constructor(
         }
     }
 
-    /** Undoes the last removal: a delete, "Clear run-out items", or the tag's lines. */
+    /** Undoes the last removal: a delete, "Clear run-out items", or the tag's lines; or takes off a shortcut's line (#465). */
     fun onUndoDelete() {
         val last = undo ?: return
         undo = null
@@ -415,6 +560,7 @@ class PantryViewModel @Inject constructor(
             when (last) {
                 is Undo.Pantry -> pantry.restore(last.snapshot)
                 is Undo.Groceries -> groceries.restore(last.lines)
+                is Undo.Added -> groceries.delete(last.ids)
             }
         }
     }

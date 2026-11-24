@@ -4,6 +4,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -130,6 +131,32 @@ class WeekPantryNoteScreenTest {
         compose.onNodeWithText("Not in your pantry: tahini, sumac and 3 more").assertIsDisplayed()
         compose.onNodeWithTag("pantryGapAdd-${mezze.id}").assertDoesNotExist()
         assertEquals(0, opened)
+    }
+
+    @Test
+    fun theThumbnailStaysWhereItIsWhenTheNoteOpensAndCloses() {
+        // The capped note grows the most (every name), the other only gains "Add to groceries".
+        planRecipe(7, "Mezze", LUNCH, "2 tbsp tahini", "1 tsp sumac", "1 lemon", "2 cloves garlic", "1 bunch parsley")
+        planRecipe(8, "Falafel", DINNER, "1 can chickpeas", "2 tbsp tahini", "1 tsp sumac", "2 tbsp flour")
+        show()
+        for (meal in plan.meals.value) {
+            compose.onNodeWithTag("weekList").performScrollToNode(hasTestTag("meal-${meal.id}"))
+            val closed = compose.onNodeWithTag("mealPhoto-${meal.id}", useUnmergedTree = true).getUnclippedBoundsInRoot()
+            val noteClosed = compose.onNodeWithTag("pantryGap-${meal.id}").getUnclippedBoundsInRoot()
+
+            compose.onNodeWithTag("pantryGap-${meal.id}").performClick()
+            compose.onNodeWithTag("pantryGapAdd-${meal.id}").assertIsDisplayed()
+            val open = compose.onNodeWithTag("mealPhoto-${meal.id}", useUnmergedTree = true).getUnclippedBoundsInRoot()
+            val noteOpen = compose.onNodeWithTag("pantryGap-${meal.id}").getUnclippedBoundsInRoot()
+            // The note's own line, which does grow, starts where it did; the photo doesn't move.
+            assertEquals(noteClosed.top, noteOpen.top)
+            assertEquals(closed.top, open.top)
+            assertEquals(closed.left, open.left)
+
+            compose.onNodeWithTag("pantryGap-${meal.id}").performClick()
+            compose.onNodeWithTag("pantryGapAdd-${meal.id}").assertDoesNotExist()
+            assertEquals(closed.top, compose.onNodeWithTag("mealPhoto-${meal.id}", useUnmergedTree = true).getUnclippedBoundsInRoot().top)
+        }
     }
 
     @Test

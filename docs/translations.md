@@ -205,6 +205,18 @@ ingrédients"; German "Titel und Zutaten durchsuchen" is now "Titel und Zutaten"
 English, Spanish, Italian and Portuguese were already whole and are unchanged. To check: that the bare noun phrases
 read naturally as a search hint in French and German.
 
+## Ask with a switch, 2026-11-23 (#465)
+
+Two strings on both platforms, drafts written by Claude, in the words the Pantry and the grocery
+list already use. The edit sheet's switch, `pantry_add_to_list`, "Add to grocery list" (*Añadir a la
+lista de la compra*, *Ajouter à la liste de courses*, *Auf die Einkaufsliste setzen*, *Aggiungi alla
+lista della spesa*, *Adicionar à lista de compras*), and the shortcut's undo snackbar,
+`snackbar_pantry_added_to_list`, "Added milk to groceries" (*Añadido a la compra: milk*, *Ajouté aux
+courses : milk*, *Zum Einkauf hinzugefügt: milk*, *Aggiunto alla spesa: milk*, *Adicionado às compras:
+milk*): the name after a colon, as `snackbar_pantry_deleted` has it, so nothing agrees with the item's
+gender or number. To check: German "setzen" for a switch's label (beside the menu's "Von der
+Einkaufsliste entfernen").
+
 ## Where the words live
 
 - **Android:** `app/src/main/res/values/strings.xml` (English) and `values-es`, `values-fr`,

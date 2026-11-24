@@ -12,6 +12,12 @@ struct PantryEditing: Equatable {
     let purchasedDay: Int64?
     /// Not written on Save: the sheet's stock control applies at once, as the row's menu and swipes do (#194).
     var stock: PantryStock
+    /// Ask with a switch (#465, `pantryListSwitch`): whether the sheet has the switch at all.
+    var listSwitch = false
+    /// The "Add to grocery list" switch, applied at once too, shown only while low or out (`showsListSwitch`).
+    var addToList = false
+
+    var showsListSwitch: Bool { listSwitch && stock != .inStock }
 }
 
 /// The snackbar, only ever for undo (#146). `id` tells two messages about the same item apart.
@@ -26,6 +32,8 @@ enum PantryMessage: Equatable {
     case removed(id: Int, count: Int)
     /// The selection's Mark run out ran `count` items out (#258): offers Undo.
     case markedRunOut(id: Int, count: Int)
+    /// A shortcut ran `name` low or out and put its line on the grocery list (#465): offers Undo.
+    case addedToList(id: Int, name: String)
 }
 
 /// Selecting several items (#258). `ids` are checked. While a drag is under way (`anchor` set),
@@ -97,7 +105,8 @@ struct PantryUiState: Equatable {
 
 /// The Pantry tab (#51; Android's PantryViewModel): add by typing, search, sort by aisle or
 /// expiry, and mark each item in stock, running low or run out (#194). Running low or out puts
-/// the item on the grocery list, silently (#146). An item on the grocery list, its own line or any line naming
+/// the item on the grocery list, silently (#146), or with `pantryListSwitch` (#465) as the edit sheet's
+/// switch says, and from a shortcut with an Undo. An item on the grocery list, its own line or any line naming
 /// it, shows the basket Groceries tag, and tapping that takes those lines off. A delete, "Clear run-out
 /// items" (#194, which leaves the grocery list alone) and the tag's removal can each be undone, one at a time.
 @MainActor
@@ -115,21 +124,33 @@ final class PantryViewModel {
     @ObservationIgnored private var groceryItems: [GroceryItem] = []
     @ObservationIgnored private var undo: Undo?
 
-    /// What the snackbar's Undo puts back: pantry items, or grocery lines.
+    /// What the snackbar's Undo puts back: pantry items or grocery lines; or the lines a shortcut added, taken off.
     private enum Undo {
         case pantry(PantrySnapshot)
         case groceries(DeletedGroceries)
+        case added([Int64])
     }
     @ObservationIgnored private var messages = 0
+    /// Ask with a switch (#465). Off (the default), as before: no switch, no "Added" snackbar.
+    @ObservationIgnored private let listSwitch: () -> Bool
+    /// Stock and grocery writes, one at a time in the order made (#465): the switch turned off
+    /// just after the stock control must find the line the control added.
+    @ObservationIgnored private let writes = OrderedWrites()
+    /// The open sheet's grocery writes (#465): the line ids its own choices added, and what its
+    /// switch, turned off, took off the list (put back if it is turned on again).
+    @ObservationIgnored private var sheetAdded: Set<Int64> = []
+    @ObservationIgnored private var sheetRemoved: DeletedGroceries?
 
     init(
         pantry: PantryRepository, groceries: GroceryRepository, calendar: PlanCalendar,
-        phoneLanguage: @escaping () -> String? = { Locale.current.language.languageCode?.identifier }
+        phoneLanguage: @escaping () -> String? = { Locale.current.language.languageCode?.identifier },
+        listSwitch: @escaping () -> Bool = { false }
     ) {
         self.pantry = pantry
         self.groceries = groceries
         self.calendar = calendar
         self.phoneLanguage = phoneLanguage
+        self.listSwitch = listSwitch
         uiState.today = calendar.today()
         subscription = pantry.observeItems()
             .receive(on: DispatchQueue.main)
@@ -218,21 +239,50 @@ final class PantryViewModel {
         }
     }
 
-    /// A row's swipe or menu, or the sheet's control (#194). Running low and run out put the item on the grocery
-    /// list, silently, unless it's there already (#146); back in stock means just bought, today.
+    /// A row's swipe or menu (#194). Running low and run out put the item on the grocery list
+    /// unless it's there already (#146): silently, or with `pantryListSwitch` (#465) with an
+    /// "Added to groceries" Undo when a line really was added. Back in stock means just bought, today.
     func onSetStock(_ item: PantryItem, _ stock: PantryStock) {
         guard stock != item.stock else { return }
-        Task {
-            if stock == .inStock {
-                await pantry.restock([item.id], day: calendar.today())
-            } else {
-                await pantry.setStock([item.id], stock: stock)
-                if lines(for: item).isEmpty {
-                    await groceries.add([NewGroceryLine(text: item.name, language: item.language)])
-                }
+        let announce = listSwitch()
+        writes.enqueue { [self] in
+            let added = await applyStock(item, stock, addToList: true)
+            if announce && !added.isEmpty {
+                undo = .added(added)
+                messages += 1
+                uiState.message = .addedToList(id: messages, name: item.name)
             }
         }
     }
+
+    /// Writes `stock`; running low or out, with `addToList`, puts the item's own line on the
+    /// grocery list unless it's there. Returns the ids of the lines added. Run on `writes`.
+    private func applyStock(_ item: PantryItem, _ stock: PantryStock, addToList: Bool) async -> [Int64] {
+        if stock == .inStock {
+            await pantry.restock([item.id], day: calendar.today())
+            return []
+        }
+        await pantry.setStock([item.id], stock: stock)
+        guard addToList else { return [] }
+        return await addOwnLine(item)
+    }
+
+    /// Adds `item`'s own line unless it's on the list already; the ids added. Run on `writes`.
+    private func addOwnLine(_ item: PantryItem) async -> [Int64] {
+        let before = await currentGroceries()
+        guard PantryList.ownLines(item, before).isEmpty else { return [] }
+        await groceries.add([NewGroceryLine(text: item.name, language: item.language)])
+        let existing = Set(before.map(\.id))
+        return await currentGroceries().map(\.id).filter { !existing.contains($0) }
+    }
+
+    private func currentGroceries() async -> [GroceryItem] {
+        for await list in groceries.observeItems().values { return list }
+        return []
+    }
+
+    /// Waits for every queued stock and grocery write. For tests.
+    func settleWrites() async { await writes.settle() }
 
     /// The row's basket tag, tapped: every line that puts the item on the grocery list
     /// (`PantryList.onListLines`, a recipe's included) leaves it, with Undo (owner, 2026-09-29).
@@ -249,18 +299,97 @@ final class PantryViewModel {
 
     // MARK: The edit sheet
 
+    /// Opens the sheet. Its switch (#465) starts on when the item, low or out, is on the grocery list.
     func onEdit(_ item: PantryItem) {
+        resetSheet()
         uiState.editing = PantryEditing(
             id: item.id, name: item.name, quantity: item.quantity ?? "", alwaysHave: item.alwaysHave,
-            expiresDay: item.expiresDay, purchasedDay: item.purchasedDay, stock: item.stock
+            expiresDay: item.expiresDay, purchasedDay: item.purchasedDay, stock: item.stock,
+            listSwitch: listSwitch(), addToList: item.stock != .inStock && uiState.onList.contains(item.id)
         )
     }
 
-    /// The sheet's stock control: applied at once, through the same path as the row's menu and swipes.
+    /// The sheet's stock control: applied at once, through the same path as the row's menu and
+    /// swipes, but never with the shortcuts' snackbar. With the switch (#465), a move from In
+    /// stock turns it on; between Running low and Run out it stays as it is, and the list with it.
     func onEditStock(_ stock: PantryStock) {
-        guard let editing = uiState.editing, let item = items.first(where: { $0.id == editing.id }) else { return }
+        guard let editing = uiState.editing, let item = items.first(where: { $0.id == editing.id }), stock != editing.stock else { return }
+        let on: Bool
+        if !editing.listSwitch {
+            on = true
+        } else if stock == .inStock {
+            on = editing.addToList
+        } else if editing.stock == .inStock {
+            on = true
+        } else {
+            on = editing.addToList
+        }
         uiState.editing?.stock = stock
-        onSetStock(item, stock)
+        uiState.editing?.addToList = on && editing.listSwitch
+        writes.enqueue { [self] in
+            // Turned back on by the move: what the switch took off comes back first.
+            var back = false
+            if on && stock != .inStock { back = await restoreRemoved() }
+            let added = await applyStock(item, stock, addToList: on && !back)
+            sheetAdded.formUnion(added)
+        }
+    }
+
+    /// The sheet's "Add to grocery list" switch (#465), applied at once. Off takes every line that
+    /// puts the item on the list off it (the lines the basket tag would); on puts back what off
+    /// took, or adds the item's own line.
+    func onEditAddToList(_ on: Bool) {
+        guard let editing = uiState.editing, editing.showsListSwitch, editing.addToList != on,
+              let item = items.first(where: { $0.id == editing.id }) else { return }
+        uiState.editing?.addToList = on
+        writes.enqueue { [self] in
+            if on {
+                if await restoreRemoved() { return }
+                let added = await addOwnLine(item)
+                sheetAdded.formUnion(added)
+            } else {
+                let list = await currentGroceries()
+                let ids = PantryList.onListLines(item, list).map(\.id)
+                guard !ids.isEmpty, let gone = await groceries.delete(ids) else { return }
+                if let earlier = sheetRemoved {
+                    sheetRemoved = DeletedGroceries(items: earlier.items + gone.items)
+                } else {
+                    sheetRemoved = gone
+                }
+            }
+        }
+    }
+
+    /// Forgets the sheet's writes, behind any still queued.
+    private func resetSheet() {
+        writes.enqueue { [self] in
+            sheetAdded = []
+            sheetRemoved = nil
+        }
+    }
+
+    /// Puts back what the sheet's switch took off, if anything; whether it did. Run on `writes`.
+    private func restoreRemoved() async -> Bool {
+        guard let removed = sheetRemoved else { return false }
+        sheetRemoved = nil
+        await groceries.restore(removed)
+        return true
+    }
+
+    /// The sheet closes (#465). If its switch took off lines it hadn't added itself (a recipe's,
+    /// or the item's own from before), the Undo snackbar offers them back, as the basket tag's does.
+    /// Queued behind the sheet's writes, so it sees what they did.
+    private func closeSheet() {
+        writes.enqueue { [self] in
+            let removed = sheetRemoved
+            let added = sheetAdded
+            sheetRemoved = nil
+            sheetAdded = []
+            guard let removed, !removed.items.allSatisfy({ added.contains($0.id) }) else { return }
+            undo = .groceries(removed)
+            messages += 1
+            uiState.message = .takenOffList(id: messages, count: removed.items.count)
+        }
     }
 
     func onEditName(_ name: String) { uiState.editing?.name = name }
@@ -271,6 +400,7 @@ final class PantryViewModel {
     func onEditSave() {
         guard let editing = uiState.editing, !editing.name.kIsBlank else { return }
         uiState.editing = nil
+        closeSheet()
         Task {
             await pantry.edit(
                 editing.id,
@@ -279,12 +409,17 @@ final class PantryViewModel {
         }
     }
 
-    func onEditDismissed() { uiState.editing = nil }
+    func onEditDismissed() {
+        uiState.editing = nil
+        closeSheet()
+    }
 
     /// Deletes the item being edited. One undo at a time: a second delete settles the first.
     func onEditDelete() {
         guard let editing = uiState.editing else { return }
         uiState.editing = nil
+        // The delete's own Undo is the one offered: lines the switch took off stay off.
+        resetSheet()
         Task {
             guard let gone = await pantry.delete(editing.id) else { return }
             undo = .pantry(gone)
@@ -413,7 +548,7 @@ final class PantryViewModel {
         }
     }
 
-    /// Undoes the last removal: a delete, "Clear run-out items", or the tag's lines.
+    /// Undoes the last removal: a delete, "Clear run-out items", or the tag's lines; or takes off a shortcut's line (#465).
     func onUndoDelete() {
         guard let last = undo else { return }
         undo = nil
@@ -422,6 +557,7 @@ final class PantryViewModel {
             switch last {
             case .pantry(let snapshot): await pantry.restore(snapshot)
             case .groceries(let lines): await groceries.restore(lines)
+            case .added(let ids): _ = await groceries.delete(ids)
             }
         }
     }

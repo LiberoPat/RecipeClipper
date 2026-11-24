@@ -52,6 +52,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -61,7 +62,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -74,6 +77,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -668,7 +672,7 @@ private fun DayList(
  * Whether it is open is the view's alone: it may close on leaving the tab.
  */
 @Composable
-private fun PantryGapNote(mealId: Long, gap: PantryGap, onAdd: () -> Unit) {
+private fun PantryGapNote(mealId: Long, gap: PantryGap, open: Boolean, onOpenChange: (Boolean) -> Unit, onAdd: () -> Unit) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     if (gap.allOnList) {
         Text(
@@ -679,7 +683,6 @@ private fun PantryGapNote(mealId: Long, gap: PantryGap, onAdd: () -> Unit) {
         )
         return
     }
-    var open by rememberSaveable(mealId) { mutableStateOf(false) }
     val text = if (open || !gap.capped) {
         stringResource(R.string.plan_pantry_missing, gap.missing.joinToString(", "))
     } else {
@@ -697,14 +700,14 @@ private fun PantryGapNote(mealId: Long, gap: PantryGap, onAdd: () -> Unit) {
                 .clickable(
                     role = Role.Button,
                     onClickLabel = stringResource(if (open) R.string.plan_pantry_show_less else R.string.plan_pantry_show_all)
-                ) { open = !open }
+                ) { onOpenChange(!open) }
                 .padding(vertical = 2.dp)
                 .testTag("pantryGap-$mealId")
         )
         if (open) {
             TextButton(
                 onClick = {
-                    open = false
+                    onOpenChange(false)
                     onAdd()
                 },
                 contentPadding = PaddingValues(horizontal = 0.dp),
@@ -809,9 +812,16 @@ private fun MealRow(
     onAddMissing: () -> Unit = {}
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    // Whether the pantry note is open (#456) lives here, not in the note, so the row can keep its
+    // thumbnail and trailing items where they were when the note grows downward.
+    var noteOpen by rememberSaveable(meal.id) { mutableStateOf(false) }
+    var collapsedHeight by remember { mutableIntStateOf(0) }
+    val pinnedHeight = if (noteOpen && collapsedHeight > 0) with(LocalDensity.current) { collapsedHeight.toDp() } else null
     Box {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            // Open, the edge items stay centred on the collapsed row's height (below), and the
+            // row grows beneath them.
+            verticalAlignment = if (pinnedHeight != null) Alignment.Top else Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
@@ -823,15 +833,19 @@ private fun MealRow(
                 .testTag("meal-${meal.id}")
         ) {
             if (meal.recipeId != null) {
-                RecipeImage(
-                    model = meal.imageUrl,
-                    recipe = NoPhotoSource(meal.recipeUid ?: "recipe-${meal.recipeId}", meal.title.orEmpty(), meal.language),
-                    contentDescription = null,
-                    modifier = Modifier.size(44.dp).clip(Corners.Photo)
-                )
+                CollapsedCentred(pinnedHeight) {
+                    RecipeImage(
+                        model = meal.imageUrl,
+                        recipe = NoPhotoSource(meal.recipeUid ?: "recipe-${meal.recipeId}", meal.title.orEmpty(), meal.language),
+                        contentDescription = null,
+                        modifier = Modifier.size(44.dp).clip(Corners.Photo).testTag("mealPhoto-${meal.id}")
+                    )
+                }
                 Spacer(Modifier.width(12.dp))
             }
-            Column(Modifier.weight(1f)) {
+            Column(
+                Modifier.weight(1f).onSizeChanged { if (!noteOpen) collapsedHeight = it.height }
+            ) {
                 Text(
                     mealTypeName,
                     style = MaterialTheme.typography.labelMedium,
@@ -845,7 +859,7 @@ private fun MealRow(
                         overflow = TextOverflow.Ellipsis
                     )
                     // The pantry note (#456): information, not an alarm. Muted, small, no icon.
-                    pantryGap?.let { gap -> PantryGapNote(meal.id, gap, onAddMissing) }
+                    pantryGap?.let { gap -> PantryGapNote(meal.id, gap, noteOpen, { noteOpen = it }, onAddMissing) }
                 } else {
                     Text(
                         meal.note.orEmpty(),
@@ -854,15 +868,19 @@ private fun MealRow(
                 }
             }
             meal.servings?.let {
-                Text(
-                    pluralStringResource(R.plurals.servings, it, it),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                CollapsedCentred(pinnedHeight) {
+                    Text(
+                        pluralStringResource(R.plurals.servings, it, it),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             if (onSkip != null && skipVisible) {
-                TextButton(onClick = onSkip, modifier = Modifier.testTag("skip-${meal.id}")) {
-                    Text(stringResource(R.string.action_skip_today))
+                CollapsedCentred(pinnedHeight) {
+                    TextButton(onClick = onSkip, modifier = Modifier.testTag("skip-${meal.id}")) {
+                        Text(stringResource(R.string.action_skip_today))
+                    }
                 }
             }
         }
@@ -893,6 +911,19 @@ private fun MealRow(
             )
         }
     }
+}
+
+/**
+ * Centres [content] on [height] (the meal row's height with its pantry note closed) while the note
+ * is open, so the thumbnail and trailing items don't move as the note grows downward (#456). With
+ * no [height] it just wraps the content, and the row centres it as it always did.
+ */
+@Composable
+private fun CollapsedCentred(height: Dp?, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(
+        modifier = if (height != null) modifier.height(height) else modifier,
+        contentAlignment = Alignment.Center
+    ) { content() }
 }
 
 /**

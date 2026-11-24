@@ -96,6 +96,8 @@ enum Flag: String, CaseIterable {
     case planPantryNote
     /// Recipes' views folded into the filter sheet (#454): a Lists pill left of search, Cooked and Came from as choices, Not in a list as a switch; needs `recipesTopB`.
     case recipesFilters
+    /// Ask with a switch (#465): the pantry edit sheet's "Add to grocery list" switch under Running low and Run out; the shortcuts' add gets an Undo snackbar.
+    case pantryListSwitch
 }
 
 /// One flag as `shared/flags.json` declares it.
