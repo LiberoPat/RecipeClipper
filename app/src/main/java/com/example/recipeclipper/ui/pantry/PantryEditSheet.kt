@@ -72,6 +72,26 @@ internal fun EditSheet(editing: PantryEditing, viewModel: PantryViewModel) {
                     }
                 }
             }
+            // Ask with a switch (#465): low or out, whether its name goes on the grocery list.
+            // Applied at once, as the stock control is.
+            if (editing.showsListSwitch) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(value = editing.addToList, role = Role.Switch, onValueChange = viewModel::onEditAddToList)
+                        .padding(vertical = 4.dp)
+                        .testTag("pantryEditAddToList")
+                ) {
+                    Text(
+                        stringResource(R.string.pantry_add_to_list),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(checked = editing.addToList, onCheckedChange = null)
+                }
+            }
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = editing.name,

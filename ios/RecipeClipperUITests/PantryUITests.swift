@@ -31,7 +31,7 @@ final class PantryUITests: RecipeUITestCase {
         let tag = require(onListTag, "the basket tag")
         XCTAssertEqual(tag.label, "On your grocery list")
         require(pantryRow("milk", "On your grocery list"), "the row, read with the tag")
-        assertAbsent(app.buttons["Undo"], "a snackbar")
+        assertAbsent(app.buttons["Undo"], "a snackbar") // pantryListSwitch off (#465): silent, as before
 
         require(tabBar.buttons["Groceries"], "the Groceries tab").tap()
         require(button(containing: "milk"), "milk on the list")
@@ -87,6 +87,38 @@ final class PantryUITests: RecipeUITestCase {
         require(app.buttons["pantryEditSave"], "Save").tap()
         require(lowTag, "the Low tag")
         require(onListTag, "the basket tag")
+    }
+
+    /// Ask with a switch (#465): no switch in stock; Running low shows "Add to grocery list" on;
+    /// turned off, the line comes off at once and the item stays low, with no tag. A swipe's Ran
+    /// out then adds it, saying so with an Undo, which takes the line back off.
+    func testTheEditSheetAsksWithASwitch() {
+        launch(.empty, flags: ["pantryListSwitch"], extraArguments: ["-uiTestHoldUndo"])
+        require(tabBar.buttons["Pantry"], "the Pantry tab").tap()
+        let field = require(app.textFields["Add to the pantry"], "Add to the pantry")
+        field.tap()
+        field.typeText("garlic\n")
+
+        require(pantryRow("garlic"), "garlic").tap()
+        let control = require(app.segmentedControls["pantryEditStock"], "the sheet's stock control")
+        assertAbsent(app.switches["pantryEditAddToList"], "the switch, in stock")
+        control.buttons["Running low"].tap()
+        let toggle = require(app.switches["pantryEditAddToList"], "the Add to grocery list switch")
+        requireState(toggle, "value == '1'", "the switch, on")
+        // At its trailing edge, where the switch is.
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        requireState(toggle, "value == '0'", "the switch, off")
+        require(app.buttons["pantryEditSave"], "Save").tap()
+        require(lowTag, "the Low tag")
+        requireGone(onListTag, "the basket tag, with the switch off")
+
+        require(pantryRow("garlic"), "garlic").swipeLeft()
+        require(app.buttons["Ran out"], "the swipe's Ran out").tap()
+        require(text("Added garlic to groceries"), "the swipe's snackbar")
+        require(onListTag, "the basket tag")
+        require(app.buttons["Undo"], "Undo").tap()
+        requireGone(onListTag, "the basket tag, after Undo")
+        require(pantryRow("garlic", "Run out"), "garlic, still run out")
     }
 
     // MARK: - Counts at the top (#286)

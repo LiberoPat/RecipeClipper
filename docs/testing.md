@@ -363,6 +363,13 @@ out and the Run out heading, the basket tag's spoken label and action, the row's
 with both other states, the row's TalkBack description) and `PantryUITests`
 (a swipe to Ran out, the sheet's control, moves between sections).
 
+Ask with a switch (#465, `pantryListSwitch`): `PantryListSwitchTest` / `PantryListSwitchTests`
+(the switch hidden in stock, on and adding from In stock, off taking the sheet's line back off and
+on putting it back, staying off between Running low and Run out, opening on for an item already on
+the list with the tag's Undo for lines it didn't add, a shortcut's "Added" Undo taking only its
+line, no bar when the line was there, the flag off as before); `PantryScreenTest` (Robolectric:
+the sheet's switch, a swipe's Undo) and `PantryUITests` (the sheet's switch; the swipe's bar).
+
 Selecting several pantry items (#258): `PantrySelectionTest` / `PantrySelectionTests` (enter,
 toggle, a drag's range from its anchor and back, Select all and a section's, Remove and Mark run
 out each with one undo); `PantryDaoTest` / `PantryDaoTests` (`delete(ids)` and its restore);

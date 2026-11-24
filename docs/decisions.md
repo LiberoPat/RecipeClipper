@@ -2024,7 +2024,8 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
 - **Running low or out puts it on the list** (#146, #194; it was a snackbar offer
   before): "Ran out" or "Running low" adds its name as a typed item, silently,
   and the row shows the basket Groceries tag. Typing a name already in the pantry puts it back
-  in stock rather than adding a twin.
+  in stock rather than adding a twin. (Since #465, `pantryListSwitch`, the edit sheet asks with
+  a switch and a shortcut's add says so with an Undo: "Ask with a switch", below.)
 - **Expiry**: a badge only (#52 later added an opt-in morning reminder) (Expired before today; the date in basil from today
   to 3 days ahead), no notifications, as the epic says. Sort by aisle (the
   default) or by expiry (soonest first, undated last), from the menu as radio
@@ -2064,7 +2065,8 @@ The fourth tab of #46, still behind the #47 flag, with the week's Have/Buy.
   with undo), with swipes as shortcuts; touch and hold selects several (#258). Expired or within 3 days shows a basil
   badge; an opt-in 9:00 notification lists what expires today or tomorrow
   (Settings → Pantry). Running low or out puts its name on the grocery list
-  silently; the row shows the Groceries tab's basket tag whenever a grocery line names the
+  (the edit sheet's switch decides, a shortcut says so with an Undo: #465); the row shows the
+  Groceries tab's basket tag whenever a grocery line names the
   item, in any stock, and tapping that takes those lines off (with Undo). The menu's "Send list"
   and "Send as file" send what's in stock (running low included), never what's out (that is on
   the grocery list already), and "Clear run-out items" removes what has run out, after asking,
@@ -4885,8 +4887,9 @@ offer for the first was replaced and gone. Owner's decisions:
   changes: an item added, deleted or cleared, Done shopping, a move to another aisle, or a
   change from elsewhere (Add to groceries from a recipe, the pantry adding or removing a line).
   Leaving the app for another and coming back is the same visit.
-- **Pantry to groceries shows a state, not a message.** Marking an item out (or, since #194,
-  running low) adds its name to the list silently (unless its own line, the item's name as
+- **Pantry to groceries shows a state, not a message.** (Since #465 the edit sheet shows the
+  choice as a switch and a shortcut's add raises an Undo; the tag below is unchanged.) Marking an
+  item out (or, since #194, running low) adds its name to the list silently (unless its own line, the item's name as
   written, is there already: `PantryList.ownLines`), and the row shows a small tag. **The tag
   shows whenever the item is on the grocery list, in any stock** (owner, 2026-09-29: a typed
   "2 onions" or a recipe's "1 onion, sliced" showed no tag on "onions"): any unticked line, same
@@ -5160,7 +5163,8 @@ the cupboard. It is replaced, and a **Running low** state added.
   basket tag is drawn inside the row's button, where it wraps with the name, with its own
   button laid over it.
 - **Groceries as #146.** Ran out and Running low both put the name on the grocery list
-  silently, shown by the basket tag; tapping the tag takes it off. Restock, Done shopping's
+  silently (since #465 the sheet asks with a switch and a shortcut says so with an Undo),
+  shown by the basket tag; tapping the tag takes it off. Restock, Done shopping's
   put-away and typing a name already there all return an item to In stock (and bought today).
 - **"Clear run-out items"** (owner, 2026-09-29), last in the ⋮ menu, disabled while nothing
   has run out: after a "Clear 3 run-out items?" dialog (the count is every run-out item, whatever
@@ -7662,6 +7666,38 @@ undo at a time) and `WeekPantryNoteScreenTest` (Compose: the note and its absenc
 opening the recipe, adding, the snackbar, "On your grocery list", Undo, the capped note opened and
 closed, the flag off); iOS `PlanPantryNoteTests`, `WeekPantryNoteTests` and `WeekPantryNoteUITests`
 (seeded with `-uiTestPantry`).
+
+## Ask with a switch: Running low or out and the grocery list (#465, 2026-11-23)
+
+Owner's complaint: marking a pantry item Running low or Run out silently added its name to the
+grocery list; nothing said so when the choice was made, only the small basket tag afterwards.
+Of three fixes offered, the owner chose **"Ask with a switch"**. Behind `pantryListSwitch`, on by
+default in debug and release; off, everything is as #146 and #194 left it.
+
+- **The edit sheet's switch.** Directly under the In stock | Running low | Run out control, while
+  Running low or Run out is chosen, one switch row, "Add to grocery list" (a switch: an
+  independent toggle). Hidden for In stock. It opens on when the item, low or out, is on the
+  grocery list (any line naming it, as the tag reads it: `PantryList.onListLines`), else off. A
+  move from In stock turns it on and adds the item's own line, so the default is what happened
+  before; between Running low and Run out it keeps its place (off stays off, nothing is added).
+- **Applied at once, as the stock control is** (#194): no new save model. Off takes off every line
+  that puts the item on the list (what tapping the basket tag takes), so the switch and the tag
+  never disagree; on again puts back exactly those lines, or adds the item's own line. No
+  snackbar while the sheet is open (the switch is its own undo), but if, when it closes (Save or
+  dismiss), the switch took off lines the sheet hadn't added itself (a recipe's, or a line from
+  before), the tag's own Undo ("Removed from groceries") offers them back. Delete keeps its own
+  Undo only. The stock and grocery writes go through one queue (Android a `Mutex`, iOS
+  `OrderedWrites`), so a switch turned off just after the control finds the line it added.
+- **Per act, not stored:** no column, no migration. Restocking still leaves the list alone.
+- **The shortcuts still add, and now say so.** A swipe, the row's menu or its TalkBack and
+  VoiceOver actions put the item's own line on the list as before, then raise the standard undo
+  snackbar, "Added milk to groceries", whose Undo takes exactly that line off (the stock stays as
+  chosen). Only when a line really was added: not when its own line was there already.
+- **One Undo where one already is.** "Update the pantry" (#147) adds the lines for what it ran
+  low or out, and its one Undo already puts the pantry back and takes those lines off; the
+  selection's "Mark run out" (#258) has its own Undo for the stock. Both keep that single bar; a
+  second "Added" bar would stack two undos for one act.
+- The basket tag and its tap-to-remove are unchanged.
 
 ## Code map and routes, and details moved out of CLAUDE.md (September 2026)
 
