@@ -152,8 +152,6 @@
     <string name="recipes_filter_title">Filtrer les recettes</string>
     <string name="recipes_quick_30_or_less_hint">Temps total, ou préparation plus cuisson</string>
     <string name="recipes_quick_not_cooked_hint">Jamais marquée comme cuisinée</string>
-    <string name="recipes_filter_group_recipe">La recette</string>
-    <string name="recipes_filter_group_where">Où elle est, d’où elle vient</string>
     <string name="recipes_filter_cooked_any">Toutes</string>
     <string name="recipes_filter_not_yet">Pas encore</string>
     <string name="recipes_filter_not_in_list_hint">Pas encore dans l’une de vos listes</string>

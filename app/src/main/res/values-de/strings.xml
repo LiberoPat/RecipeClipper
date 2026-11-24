@@ -148,8 +148,6 @@
     <string name="recipes_filter_title">Rezepte filtern</string>
     <string name="recipes_quick_30_or_less_hint">Gesamtzeit, oder Vorbereitung plus Kochen</string>
     <string name="recipes_quick_not_cooked_hint">Nie als gekocht markiert</string>
-    <string name="recipes_filter_group_recipe">Das Rezept</string>
-    <string name="recipes_filter_group_where">Wo es ist, woher es kommt</string>
     <string name="recipes_filter_cooked_any">Alle</string>
     <string name="recipes_filter_not_yet">Noch nicht</string>
     <string name="recipes_filter_not_in_list_hint">Noch in keiner deiner Listen</string>

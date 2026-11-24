@@ -45,6 +45,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.recipeclipper.R
@@ -58,41 +61,73 @@ import com.example.recipeclipper.ui.theme.Corners
 import com.example.recipeclipper.ui.theme.LocalAccentTone
 
 /*
- * Recipes' views folded into the filter sheet (#454, `recipesFilters`, over design B): the Lists pill left of
- * search, the sheet's two groups (the recipe; where it is and where it came from) and the pills of the filters
+ * Recipes' views folded into the filter sheet (#454, `recipesFilters`, over design B): the Lists pill in the
+ * title row, the sheet (the switches, then the two choices) and the pills of the filters
  * on. What each filter selects is `RecipeFilterChoices`' (core), the view screens' and #378's own rules.
  */
 
 /**
- * Lists, left of search (#454): the bookmark, "Lists" and how many, in the accent tone. It opens the Lists
- * screen, Back returns. It takes the width its words need and never clips; search takes the rest.
+ * Lists, in the title row and the pinned bar (#454, the owner's move, 2026-11-23): the bookmark, "Lists" and
+ * how many, in the accent tone. It opens the Lists screen, Back returns. [compact] drops the word and keeps
+ * the icon and the count, for a title row with no room for it ([TitleRowLayout] decides); the spoken label is
+ * the same either way.
  */
 @Composable
-internal fun ListsPill(count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun ListsPill(
+    count: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+    tag: String = "recipesListsPill"
+) {
     val tone = LocalAccentTone.current
     val name = stringResource(R.string.nav_lists)
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(PILL_GAP),
         modifier = modifier
-            .heightIn(min = 56.dp)
-            .clip(Corners.Field)
+            .minimumInteractiveComponentSize()
+            .heightIn(min = 36.dp)
+            .clip(Corners.Pill)
             .background(tone.fill)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = "$name, $count" }
-            .padding(start = 12.dp, end = 14.dp)
-            .testTag("recipesListsPill")
+            .padding(start = PILL_START, end = PILL_END)
+            .testTag(if (compact) "$tag-compact" else tag)
     ) {
-        Icon(painterResource(R.drawable.ic_view_lists_b), contentDescription = null, tint = tone.onFill, modifier = Modifier.size(18.dp))
-        Text(name, style = MaterialTheme.typography.labelLarge, color = tone.onFill, maxLines = 1, softWrap = false)
+        Icon(painterResource(R.drawable.ic_view_lists_b), contentDescription = null, tint = tone.onFill, modifier = Modifier.size(PILL_ICON))
+        if (!compact) {
+            Text(name, style = MaterialTheme.typography.labelLarge, color = tone.onFill, maxLines = 1, softWrap = false)
+        }
         Text(
             "$count",
             style = MaterialTheme.typography.labelLarge,
-            color = tone.onFill.copy(alpha = 0.75f),
+            color = if (compact) tone.onFill else tone.onFill.copy(alpha = 0.75f),
             maxLines = 1,
             softWrap = false
         )
     }
+}
+
+private val PILL_START = 12.dp
+private val PILL_END = 14.dp
+private val PILL_ICON = 18.dp
+private val PILL_GAP = 6.dp
+
+/**
+ * The Lists pill's width with its word, the icon, the count and their gaps: what the title row weighs against
+ * the room it has, to decide between this and the icon and count alone, without composing both.
+ */
+@Composable
+internal fun listsPillFullWidth(count: Int?): Dp {
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelLarge
+    val name = stringResource(R.string.nav_lists)
+    val density = LocalDensity.current
+    if (count == null) return 0.dp
+    val words = measurer.measure(name, style, maxLines = 1, softWrap = false).size.width +
+        measurer.measure("$count", style, maxLines = 1, softWrap = false).size.width
+    return PILL_START + PILL_END + PILL_ICON + PILL_GAP * 2 + with(density) { words.toDp() }
 }
 
 /** The pills of the filters on (#454), each removed by a tap on it, then Clear; with the pantry on, its line. */
@@ -154,9 +189,10 @@ internal fun pillLabel(pill: RecipeFilterPill): Int = when (pill) {
 }
 
 /**
- * The filter sheet with the views folded in (#454): "The recipe" (30 min or less, Cooked: Any / Cooked / Not
- * yet, Uses what's in my pantry) and "Where it is, where it came from" (Not in a list, Came from: Anywhere /
- * Typed by you / From a chat), and Clear. Each control answers at once; the list behind follows.
+ * The filter sheet with the views folded in (#454), grouped by kind of control (the owner's regrouping,
+ * 2026-11-23): the switches first (30 min or less, Uses what's in my pantry, Not in a list), then the two
+ * segmented choices (Cooked: Any / Cooked / Not yet; Came from: Anywhere / Typed by you / From a chat), and
+ * Clear. Each control answers at once; the list behind follows.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -182,22 +218,12 @@ internal fun RecipeFiltersSheet(
                     Text(stringResource(R.string.action_clear))
                 }
             }
-            GroupLabel(stringResource(R.string.recipes_filter_group_recipe))
             SwitchRow(
                 title = stringResource(R.string.recipes_quick_30_or_less),
                 description = stringResource(R.string.recipes_quick_30_or_less_hint),
                 checked = choices.thirtyOrLess,
                 onCheckedChange = { onChange(choices.copy(thirtyOrLess = it)) },
                 modifier = Modifier.testTag("recipeFilterSwitch-THIRTY_OR_LESS")
-            )
-            Hairline()
-            ChoiceRow(
-                title = stringResource(R.string.recipes_view_cooked),
-                options = CookedChoice.entries,
-                selected = choices.cooked,
-                label = { stringResource(cookedLabel(it)) },
-                onSelect = { onChange(choices.copy(cooked = it)) },
-                tag = "recipeFilterCooked"
             )
             Hairline()
             SwitchRow(
@@ -207,13 +233,22 @@ internal fun RecipeFiltersSheet(
                 onCheckedChange = { onChange(choices.copy(usesPantry = it)) },
                 modifier = Modifier.testTag("recipeFilterSwitch-USES_PANTRY")
             )
-            GroupLabel(stringResource(R.string.recipes_filter_group_where))
+            Hairline()
             SwitchRow(
                 title = stringResource(R.string.recipes_filter_not_in_list),
                 description = stringResource(R.string.recipes_filter_not_in_list_hint),
                 checked = choices.notInAList,
                 onCheckedChange = { onChange(choices.copy(notInAList = it)) },
                 modifier = Modifier.testTag("recipeFilterSwitch-NOT_IN_A_LIST")
+            )
+            Spacer(Modifier.height(20.dp))
+            ChoiceRow(
+                title = stringResource(R.string.recipes_view_cooked),
+                options = CookedChoice.entries,
+                selected = choices.cooked,
+                label = { stringResource(cookedLabel(it)) },
+                onSelect = { onChange(choices.copy(cooked = it)) },
+                tag = "recipeFilterCooked"
             )
             Hairline()
             ChoiceRow(
@@ -238,17 +273,6 @@ private fun originLabel(choice: OriginChoice): Int = when (choice) {
     OriginChoice.ANYWHERE -> R.string.recipes_filter_anywhere
     OriginChoice.TYPED -> R.string.recipes_view_typed
     OriginChoice.CHAT -> R.string.recipes_view_chat
-}
-
-/** A group's small-caps heading in the sheet, as the Add a recipe block's. */
-@Composable
-private fun GroupLabel(text: String) {
-    Text(
-        text.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 18.dp, bottom = 2.dp).semantics { heading() }
-    )
 }
 
 /** One exclusive choice in the sheet: its title, then the options as segments. */

@@ -2,6 +2,7 @@ package com.example.recipeclipper.ui.recipes
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.performSemanticsAction
@@ -10,6 +11,11 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -57,7 +63,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Recipes' views folded into the filter sheet (#454), over design B: no shelf, the Lists pill left of search
- * (opening Lists, Back returning), the sheet's two groups, each control narrowing the list with its pill and
+ * (opening Lists, Back returning), the sheet's switches then its two choices, each control narrowing the list with its pill and
  * the badge, Clear, German at twice the text, and the flag off keeping design B. Real ViewModels over fakes.
  */
 @RunWith(AndroidJUnit4::class)
@@ -96,7 +102,7 @@ class RecipesFiltersScreenTest {
     private lateinit var library: RecipesViewModel
 
     /** The library on a small nav graph: `recipes` is the real screen, `lists` a stand-in, so Back is real. */
-    private fun show(filtersSheet: Boolean = true) {
+    private fun show(filtersSheet: Boolean = true, firstRow: String = "Quick Soup") {
         val backup = AutoBackupFixture()
         val fixtures = PastedTextFixtures()
         library = RecipesViewModel(repository, FakeAppPreferences(), lists = lists, pasted = fixtures.router)
@@ -132,7 +138,7 @@ class RecipesFiltersScreenTest {
                 composable("lists") { Text("stub:lists") }
             }
         }
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Quick Soup").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(firstRow).fetchSemanticsNodes().isNotEmpty() }
     }
 
     private fun filtersOn(n: Int) = SemanticsMatcher.expectValue(
@@ -151,17 +157,103 @@ class RecipesFiltersScreenTest {
     // --- The top ---
 
     @Test
-    fun theShelfIsGoneAndListsSitsLeftOfSearchOnOneRow() {
+    fun theShelfIsGoneAndListsSitsInTheTitleRowAboveAFullWidthSearch() {
         show()
         compose.onAllNodesWithTag("recipesViewsShelf").assertCountEquals(0)
         compose.onAllNodesWithTag("recipesView-COOKED").assertCountEquals(0)
         val pill = compose.onNodeWithTag("recipesListsPill")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Lists, 3")))
             .fetchSemanticsNode().boundsInRoot
+        val add = compose.onNodeWithTag("libraryAdd").fetchSemanticsNode().boundsInRoot
+        val more = compose.onNodeWithTag("libraryMore").fetchSemanticsNode().boundsInRoot
         val search = compose.onNodeWithTag("recipesSearch").fetchSemanticsNode().boundsInRoot
-        assertTrue("Lists is left of search: $pill, $search", pill.right <= search.left)
-        assertTrue("on the same row", pill.top < search.bottom && search.top < pill.bottom)
+        assertTrue("Lists is left of the +, which is left of the menu: $pill, $add, $more", pill.right <= add.left && add.right <= more.left)
+        assertTrue("on the title row's line: $pill, $add", pill.top < add.bottom && add.top < pill.bottom)
+        assertTrue("search is on its own row below: $pill, $search", search.top >= pill.bottom - 1f)
+        assertTrue("search takes the full width, as far right as the menu: $search, $more", search.right >= more.right - 24f)
         compose.onNodeWithTag("recipesFilterButton").assert(noFiltersOn())
+    }
+
+    @Test
+    fun downTheListTheListsPillStaysInThePinnedBarAndOpensLists() {
+        val many = (1L..30L).map { RecipeSummary(it, "Recipe $it", null, "20m", it, isSaved = false, language = "en") }
+        repository.history.value = many
+        repository.recent.value = many
+        show(firstRow = "Recipe 1")
+        compose.onAllNodesWithTag("libraryPinnedBar").assertCountEquals(0)
+        compose.onNodeWithTag("recipesList").performScrollToIndex(25)
+        compose.waitForIdle()
+        compose.onNodeWithTag("libraryPinnedBar").assertIsDisplayed()
+        val pill = compose.onNodeWithTag("recipesListsPillPinned")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Lists, 3")))
+            .fetchSemanticsNode().boundsInRoot
+        val add = compose.onNodeWithTag("libraryAddPinned").fetchSemanticsNode().boundsInRoot
+        val more = compose.onNodeWithTag("libraryMorePinned").fetchSemanticsNode().boundsInRoot
+        assertTrue("Lists, then the +, then the menu: $pill, $add, $more", pill.right <= add.left && add.right <= more.left)
+        compose.onNodeWithTag("recipesListsPillPinned").performClick()
+        compose.onNodeWithText("stub:lists").assertIsDisplayed()
+    }
+
+    /** A 360 dp phone at the default text size shows the whole placeholder, with no ellipsis. */
+    @Test
+    @Config(qualifiers = "w360dp-h1600dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theSearchPlaceholderIsWholeOnA360dpPhone() {
+        show()
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNode(hasText("Search titles and ingredients") and hasAnyAncestor(hasTestTag("recipesSearch")), useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val layout = layouts.single()
+        assertTrue("not cut: ${layout.size}, line right ${layout.getLineRight(0)}, needs ${layout.multiParagraph.maxIntrinsicWidth}, ellipsized ${layout.isLineEllipsized(0)}", !layout.isLineEllipsized(0) && layout.getLineRight(0) <= layout.size.width + 1f)
+        assertEquals("one line", 1, layout.lineCount)
+    }
+
+    /** The title row in each language at 360 dp: the title whole, the + and the menu on screen, the pill whole. */
+    private fun assertTheTitleRowFits(title: String) {
+        show()
+        val screen = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val more = compose.onNodeWithTag("libraryMore").fetchSemanticsNode().boundsInRoot
+        val add = compose.onNodeWithTag("libraryAdd").fetchSemanticsNode().boundsInRoot
+        assertTrue("the menu is on screen: $more in $screen", more.right <= screen.right + 1f && add.left >= 0f)
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNode(hasText(title) and isHeading(), useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals("$title on one line", 1, layouts.single().lineCount)
+        layouts.single().let { assertTrue("$title not cut: size ${it.size}, line right ${it.getLineRight(0)}, ellipsized ${it.isLineEllipsized(0)}, overflow ${it.didOverflowWidth}", !it.isLineEllipsized(0) && it.getLineRight(0) <= it.size.width + 1f) }
+        val pill = compose.onAllNodesWithTag("recipesListsPill").fetchSemanticsNodes() +
+            compose.onAllNodesWithTag("recipesListsPill-compact").fetchSemanticsNodes()
+        assertEquals("exactly one Lists pill is in the title row", 1, pill.size)
+        val b = pill.single().boundsInRoot
+        assertTrue("the pill is on screen: $b", b.left >= 0f && b.right <= screen.right + 1f)
+    }
+
+    private fun isHeading() = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+
+    @Test @Config(qualifiers = "w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theTitleRowFitsInEnglishOn360dp() = assertTheTitleRowFits("Recipes")
+
+    @Test @Config(qualifiers = "es-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theTitleRowFitsInSpanishOn360dp() = assertTheTitleRowFits("Recetas")
+
+    @Test @Config(qualifiers = "fr-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theTitleRowFitsInFrenchOn360dp() = assertTheTitleRowFits("Recettes")
+
+    @Test @Config(qualifiers = "de-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theTitleRowFitsInGermanOn360dp() = assertTheTitleRowFits("Rezepte")
+
+    @Test @Config(qualifiers = "it-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theTitleRowFitsInItalianOn360dp() = assertTheTitleRowFits("Ricette")
+
+    @Test @Config(qualifiers = "pt-rBR-w360dp-h1600dp") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun theTitleRowFitsInPortugueseOn360dp() = assertTheTitleRowFits("Receitas")
+
+    /** At 1.3 times the text the pill gives up its word and keeps its icon and count (English, 360 dp). */
+    @Test @Config(qualifiers = "w360dp-h1600dp", fontScale = 1.5f) @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun atLargeTextTheTitleRowStillFitsWithThePillAsIconAndCount() {
+        assertTheTitleRowFits("Recipes")
+        compose.onAllNodesWithTag("recipesListsPill").assertCountEquals(0)
+        compose.onNodeWithTag("recipesListsPill-compact")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Lists, 3")))
     }
 
     @Test
@@ -178,11 +270,20 @@ class RecipesFiltersScreenTest {
     // --- The sheet ---
 
     @Test
-    fun theSheetHoldsTwoGroupsWithAnyAndAnywhereChosen() {
+    fun theSheetHoldsTheSwitchesThenTheTwoChoicesWithAnyAndAnywhereChosen() {
         show()
         openSheet()
-        compose.onNodeWithText("THE RECIPE").assertIsDisplayed()
-        compose.onNodeWithText("WHERE IT IS, WHERE IT CAME FROM").performScrollTo().assertIsDisplayed()
+        // Read every position before any scroll, so they share one frame: the three switches, then Cooked, then
+        // Came from (the owner's regrouping by kind of control, 2026-11-23); no group headings.
+        fun top(tag: String) = compose.onNodeWithTag(tag).fetchSemanticsNode().positionInRoot.y
+        val switches = listOf("THIRTY_OR_LESS", "USES_PANTRY", "NOT_IN_A_LIST").map { top("recipeFilterSwitch-$it") }
+        val cooked = top("recipeFilterCooked-ANY")
+        val origin = top("recipeFilterOrigin-ANYWHERE")
+        assertEquals("the switches in order", switches.sorted(), switches)
+        assertTrue("the switches come before the choices: $switches, $cooked", switches.max() < cooked)
+        assertTrue("Cooked, then Came from: $cooked, $origin", cooked < origin)
+        compose.onAllNodesWithText("THE RECIPE").assertCountEquals(0)
+        compose.onAllNodesWithText("WHERE IT IS, WHERE IT CAME FROM").assertCountEquals(0)
         compose.onNodeWithTag("recipeFilterSwitch-THIRTY_OR_LESS").assertIsOff()
         compose.onNodeWithTag("recipeFilterCooked-ANY").assertIsSelected()
         compose.onNodeWithTag("recipeFilterCooked-COOKED").assertIsNotSelected()
@@ -275,17 +376,14 @@ class RecipesFiltersScreenTest {
         assertTrue(library.uiState.value.choices.isEmpty)
     }
 
-    /** German at twice the text: the Lists pill keeps its words whole, search takes the rest, the choices stack. */
+    /** German at twice the text: the title row keeps everything on screen, the count never breaks, the choices stack. */
     @Test
     @Config(qualifiers = "de-w360dp-h1600dp", fontScale = 2f)
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     fun inGermanAtTwiceTheTextListsNeverClipsAndTheChoicesStack() {
-        show()
-        val pill = compose.onNodeWithTag("recipesListsPill").fetchSemanticsNode()
+        assertTheTitleRowFits("Rezepte")
         val search = compose.onNodeWithTag("recipesSearch").fetchSemanticsNode().boundsInRoot
-        assertTrue("the pill is laid out whole: ${pill.boundsInRoot} vs ${pill.size}", pill.boundsInRoot.width >= pill.size.width - 1f)
-        assertTrue("search keeps room beside it: $search", search.width > 0f && pill.boundsInRoot.right <= search.left)
-        compose.onNodeWithText("Listen").assertIsDisplayed()
+        assertTrue("search has the width: $search", search.width > 0f)
         // The count never breaks inside a word ("Reze / pte"): one line, the sort moving under it if need be.
         val layouts = mutableListOf<TextLayoutResult>()
         compose.onNodeWithTag("recipesCountLine").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }

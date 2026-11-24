@@ -162,7 +162,7 @@ fun RecipesScreen(
      */
     topB: Boolean = LocalFlagValues.current.isOn(Flag.RECIPES_TOP_B),
     /**
-     * Over design B (#454): no views shelf; a Lists pill left of search; the filter sheet with the views folded
+     * Over design B (#454): no views shelf; a Lists pill in the title row and the pinned bar; the filter sheet with the views folded
      * in (Cooked, Not in a list, Came from). Off, design B as it was.
      */
     filtersSheet: Boolean = LocalFlagValues.current.isOn(Flag.RECIPES_FILTERS),
@@ -517,7 +517,9 @@ fun RecipesScreen(
                         PinnedTitleBar(
                             onAdd = { addSheetOpen = true },
                             onSelect = if (multiSelect && !state.recipes.isNullOrEmpty()) ({ viewModel.onStartSelecting() }) else null,
-                            onOpenSettings = libraryRoot?.onOpenSettings ?: {}
+                            onOpenSettings = libraryRoot?.onOpenSettings ?: {},
+                            listCount = state.lists.size.takeIf { folded && state.showsViewsStrip },
+                            onOpenLists = onOpenLists
                         )
                     }
                     }
@@ -651,7 +653,7 @@ private fun RecipesHeaderB(
     onOpenFilters: (() -> Unit)?,
     onQuickToggle: (RecipeQuickFilter) -> Unit,
     onClearQuick: () -> Unit,
-    /** The views folded into the filter sheet (#454): Lists beside search, no shelf, the sheet's pills. */
+    /** The views folded into the filter sheet (#454): Lists in the title row, no shelf, the sheet's pills. */
     folded: Boolean = false,
     onRemovePill: (RecipeFilterPill) -> Unit = {},
     onSort: (RecipeSort) -> Unit,
@@ -667,7 +669,9 @@ private fun RecipesHeaderB(
             onAdd = root.onAdd,
             onSelect = onSelect.takeIf { !state.recipes.isNullOrEmpty() },
             onOpenSettings = root.root.onOpenSettings,
-            modifier = Modifier.onSizeChanged { onTitleHeight(it.height) }
+            modifier = Modifier.onSizeChanged { onTitleHeight(it.height) },
+            listCount = state.lists.size.takeIf { folded && state.showsViewsStrip },
+            onOpenLists = onOpenLists
         )
         if (root.home != null) {
             Spacer(Modifier.height(4.dp))
@@ -691,17 +695,13 @@ private fun RecipesHeaderB(
         }
         Spacer(Modifier.height(12.dp))
         if (folded) {
-            // #454: Lists, then search with the sheet's button; the views are in the sheet, not a shelf.
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (state.showsViewsStrip) ListsPill(state.lists.size, onOpenLists)
-                SearchFieldB(
-                    query = state.query,
-                    onQueryChange = onQueryChange,
-                    filtersOn = state.choices.pills.size,
-                    onOpenFilters = onOpenFilters.takeIf { state.showsFilter },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            // #454: search the full width with the sheet's button (Lists is in the title row); the views are in the sheet.
+            SearchFieldB(
+                query = state.query,
+                onQueryChange = onQueryChange,
+                filtersOn = state.choices.pills.size,
+                onOpenFilters = onOpenFilters.takeIf { state.showsFilter }
+            )
             ChoicePills(state.choices.pills, onRemovePill, onClearQuick)
         } else {
             if (state.showsViewsStrip) {
